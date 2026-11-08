@@ -9,7 +9,7 @@
 import type { CatalogRouteView, ModelCallView, PlanResponse } from '../src/api-types.ts';
 import { fmtMs } from '../src/run/format.ts';
 import type { TestPlan } from '../src/types.ts';
-import { type ApiError, type ApiResult, VERIFICATION_ERROR, postApprove, postPlan } from './api.ts';
+import { type ApiError, type ApiResult, VERIFICATION_ERROR, postApprove, postPlan, postProbe } from './api.ts';
 import type { AppContext, RouteParams, ViewCleanup } from './context.ts';
 import { clear, el, parseErrorText, renderApiError, scrollRegion, violationsTable } from './dom.ts';
 import { disposeWidget, getToken, resetWidget } from './turnstile.ts';
@@ -19,7 +19,7 @@ export function countCodePoints(text: string): number {
   return [...text.trim()].length;
 }
 
-type Busy = 'planning' | 'approving' | null;
+type Busy = 'planning' | 'approving' | 'probing' | null;
 
 export function renderDescribeView(root: HTMLElement, ctx: AppContext, _params: RouteParams = {}): ViewCleanup {
   const { config } = ctx;
@@ -129,6 +129,34 @@ export function renderDescribeView(root: HTMLElement, ctx: AppContext, _params: 
 
   const reviewHost = el('div', { class: 'stack' });
 
+  // Secondary panel: run the Containment_Probe (no plan needed).
+  const probeAlert = el('div', { class: 'alert', role: 'alert' });
+  const probeBox = el('div', { class: 'turnstile' });
+  const probeBtn = el(
+    'button',
+    { type: 'button', class: 'btn', onclick: () => void startProbe() },
+    'Run containment probe',
+  );
+  const probeProgress = el(
+    'span',
+    { class: 'progress', role: 'status', hidden: true },
+    el('span', { class: 'spinner', 'aria-hidden': 'true' }),
+    el('span', null, 'Starting the probe.'),
+  );
+  const probePanel = el(
+    'section',
+    { class: 'panel stack' },
+    el('h2', null, 'See containment work: run the sandbox probe'),
+    el(
+      'p',
+      null,
+      'The probe tries to escape the sandbox with five attempts, such as reaching the internet and the cloud metadata address, and the sandbox blocks each one.',
+    ),
+    probeBox,
+    el('div', { class: 'row' }, probeBtn, probeProgress),
+    probeAlert,
+  );
+
   // Approval controls exist only while an accepted plan is shown.
   let approveBtn: HTMLButtonElement | null = null;
   let approveProgress: HTMLElement | null = null;
@@ -142,6 +170,7 @@ export function renderDescribeView(root: HTMLElement, ctx: AppContext, _params: 
       runtimeNotice,
       form,
       reviewHost,
+      probePanel,
     ),
   );
 
@@ -164,6 +193,8 @@ export function renderDescribeView(root: HTMLElement, ctx: AppContext, _params: 
     planProgress.hidden = busy !== 'planning';
     if (approveBtn) approveBtn.disabled = !idle;
     if (approveProgress) approveProgress.hidden = busy !== 'approving';
+    probeBtn.disabled = !idle;
+    probeProgress.hidden = busy !== 'probing';
     if (lastSubmitted !== null && textarea.value.trim() !== lastSubmitted) retryBtn.hidden = true;
     if (staleNote) staleNote.hidden = textarea.value.trim() === lastSubmitted;
   }
@@ -240,6 +271,36 @@ export function renderDescribeView(root: HTMLElement, ctx: AppContext, _params: 
     }
     busy = null;
     showError(errorRegion, result.error);
+    ctx.announce(result.error.message);
+    refresh();
+  }
+
+  // ---- Containment probe ----------------------------------------------------
+  async function startProbe(): Promise<void> {
+    if (busy !== null || disposed) return;
+    busy = 'probing';
+    clear(probeAlert);
+    refresh();
+    ctx.announce('Starting the containment probe.');
+
+    let result: Awaited<ReturnType<typeof postProbe>>;
+    try {
+      const token = await getToken(config.turnstileSiteKey, probeBox);
+      result = await postProbe({ turnstileToken: token });
+    } catch {
+      result = { ok: false, error: VERIFICATION_ERROR };
+    } finally {
+      resetWidget();
+    }
+    if (disposed) return;
+
+    if (result.ok) {
+      // Stay busy: no second start while the page changes.
+      ctx.navigate(`/probe/${encodeURIComponent(result.data.runId)}`);
+      return;
+    }
+    busy = null;
+    showError(probeAlert, result.error);
     ctx.announce(result.error.message);
     refresh();
   }

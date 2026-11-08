@@ -1,0 +1,23 @@
+{
+  "name": "macro",
+  "version": "0.1.0",
+  "description": "Macro: describe a traffic event, get a safe, measured load test and the point where your site breaks.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun src/server.ts",
+    "dev": "bun --watch src/server.ts",
+    "test": "bun test test/*.test.ts",
+    "test:vm": "echo \"VM integration tests are wired in task 4.13\" && exit 1",
+    "build:web": "bun build web/app.ts --outdir web/dist --minify",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.4",
+    "fast-check": "^4.10.2",
+    "typescript": "^6.0.3"
+  }
+}

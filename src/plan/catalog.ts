@@ -32,11 +32,11 @@ export function isRouteId(value: unknown): value is RouteId {
   return typeof value === 'string' && ROUTE_IDS.has(value);
 }
 
-// TODO(task 3.4): PLACEHOLDER. Replace with the slugs seeded into yue-demo.
-// YUE product ids are catalog slugs (like `fgo-1`), never UUIDs.
+// Slugs present on yue-demo (deploy/yue-demo/seed-products.sql; verified against
+// GET /api/v1/products/{id}). YUE product ids are catalog slugs, never UUIDs.
 export const PRODUCT_IDS: readonly string[] = ['uma-1', 'uma-2', 'fgo-1', 'fgo-2', 'fgo-3'];
 
-// TODO(task 3.4): PLACEHOLDER. Must be one of PRODUCT_IDS.
+// Must be one of PRODUCT_IDS. YUE products have no stock field, so ordering never depletes anything.
 export const ORDER_PRODUCT_ID: string = 'fgo-1';
 
 /** Request body for `order_create`; satisfies YUE's `createOrderSchema`. */

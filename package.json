@@ -9,7 +9,7 @@
     "dev": "bun --watch src/server.ts",
     "test": "bun test test/*.test.ts",
     "test:vm": "echo \"VM integration tests are wired in task 4.13\" && exit 1",
-    "build:web": "bun build web/app.ts --outdir web/dist --minify",
+    "build:web": "bun run scripts/build-web.ts",
     "check": "tsc --noEmit"
   },
   "dependencies": {

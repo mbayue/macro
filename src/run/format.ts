@@ -3,6 +3,13 @@
  * Pure functions; no I/O.
  */
 
+/** `toFixed` switches to exponent notation from 1e21; print such (integer-valued) doubles in full. */
+function plainFixed(x: number, decimals: number): string {
+  if (!Number.isFinite(x) || Math.abs(x) < 1e21) return x.toFixed(decimals);
+  const whole = BigInt(x).toString();
+  return decimals > 0 ? `${whole}.${'0'.repeat(decimals)}` : whole;
+}
+
 /**
  * Round half away from zero to `decimals` places (default 0).
  *
@@ -12,6 +19,9 @@
  */
 export function roundHalfAway(x: number, decimals: 0 | 1 | 2 | 3 = 0): number {
   if (!Number.isFinite(x)) return x;
+  // Every double at or above 2^52 is already an integer: nothing to round (and the
+  // toPrecision pre-step below could overflow near Number.MAX_VALUE).
+  if (Math.abs(x) >= 2 ** 52) return x;
   const factor = 10 ** decimals;
   const clean = Number(x.toPrecision(15));
   const scaled = Number((Math.abs(clean) * factor).toPrecision(15));
@@ -22,20 +32,20 @@ export function roundHalfAway(x: number, decimals: 0 | 1 | 2 | 3 = 0): number {
 
 /** Latency in whole milliseconds, e.g. `"123"`. */
 export function fmtMs(x: number): string {
-  return roundHalfAway(x, 0).toFixed(0);
+  return plainFixed(roundHalfAway(x, 0), 0);
 }
 
 /** Request_Error rate with exactly one decimal and a percent sign, e.g. `"12.3%"`. */
 export function fmtPct(x: number): string {
-  return `${roundHalfAway(x, 1).toFixed(1)}%`;
+  return `${plainFixed(roundHalfAway(x, 1), 1)}%`;
 }
 
 /** Requests per second with exactly one decimal, e.g. `"45.6"`. */
 export function fmtRps(x: number): string {
-  return roundHalfAway(x, 1).toFixed(1);
+  return plainFixed(roundHalfAway(x, 1), 1);
 }
 
 /** Integer count (request counts, 429 counts, VU counts), e.g. `"1200"`. */
 export function fmtCount(x: number): string {
-  return roundHalfAway(x, 0).toFixed(0);
+  return plainFixed(roundHalfAway(x, 0), 0);
 }

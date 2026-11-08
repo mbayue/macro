@@ -97,9 +97,14 @@ function block(
     http429 = required(m429['count'], 'macro_429 count is not a finite number >= 0');
   }
 
+  const rps = count / durationSec;
+  if (!Number.isFinite(rps) || !Number.isFinite(errorRatePct)) {
+    fail('a derived value is not a finite number');
+  }
+
   return {
     requests: count,
-    rps: count / durationSec,
+    rps,
     errorRatePct,
     http429,
     p50,

@@ -103,8 +103,8 @@ export function parsePlanJson(jsonText: string, baseOffset = 0): ParseResult {
   return { ok: true, plan: normalizeNegativeZero(result.data) };
 }
 
-/** Find the first opening fence at the start of a line (leading blanks allowed). */
-const OPEN_FENCE = /(?:^|\n)[ \t]*```/;
+/** Find the first opening fence anywhere in the text (prose may precede it on the same line). */
+const OPEN_FENCE = /```/;
 const JSON_TAG = /^json(?![A-Za-z0-9_])/i;
 
 /**

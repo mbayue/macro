@@ -349,8 +349,6 @@ export function buildSandboxCreateBody(i: SandboxBodyInput): ContainerCreateBody
     Env: [
       `HTTPS_PROXY=${i.proxyUrl}`,
       `HTTP_PROXY=${i.proxyUrl}`,
-      'NO_PROXY=',
-      'K6_NO_USAGE_REPORT=true',
     ],
     Labels: { macro: '1', 'macro.run': i.runId, 'macro.stage': String(i.stageIdx) },
     HostConfig: {

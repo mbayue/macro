@@ -13,6 +13,7 @@ import { type ApiError, type ApiResult, VERIFICATION_ERROR, postApprove, postPla
 import type { AppContext, RouteParams, ViewCleanup } from './context.ts';
 import { clear, el, parseErrorText, renderApiError, scrollRegion, violationsTable } from './dom.ts';
 import { renderGateDemoPanel } from './gate-demo.ts';
+import { renderRecentRuns } from './recent-runs.ts';
 import { disposeWidget, getToken, resetWidget } from './turnstile.ts';
 
 /** Unicode code points of the trimmed text (requirement 1.1). */
@@ -204,6 +205,7 @@ export function renderDescribeView(root: HTMLElement, ctx: AppContext, _params: 
   let staleNote: HTMLElement | null = null;
 
   const gateDemoHost = el('div');
+  const recentHost = el('div');
 
   root.append(
     el(
@@ -212,6 +214,7 @@ export function renderDescribeView(root: HTMLElement, ctx: AppContext, _params: 
       el('h1', null, 'Plan a load test'),
       introSection(),
       runtimeNotice,
+      recentHost,
       form,
       reviewHost,
       probePanel,
@@ -219,6 +222,7 @@ export function renderDescribeView(root: HTMLElement, ctx: AppContext, _params: 
     ),
   );
   renderGateDemoPanel(gateDemoHost);
+  const disposeRecent = renderRecentRuns(recentHost);
 
   // ---- State -> DOM -----------------------------------------------------
   function refresh(): void {
@@ -654,6 +658,7 @@ export function renderDescribeView(root: HTMLElement, ctx: AppContext, _params: 
 
   return () => {
     disposed = true;
+    disposeRecent();
     disposeWidget();
   };
 }

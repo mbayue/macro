@@ -25,6 +25,7 @@ import type { ContainmentType, RunStatus } from '../src/types.ts';
 import { type ApiError, getRun } from './api.ts';
 import type { AppContext, RouteParams, ViewCleanup } from './context.ts';
 import { clear, el, fmtUtc, renderApiError, scrollRegion } from './dom.ts';
+import { rememberRun } from './recent-runs.ts';
 
 // ---------------------------------------------------------------------------
 // Pure view-model
@@ -607,6 +608,7 @@ export function renderProbeView(root: HTMLElement, ctx: AppContext, params: Rout
       ctx.navigate(`/run/${encodeURIComponent(id)}`);
       return;
     }
+    rememberRun({ id, kind: 'probe', name: 'Containment probe', startedAt: res.data.run.startedAt });
     apply(res.data);
     if (!isProbeEnded(res.data.run.status)) {
       openSource();

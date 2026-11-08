@@ -24,6 +24,7 @@ import type { ContainmentType, EventType, RunStatus, TestPlan } from '../src/typ
 import { getRun, stopRun } from './api.ts';
 import type { AppContext, RouteParams, ViewCleanup } from './context.ts';
 import { clear, el, renderApiError, scrollRegion, svg } from './dom.ts';
+import { rememberRun } from './recent-runs.ts';
 import { renderReportView } from './report-view.ts';
 
 // ---------------------------------------------------------------------------
@@ -891,6 +892,12 @@ export function renderRunView(root: HTMLElement, ctx: AppContext, params: RouteP
       ctx.navigate(`/probe/${encodeURIComponent(id)}`);
       return;
     }
+    rememberRun({
+      id,
+      kind: 'run',
+      name: res.data.plan?.name ?? 'Load test',
+      startedAt: res.data.run.startedAt,
+    });
     mount(res.data);
   }
 

@@ -1,0 +1,57 @@
+# Demo_Target override for /opt/yue on the `yue-demo` VM. Merged over the base
+# docker-compose.yml automatically. Values come from /opt/yue/.env (see yue.env.template).
+# Only Caddy publishes host ports (80/443). Docker-published ports bypass ufw, so every
+# base `ports:` entry is cleared. `!reset` needs Compose >= 2.24.
+
+services:
+  db:
+    restart: unless-stopped
+    ports: !reset []
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+  redis:
+    restart: unless-stopped
+    ports: !reset []
+
+  api:
+    restart: unless-stopped
+    ports: !reset []
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      WEB_URL: ${WEB_URL}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED}
+      RATE_LIMIT_ALLOWLIST: ${RATE_LIMIT_ALLOWLIST}
+      TRUST_PROXY: ${TRUST_PROXY}
+      KAFKA_BROKERS: ${KAFKA_BROKERS}
+      # No Discord/WhatsApp webhooks and no S3/AWS settings are set anywhere.
+
+  web:
+    restart: unless-stopped
+    ports: !reset []
+    build:
+      args:
+        NEXT_PUBLIC_API_URL: https://api.yue.macro.my.id
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+      - web
+
+volumes:
+  caddy-data:
+  caddy-config:

@@ -1,0 +1,9 @@
+# Caddy obtains and renews Let's Encrypt certificates automatically and redirects HTTP to HTTPS.
+# No `trusted_proxies`: Caddy replaces any client-supplied X-Forwarded-For with the real peer IP.
+yue.macro.my.id {
+	reverse_proxy web:3000
+}
+
+api.yue.macro.my.id {
+	reverse_proxy api:3001
+}

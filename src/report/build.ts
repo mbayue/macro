@@ -249,3 +249,18 @@ export function buildReport(run: ReportInput): CapacityReport {
     events: run.events.map((e) => ({ ...e })),
   };
 }
+
+// ------------------------------------------------------------ AI section ----
+
+/** Returns a new report with the AI section set. Touches no headline value or table. */
+export function attachAi(report: CapacityReport, ai: AiSection): CapacityReport {
+  return {
+    ...report,
+    ai: {
+      status: ai.status,
+      ...(ai.explanation !== undefined ? { explanation: ai.explanation } : {}),
+      ...(ai.suggestions !== undefined ? { suggestions: [...ai.suggestions] } : {}),
+      ...(ai.notes !== undefined ? { notes: [...ai.notes] } : {}),
+    },
+  };
+}

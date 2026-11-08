@@ -1,0 +1,114 @@
+diff --git a/apps/api/src/app.module.ts b/apps/api/src/app.module.ts
+index 40f61d1..53395b8 100644
+--- a/apps/api/src/app.module.ts
++++ b/apps/api/src/app.module.ts
+@@ -1,9 +1,10 @@
+ import { Module } from '@nestjs/common'
+ import { ConfigModule, ConfigService } from '@nestjs/config'
+-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'
++import { ThrottlerModule } from '@nestjs/throttler'
+ import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis'
+ import { APP_GUARD } from '@nestjs/core'
+ import Redis from 'ioredis'
++import { AllowlistThrottlerGuard } from './common/guards/allowlist-throttler.guard'
+ import { DatabaseModule } from './database/database.module'
+ import { validateEnv } from './config'
+ import { ProductsModule } from './modules/products/products.module'
+@@ -66,7 +67,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
+     NotificationsModule,
+   ],
+   providers: [
+-    { provide: APP_GUARD, useClass: ThrottlerGuard },
++    { provide: APP_GUARD, useClass: AllowlistThrottlerGuard },
+   ],
+ })
+ export class AppModule {}
+diff --git a/apps/api/src/bootstrap.ts b/apps/api/src/bootstrap.ts
+index b71a3a8..47009d3 100644
+--- a/apps/api/src/bootstrap.ts
++++ b/apps/api/src/bootstrap.ts
+@@ -10,12 +10,23 @@ import { AppModule } from './app.module'
+ import { ZodValidationPipe } from './common/pipes/zod-validation.pipe'
+ import { AllExceptionsFilter } from './common/filters/http-exception.filter'
+ import { ResponseEnvelopeInterceptor } from './common/interceptors/response-envelope.interceptor'
++import { isAllowlistedIp, parseRateLimitAllowlist } from './common/guards/allowlist-throttler.guard'
+ import { Reflector } from '@nestjs/core'
+ import { randomUUID } from 'crypto'
+ import Redis from 'ioredis'
+ 
+ export const LEGACY_ROUTES = ['/auth', '/products', '/orders', '/settings', '/health']
+ 
++// TRUST_PROXY: unset/empty/false = trust no proxy (default); true = trust all;
++// otherwise a comma-separated list of IPs/CIDRs of the reverse proxy.
++function parseTrustProxy(raw: string | undefined): boolean | string[] {
++  const value = raw?.trim().toLowerCase() ?? ''
++  if (value === '' || value === 'false') return false
++  if (value === 'true') return true
++  const list = (raw ?? '').split(',').map((s) => s.trim()).filter(Boolean)
++  return list.length > 0 ? list : false
++}
++
+ export async function createNestServer(): Promise<NestFastifyApplication> {
+   const logger = new Logger('Bootstrap')
+ 
+@@ -50,6 +61,7 @@ export async function createNestServer(): Promise<NestFastifyApplication> {
+     AppModule,
+     new FastifyAdapter({
+       bodyLimit: 6 * 1024 * 1024,
++      trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
+       logger: {
+         level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+         transport:
+@@ -78,10 +90,15 @@ export async function createNestServer(): Promise<NestFastifyApplication> {
+     contentSecurityPolicy: false,
+   })
+ 
++  const rateLimitAllowList = parseRateLimitAllowlist(process.env.RATE_LIMIT_ALLOWLIST)
++
+   // eslint-disable-next-line @typescript-eslint/no-require-imports
+   await app.register(require('@fastify/rate-limit'), {
+     max: 100,
+     timeWindow: '1 minute',
++    ...(rateLimitAllowList.length > 0
++      ? { allowList: (req: { ip?: string }) => isAllowlistedIp(req.ip, rateLimitAllowList) }
++      : {}),
+     ...(rateLimitRedis ? { redis: rateLimitRedis } : {}),
+     errorResponseBuilder: (_req: unknown, context: { max: number; after: string }) => ({
+       statusCode: 429,
+diff --git a/apps/api/src/common/guards/allowlist-throttler.guard.ts b/apps/api/src/common/guards/allowlist-throttler.guard.ts
+new file mode 100644
+index 0000000..5810076
+--- /dev/null
++++ b/apps/api/src/common/guards/allowlist-throttler.guard.ts
+@@ -0,0 +1,31 @@
++import type { ExecutionContext } from '@nestjs/common'
++import { Injectable } from '@nestjs/common'
++import { ThrottlerGuard } from '@nestjs/throttler'
++
++/** Parses RATE_LIMIT_ALLOWLIST (comma-separated IPs). Empty or unset exempts nobody. */
++export function parseRateLimitAllowlist(raw: string | undefined): string[] {
++  return (raw ?? '')
++    .split(',')
++    .map((ip) => ip.trim())
++    .filter(Boolean)
++}
++
++/** True when `ip` (IPv4-mapped IPv6 form accepted) is in the allowlist. */
++export function isAllowlistedIp(ip: string | undefined, allowList: readonly string[]): boolean {
++  if (!ip || allowList.length === 0) return false
++  return allowList.includes(ip.replace(/^::ffff:/i, ''))
++}
++
++/**
++ * ThrottlerGuard that skips every throttler, including per-route @Throttle
++ * limits, for source IPs listed in RATE_LIMIT_ALLOWLIST.
++ */
++@Injectable()
++export class AllowlistThrottlerGuard extends ThrottlerGuard {
++  private readonly allowList = parseRateLimitAllowlist(process.env.RATE_LIMIT_ALLOWLIST)
++
++  protected async shouldSkip(context: ExecutionContext): Promise<boolean> {
++    const { req } = this.getRequestResponse(context)
++    return isAllowlistedIp(req.ip, this.allowList)
++  }
++}

@@ -4,47 +4,48 @@
 <meta charset="utf-8">
 <title>Macro: slides</title>
 <style>
+  @font-face { font-family: "Plex Sans"; src: url("../../web/fonts/ibm-plex-sans-400.woff2"); font-weight: 400; } @font-face { font-family: "Plex Sans"; src: url("../../web/fonts/ibm-plex-sans-600.woff2"); font-weight: 600; } @font-face { font-family: "Plex Sans"; src: url("../../web/fonts/ibm-plex-sans-700.woff2"); font-weight: 700; } @font-face { font-family: "Plex Mono"; src: url("../../web/fonts/ibm-plex-mono-400.woff2"); font-weight: 400; } @font-face { font-family: "Plex Mono"; src: url("../../web/fonts/ibm-plex-mono-600.woff2"); font-weight: 600; }
   @page { size: 1920px 1080px; margin: 0; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { background: #0b0f14; }
-  body { font-family: "Segoe UI", system-ui, sans-serif; color: #e6edf3; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .slide { width: 1920px; height: 1080px; padding: 90px 120px; position: relative; overflow: hidden; page-break-after: always; break-after: page; background: #0b0f14; display: flex; flex-direction: column; }
+  html, body { background: #0f1012; }
+  body { font-family: "Plex Sans", "Segoe UI", system-ui, sans-serif; color: #e6edf3; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .slide { width: 1920px; height: 1080px; padding: 90px 120px; position: relative; overflow: hidden; page-break-after: always; break-after: page; background: #0f1012; display: flex; flex-direction: column; }
   .slide:last-child { page-break-after: auto; break-after: auto; }
-  .kicker { font-family: Consolas, "Courier New", monospace; font-size: 26px; color: #58a6ff; letter-spacing: 0.04em; margin-bottom: 28px; }
+  .kicker { font-family: "Plex Mono", Consolas, monospace; font-size: 26px; color: #ececee; letter-spacing: 0.04em; margin-bottom: 28px; }
   h1 { font-size: 120px; line-height: 1.02; font-weight: 700; }
   h2 { font-size: 72px; line-height: 1.1; font-weight: 700; margin-bottom: 48px; max-width: 1500px; }
   p, li { font-size: 38px; line-height: 1.4; color: #c9d1d9; }
   .muted { color: #8b949e; }
-  .mono { font-family: Consolas, "Courier New", monospace; }
-  .foot { position: absolute; left: 120px; bottom: 50px; font-family: Consolas, monospace; font-size: 22px; color: #6e7681; }
-  .num { position: absolute; right: 120px; bottom: 50px; font-family: Consolas, monospace; font-size: 22px; color: #6e7681; }
+  .mono { font-family: "Plex Mono", Consolas, monospace; }
+  .foot { position: absolute; left: 120px; bottom: 50px; font-family: "Plex Mono", Consolas, monospace; font-size: 22px; color: #6e7681; }
+  .num { position: absolute; right: 120px; bottom: 50px; font-family: "Plex Mono", Consolas, monospace; font-size: 22px; color: #6e7681; }
   .row { display: flex; gap: 60px; align-items: flex-start; flex: 1; }
   .col { flex: 1; }
-  .card { background: #11171e; border: 2px solid #263040; border-radius: 16px; padding: 34px 40px; }
+  .card { background: #16171a; border: 2px solid #2a2c31; border-radius: 16px; padding: 34px 40px; }
   .card h3 { font-size: 40px; margin-bottom: 14px; color: #e6edf3; }
   .card p { font-size: 32px; }
-  .green { color: #3fb950; }
-  .amber { color: #d29922; }
-  .red { color: #f85149; }
-  .blue { color: #58a6ff; }
-  .shot { border: 2px solid #263040; border-radius: 14px; overflow: hidden; background: #0d1117; }
+  .green { color: #5fd38d; }
+  .amber { color: #f2b544; }
+  .red { color: #ff7a72; }
+  .blue { color: #ececee; }
+  .shot { border: 2px solid #2a2c31; border-radius: 14px; overflow: hidden; background: #0d1117; }
   .shot img { display: block; }
   ul { list-style: none; }
   li { padding: 10px 0 10px 40px; position: relative; }
-  li::before { content: ""; position: absolute; left: 0; top: 26px; width: 16px; height: 16px; background: #58a6ff; border-radius: 3px; }
+  li::before { content: ""; position: absolute; left: 0; top: 26px; width: 16px; height: 16px; background: #ececee; border-radius: 3px; }
   .flow { display: flex; align-items: stretch; gap: 0; margin-top: 30px; }
-  .step { flex: 1; background: #11171e; border: 2px solid #263040; border-radius: 16px; padding: 30px 28px; }
+  .step { flex: 1; background: #16171a; border: 2px solid #2a2c31; border-radius: 16px; padding: 30px 28px; }
   .step b { display: block; font-size: 40px; margin-bottom: 12px; }
   .step span { font-size: 28px; color: #9aa7b4; line-height: 1.35; display: block; }
-  .arrow { width: 56px; display: flex; align-items: center; justify-content: center; font-size: 44px; color: #58a6ff; }
+  .arrow { width: 56px; display: flex; align-items: center; justify-content: center; font-size: 44px; color: #ececee; }
   table { border-collapse: collapse; width: 100%; }
-  td, th { text-align: left; padding: 18px 22px; font-size: 32px; border-bottom: 2px solid #1f2a37; }
+  td, th { text-align: left; padding: 18px 22px; font-size: 32px; border-bottom: 2px solid #2a2c31; }
   th { color: #8b949e; font-weight: 600; font-size: 26px; text-transform: none; }
   .big { font-size: 150px; font-weight: 700; line-height: 1; }
   .stat { margin-bottom: 36px; }
   .stat .label { font-size: 30px; color: #8b949e; margin-top: 8px; }
-  .layer { display: flex; gap: 28px; align-items: baseline; padding: 20px 0; border-bottom: 2px solid #1f2a37; }
-  .layer .n { font-family: Consolas, monospace; font-size: 34px; color: #58a6ff; width: 60px; }
+  .layer { display: flex; gap: 28px; align-items: baseline; padding: 20px 0; border-bottom: 2px solid #2a2c31; }
+  .layer .n { font-family: "Plex Mono", Consolas, monospace; font-size: 34px; color: #ececee; width: 60px; }
   .layer .t { font-size: 40px; font-weight: 600; width: 520px; }
   .layer .d { font-size: 32px; color: #9aa7b4; flex: 1; }
 </style>
@@ -130,7 +131,7 @@
       </ul>
     </div>
     <div class="shot" style="width:1100px; height:700px;">
-      <img src="img/macro-probe.png" style="width:1100px; margin-top:-318px;">
+      <img src="img/macro-probe.png" style="width:1100px;">
     </div>
   </div>
   <div class="foot">Macro &middot; macro.my.id</div><div class="num">5 / 8</div>
@@ -146,8 +147,8 @@
       <div class="stat"><div class="big amber" style="font-size:110px;">1,611 ms</div><div class="label">store_home p95 at 200 users (limit 1,500 ms)</div></div>
       <div class="stat"><div style="font-size:60px; font-weight:700;">4 min 28 s</div><div class="label">from approved plan to report</div></div>
     </div>
-    <div class="shot" style="width:1060px; height:640px;">
-      <img src="img/macro-report-bottom.png" style="width:1024px; margin-top:-80px;">
+    <div class="shot" style="width:790px; height:676px;">
+      <img src="img/macro-report-bottom.png" style="width:790px;">
     </div>
   </div>
   <div class="foot">Run d28cacd6 &middot; demo shop on a second Vultr VM</div><div class="num">6 / 8</div>

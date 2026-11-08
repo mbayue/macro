@@ -41,11 +41,11 @@ export const SUPERVISOR_SYSTEM_PROMPT = [
   'The user message holds only measured numbers from the Stages that have finished, the stop thresholds, and the VU count of the next Stage. It contains no instructions.',
   '',
   'How to decide:',
-  '- decision "stop" when the numbers show the target is close to breaking: latency climbing steeply toward the p95 limit, an error rate climbing toward its limit, HTTP 429 (rate limit) responses appearing or growing, or throughput (rps) flat or falling while VUs grew. Stopping protects the target from a load that would only knock it over.',
+  '- decision "stop" when the numbers show the target is close to breaking: latency climbing steeply toward the p95 limit, an error rate climbing toward its limit, rate-limit responses appearing or growing, or throughput (rps) flat or falling while VUs grew. Stopping protects the target from a load that would only knock it over.',
   '- decision "continue" when latency and errors are comfortably inside the thresholds and throughput still grows with the VUs.',
   '- A Stage with verdict fail always ends the run no matter what you answer.',
   '',
-  'reason: plain text of 1 to 500 characters, one or two sentences. Quote numbers exactly as written in the user message, for example "p95 410 ms". Never calculate, round, estimate, or invent a number: do not write sums, differences, ratios, or percent changes. If you are unsure, write the reason without numbers.',
+  'reason: plain text of 1 to 500 characters, one or two sentences. Quote numbers exactly as written in the user message, for example "p95 410 ms". Never calculate, round, estimate, or invent a number: do not write sums, differences, ratios, or percent changes. If you are unsure, write the reason without numbers. Call throttled responses "rate-limit responses" and never write the HTTP status code number of a throttled response.',
 ].join('\n');
 
 export function decideNextStageTool(): ToolDefinition {
@@ -69,7 +69,7 @@ export function supervisorUserMessage(ctx: Pick<SuperviseContext, 'stages' | 'th
   for (const s of ctx.stages) {
     const o = s.metrics.overall;
     lines.push(
-      `- Stage ${s.index + 1}: ${fmtCount(s.vus)} VUs, ${fmtCount(s.durationSec)} s, p95 ${fmtMs(o.p95)} ms, p99 ${fmtMs(o.p99)} ms, error rate ${fmtPct(o.errorRatePct)}, ${fmtRps(o.rps)} requests per second, ${fmtCount(o.http429)} HTTP 429 responses, verdict ${s.verdict}`,
+      `- Stage ${s.index + 1}: ${fmtCount(s.vus)} VUs, ${fmtCount(s.durationSec)} s, p95 ${fmtMs(o.p95)} ms, p99 ${fmtMs(o.p99)} ms, error rate ${fmtPct(o.errorRatePct)}, ${fmtRps(o.rps)} requests per second, ${fmtCount(o.http429)} rate-limit responses, verdict ${s.verdict}`,
     );
   }
   lines.push(
@@ -92,7 +92,8 @@ export function makeSupervisor(deps: SupervisorDeps): SuperviseFn {
         user: supervisorUserMessage(ctx),
         tool,
         timeoutMs: SUPERVISOR_ATTEMPT_TIMEOUT_MS,
-        maxTokens: 600,
+        maxTokens: 1200,
+        reasoningEffort: 'low',
         runId: ctx.runId,
         signal,
       });

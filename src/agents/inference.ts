@@ -31,6 +31,8 @@ export interface CallToolOptions {
   /** Per attempt (primary and fallback each get this much). */
   timeoutMs: number;
   maxTokens?: number;
+  /** Sent as `reasoning_effort`. These models spend completion tokens on hidden thinking; `low` keeps answers fast and inside max_tokens. */
+  reasoningEffort?: 'low' | 'medium' | 'high';
   draftId?: string;
   runId?: string;
   /** Caller deadline or cancellation. When it fires, no fallback attempt is made. */
@@ -150,6 +152,7 @@ export class InferenceClient {
       tool_choice: { type: 'function', function: { name: opts.tool.name } },
       temperature: 0.2,
       max_tokens: opts.maxTokens ?? DEFAULT_MAX_TOKENS,
+      ...(opts.reasoningEffort !== undefined ? { reasoning_effort: opts.reasoningEffort } : {}),
     });
     const url = `${this.config.baseUrl.replace(/\/+$/, '')}/chat/completions`;
 

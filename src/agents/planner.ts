@@ -19,7 +19,7 @@ import { argsAsText, firstToolCall } from './inference.ts';
 import type { ChatMessage, InferenceClient, ToolDefinition } from './inference.ts';
 
 export const PLANNER_TIMEOUT_MS = 45_000;
-export const PLANNER_MAX_TOKENS = 2000;
+export const PLANNER_MAX_TOKENS = 3000;
 const TOOL_NAME = 'propose_plan';
 const MAX_RATIONALE = 300;
 const MAX_ECHO_CHARS = 4000;
@@ -285,7 +285,7 @@ export async function planTrafficEvent(
   const system = plannerSystemPrompt(deps.target);
   const user = plannerUserMessage(trafficEvent);
   const tool = proposePlanTool();
-  const base = { agent: 'planner' as const, system, user, tool, timeoutMs: PLANNER_TIMEOUT_MS, maxTokens: PLANNER_MAX_TOKENS, draftId };
+  const base = { agent: 'planner' as const, system, user, tool, timeoutMs: PLANNER_TIMEOUT_MS, maxTokens: PLANNER_MAX_TOKENS, reasoningEffort: 'low' as const, draftId };
 
   const first = await deps.client.callTool(base);
   if (!first.ok) return { ok: false, error: first.error === 'inference_not_configured' ? 'inference_not_configured' : 'planning_failed' };

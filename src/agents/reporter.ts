@@ -14,7 +14,7 @@ import { argsAsText, firstToolCall } from './inference.ts';
 import type { InferenceClient, ToolDefinition } from './inference.ts';
 
 export const REPORTER_TIMEOUT_MS = 45_000;
-export const REPORTER_MAX_TOKENS = 2000;
+export const REPORTER_MAX_TOKENS = 4000;
 export const MAX_SUGGESTIONS = 5;
 export const MAX_EXPLANATION_CHARS = 1500;
 export const MAX_SUGGESTION_CHARS = 300;
@@ -33,9 +33,9 @@ export const REPORTER_SYSTEM_PROMPT = [
   '',
   'write_report arguments:',
   '- explanation: plain text, at most 1500 characters. Say where the shop stayed healthy, where and why it started to degrade (which route, which metric), and what that means for real traffic. Name routes by their route id.',
-  '- suggestions: at most 5 short, concrete suggestions, each at most 300 characters, for what to check or fix first (for example caching a slow read route, or a rate limit that returned HTTP 429 responses). No markup.',
+  '- suggestions: at most 5 short, concrete suggestions, each at most 300 characters, for what to check or fix first (for example caching a slow read route, or a rate limit that returned rate-limit responses). No markup.',
   '',
-  'Numbers rule: every number you write must appear in the user message exactly as written there (for example "p95 812 ms" or "100 VUs"). Never calculate, round, estimate, or invent a number: do not write sums, differences, ratios, percent changes, dates, or capacities that are not listed. Where you cannot support a claim with a listed number, state it without a number.',
+  'Numbers rule: every number you write must appear in the user message exactly as written there (for example "p95 812 ms" or "100 VUs"). Never calculate, round, estimate, or invent a number: do not write sums, differences, ratios, percent changes, dates, or capacities that are not listed. Where you cannot support a claim with a listed number, state it without a number. Call throttled responses "rate-limit responses" and never write the HTTP status code number of a throttled response.',
 ].join('\n');
 
 export function writeReportTool(): ToolDefinition {
@@ -76,12 +76,12 @@ export function reportToPromptText(report: CapacityReport): string {
     }
     const o = s.overall.display;
     lines.push(
-      `- Stage ${s.displayIndex}: ${s.vus} VUs, ${s.durationSec} s, verdict ${s.verdict ?? 'none'}: requests ${o.requests}, rps ${o.rps}, error rate ${o.errorRatePct}, HTTP 429 ${o.http429}, p50 ${o.p50} ms, p95 ${o.p95} ms, p99 ${o.p99} ms`,
+      `- Stage ${s.displayIndex}: ${s.vus} VUs, ${s.durationSec} s, verdict ${s.verdict ?? 'none'}: requests ${o.requests}, rps ${o.rps}, error rate ${o.errorRatePct}, rate-limit responses ${o.http429}, p50 ${o.p50} ms, p95 ${o.p95} ms, p99 ${o.p99} ms`,
     );
     for (const r of s.routes) {
       const d = r.display;
       lines.push(
-        `    ${r.route}: requests ${d.requests}, rps ${d.rps}, error rate ${d.errorRatePct}, HTTP 429 ${d.http429}, p50 ${d.p50} ms, p95 ${d.p95} ms, p99 ${d.p99} ms${r.exceedsThresholds ? ' (exceeds a threshold)' : ''}`,
+        `    ${r.route}: requests ${d.requests}, rps ${d.rps}, error rate ${d.errorRatePct}, rate-limit responses ${d.http429}, p50 ${d.p50} ms, p95 ${d.p95} ms, p99 ${d.p99} ms${r.exceedsThresholds ? ' (exceeds a threshold)' : ''}`,
       );
     }
   }
@@ -124,6 +124,7 @@ export async function writeReport(
       tool: writeReportTool(),
       timeoutMs: REPORTER_TIMEOUT_MS,
       maxTokens: REPORTER_MAX_TOKENS,
+      reasoningEffort: 'low',
       runId: ctx.runId,
     });
     if (!result.ok) return unavailable;

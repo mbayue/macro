@@ -5,9 +5,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "bun src/server.ts",
-    "dev": "bun --watch src/server.ts",
-    "test": "bun test test/*.test.ts",
+    "start": "bun src/main.ts",
+    "dev": "bun --watch src/main.ts",
+    "test": "bun test --path-ignore-patterns test/vm/**",
     "test:vm": "echo \"VM integration tests are wired in task 4.13\" && exit 1",
     "build:web": "bun run scripts/build-web.ts",
     "check": "tsc --noEmit"

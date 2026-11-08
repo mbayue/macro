@@ -1,0 +1,17 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# VCS, tooling, dependencies, build output
+.git
+.kiro
+node_modules
+web/dist
+
+# Local data, docs, tests, deployment files (not needed inside the image)
+data
+docs
+test
+deploy
+*.log

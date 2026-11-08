@@ -1,0 +1,42 @@
+# Cloudflare (SSL mode Full strict) -> Caddy -> macro-api.
+# The Cloudflare Origin CA certificate is mounted by Compose; Caddy does not use ACME.
+{
+	auto_https off
+}
+
+# The public site. CF-Connecting-IP is passed through untouched: the app uses it.
+macro.my.id {
+	tls /etc/macro/tls/origin.pem /etc/macro/tls/origin.key
+
+	# Compress static/JSON responses only, so Server-Sent Events are never touched.
+	encode {
+		zstd
+		gzip
+		match {
+			header Content-Type text/html*
+			header Content-Type text/css*
+			header Content-Type text/javascript*
+			header Content-Type application/javascript*
+			header Content-Type application/json*
+			header Content-Type image/svg+xml*
+		}
+	}
+
+	reverse_proxy macro-api:3000 {
+		# Server-Sent Events must not buffer.
+		flush_interval -1
+	}
+}
+
+# Any other Host name or direct-IP access over HTTPS (same certificate, no content).
+:443 {
+	tls /etc/macro/tls/origin.pem /etc/macro/tls/origin.key
+	respond "Misdirected Request" 421
+}
+
+# Plain HTTP: redirect macro.my.id to HTTPS, refuse everything else.
+:80 {
+	@macro host macro.my.id
+	redir @macro https://macro.my.id{uri} permanent
+	respond "Misdirected Request" 421
+}

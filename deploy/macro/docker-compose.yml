@@ -1,0 +1,81 @@
+# Macro on the `macro` VM. One command, run from the repository root:
+#   docker compose -f deploy/macro/docker-compose.yml up -d --build
+#
+# Host preconditions: Docker with Compose, the runsc runtime registered (or
+# SANDBOX_RUNTIME=runc in .env), a completed <repo>/.env, and the Cloudflare
+# Origin CA certificate at /etc/macro/tls/origin.pem and /etc/macro/tls/origin.key.
+name: macro
+
+services:
+  caddy:
+    image: caddy:2
+    container_name: macro-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - /etc/macro/tls/origin.pem:/etc/macro/tls/origin.pem:ro
+      - /etc/macro/tls/origin.key:/etc/macro/tls/origin.key:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      - macro-api
+
+  macro-api:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    image: macro-api:latest
+    container_name: macro-api
+    restart: unless-stopped
+    # Compose reads this file on the host and injects it into this container only.
+    env_file: ../../.env
+    environment:
+      # Same path inside and outside: sandbox bind mounts are resolved by the host daemon.
+      DATA_DIR: /var/lib/macro
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/macro:/var/lib/macro
+    # No `ports:` on purpose: only Caddy reaches this service, over the Compose network.
+    # The server must listen on 0.0.0.0 (Bun's default) for Caddy to connect.
+    expose:
+      - "3000"
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - bun
+        - -e
+        - "fetch('http://127.0.0.1:' + (process.env.PORT || 3000) + '/healthz').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      macro-proxy:
+        condition: service_completed_successfully
+
+  # Build-only: produces the macro-proxy:latest image that Macro_API starts per Run,
+  # then exits immediately. The container itself is never used.
+  macro-proxy:
+    build:
+      context: ../..
+      dockerfile: proxy/Dockerfile
+    image: macro-proxy:latest
+    container_name: macro-proxy-build
+    entrypoint: ["true"]
+    command: []
+    restart: "no"
+
+volumes:
+  caddy_data:
+  caddy_config:

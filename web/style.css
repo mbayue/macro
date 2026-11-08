@@ -399,3 +399,87 @@ a:hover { text-decoration-thickness: 2px; }
 .probe-details__list { margin: 0.75rem 0 0; display: flex; flex-direction: column; gap: 0.35rem; }
 .probe-details__list dt { font-weight: 600; margin-top: 0.5rem; }
 .probe-details__list dd { margin: 0; color: var(--muted); overflow-wrap: anywhere; }
+
+/* landing */
+
+.intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 1rem 2rem;
+  padding: 0.25rem 0 0.9rem;
+  border-bottom: 1px solid var(--border);
+}
+.intro__main { display: flex; flex-direction: column; gap: 0.85rem; }
+.intro__lead { font-size: 1.05rem; line-height: 1.5; }
+
+.intro__steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+.intro__step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+.intro__num {
+  flex: none;
+  min-width: 1.35rem;
+  color: var(--accent);
+  font-family: var(--mono);
+  font-weight: 700;
+}
+
+.intro__safe { display: flex; flex-direction: column; gap: 0.4rem; }
+.intro__heading { font-size: 1rem; color: var(--muted); }
+.intro__list {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 48rem) {
+  .intro { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 30rem) {
+  .intro__steps { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* gate demo */
+
+.code {
+  margin: 0;
+  padding: 0.7rem 0.85rem;
+  max-height: 22rem;
+  overflow: auto;
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  white-space: pre;
+}
+.gate-result {
+  padding: 0.7rem 0.9rem;
+  background: var(--bad-bg);
+  border: 1px solid var(--bad);
+  border-left-width: 4px;
+  border-radius: var(--radius);
+  font-weight: 600;
+}
+/* end landing */

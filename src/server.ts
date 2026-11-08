@@ -20,6 +20,8 @@ import type {
   ConfigResponse,
   DecisionView,
   EventView,
+  GateDemoResponse,
+  GateDemoScenario,
   GateView,
   ModelCallView,
   ParseErrorView,
@@ -254,6 +256,82 @@ const RerunBody = z.object({ planHash: z.string(), turnstileToken: z.unknown().o
 const ProbeBody = z.object({ turnstileToken: z.unknown().optional() });
 
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+
+// ------------------------------------------------------------------ gate demo
+
+const GateDemoBody = z.object({ scenario: z.enum(['other_host', 'too_big', 'unknown_route']) });
+
+/** At most this many gate-demo requests per client IP in any rolling minute (in memory only). */
+export const GATE_DEMO_LIMIT = { max: 30, windowMs: 60_000 } as const;
+
+interface GateDemoCase {
+  title: string;
+  description: string;
+  plan: TestPlan;
+}
+
+/** Fixed hostile plans. Every value has the right type, so the parser accepts them and only the Policy_Gate can refuse. */
+function gateDemoCase(scenario: GateDemoScenario, webOrigin: string): GateDemoCase {
+  const thresholds = { p95Ms: 1500, errorRatePct: 2 };
+  switch (scenario) {
+    case 'other_host':
+      return {
+        title: 'A plan that targets another site',
+        description: 'The plan aims the test at https://www.tokopedia.com, a site that is not the demo store.',
+        plan: {
+          name: 'Flash sale stress test',
+          target: 'https://www.tokopedia.com',
+          stages: [
+            { vus: 50, durationSec: 60 },
+            { vus: 100, durationSec: 60 },
+          ],
+          journey: [
+            { route: 'store_home', probability: 100, thinkMs: 500 },
+            { route: 'catalog_list', probability: 80, thinkMs: 500 },
+          ],
+          stopThresholds: thresholds,
+        },
+      };
+    case 'too_big':
+      return {
+        title: 'A plan that asks for far too much load',
+        description: 'The plan asks for 12 stages, up to 50,000 virtual users and a single stage of 3,600 seconds.',
+        plan: {
+          name: 'Take the store down',
+          target: webOrigin,
+          stages: [
+            ...Array.from({ length: 11 }, (_, i) => ({ vus: (i + 1) * 40, durationSec: 60 })),
+            { vus: 50_000, durationSec: 3600 },
+          ],
+          journey: [
+            { route: 'store_home', probability: 100, thinkMs: 200 },
+            { route: 'catalog_list', probability: 100, thinkMs: 200 },
+          ],
+          stopThresholds: thresholds,
+        },
+      };
+    case 'unknown_route':
+      return {
+        title: 'A plan that calls a route outside the catalog',
+        description:
+          'The plan visits the route admin_export_all_users, which does not exist in the Route_Catalog, and places an order on every visit.',
+        plan: {
+          name: 'Export everything and order',
+          target: webOrigin,
+          stages: [
+            { vus: 10, durationSec: 30 },
+            { vus: 20, durationSec: 30 },
+          ],
+          journey: [
+            { route: 'store_home', probability: 100, thinkMs: 500 },
+            { route: 'admin_export_all_users', probability: 100, thinkMs: 0 },
+            { route: 'order_create', probability: 100, thinkMs: 500 },
+          ],
+          stopThresholds: thresholds,
+        },
+      };
+  }
+}
 
 function safeDecode(s: string): string | null {
   try {
@@ -589,6 +667,73 @@ export function createApp(deps: AppDeps): App {
     return admitAndStart('probe', undefined, ip);
   };
 
+  // Per-IP rolling limit for /api/gate-demo. Memory only; never touches the store.
+  const gateDemoHits = new Map<string, number[]>();
+
+  function gateDemoAllow(ip: string, at: number): { ok: true } | { ok: false; retryAt: number } {
+    const since = at - GATE_DEMO_LIMIT.windowMs;
+    if (gateDemoHits.size > 1000) {
+      for (const [key, hits] of gateDemoHits) {
+        if (hits.every((t) => t <= since)) gateDemoHits.delete(key);
+      }
+    }
+    const recent = (gateDemoHits.get(ip) ?? []).filter((t) => t > since);
+    const oldest = recent[0];
+    if (oldest !== undefined && recent.length >= GATE_DEMO_LIMIT.max) {
+      gateDemoHits.set(ip, recent);
+      return { ok: false, retryAt: oldest + GATE_DEMO_LIMIT.windowMs };
+    }
+    recent.push(at);
+    gateDemoHits.set(ip, recent);
+    return { ok: true };
+  }
+
+  const postGateDemo: Handler = async ({ req, ip }) => {
+    const at = now();
+    const allowed = gateDemoAllow(ip, at);
+    if (!allowed.ok) {
+      return apiError(
+        429,
+        'rate_limited',
+        'Too many policy gate demos. Please wait a minute and try again.',
+        { retryAt: allowed.retryAt },
+        retryAfter(allowed.retryAt, at),
+      );
+    }
+    const read = await readJsonBody(req);
+    if (!read.ok) return read.res;
+    const parsed = GateDemoBody.safeParse(read.value);
+    if (!parsed.success) return apiError(400, 'invalid_input', MSG.invalid);
+
+    const scenario = parsed.data.scenario;
+    const demo = gateDemoCase(scenario, config.target.webOrigin);
+    const planText = JSON.stringify(demo.plan, null, 2);
+    // The real pipeline: the same parser and gate that guard /api/approve.
+    const result = parsePlan(planText);
+    if (!result.ok) {
+      logInternal('gate_demo.parse', new Error('parse'));
+      return apiError(500, 'internal', MSG.internal);
+    }
+    const gate = evaluatePlan(result.plan, config.target.allowlist);
+    if (gate.status !== 'rejected') {
+      // Safety net: never present a rejection that did not happen.
+      logInternal('gate_demo.accepted', new Error('accepted'));
+      return apiError(500, 'internal', MSG.internal);
+    }
+    const body: GateDemoResponse = {
+      scenario,
+      title: demo.title,
+      description: demo.description,
+      planText,
+      gate: {
+        status: 'rejected',
+        violations: gate.violations.map((v) => ({ rule: v.rule, path: v.path, message: v.message })),
+      },
+      requestsSent: 0,
+    };
+    return json(200, body);
+  };
+
   function runIdParam(c: Ctx): string | null {
     const id = safeDecode(c.params[0] ?? '');
     return id !== null && ID_RE.test(id) ? id : null;
@@ -846,6 +991,7 @@ export function createApp(deps: AppDeps): App {
     { method: 'POST', re: /^\/api\/approve$/, name: 'approve', handler: postApprove },
     { method: 'POST', re: /^\/api\/runs$/, name: 'runs', handler: postRuns },
     { method: 'POST', re: /^\/api\/probe$/, name: 'probe', handler: postProbe },
+    { method: 'POST', re: /^\/api\/gate-demo$/, name: 'gate_demo', handler: postGateDemo },
     { method: 'POST', re: /^\/api\/runs\/([^/]+)\/stop$/, name: 'stop', handler: postStop },
     { method: 'GET', re: /^\/api\/runs\/([^/]+)\/events$/, name: 'events', handler: getEvents },
     { method: 'GET', re: /^\/api\/runs\/([^/]+)$/, name: 'run', handler: getRunSnapshot },

@@ -123,6 +123,10 @@ Second demonstration, the Policy_Gate refusing another host:
    - If the model ignores the extra request, the plan targets `https://yue.macro.my.id`. A generated script cannot contain another host in any case, and the sandbox proxy would refuse it.
 3. The rejection rule is deterministic and does not depend on the model. It is tested against an independent reference model in `test/policy-model.test.ts` and `test/policy-bounds.test.ts`.
 
+### Watch the policy gate block a hostile plan
+
+The main page also has a panel "See the policy gate block a hostile plan" with three buttons: another website, far too much load, and a route outside the catalog. Each button calls `POST /api/gate-demo`, which builds a fixed hostile Test_Plan in code and runs it through the same `parsePlan` and `evaluatePlan` as `/api/approve`. The panel shows the plan text, the violation table (rules 4.2, 4.4, or 4.3 and 4.5) and the line "Rejected by the policy gate. 0 requests were sent." The endpoint uses no model, no Turnstile, no sandbox and no database, and is limited to 30 requests per minute per client IP. If the gate ever accepted one of these plans, the endpoint would answer with an error instead of claiming a rejection. See `test/gate-demo.test.ts`.
+
 ## Try it
 
 1. Open https://macro.my.id and press **Gacha banner launch**, which fills the text box with the example Traffic_Event (it does not submit):

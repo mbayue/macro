@@ -12,11 +12,51 @@ import type { TestPlan } from '../src/types.ts';
 import { type ApiError, type ApiResult, VERIFICATION_ERROR, postApprove, postPlan, postProbe } from './api.ts';
 import type { AppContext, RouteParams, ViewCleanup } from './context.ts';
 import { clear, el, parseErrorText, renderApiError, scrollRegion, violationsTable } from './dom.ts';
+import { renderGateDemoPanel } from './gate-demo.ts';
 import { disposeWidget, getToken, resetWidget } from './turnstile.ts';
 
 /** Unicode code points of the trimmed text (requirement 1.1). */
 export function countCodePoints(text: string): number {
   return [...text.trim()].length;
+}
+
+/** Static introduction above the form: what Macro does, the three steps, and the safety guarantees. */
+function introSection(): HTMLElement {
+  const step = (n: number, label: string): HTMLElement =>
+    el('li', { class: 'intro__step' }, el('span', { class: 'intro__num', 'aria-hidden': 'true' }, n), el('span', null, label));
+  return el(
+    'section',
+    { class: 'intro', 'aria-label': 'About Macro' },
+    el(
+      'div',
+      { class: 'intro__main' },
+      el(
+        'p',
+        { class: 'intro__lead' },
+        'Describe a traffic spike in plain words. Macro plans a load test, you approve it, and k6 runs it inside throwaway sandboxes that can only reach the demo store. You get the point where it breaks.',
+      ),
+      el(
+        'ol',
+        { class: 'intro__steps' },
+        step(1, 'Describe'),
+        step(2, 'Review and approve'),
+        step(3, 'Watch it run and read the report'),
+      ),
+    ),
+    el(
+      'div',
+      { class: 'intro__safe' },
+      el('h2', { class: 'intro__heading' }, 'Safe by design'),
+      el(
+        'ul',
+        { class: 'intro__list' },
+        el('li', null, 'Only the demo store can be tested.'),
+        el('li', null, 'The AI proposes; fixed rules approve.'),
+        el('li', null, 'Every stage runs in its own gVisor sandbox with no secrets and an egress allowlist.'),
+        el('li', null, 'Every number in the report is measured by k6. AI text is checked against those numbers.'),
+      ),
+    ),
+  );
 }
 
 type Busy = 'planning' | 'approving' | 'probing' | null;
@@ -162,17 +202,22 @@ export function renderDescribeView(root: HTMLElement, ctx: AppContext, _params: 
   let approveProgress: HTMLElement | null = null;
   let staleNote: HTMLElement | null = null;
 
+  const gateDemoHost = el('div');
+
   root.append(
     el(
       'div',
       { class: 'stack stack--loose' },
       el('h1', null, 'Plan a load test'),
+      introSection(),
       runtimeNotice,
       form,
       reviewHost,
       probePanel,
+      gateDemoHost,
     ),
   );
+  renderGateDemoPanel(gateDemoHost);
 
   // ---- State -> DOM -----------------------------------------------------
   function refresh(): void {

@@ -11,6 +11,8 @@ import type {
   ApiErrorCode,
   ApproveRequest,
   ConfigResponse,
+  GateDemoRequest,
+  GateDemoResponse,
   ParseErrorView,
   PlanRequest,
   PlanResponse,
@@ -180,4 +182,12 @@ export function getCompare(a: string, b: string, signal?: AbortSignal): Promise<
 
 export function postProbe(body: ProbeRequest, signal?: AbortSignal): Promise<ApiResult<StartResponse>> {
   return request<StartResponse>('POST', '/api/probe', body, signal);
+}
+
+/** Deterministic Policy_Gate demonstration (POST /api/gate-demo). No Turnstile, no side effects. */
+export function postGateDemo(
+  body: GateDemoRequest,
+  signal?: AbortSignal,
+): Promise<ApiResult<GateDemoResponse>> {
+  return request<GateDemoResponse>('POST', '/api/gate-demo', body, signal);
 }

@@ -229,3 +229,23 @@ export interface RunListResponse {
 
 // GET /api/compare?a=&b= returns { result: Comparison } where Comparison comes from
 // src/report/compare.ts (task 11.1).
+
+// ---- POST /api/gate-demo ----------------------------------------------------
+// Deterministic demonstration of the Policy_Gate: no Turnstile, no model, no sandbox, no store write.
+
+export type GateDemoScenario = 'other_host' | 'too_big' | 'unknown_route';
+
+export interface GateDemoRequest {
+  scenario: GateDemoScenario;
+}
+
+export interface GateDemoResponse {
+  scenario: GateDemoScenario;
+  title: string;
+  description: string;
+  /** The fixed hostile Test_Plan JSON that was parsed and evaluated. */
+  planText: string;
+  /** The real Policy_Gate result. Always rejected: an accepted result is a 500, never a demo. */
+  gate: Extract<GateView, { status: 'rejected' }>;
+  requestsSent: 0;
+}

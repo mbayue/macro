@@ -29,6 +29,7 @@ if (!result.success) {
 
 await cp(join(webDir, 'index.html'), join(outDir, 'index.html'));
 await cp(join(webDir, 'style.css'), join(outDir, 'style.css'));
+await cp(join(webDir, 'favicon.svg'), join(outDir, 'favicon.svg'));
 
 for (const name of ['index.html', 'app.js', 'style.css']) {
   if (!(await Bun.file(join(outDir, name)).exists())) {

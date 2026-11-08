@@ -61,7 +61,7 @@ export const TRAFFIC_EVENT_MIN = 10;
 export const TRAFFIC_EVENT_MAX = 1000;
 
 export const CSP =
-  "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self'; style-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'";
+  "default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com; frame-src https://challenges.cloudflare.com; connect-src 'self' https://cloudflareinsights.com; style-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'";
 
 export const SSE_POLL_MS = 500;
 export const SSE_HEARTBEAT_MS = 3000;

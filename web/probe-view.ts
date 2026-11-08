@@ -414,11 +414,18 @@ export function renderProbeView(root: HTMLElement, ctx: AppContext, params: Rout
     if (!isProbeEnded(r.status)) return;
     const { classification, stored } = effectiveProbeResult(r.probeResult);
     const wording = resultWording(classification, stored);
+    const containedCount = PROBE_ACTION_IDS.filter((aid) => classification.actions[aid] === 'contained').length;
     resultHost.append(
       el(
         'section',
         { class: `panel probe-summary probe-summary--${wording.verdict} stack stack--tight` },
         el('h2', null, 'Result'),
+        el(
+          'p',
+          { class: 'probe-score' },
+          el('span', { class: 'probe-score__value' }, `${containedCount}/${PROBE_ACTION_IDS.length}`),
+          el('span', { class: 'probe-score__label' }, 'actions contained'),
+        ),
         el('p', null, el('span', { class: `badge ${verdictBadgeClass(wording.verdict)}` }, wording.badge), ' ', wording.headline),
         wording.details.map((line) => el('p', null, line)),
       ),

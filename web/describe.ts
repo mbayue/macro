@@ -34,7 +34,7 @@ function introSection(): HTMLElement {
       el(
         'p',
         { class: 'intro__lead' },
-        'Describe a traffic spike in plain words. Macro plans a load test, you approve it, and k6 runs it inside throwaway sandboxes that can only reach the demo store. You get the point where it breaks.',
+        'Describe a traffic spike in plain words. Macro plans a load test, you approve it, and k6 runs it inside throwaway sandboxes that can only reach the site under test. You get the point where it breaks.',
       ),
       el(
         'ol',
@@ -51,7 +51,7 @@ function introSection(): HTMLElement {
       el(
         'ul',
         { class: 'intro__list' },
-        el('li', null, 'Only the demo store can be tested.'),
+        el('li', null, 'Only verified targets can be tested. This demo allows one: the demo store.'),
         el('li', null, 'The AI proposes; fixed rules approve.'),
         el('li', null, 'Every stage runs in its own gVisor sandbox with no secrets and an egress allowlist.'),
         el('li', null, 'Every number in the report is measured by k6. AI text is checked against those numbers.'),
@@ -124,7 +124,7 @@ export function renderDescribeView(root: HTMLElement, ctx: AppContext, _params: 
   const form = el(
     'form',
     {
-      class: 'panel stack',
+      class: 'panel panel--hero stack',
       novalidate: true,
       onsubmit: (ev: Event) => {
         ev.preventDefault();
@@ -153,7 +153,7 @@ export function renderDescribeView(root: HTMLElement, ctx: AppContext, _params: 
       el('dt', null, 'Target'),
       el('dd', { class: 'mono' }, config.webOrigin),
     ),
-    el('p', { class: 'muted' }, 'This is the only target. It cannot be changed.'),
+    el('p', { class: 'muted' }, 'Demo target. Testing your own site will need domain verification (coming soon).'),
     turnstileBox,
     el('div', { class: 'row' }, submitBtn, retryBtn, planProgress),
     planAlert,
@@ -214,9 +214,9 @@ export function renderDescribeView(root: HTMLElement, ctx: AppContext, _params: 
       el('h1', null, 'Plan a load test'),
       introSection(),
       runtimeNotice,
-      recentHost,
       form,
       reviewHost,
+      recentHost,
       probePanel,
       gateDemoHost,
     ),

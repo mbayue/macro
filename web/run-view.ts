@@ -431,9 +431,15 @@ const DASH = '\u2013';
 
 const METRIC_HEADERS = ['Requests', 'Requests/s', 'Error rate', 'HTTP 429', 'p50 (ms)', 'p95 (ms)', 'p99 (ms)'] as const;
 
-function fillStages(box: HTMLElement, stages: readonly StageView[]): void {
+function fillStages(box: HTMLElement, stages: readonly StageView[], plan: TestPlan | null, status: RunStatus): void {
   clear(box);
-  if (stages.length === 0) {
+  // Stages from the plan that have not started yet: "pending" while the Run is running,
+  // "not run" after it ended early.
+  const started = new Set(stages.map((s) => s.index));
+  const unstarted = (plan?.stages ?? [])
+    .map((p, index) => ({ index, vus: p.vus, durationSec: p.durationSec }))
+    .filter((p) => !started.has(p.index));
+  if (stages.length === 0 && unstarted.length === 0) {
     box.append(el('p', { class: 'muted' }, 'No Stage has started yet.'));
     return;
   }
@@ -464,6 +470,20 @@ function fillStages(box: HTMLElement, stages: readonly StageView[]): void {
     }
     return el('tr', null, cells);
   });
+  const pendingLabel = status === 'running' ? 'pending' : 'not run';
+  for (const p of unstarted) {
+    rows.push(
+      el(
+        'tr',
+        { class: 'is-pending' },
+        el('th', { scope: 'row', class: 'num' }, fmtCount(p.index + 1)),
+        el('td', { class: 'num' }, fmtCount(p.vus)),
+        el('td', { class: 'num' }, `${fmtCount(p.durationSec)} s`),
+        el('td', null, el('span', { class: 'badge' }, pendingLabel)),
+        METRIC_HEADERS.map(() => el('td', { class: 'num' }, DASH)),
+      ),
+    );
+  }
   const table = el(
     'table',
     { class: 'table' },
@@ -666,10 +686,10 @@ export function renderRunView(root: HTMLElement, ctx: AppContext, params: RouteP
 
   function renderSections(): void {
     const m = currentModel();
-    const stagesKey = JSON.stringify(m.stages);
+    const stagesKey = JSON.stringify([m.stages, m.run.status, m.plan?.stages.length ?? 0]);
     if (stagesKey !== keys.stages) {
       keys.stages = stagesKey;
-      fillStages(stagesBox, m.stages);
+      fillStages(stagesBox, m.stages, m.plan, m.run.status);
     }
     const decisionsKey = JSON.stringify(m.decisions);
     if (decisionsKey !== keys.decisions) {
@@ -843,7 +863,7 @@ export function renderRunView(root: HTMLElement, ctx: AppContext, params: RouteP
     root.append(
       el(
         'section',
-        { class: 'panel stack' },
+        { class: 'panel panel--hero run-header stack' },
         el('div', { class: 'row row--between' }, el('div', { class: 'row' }, el('h1', null, 'Run'), statusBadge, staleBadge)),
         planName,
         el(

@@ -80,15 +80,34 @@ export interface HeadlineItem {
   value: string;
   /** Set for the Run status, which is drawn as a badge. */
   badge?: BadgeKind;
+  /** Color of the value: what the measured result says. */
+  tone?: BadgeKind;
+  /** One of the three answers the report exists for (drawn large). */
+  key?: boolean;
 }
 
 /** Headline values with the shared wording for null values (13.2, 10.11). */
 export function headlineItems(report: CapacityReport): HeadlineItem[] {
   const h = report.headline;
   return [
-    { label: 'Safe capacity (VUs)', value: displaySafeCapacity(h.safeCapacity) },
-    { label: 'Breaking point (VUs)', value: displayBreakingPoint(h.breakingPoint) },
-    { label: 'First degraded route', value: displayFirstDegradedRoute(h.firstDegradedRoute) },
+    {
+      label: 'Safe capacity (VUs)',
+      value: displaySafeCapacity(h.safeCapacity),
+      tone: h.safeCapacity === null ? 'bad' : 'ok',
+      key: true,
+    },
+    {
+      label: 'Breaking point (VUs)',
+      value: displayBreakingPoint(h.breakingPoint),
+      tone: h.breakingPoint === null ? 'neutral' : 'bad',
+      key: true,
+    },
+    {
+      label: 'First degraded route',
+      value: displayFirstDegradedRoute(h.firstDegradedRoute),
+      tone: h.firstDegradedRoute === null ? 'neutral' : 'warn',
+      key: true,
+    },
     { label: 'Run status', value: h.status, badge: statusBadgeKind(h.status) },
     { label: 'Sandbox runtime', value: report.runtime },
   ];
@@ -557,7 +576,15 @@ export function renderReportView(
       headlineItems(report).map((item) =>
         el(
           'div',
-          { class: 'headline__item' },
+          {
+            class: [
+              'headline__item',
+              item.key ? 'headline__item--key' : '',
+              item.tone !== undefined && item.tone !== 'neutral' ? `headline__item--${item.tone}` : '',
+            ]
+              .filter(Boolean)
+              .join(' '),
+          },
           el('dt', { class: 'headline__label' }, item.label),
           el('dd', { class: 'headline__value mono' }, item.badge !== undefined ? badge(item.badge, item.value) : item.value),
         ),

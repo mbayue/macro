@@ -15,6 +15,8 @@ COPY package.json tsconfig.json ./
 COPY --from=deps /app/node_modules ./node_modules
 COPY scripts ./scripts
 COPY web ./web
+# web/*.ts imports a few pure modules from src/ (formatters, types), so the bundler needs it.
+COPY src ./src
 RUN bun scripts/build-web.ts
 
 # ---- 3. runtime image ----

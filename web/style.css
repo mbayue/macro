@@ -150,6 +150,8 @@ body {
 .tagline { margin: 0; color: var(--muted); font-size: 0.92rem; }
 
 .main { flex: 1 0 auto; padding-top: 2rem; padding-bottom: 3rem; }
+/* Views append their sections straight into #app; space them like a stack. */
+.main > * + * { margin-top: 1.25rem; }
 
 .site-footer { border-top: 1px solid var(--border); color: var(--muted); font-size: 0.88rem; }
 .site-footer p { margin: 0; padding: 1.1rem 0; }
@@ -421,7 +423,7 @@ a:hover { text-decoration-color: var(--text); }
 
 .headline {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
   gap: 0.75rem;
   margin: 0;
 }
@@ -436,9 +438,9 @@ a:hover { text-decoration-color: var(--text); }
   border-radius: var(--radius-sm);
 }
 .headline__label { color: var(--muted); font-size: 0.85rem; }
-.headline__value { margin: 0; font-size: 1.15rem; font-weight: 600; overflow-wrap: anywhere; }
+.headline__value { margin: 0; font-size: 1.15rem; font-weight: 600; overflow-wrap: break-word; }
 /* The three answers the report exists for get the large size. */
-.headline__item--key .headline__value { font-size: 1.9rem; line-height: 1.1; letter-spacing: -0.02em; }
+.headline__item--key .headline__value { font-size: 1.75rem; line-height: 1.1; letter-spacing: -0.02em; }
 .headline__item--ok { border-color: #2f6b47; }
 .headline__item--ok .headline__value { color: var(--ok); }
 .headline__item--warn { border-color: #74581f; }

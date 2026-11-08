@@ -424,9 +424,16 @@ a:hover { text-decoration-color: var(--text); }
 
 .headline {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 0.75rem;
   margin: 0;
+}
+/* Row 1: the three answers. Row 2: run status and sandbox runtime. */
+.headline > .headline__item { grid-column: span 3; }
+.headline > .headline__item--key { grid-column: span 2; }
+@media (max-width: 48rem) {
+  .headline { grid-template-columns: minmax(0, 1fr); }
+  .headline > .headline__item, .headline > .headline__item--key { grid-column: auto; }
 }
 .headline__item {
   display: flex;

@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Macro: slides</title>
+<style>
+  @page { size: 1920px 1080px; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #0b0f14; }
+  body { font-family: "Segoe UI", system-ui, sans-serif; color: #e6edf3; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .slide { width: 1920px; height: 1080px; padding: 90px 120px; position: relative; overflow: hidden; page-break-after: always; break-after: page; background: #0b0f14; display: flex; flex-direction: column; }
+  .slide:last-child { page-break-after: auto; break-after: auto; }
+  .kicker { font-family: Consolas, "Courier New", monospace; font-size: 26px; color: #58a6ff; letter-spacing: 0.04em; margin-bottom: 28px; }
+  h1 { font-size: 120px; line-height: 1.02; font-weight: 700; }
+  h2 { font-size: 72px; line-height: 1.1; font-weight: 700; margin-bottom: 48px; max-width: 1500px; }
+  p, li { font-size: 38px; line-height: 1.4; color: #c9d1d9; }
+  .muted { color: #8b949e; }
+  .mono { font-family: Consolas, "Courier New", monospace; }
+  .foot { position: absolute; left: 120px; bottom: 50px; font-family: Consolas, monospace; font-size: 22px; color: #6e7681; }
+  .num { position: absolute; right: 120px; bottom: 50px; font-family: Consolas, monospace; font-size: 22px; color: #6e7681; }
+  .row { display: flex; gap: 60px; align-items: flex-start; flex: 1; }
+  .col { flex: 1; }
+  .card { background: #11171e; border: 2px solid #263040; border-radius: 16px; padding: 34px 40px; }
+  .card h3 { font-size: 40px; margin-bottom: 14px; color: #e6edf3; }
+  .card p { font-size: 32px; }
+  .green { color: #3fb950; }
+  .amber { color: #d29922; }
+  .red { color: #f85149; }
+  .blue { color: #58a6ff; }
+  .shot { border: 2px solid #263040; border-radius: 14px; overflow: hidden; background: #0d1117; }
+  .shot img { display: block; }
+  ul { list-style: none; }
+  li { padding: 10px 0 10px 40px; position: relative; }
+  li::before { content: ""; position: absolute; left: 0; top: 26px; width: 16px; height: 16px; background: #58a6ff; border-radius: 3px; }
+  .flow { display: flex; align-items: stretch; gap: 0; margin-top: 30px; }
+  .step { flex: 1; background: #11171e; border: 2px solid #263040; border-radius: 16px; padding: 30px 28px; }
+  .step b { display: block; font-size: 40px; margin-bottom: 12px; }
+  .step span { font-size: 28px; color: #9aa7b4; line-height: 1.35; display: block; }
+  .arrow { width: 56px; display: flex; align-items: center; justify-content: center; font-size: 44px; color: #58a6ff; }
+  table { border-collapse: collapse; width: 100%; }
+  td, th { text-align: left; padding: 18px 22px; font-size: 32px; border-bottom: 2px solid #1f2a37; }
+  th { color: #8b949e; font-weight: 600; font-size: 26px; text-transform: none; }
+  .big { font-size: 150px; font-weight: 700; line-height: 1; }
+  .stat { margin-bottom: 36px; }
+  .stat .label { font-size: 30px; color: #8b949e; margin-top: 8px; }
+  .layer { display: flex; gap: 28px; align-items: baseline; padding: 20px 0; border-bottom: 2px solid #1f2a37; }
+  .layer .n { font-family: Consolas, monospace; font-size: 34px; color: #58a6ff; width: 60px; }
+  .layer .t { font-size: 40px; font-weight: 600; width: 520px; }
+  .layer .d { font-size: 32px; color: #9aa7b4; flex: 1; }
+</style>
+</head>
+<body>
+
+<!-- 1 Title -->
+<section class="slide" style="justify-content:center;">
+  <div class="kicker">VULTR AGENT RUSH &middot; CHALLENGE 1: BLAST RADIUS ZERO</div>
+  <h1>Macro</h1>
+  <p style="font-size:56px; margin-top:36px; max-width:1400px; color:#e6edf3;">How many users can your site take?<br>Ask an agent that cannot hurt anyone.</p>
+  <p class="mono muted" style="margin-top:70px; font-size:32px;">macro.my.id &nbsp;&middot;&nbsp; github.com/mbayue/macro</p>
+</section>
+
+<!-- 2 Problem -->
+<section class="slide">
+  <div class="kicker">THE PROBLEM</div>
+  <h2>A load-testing agent is also a weapon.</h2>
+  <div class="row">
+    <div class="col">
+      <ul>
+        <li>Teams want to know their breaking point before a launch.</li>
+        <li>An agent that writes and runs load tests can send traffic anywhere.</li>
+        <li>One bad prompt turns a test tool into a DDoS tool.</li>
+        <li>A prompt that says "only test my site" is not a security control.</li>
+      </ul>
+    </div>
+    <div class="col">
+      <div class="card" style="margin-top:20px;">
+        <h3>What Macro does instead</h3>
+        <p>The model proposes. Code decides. The sandbox enforces. The agent never holds a permission it could misuse.</p>
+      </div>
+    </div>
+  </div>
+  <div class="foot">Macro</div><div class="num">2 / 8</div>
+</section>
+
+<!-- 3 Flow -->
+<section class="slide">
+  <div class="kicker">THE IDEA</div>
+  <h2>Plan, approve, run, supervise, explain.</h2>
+  <div class="flow">
+    <div class="step"><b class="blue">Planner</b><span>Turns a plain-language goal into a staged k6 plan. One forced tool call.</span></div>
+    <div class="arrow">&rarr;</div>
+    <div class="step"><b class="amber">Policy Gate</b><span>Code, not a model. Checks target, users, duration. Rejects the rest.</span></div>
+    <div class="arrow">&rarr;</div>
+    <div class="step"><b>You approve</b><span>The plan is hashed. The run executes exactly what you saw.</span></div>
+    <div class="arrow">&rarr;</div>
+    <div class="step"><b class="blue">Supervisor</b><span>After each stage: continue or stop. A rule engine can overrule it.</span></div>
+    <div class="arrow">&rarr;</div>
+    <div class="step"><b class="blue">Reporter</b><span>Explains the result. Every number is checked against measured data.</span></div>
+  </div>
+  <p class="muted" style="margin-top:60px; font-size:34px;">Three agents on Vultr Serverless Inference. Four stages at 25, 50, 100 and 200 virtual users. Each stage is its own sandbox.</p>
+  <div class="foot">Macro</div><div class="num">3 / 8</div>
+</section>
+
+<!-- 4 Blast radius -->
+<section class="slide">
+  <div class="kicker">BLAST RADIUS ZERO</div>
+  <h2>Six layers between model and internet.</h2>
+  <div>
+    <div class="layer"><div class="n">01</div><div class="t">One allowed target</div><div class="d">Only the demo shop. Any other host is rejected before a script exists.</div></div>
+    <div class="layer"><div class="n">02</div><div class="t">Policy Gate</div><div class="d">Caps on virtual users and duration. Deterministic code.</div></div>
+    <div class="layer"><div class="n">03</div><div class="t">gVisor sandbox</div><div class="d">k6 runs under runsc. 1 GiB memory, 1 CPU, 256 processes, no swap.</div></div>
+    <div class="layer"><div class="n">04</div><div class="t">Egress proxy</div><div class="d">Sandbox network has no route out. HTTPS CONNECT to one exact host only.</div></div>
+    <div class="layer"><div class="n">05</div><div class="t">No secrets inside</div><div class="d">The sandbox environment holds only the proxy address.</div></div>
+    <div class="layer"><div class="n">06</div><div class="t">Human and bot checks</div><div class="d">Plan approval, Cloudflare Turnstile, run limits, Number Guard on AI text.</div></div>
+  </div>
+  <div class="foot">Macro</div><div class="num">4 / 8</div>
+</section>
+
+<!-- 5 Probe -->
+<section class="slide">
+  <div class="kicker">LIVE PROOF</div>
+  <h2 style="margin-bottom:30px;">Five hostile actions. Five contained.</h2>
+  <div class="row" style="gap:50px;">
+    <div style="width:560px;">
+      <div class="stat"><div class="big green">5/5</div><div class="label">contained, live on the Vultr VM</div></div>
+      <ul>
+        <li style="font-size:32px;">3 egress attempts blocked, including the cloud metadata address</li>
+        <li style="font-size:32px;">Memory above the cap stopped</li>
+        <li style="font-size:32px;">Sandbox removed after</li>
+      </ul>
+    </div>
+    <div class="shot" style="width:1100px; height:700px;">
+      <img src="img/macro-probe.png" style="width:1100px; margin-top:-318px;">
+    </div>
+  </div>
+  <div class="foot">Macro &middot; macro.my.id</div><div class="num">5 / 8</div>
+</section>
+
+<!-- 6 Result -->
+<section class="slide">
+  <div class="kicker">LIVE RESULT</div>
+  <h2 style="margin-bottom:30px;">Safe at 200 users. Home page slows first.</h2>
+  <div class="row" style="gap:50px;">
+    <div style="width:600px;">
+      <div class="stat"><div class="big blue">200</div><div class="label">virtual users, all four stages passed</div></div>
+      <div class="stat"><div class="big amber" style="font-size:110px;">1,611 ms</div><div class="label">store_home p95 at 200 users (limit 1,500 ms)</div></div>
+      <div class="stat"><div style="font-size:60px; font-weight:700;">4 min 28 s</div><div class="label">from approved plan to report</div></div>
+    </div>
+    <div class="shot" style="width:1060px; height:640px;">
+      <img src="img/macro-report-bottom.png" style="width:1024px; margin-top:-80px;">
+    </div>
+  </div>
+  <div class="foot">Run d28cacd6 &middot; demo shop on a second Vultr VM</div><div class="num">6 / 8</div>
+</section>
+
+<!-- 7 Vultr -->
+<section class="slide">
+  <div class="kicker">BUILT ON VULTR</div>
+  <h2 style="margin-bottom:36px;">Two VMs, three agents, one firewall.</h2>
+  <table>
+    <tr><th style="width:420px;">Vultr product</th><th>What it does in Macro</th></tr>
+    <tr><td class="blue">Cloud Compute: <span class="mono">macro</span></td><td>Macro API, web UI, Caddy, egress proxy, gVisor sandboxes. Singapore, Ubuntu 24.04.</td></tr>
+    <tr><td class="blue">Cloud Compute: <span class="mono">yue-demo</span></td><td>The only allowed target: a full demo shop (web, API, Postgres, Redis).</td></tr>
+    <tr><td class="blue">Serverless Inference</td><td>Planner, Supervisor and Reporter. minimax-m3.1-flash, fallback mimo-v2.6-flash.</td></tr>
+    <tr><td class="blue">Firewall</td><td>Inbound 80 and 443 on the Macro VM limited to Cloudflare ranges.</td></tr>
+  </table>
+  <p class="muted" style="margin-top:40px; font-size:32px;">TypeScript on Bun, k6 pinned by digest, Docker Compose. 422 automated tests, including property tests.</p>
+  <div class="foot">Macro</div><div class="num">7 / 8</div>
+</section>
+
+<!-- 8 Next -->
+<section class="slide">
+  <div class="kicker">WHAT IS NEXT</div>
+  <h2>From one demo target to your own site.</h2>
+  <div class="row">
+    <div class="col">
+      <div class="card" style="margin-bottom:30px;"><h3>Verified targets</h3><p>Prove you own a domain with a DNS TXT record, then test it. Same gate, same sandbox.</p></div>
+      <div class="card"><h3>Regional runs</h3><p>Start throwaway Vultr VMs in other regions, run a stage, destroy them.</p></div>
+    </div>
+    <div class="col">
+      <div class="card" style="margin-bottom:30px;"><h3>Before and after</h3><p>Compare two runs of the same plan after a fix, and show what moved.</p></div>
+      <div class="card"><h3>Try it now</h3><p class="mono blue">macro.my.id</p><p class="mono muted">github.com/mbayue/macro</p></div>
+    </div>
+  </div>
+  <div class="foot">Macro</div><div class="num">8 / 8</div>
+</section>
+
+</body>
+</html>

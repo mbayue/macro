@@ -346,6 +346,8 @@ a:hover { text-decoration-color: var(--text); }
 .table td.num, .table tbody th.num { font-family: var(--mono); font-size: 0.86rem; }
 .table thead th.num { font-family: var(--sans); }
 .table th.num, .table td.num { text-align: right; }
+/* Numbers and identifiers never break mid-token; the table scrolls sideways instead. */
+.table td.num, .table th.num, .table td.mono, .table th.mono { overflow-wrap: normal; white-space: nowrap; }
 .table tbody tr { transition: background-color 120ms ease; }
 @media (hover: hover) and (pointer: fine) {
   .table tbody tr:hover { background: #1b1c20; }

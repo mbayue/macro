@@ -199,6 +199,7 @@ export function renderDescribeView(root: HTMLElement, ctx: AppContext, _params: 
 
   // Approval controls exist only while an accepted plan is shown.
   let approveBtn: HTMLButtonElement | null = null;
+  let cancelBtn: HTMLButtonElement | null = null;
   let approveProgress: HTMLElement | null = null;
   let staleNote: HTMLElement | null = null;
 
@@ -237,6 +238,7 @@ export function renderDescribeView(root: HTMLElement, ctx: AppContext, _params: 
     textarea.readOnly = !idle;
     planProgress.hidden = busy !== 'planning';
     if (approveBtn) approveBtn.disabled = !idle;
+    if (cancelBtn) cancelBtn.disabled = !idle;
     if (approveProgress) approveProgress.hidden = busy !== 'approving';
     probeBtn.disabled = !idle;
     probeProgress.hidden = busy !== 'probing';
@@ -260,6 +262,7 @@ export function renderDescribeView(root: HTMLElement, ctx: AppContext, _params: 
     busy = 'planning';
     lastSubmitted = text;
     approveBtn = null;
+    cancelBtn = null;
     approveProgress = null;
     staleNote = null;
     clear(planAlert);
@@ -318,6 +321,19 @@ export function renderDescribeView(root: HTMLElement, ctx: AppContext, _params: 
     showError(errorRegion, result.error);
     ctx.announce(result.error.message);
     refresh();
+  }
+
+  // ---- Cancel: discard the draft plan, keep the text ---------------------
+  function cancelPlan(): void {
+    if (busy !== null || disposed) return;
+    approveBtn = null;
+    cancelBtn = null;
+    approveProgress = null;
+    staleNote = null;
+    clear(reviewHost);
+    refresh();
+    textarea.focus();
+    ctx.announce('Plan discarded. Nothing was sent.');
   }
 
   // ---- Containment probe ----------------------------------------------------
@@ -599,6 +615,11 @@ export function renderDescribeView(root: HTMLElement, ctx: AppContext, _params: 
       },
       'Approve and run',
     );
+    const cancel = el(
+      'button',
+      { type: 'button', class: 'btn', onclick: () => cancelPlan() },
+      'Cancel',
+    );
     const progress = el(
       'span',
       { class: 'progress', role: 'status', hidden: true },
@@ -606,6 +627,7 @@ export function renderDescribeView(root: HTMLElement, ctx: AppContext, _params: 
       el('span', null, 'Starting the run.'),
     );
     approveBtn = btn;
+    cancelBtn = cancel;
     approveProgress = progress;
     return el(
       'section',
@@ -623,7 +645,7 @@ export function renderDescribeView(root: HTMLElement, ctx: AppContext, _params: 
         el('dd', { class: 'mono' }, `${totalSec} s`),
       ),
       box,
-      el('div', { class: 'row' }, btn, progress),
+      el('div', { class: 'row' }, btn, cancel, progress),
       approveAlert,
     );
   }

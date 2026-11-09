@@ -24,14 +24,14 @@
 .legal__body h2 { font-size: var(--step-lead); font-family: var(--text); font-weight: 500; letter-spacing: -0.01em; }
 .legal__body p, .legal__body li { margin-top: 14px; max-width: 64ch; }
 .legal__body ul { padding-left: 1.2em; margin: 0; }
-.legal__body li::marker { color: var(--accent); }
+.legal__body li::marker { color: var(--accent-text); }
 .legal a { text-underline-offset: 0.2em; }
 .legal strong { font-weight: 500; }
 .legal + .foot { margin-top: 160px; }
 
 /* Key facts */
 .legal__facts { background: var(--surface); border-radius: var(--radius); padding: 24px; }
-.legal__facts h2 { font: 500 var(--step-body)/1.2 var(--text); letter-spacing: 0; color: var(--accent); }
+.legal__facts h2 { font: 500 var(--step-body)/1.2 var(--text); letter-spacing: 0; color: var(--accent-text); }
 .legal__facts dl { margin: 18px 0 0; display: grid; gap: 16px; }
 .legal__facts dt { font-size: var(--step-small); color: var(--muted); }
 .legal__facts dd { margin: 2px 0 0; font-size: var(--step-small); line-height: 1.45; overflow-wrap: anywhere; }
@@ -46,7 +46,7 @@
   transition: color 150ms ease, border-color 150ms ease;
 }
 .legal__toc a:hover { color: var(--ink); }
-.legal__toc a[aria-current="true"] { color: var(--ink); border-left-color: var(--accent); }
+.legal__toc a[aria-current="true"] { color: var(--ink); border-left-color: var(--accent-text); }
 
 @media (prefers-reduced-motion: no-preference) {
   html:has(.legal) { scroll-behavior: smooth; }

@@ -1,21 +1,35 @@
 /* Macro landing page. Served at /, the app lives at /app/. Fonts: Stack Sans (OFL, see fonts/OFL.txt). */
 @font-face { font-family: "Stack Sans Headline"; src: url("/landing/fonts/stack-sans-headline-300.woff2") format("woff2"); font-weight: 300; font-style: normal; font-display: swap; }
 @font-face { font-family: "Stack Sans Text"; src: url("/landing/fonts/stack-sans-text.woff2") format("woff2"); font-weight: 400 500; font-style: normal; font-display: swap; }
+/*
+ * Colour tokens. Light is the default; html[data-theme="dark"] switches to the original Soot palette
+ * (see src/theme.ts). Lime (--accent) is a fill colour in both themes; anywhere the accent is text,
+ * a marker, a border or a focus ring, use --accent-text, because lime on a light page is unreadable.
+ * The product UI fragments (.gate, .tile--shot) are dark in both themes, like the app they show.
+ */
 :root {
-  --bg: #0f0f0f;
-  --surface: #1a1a1a;
-  --surface-2: #262626;
-  --bar: #3d3d3d;
-  --ink: #ffffff;
-  --muted: #a3a3a3;
+  color-scheme: light;
+  --bg: #f2f2ed;
+  --surface: #e6e6df;
+  --surface-2: #d9d9d1;
+  --bar: #c4c4bb;
+  --bar-hover: #a5a59c;
+  --ink: #0f0f0f;
+  --muted: #55554f;
   --accent: #dafa9c;
   --accent-ink: #0f0f0f;
+  --accent-text: #4a6614;
+  --accent-hover: #c9f07a;
+  --bar-accent: #4a6614;
+  --bar-accent-ink: #ffffff;
   --field-1: #ffffff;
   --field-1-ink: #0f0f0f;
   --field-1-soft: #5c5c5c;
   --field-2: #dafa9c;
-  --ok: #8fe3a6;
-  --bad: #ff8a80;
+  --ok: #17672f;
+  --bad: #b3261e;
+  --placeholder: #77776f;
+  --thumb-edge: #0f0f0f;
   --ui-bg: #121212;
   --ui-line: #2e2e2e;
   --ui-field: #0a0a0a;
@@ -33,6 +47,26 @@
   --radius: 6px;
   --ease: cubic-bezier(0.23, 1, 0.32, 1);
 }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f0f0f;
+  --surface: #1a1a1a;
+  --surface-2: #262626;
+  --bar: #3d3d3d;
+  --bar-hover: #5a5a5a;
+  --ink: #ffffff;
+  --muted: #a3a3a3;
+  --accent-text: #dafa9c;
+  --accent-hover: #e9ffbd;
+  --bar-accent: #dafa9c;
+  --bar-accent-ink: #0f0f0f;
+  --ok: #8fe3a6;
+  --bad: #ff8a80;
+  --placeholder: #7a7a7a;
+  --thumb-edge: transparent;
+}
+/* Product UI fragments keep the app's dark colours in both themes. */
+.gate, .tile--shot { --ink: #ffffff; --muted: #a3a3a3; --ok: #8fe3a6; --bad: #ff8a80; --accent-text: #dafa9c; color: var(--ink); }
 
 *, *::before, *::after { box-sizing: border-box; }
 html, body { overflow-x: clip; }
@@ -50,7 +84,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 300; letter-spacing: -0.0
 p { margin: 0; text-wrap: pretty; }
 img { display: block; max-width: 100%; height: auto; }
 a { color: inherit; }
-:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+:focus-visible { outline: 3px solid var(--accent-text); outline-offset: 3px; }
 ::selection { background: var(--accent); color: var(--accent-ink); }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 .wrap { width: 100%; max-width: 1440px; margin: 0 auto; padding: 0 var(--margin); }
@@ -66,7 +100,7 @@ a { color: inherit; }
   transition: transform 140ms var(--ease), background-color 160ms ease;
 }
 .btn:active { transform: scale(0.97); }
-@media (hover: hover) and (pointer: fine) { .btn:hover { background: #e9ffbd; } }
+@media (hover: hover) and (pointer: fine) { .btn:hover { background: var(--accent-hover); } }
 .btn--ink { background: var(--field-1-ink); color: var(--field-1); }
 @media (hover: hover) and (pointer: fine) { .btn--ink:hover { background: #2b2b2b; } }
 
@@ -79,6 +113,17 @@ a { color: inherit; }
 .nav ul a:hover { color: var(--ink); }
 .nav ul a.btn, .nav ul a.btn:hover { color: var(--accent-ink); }
 .nav .btn { min-height: 40px; padding: 0 16px; font-size: var(--step-small); }
+.nav ul .nav__theme { margin-right: -12px; }
+.theme-toggle {
+  display: grid; place-items: center; width: 40px; height: 40px; padding: 0;
+  border: 0; border-radius: var(--radius); background: transparent; color: var(--ink); cursor: pointer;
+  transition: background-color 150ms ease, transform 140ms var(--ease);
+}
+.theme-toggle:active { transform: scale(0.94); }
+@media (hover: hover) and (pointer: fine) { .theme-toggle:hover { background: var(--surface); } }
+.theme-toggle__sun { display: none; }
+:root[data-theme="dark"] .theme-toggle__sun { display: block; }
+:root[data-theme="dark"] .theme-toggle__moon { display: none; }
 
 /* ---- Hero ---- */
 .hero { position: relative; min-height: max(100svh, 820px); overflow: hidden; }
@@ -195,15 +240,15 @@ a { color: inherit; }
 .how__slider input { position: relative; }
 .how__control input[type="range"]::-moz-range-track { height: 8px; border-radius: 4px; background: transparent; }
 .how__control input[type="range"]::-moz-range-progress { height: 8px; background: transparent; }
-.how__control input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 32px; height: 32px; margin-top: -12px; border-radius: 6px; background: var(--accent); border: 0; }
-.how__control input[type="range"]::-moz-range-thumb { width: 32px; height: 32px; border-radius: 6px; background: var(--accent); border: 0; }
+.how__control input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 32px; height: 32px; margin-top: -12px; border-radius: 6px; background: var(--accent); border: 2px solid var(--thumb-edge); box-sizing: border-box; }
+.how__control input[type="range"]::-moz-range-thumb { width: 32px; height: 32px; border-radius: 6px; background: var(--accent); border: 2px solid var(--thumb-edge); box-sizing: border-box; }
 .how__stops { display: flex; justify-content: space-between; margin: 10px 0 0; padding: 0; list-style: none; font-size: var(--step-small); color: var(--muted); }
 
 
 
 .how__stops li.is-current { color: var(--ink); }
 .how__stops button { all: unset; cursor: pointer; }
-.how__stops button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.how__stops button:focus-visible { outline: 3px solid var(--accent-text); outline-offset: 3px; }
 
 /* ---- Proof: the containment board ---- */
 .proof { padding-top: 200px; }
@@ -231,8 +276,8 @@ a { color: inherit; }
   border-radius: 4px 4px 0 0;
   transform-origin: bottom; transition: background-color 150ms ease;
 }
-.bar:hover, .bar:focus-visible { background: #5a5a5a; }
-.bar--accent, .bar--accent:hover, .bar--accent:focus-visible { background: var(--accent); }
+.bar:hover, .bar:focus-visible { background: var(--bar-hover); }
+.bar--accent, .bar--accent:hover, .bar--accent:focus-visible { background: var(--bar-accent); }
 .bar__val { position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); text-align: center; font: 400 var(--step-lead)/1 var(--text); font-variant-numeric: tabular-nums; color: var(--ink); pointer-events: none; }
 
 /* ---- Pricing: plans as a large table ---- */
@@ -278,7 +323,7 @@ details[open] .plus::after { transform: rotate(0deg); }
   background: var(--surface-2); color: var(--ink); border: 0; border-radius: var(--radius);
   font: inherit; letter-spacing: inherit;
 }
-.cta input::placeholder { color: #7a7a7a; }
+.cta input::placeholder { color: var(--placeholder); }
 .cta button {
   display: inline-block; height: 1.12em; vertical-align: -0.12em; padding: 0 0.25em;
   background: var(--accent); color: var(--accent-ink); border: 0; border-radius: var(--radius);
@@ -286,7 +331,7 @@ details[open] .plus::after { transform: rotate(0deg); }
   transition: transform 140ms var(--ease), background-color 160ms ease;
 }
 .cta button:active { transform: scale(0.98); }
-@media (hover: hover) and (pointer: fine) { .cta button:hover { background: #e9ffbd; } }
+@media (hover: hover) and (pointer: fine) { .cta button:hover { background: var(--accent-hover); } }
 .cta__note { margin-top: 24px; font-size: var(--step-body); color: var(--ink); min-height: 1.5em; }
 
 /* ---- Footer ---- */
@@ -329,7 +374,7 @@ details[open] .plus::after { transform: rotate(0deg); }
 
 /* ---- Phone ---- */
 @media (max-width: 48rem) {
-  .nav ul li:not(:last-child) { display: none; }
+  .nav ul li:not(:last-child):not(.nav__theme) { display: none; }
   .hero { min-height: 0; overflow: visible; }
   .hero__copy { padding-top: 104px; }
   .hero h1 { font-size: 10vw; }
@@ -363,7 +408,7 @@ details[open] .plus::after { transform: rotate(0deg); }
   .bars { position: relative; height: auto; grid-template-columns: 1fr; gap: 6px; margin-top: 32px; padding-right: var(--margin); }
   .bar { height: 28px; width: calc(var(--v, 0) * 100%); min-width: 6px; border-radius: 0 4px 4px 0; transform-origin: left; }
   .bar:nth-child(n+9) { display: none; }
-  .bar__val { left: auto; right: 8px; bottom: auto; top: 50%; transform: translateY(-50%); text-align: right; font-size: 17px; color: var(--accent-ink); }
+  .bar__val { left: auto; right: 8px; bottom: auto; top: 50%; transform: translateY(-50%); text-align: right; font-size: 17px; color: var(--bar-accent-ink); }
   .bar:not(.bar--accent) .bar__val { color: var(--ink); right: auto; left: calc(100% + 8px); }
   @keyframes grow { from { transform: scaleX(0.04); } to { transform: none; } }
   .ptable { display: none; }
@@ -392,7 +437,7 @@ details[open] .plus::after { transform: rotate(0deg); }
 .pricing-head-mobile__title { font-size: 9vw; }
 .pricing-head-mobile__note { margin-top: 10px; font-size: 16px; color: var(--muted); }
 .btn--quiet { background: var(--surface-2); color: var(--ink); }
-@media (hover: hover) and (pointer: fine) { .btn--quiet:hover { background: #333333; } }
+@media (hover: hover) and (pointer: fine) { .btn--quiet:hover { background: var(--bar); } }
 @media (max-width: 48rem) { .pricing-head-mobile { display: block; } }
 
 /* ---- Stagger index, set as data-i (the CSP forbids style attributes) ---- */

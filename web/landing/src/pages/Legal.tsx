@@ -143,7 +143,12 @@ const PRIVACY_SECTIONS: Section[] = [
   {
     id: 'cookies',
     title: 'Cookies',
-    body: <p>Macro sets no cookies of its own and uses no advertising or cross-site tracking.</p>,
+    body: (
+      <p>
+        Macro sets no cookies of its own and uses no advertising or cross-site tracking. If you switch between light and dark mode,
+        that choice is kept in your browser's local storage and never sent to us.
+      </p>
+    ),
   },
   {
     id: 'your-rights',

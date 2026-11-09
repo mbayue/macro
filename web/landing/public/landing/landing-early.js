@@ -5,3 +5,13 @@ if (/^#\/(run|probe)\//.test(location.hash) || location.hash === '#/') {
 }
 /* Reveal animations hide content only when scripting works. */
 document.documentElement.classList.add('js');
+/* Apply a saved dark theme before anything is drawn (light is the default). Same key as src/theme.ts. */
+try {
+  if (localStorage.getItem('macro-theme') === 'dark') {
+    document.documentElement.dataset.theme = 'dark';
+    var themeColor = document.querySelector('meta[name="theme-color"]');
+    if (themeColor) themeColor.setAttribute('content', '#0f0f0f');
+  }
+} catch (e) {
+  /* Storage blocked: stay light. */
+}

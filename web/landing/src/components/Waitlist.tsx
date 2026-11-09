@@ -94,6 +94,8 @@ export function Waitlist() {
               autoComplete="email"
               spellCheck={false}
               required
+              aria-invalid={state.kind === 'error'}
+              aria-describedby="cta-note"
               value={email}
               disabled={state.kind === 'sending'}
               onChange={(e) => setEmail(e.target.value)}
@@ -104,9 +106,13 @@ export function Waitlist() {
             </button>
           </h2>
           <div className="cta__turnstile" ref={box} />
-          <p className={state.kind === 'error' ? 'cta__note cta__note--bad' : 'cta__note'} aria-live="polite" data-reveal data-i="1">
-            {note}
-          </p>
+          {/* The reveal sits on a wrapper: React rewriting the note's className (for the error style)
+              would otherwise remove the "in" class that useMotion adds, and the note would fade out. */}
+          <div data-reveal data-i="1">
+            <p id="cta-note" className={state.kind === 'error' ? 'cta__note cta__note--bad' : 'cta__note'} aria-live="polite">
+              {note}
+            </p>
+          </div>
           <p className="cta__fine">
             We store only your email and the time you signed up. See the <a href="/privacy">privacy policy</a>.
           </p>

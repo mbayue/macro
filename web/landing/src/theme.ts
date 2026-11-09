@@ -1,7 +1,7 @@
 /**
- * Light (the default) and dark theme for the landing and legal pages. The theme is the
- * data-theme attribute on <html>; public/landing/landing-early.js applies a saved choice before
- * first paint, so the page never flashes the wrong theme. The choice is kept in local storage.
+ * Dark (the default, set as data-theme="dark" in each page's HTML) and light theme for the landing
+ * and legal pages. public/landing/landing-early.js applies a saved light choice before first paint,
+ * so the page never flashes the wrong theme. The choice is kept in local storage.
  */
 export type Theme = 'light' | 'dark';
 

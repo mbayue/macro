@@ -2,8 +2,8 @@
 @font-face { font-family: "Stack Sans Headline"; src: url("/landing/fonts/stack-sans-headline-300.woff2") format("woff2"); font-weight: 300; font-style: normal; font-display: swap; }
 @font-face { font-family: "Stack Sans Text"; src: url("/landing/fonts/stack-sans-text.woff2") format("woff2"); font-weight: 400 500; font-style: normal; font-display: swap; }
 /*
- * Colour tokens. Light is the default; html[data-theme="dark"] switches to the original Soot palette
- * (see src/theme.ts). Lime (--accent) is a fill colour in both themes; anywhere the accent is text,
+ * Colour tokens. :root holds the light palette; html[data-theme="dark"] (the default, set in the
+ * HTML) switches to the original Soot palette (see src/theme.ts). Lime (--accent) is a fill colour in both themes; anywhere the accent is text,
  * a marker, a border or a focus ring, use --accent-text, because lime on a light page is unreadable.
  * The product UI fragments (.gate, .tile--shot) are dark in both themes, like the app they show.
  */

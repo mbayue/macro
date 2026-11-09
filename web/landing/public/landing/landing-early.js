@@ -10,13 +10,14 @@ setTimeout(function () {
   var root = document.documentElement;
   if (!root.classList.contains('motion-ready')) root.classList.remove('js');
 }, 3000);
-/* Apply a saved dark theme before anything is drawn (light is the default). Same key as src/theme.ts. */
+/* Dark is the default (data-theme="dark" in the HTML). Apply a saved light choice before anything
+   is drawn. Same key as src/theme.ts. */
 try {
-  if (localStorage.getItem('macro-theme') === 'dark') {
-    document.documentElement.dataset.theme = 'dark';
+  if (localStorage.getItem('macro-theme') === 'light') {
+    delete document.documentElement.dataset.theme;
     var themeColor = document.querySelector('meta[name="theme-color"]');
-    if (themeColor) themeColor.setAttribute('content', '#0f0f0f');
+    if (themeColor) themeColor.setAttribute('content', '#f2f2ed');
   }
 } catch (e) {
-  /* Storage blocked: stay light. */
+  /* Storage blocked: stay dark. */
 }

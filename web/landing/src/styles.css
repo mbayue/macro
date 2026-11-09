@@ -178,14 +178,15 @@ a { color: inherit; }
 .showcase.is-on .switch__knob { transform: translateX(4em); background: var(--field-2); }
 
 /* ---- How it works: drag through the stages ---- */
-.how { margin-top: 0; display: grid; grid-template-columns: 1fr 1fr; min-height: 88svh; position: relative; }
-.how__clause { background: var(--surface); padding: 72px var(--margin) 160px; }
+.how { margin-top: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr auto; min-height: 88svh; position: relative; }
+.how__clause { background: var(--surface); padding: 72px var(--margin) 96px; }
 .how__clause h2 { font-size: var(--step-head); max-width: 12ch; transition: opacity 200ms ease; }
 .how__clause p { margin-top: 24px; max-width: 40ch; color: var(--ink); transition: opacity 200ms ease; }
-.how__shot { background: var(--field-1); display: grid; place-items: center; padding: 72px var(--margin) 160px; }
+.how__shot { background: var(--field-1); display: grid; place-items: center; padding: 72px var(--margin) 96px; }
 .how__shot img { width: min(640px, 100%); border-radius: 8px; transition: opacity 200ms ease; }
 .how.is-swapping .how__clause h2, .how.is-swapping .how__clause p, .how.is-swapping .how__shot img { opacity: 0; }
-.how__control { position: absolute; left: var(--margin); right: var(--margin); bottom: 28px; }
+/* The slider gets its own dark band under both halves: the white fill and the current label stay readable at every stop. */
+.how__control { grid-column: 1 / -1; position: relative; padding: 24px var(--margin) 28px; background: var(--surface); }
 .how__control input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 32px; background: transparent; cursor: pointer; }
 .how__control input[type="range"]::-webkit-slider-runnable-track { height: 8px; border-radius: 4px; background: transparent; }
 .how__track { position: absolute; left: 0; right: 0; top: 12px; height: 8px; border-radius: 4px; background: var(--bar); pointer-events: none; }
@@ -341,7 +342,7 @@ details[open] .plus::after { transform: rotate(0deg); }
   .showcase h2 { font-size: 26px; }
   .showcase p { font-size: 16px; }
   .switch { right: auto; left: var(--margin); top: 50%; font-size: 15vw; }
-  .how { grid-template-columns: 1fr; min-height: 0; }
+  .how { grid-template-columns: 1fr; grid-template-rows: none; min-height: 0; }
   .how__shot { order: 1; min-height: 46svh; padding: 32px var(--margin) 120px; }
   .how__control { position: relative; order: 2; left: 0; right: 0; bottom: 0; padding: 24px var(--margin) 0; background: var(--surface); }
   .how__control input[type="range"]::-webkit-slider-thumb { width: 40px; height: 40px; margin-top: -16px; }

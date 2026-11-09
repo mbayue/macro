@@ -188,7 +188,8 @@ const TERMS_SECTIONS: Section[] = [
     body: (
       <p>
         Macro is in early access. The live demo is free and can only load-test one demo shop that we run for that purpose. Testing
-        your own site, and the paid plans shown on the pricing table, are not available yet. Prices may change before they launch.
+        your own site on the hosted service is not available yet. There are no paid plans today; if they come later, their prices
+        will be shown before you can buy one.
       </p>
     ),
   },

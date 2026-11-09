@@ -4,7 +4,7 @@ import { Footer, Nav } from '../components/Chrome.tsx';
 import { HowItWorks } from '../components/HowItWorks.tsx';
 import { LatencyBars } from '../components/LatencyBars.tsx';
 import { PolicyGate } from '../components/PolicyGate.tsx';
-import { Pricing } from '../components/Pricing.tsx';
+import { FreeAccess } from '../components/FreeAccess.tsx';
 import { Waitlist } from '../components/Waitlist.tsx';
 import { FAQ } from '../data.ts';
 
@@ -143,7 +143,7 @@ export function Home() {
         </section>
 
         <LatencyBars />
-        <Pricing />
+        <FreeAccess />
 
         <section className="faq wrap" aria-labelledby="faq-title">
           <h2 id="faq-title">Before you ask</h2>

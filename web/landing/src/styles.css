@@ -410,3 +410,30 @@ details[open] .plus::after { transform: rotate(0deg); }
 .cta__fine { margin-top: 8px; font-size: var(--step-small); color: var(--muted); }
 .cta__fine a { color: var(--ink); }
 .cta input:disabled, .cta button:disabled { opacity: 0.6; cursor: progress; }
+
+/* ---- Free during early access (replaces the pricing table for now) ---- */
+.free { padding-top: 200px; display: grid; grid-template-columns: 4fr 8fr; gap: 0 32px; align-items: start; }
+.free__head h2 { font-size: var(--step-head); max-width: 11ch; }
+.free__head p { margin-top: 20px; max-width: 34ch; color: var(--muted); }
+.free__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.free__card { background: var(--surface); border-radius: var(--radius); padding: 28px; display: grid; gap: 28px; align-content: space-between; min-height: 440px; }
+.free__card--accent { background: var(--accent); color: var(--accent-ink); }
+.free__name { display: block; font: 500 var(--step-lead)/1.15 var(--text); letter-spacing: -0.01em; }
+.free__price { display: block; margin-top: 8px; font: 300 clamp(64px, 6vw, 104px)/0.95 var(--display); letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.free__lead { margin-top: 20px; max-width: 32ch; }
+.free__card ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: var(--step-small); }
+.free__card li { padding-top: 10px; border-top: 1px solid var(--surface-2); }
+.free__card--accent li { border-top-color: rgba(15, 15, 15, 0.18); }
+.free__card .btn { justify-self: start; }
+@media (max-width: 1100px) {
+  .free { grid-template-columns: 1fr; }
+  .free__head { margin-bottom: 32px; }
+  .free__head h2 { max-width: 16ch; }
+}
+@media (max-width: 48rem) {
+  .free { padding-top: 120px; }
+  .free__grid { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .free__card { padding: 20px; min-height: 0; gap: 24px; }
+  .free__price { font-size: 18vw; }
+  .free__card .btn { justify-self: stretch; }
+}

@@ -94,7 +94,9 @@ export interface Plan {
 }
 
 /**
- * Launch pricing. One run costs Macro about 2 cents on Vultr: about 9,000 input and 2,500
+ * Launch pricing, not shown while Macro is free in early access (the page renders
+ * components/FreeAccess.tsx instead; components/Pricing.tsx renders these plans).
+ * One run costs Macro about 2 cents on Vultr: about 9,000 input and 2,500
  * output tokens on Serverless Inference ($0.55 and $2.75 per million), plus about five minutes
  * of a $10-a-month VM. The paid tiers cover larger generator VMs for higher user counts.
  */
@@ -167,8 +169,8 @@ export const FAQ: readonly { q: string; a: string }[] = [
     a: 'Every number in the AI text is checked against the measured values and the plan. If one does not match, the explanation is withheld and a plain template is shown instead.',
   },
   {
-    q: 'Why is it this cheap?',
-    a: 'A run costs us about 2 cents on Vultr: a few thousand tokens on Serverless Inference and five minutes of a small VM. The paid plans pay for larger load generators and longer history.',
+    q: 'Is Macro free?',
+    a: 'Yes, for now. The live demo costs nothing, and the code is MIT-licensed, so you can run your own copy and pay only for your server and Vultr inference. One run costs about 2 cents on Vultr.',
   },
   {
     q: 'What runs inside the sandbox?',

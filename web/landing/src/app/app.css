@@ -58,6 +58,9 @@ a { text-underline-offset: 0.2em; }
 .rail__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rail__id { font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted); }
 .rail__foot { margin-top: auto; padding: 16px 6px 0; display: grid; gap: 10px; justify-items: start; }
+/* The theme button gets a resting tile, so it reads as a button on the rail. */
+.rail .theme-toggle { background: var(--surface-2); }
+@media (hover: hover) and (pointer: fine) { .rail .theme-toggle:hover { background: var(--bar); color: var(--bg); } }
 .rail__links { list-style: none; margin: 0; padding: 0 4px; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: var(--fs-xs); }
 .rail__links a { color: var(--muted); }
 /* Main is a column: the page, then the footer, pushed to the bottom of the screen when the page is short. */

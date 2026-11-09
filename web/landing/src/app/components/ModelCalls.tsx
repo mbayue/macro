@@ -43,10 +43,10 @@ export function ModelCalls({ calls }: { calls: readonly ModelCallView[] }) {
                   Latency (ms)
                 </th>
                 <th scope="col" className="num">
-                  Prompt tokens
+                  Input tokens
                 </th>
                 <th scope="col" className="num">
-                  Completion tokens
+                  Output tokens
                 </th>
                 <th scope="col" className="num">
                   Total tokens

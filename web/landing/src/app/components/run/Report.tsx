@@ -246,7 +246,14 @@ export function ReportStages({ report }: { report: CapacityReport }) {
 function RouteTable({ stage }: { stage: StageView }) {
   return (
     <TableWrap label={`Stage ${stage.displayIndex} routes`}>
-      <table className="table">
+      <table className="table table--routes">
+        <colgroup>
+          <col className="w-route" />
+          {METRIC_HEADS.map((h) => (
+            <col key={h} className="w-metric" />
+          ))}
+          <col className="w-verdict" />
+        </colgroup>
         <caption>
           Stage {stage.displayIndex} routes ({stage.vus} VUs)
         </caption>
@@ -258,7 +265,9 @@ function RouteTable({ stage }: { stage: StageView }) {
                 {h}
               </th>
             ))}
-            <th scope="col">Thresholds</th>
+            <th scope="col" className="end">
+              Thresholds
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -268,7 +277,7 @@ function RouteTable({ stage }: { stage: StageView }) {
                 {r.route}
               </th>
               <MetricCells m={r} />
-              <td>{r.exceedsThresholds ? <Badge tone="warn">Exceeded thresholds</Badge> : <span className="muted">Within</span>}</td>
+              <td className="end">{r.exceedsThresholds ? <Badge tone="warn">Exceeded thresholds</Badge> : <span className="muted">Within</span>}</td>
             </tr>
           ))}
         </tbody>

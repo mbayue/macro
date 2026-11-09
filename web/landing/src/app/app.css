@@ -153,6 +153,13 @@ a { text-underline-offset: 0.2em; }
 .table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 /* Index and date columns: left under their header, digits of equal width. */
 .table .idx { text-align: left; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Every per-stage route table shares one fixed column grid, so columns line up from table to table. */
+.table--routes { table-layout: fixed; min-width: 860px; }
+.table--routes .w-route { width: 15%; }
+.table--routes .w-metric { width: 9.5%; }
+.table--routes .w-verdict { width: 18.5%; }
+.table--routes caption { padding-top: 20px; font-size: var(--fs-sm); color: var(--ink); font-weight: 500; }
+.table--routes .end { text-align: right; padding-right: 0; }
 .table--calls { table-layout: fixed; }
 .table--calls .w-idx { width: 4%; }
 .table--calls .w-agent { width: 14%; }

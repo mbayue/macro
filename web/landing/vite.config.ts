@@ -6,13 +6,38 @@
  */
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 
+/**
+ * Dev server only: prerender each page the same way the production build does, so the dev
+ * pages match production (the legal pages have no client script and would otherwise be
+ * empty), and serve /privacy and /terms without the .html suffix like the Macro API does.
+ */
+function devPrerender(): Plugin {
+  return {
+    name: 'macro-dev-prerender',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        const [path, query] = (req.url ?? '').split('?');
+        if (path === '/privacy' || path === '/terms') req.url = `${path}.html${query !== undefined ? `?${query}` : ''}`;
+        next();
+      });
+    },
+    async transformIndexHtml(html, ctx) {
+      if (!ctx.server) return html;
+      const page = ctx.path === '/privacy.html' ? 'privacy' : ctx.path === '/terms.html' ? 'terms' : 'home';
+      const mod = (await ctx.server.ssrLoadModule('/src/entry-server.tsx')) as { render(p: string): string };
+      return html.replace('<!--app-->', mod.render(page));
+    },
+  };
+}
+
 export default defineConfig({
   root,
-  plugins: [react()],
+  plugins: [react(), devPrerender()],
   publicDir: 'public',
   build: {
     outDir: fileURLToPath(new URL('../dist', import.meta.url)),

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 /**
  * Run (`#/run/<id>`): the live board. While the test runs, the lime tile is the stage in progress
  * and the other tiles name the stage their numbers came from (metrics exist per finished stage).
@@ -47,18 +48,18 @@ export function RunPage({ id }: { id: string }) {
   const ended = isTerminal(model.run.status);
   const report = ended ? model.report : null;
   const limit = model.plan?.stopThresholds ?? report?.thresholds ?? null;
-  const reason = model.run.statusReason;
+  const reason = model.run.statusReason === null ? null : plainReason(model.run.statusReason);
 
   return (
     <div className="page">
       <header className="run-head">
         <div className="run-head__text">
-          <div className="run-head__status">
-            <StatusBadge status={model.run.status} />
-            {running && stale ? <Badge tone="warn">Progress may be out of date</Badge> : null}
-          </div>
           <h1 className="page__title">{model.plan?.name ?? report?.planName ?? 'Load test'}</h1>
           <p className="muted run-head__meta">
+            <span className="run-head__status">
+              <StatusBadge status={model.run.status} />
+              {running && stale ? <Badge tone="warn">Progress may be out of date</Badge> : null}
+            </span>
             <span>
               Run <span className="code">{model.run.id}</span>
             </span>
@@ -130,7 +131,12 @@ export function RunPage({ id }: { id: string }) {
       ) : (
         <>
           <LiveStages model={model} />
-          {ended && model.report === null && (model.run.status === 'completed' || model.run.status === 'halted' || model.run.status === 'stopped' || model.run.status === 'timed_out') ? (
+          {ended &&
+          model.report === null &&
+          (model.run.status === 'completed' ||
+            model.run.status === 'halted' ||
+            model.run.status === 'stopped' ||
+            model.run.status === 'timed_out') ? (
             <p className="muted" role="status">
               Building the capacity report.
             </p>
@@ -140,6 +146,20 @@ export function RunPage({ id }: { id: string }) {
       )}
     </div>
   );
+}
+
+/**
+ * Status reasons are written by the server with requirement terms (Supervisor_Agent, Stage_Verdict,
+ * Stop_Thresholds). Say them in plain words on screen.
+ */
+export function plainReason(text: string): string {
+  return text
+    .replace(/the Supervisor_Agent's decision/g, 'the supervisor (AI) decision')
+    .replace(/Supervisor_Agent/g, 'supervisor (AI)')
+    .replace(/Stop_Thresholds?/g, 'stop thresholds')
+    .replace(/Stage_Verdicts?/g, 'stage verdict')
+    .replace(/\b([A-Z][a-z]+)_([A-Z][a-z]+)\b/g, (_m, a: string, b: string) => `${a.toLowerCase()} ${b.toLowerCase()}`)
+    .replace(/\bStage (\d)/g, 'stage $1');
 }
 
 function lastDone(stages: readonly StageView[]): StageView | null {
@@ -166,17 +186,23 @@ function LiveTiles({ model, now }: { model: RunModel; now: number }) {
   return (
     <div className="tiles" role="group" aria-label="Live numbers">
       <div className={running ? 'tile tile--live' : 'tile'}>
-        <span className="tile__label">{cur ? (cur.total !== null ? `Stage ${cur.position} of ${cur.total}` : `Stage ${cur.position}`) : 'Starting'}</span>
+        <span className="tile__label">
+          {cur ? (cur.total !== null ? `Stage ${cur.position} of ${cur.total}` : `Stage ${cur.position}`) : 'Starting'}
+        </span>
         <span className="tile__value">{cur ? cur.vus : DASH}</span>
         <span className="tile__sub">
-          {cur ? 'virtual users' : 'preparing the first sandbox'}
-          {stageSec !== null && top ? `, ${Math.min(stageSec, top.durationSec)} s of ${top.durationSec} s` : ''}
+          {cur ? 'VUs' : 'preparing the first sandbox'}
+          {stageSec !== null && top ? `, ${Math.min(stageSec, top.durationSec)}\u00a0s of ${top.durationSec}\u00a0s` : ''}
         </span>
+        {stageSec !== null && top ? <TileProgress value={Math.min(1, stageSec / Math.max(1, top.durationSec))} /> : null}
       </div>
       <div className="tile">
         <span className="tile__label">{done ? `p95 at stage ${done.index + 1}` : 'p95 latency'}</span>
         <span className="tile__value">{m ? `${fmtMs(m.p95)} ms` : DASH}</span>
-        <span className="tile__sub">{limit ? `limit ${fmtMs(limit.p95Ms)} ms` : ''}{m ? '' : limit ? ', after stage 1 ends' : 'after stage 1 ends'}</span>
+        <span className="tile__sub">
+          {limit ? `limit ${fmtMs(limit.p95Ms)} ms` : ''}
+          {m ? '' : limit ? ', after stage 1 ends' : 'after stage 1 ends'}
+        </span>
       </div>
       <div className="tile">
         <span className="tile__label">{done ? `Error rate at stage ${done.index + 1}` : 'Error rate'}</span>
@@ -186,7 +212,7 @@ function LiveTiles({ model, now }: { model: RunModel; now: number }) {
       <div className="tile">
         <span className="tile__label">Safe capacity so far</span>
         <span className="tile__value">{safe ?? DASH}</span>
-        <span className="tile__sub">{safe !== null ? 'users, highest stage that passed' : 'no stage has passed yet'}</span>
+        <span className="tile__sub">{safe !== null ? 'VUs, highest stage that passed' : 'no stage has passed yet'}</span>
       </div>
     </div>
   );
@@ -194,8 +220,26 @@ function LiveTiles({ model, now }: { model: RunModel; now: number }) {
 
 /** The same four places as the live tiles, now holding the report's answers. */
 function ReportTiles({ model }: { model: RunModel }) {
-  const items = headlineItems(model.report!);
+  const report = model.report!;
+  const items = headlineItems(report);
   const [safe, breaking, route] = items;
+  const th = report.thresholds;
+  // Where the first degraded route went over: its stage and p95, from the same stored rows.
+  const firstRoute = report.headline.firstDegradedRoute;
+  const where = firstRoute
+    ? report.stages.map((s) => ({ s, r: s.routes.find((r) => r.route === firstRoute && r.exceedsThresholds) })).find((x) => x.r)
+    : undefined;
+  const safeSub =
+    report.headline.safeCapacity !== null
+      ? `VUs, the highest stage whose overall p95 stayed under ${th.p95Ms} ms and errors under ${th.errorRatePct}%`
+      : 'no stage stayed under both limits';
+  const breakSub =
+    report.headline.breakingPoint !== null
+      ? 'VUs, the first stage over a limit overall'
+      : 'every stage stayed under both thresholds overall';
+  const routeSub = where?.r
+    ? `p95 ${where.r.display.p95} ms at stage ${where.s.displayIndex} (${where.s.vus} VUs), over the ${th.p95Ms} ms limit`
+    : 'no single route went over a limit';
   const tile = (it: (typeof items)[number] | undefined, lead: boolean, sub: string) =>
     it ? (
       <div className={lead ? 'tile tile--live' : `tile tile--${it.tone ?? 'neutral'}`}>
@@ -205,14 +249,14 @@ function ReportTiles({ model }: { model: RunModel }) {
       </div>
     ) : null;
   return (
-    <div className="tiles" role="group" aria-label="Headline values">
-      {tile(safe, true, 'highest stage that stayed under both limits')}
-      {tile(breaking, false, 'first stage that broke a limit')}
-      {tile(route, false, 'first route over a limit')}
+    <div className="tiles tiles--report" role="group" aria-label="Headline values">
+      {tile(safe, true, safeSub)}
+      {tile(breaking, false, breakSub)}
+      {tile(route, false, routeSub)}
       <div className="tile">
         <span className="tile__label">Run status</span>
-        <span className="tile__value tile__value--text">{model.report!.headline.status.replace(/_/g, ' ')}</span>
-        <span className="tile__sub">sandbox {model.report!.runtime}</span>
+        <span className="tile__value tile__value--text">{report.headline.status.replace(/_/g, ' ')}</span>
+        <span className="tile__sub">sandbox {report.runtime}</span>
       </div>
     </div>
   );
@@ -235,6 +279,19 @@ function profile(model: RunModel, now: number): ProfileStage[] {
     if (s.status === 'error') return { vus, durationSec, state: 'error' };
     return { vus, durationSec, state: s.verdict === 'fail' ? 'fail' : 'pass' };
   });
+}
+
+/** Progress through the running stage, drawn along the bottom of the lime tile. */
+function TileProgress({ value }: { value: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    ref.current?.style.setProperty('--p', String(value));
+  }, [value]);
+  return (
+    <span className="tile__progress" aria-hidden="true">
+      <span ref={ref} />
+    </span>
+  );
 }
 
 /** Live stage table, including planned stages not started yet ("pending", or "not run" after an early end). */
@@ -267,7 +324,7 @@ function LiveStages({ model }: { model: RunModel }) {
                 <th scope="col" className="num">
                   Duration
                 </th>
-                <th scope="col">Result</th>
+                <th scope="col">Verdict</th>
                 {['Requests', 'Requests/s', 'Error rate', 'HTTP 429', 'p50 (ms)', 'p95 (ms)', 'p99 (ms)'].map((h) => (
                   <th key={h} scope="col" className="num">
                     {h}
@@ -294,9 +351,25 @@ function LiveStages({ model }: { model: RunModel }) {
                       </>
                     ) : (
                       <>
-                        <td>{s.status === 'running' ? <Badge tone="live">running</Badge> : s.verdict ? <Badge tone={s.verdict === 'pass' ? 'ok' : 'bad'}>{s.verdict}</Badge> : DASH}</td>
+                        <td>
+                          {s.status === 'running' ? (
+                            <Badge tone="live">running</Badge>
+                          ) : s.verdict ? (
+                            <Badge tone={s.verdict === 'pass' ? 'ok' : 'bad'}>{s.verdict}</Badge>
+                          ) : (
+                            DASH
+                          )}
+                        </td>
                         {m
-                          ? [fmtCount(m.requests), fmtRps(m.rps), fmtPct(m.errorRatePct), fmtCount(m.http429), fmtMs(m.p50), fmtMs(m.p95), fmtMs(m.p99)].map((v, i) => (
+                          ? [
+                              fmtCount(m.requests),
+                              fmtRps(m.rps),
+                              fmtPct(m.errorRatePct),
+                              fmtCount(m.http429),
+                              fmtMs(m.p50),
+                              fmtMs(m.p95),
+                              fmtMs(m.p99),
+                            ].map((v, i) => (
                               <td key={i} className="num">
                                 {v}
                               </td>
@@ -326,7 +399,14 @@ function LiveStages({ model }: { model: RunModel }) {
       )}
       <KeyValues
         items={[
-          model.plan ? ['Stop limits', <span className="num">p95 {fmtMs(model.plan.stopThresholds.p95Ms)} ms, errors {model.plan.stopThresholds.errorRatePct}%</span>] : null,
+          model.plan
+            ? [
+                'Stop thresholds',
+                <span className="num">
+                  p95 {fmtMs(model.plan.stopThresholds.p95Ms)} ms, error rate {model.plan.stopThresholds.errorRatePct}%
+                </span>,
+              ]
+            : null,
         ]}
       />
     </section>

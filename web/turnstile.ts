@@ -162,3 +162,12 @@ export function disposeWidget(): void {
   failInflight('Turnstile widget disposed');
   removeWidget(window.turnstile);
 }
+
+/**
+ * Remove the widget only if it lives in `container` (a part of a view is going away). A widget
+ * another part of the page has moved elsewhere, and its pending token, are left alone.
+ */
+export function disposeWidgetIn(container: HTMLElement | null): void {
+  if (container === null || widgetContainer !== container) return;
+  disposeWidget();
+}

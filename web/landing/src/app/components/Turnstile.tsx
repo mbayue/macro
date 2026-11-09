@@ -5,14 +5,18 @@
  * and disposed when the screen goes away.
  */
 import { useCallback, useEffect, useRef } from 'react';
-import { disposeWidget, getToken, resetWidget } from '../../../../turnstile.ts';
+import { disposeWidgetIn, getToken, resetWidget } from '../../../../turnstile.ts';
 import { useApp } from '../context.tsx';
 
 export function useTurnstile() {
   const { config } = useApp();
   const box = useRef<HTMLDivElement>(null);
 
-  useEffect(() => () => disposeWidget(), []);
+  // Only this slot's own widget goes away with it: another slot may be waiting for a token.
+  useEffect(() => {
+    const el = box.current;
+    return () => disposeWidgetIn(el);
+  }, []);
 
   const token = useCallback(async (): Promise<string> => {
     if (!box.current) throw new Error('Turnstile container is not mounted');

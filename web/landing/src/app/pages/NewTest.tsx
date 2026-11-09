@@ -318,7 +318,7 @@ function PlanDetails({ plan, rationale }: { plan: TestPlan; rationale: string | 
                 <tr>
                   <th scope="col">Stage</th>
                   <th scope="col" className="num">
-                    Virtual users
+                    VUs
                   </th>
                   <th scope="col" className="num">
                     Duration (s)
@@ -455,7 +455,7 @@ function ApprovePanel({
       <KeyValues
         items={[
           ['Target', <span className="code">{plan.target}</span>],
-          ['Maximum virtual users', <span className="num">{fmt(maxVus)}</span>],
+          ['Maximum VUs', <span className="num">{fmt(maxVus)}</span>],
           ['Total stage duration', <span className="num">{fmt(totalSec)} s</span>],
         ]}
       />

@@ -242,7 +242,6 @@ function ProbeBody({ run, events, pollFailed }: { run: RunView; events: Map<numb
             </p>
             <div className="probe-result__text">
               <p>
-                <Badge tone={wording.verdict === 'passed' ? 'ok' : wording.verdict === 'failed' ? 'bad' : 'warn'}>{wording.badge}</Badge>{' '}
                 <b>{wording.headline}</b>
               </p>
               {wording.details.map((line) => (

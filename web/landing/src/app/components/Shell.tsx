@@ -82,7 +82,7 @@ export function Shell({
         </a>
         <ul className="rail__list">
           {item('#/runs', 'Recent runs', route.view === 'runs')}
-          {item('#/probe', 'Containment probe', route.view === 'probe-start')}
+          {item('#/probe', 'Containment probe', route.view === 'probe-start' || route.view === 'probe')}
         </ul>
 
         {recent.length > 0 ? (

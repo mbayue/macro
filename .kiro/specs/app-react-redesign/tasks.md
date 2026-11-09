@@ -12,6 +12,6 @@ Standing rule: commit locally after each task; do not push or deploy until the u
 - [x] 4. Run screen, report in place: headline tiles, notices, chart from `buildChartGeometry` as React SVG, stage and route tables, decisions, events, AI section, model calls, re-run with confirm, runs of this plan, compare picker and comparison tables.
 - [x] 5. Probe screen: load, 1 s poll and stream, running state, result, actions table, events, explanations, end announcement, redirects.
 - [x] 6. Recent runs screen and the rail's recent list (status lookup, forget on not found).
-- [ ] 7. Responsive and themes: 1440, 1280 and 390 widths in dark and light; keyboard pass; reduced motion.
-- [ ] 8. Finish: impeccable detector run, finish review, fixes, DESIGN.md.
+- [x] 7. Responsive and themes: 1440, 1280 and 390 widths in dark and light; keyboard pass; reduced motion.
+- [x] 8. Finish: impeccable detector run, finish review, fixes, DESIGN.md.
 - [ ] 9. Switch: serve the new app at `/app/`, move pure logic into `src/app/lib/`, delete the old `web/*.ts` views, `web/index.html` and `web/style.css`, update the build script and README. Local review, then ship on the user's word.

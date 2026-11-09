@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-09T13:40:00Z",
+  "title": "Design System: Macro",
+  "extensions": {
+    "colorMeta": {
+      "lime": { "role": "primary", "displayName": "Bench Lime", "canonical": "#dafa9c" },
+      "olive": { "role": "primary", "displayName": "Bench Olive", "canonical": "#4a6614" },
+      "soot": { "role": "neutral", "displayName": "Soot", "canonical": "#0f0f0f" },
+      "paper": { "role": "neutral", "displayName": "Paper", "canonical": "#f2f2ed" }
+    },
+    "motion": [
+      { "name": "ease", "value": "cubic-bezier(0.23, 1, 0.32, 1)", "purpose": "Press feedback and state transitions; 150 to 260 ms in the app." }
+    ],
+    "breakpoints": [
+      { "name": "board-stack", "value": "1180px" },
+      { "name": "rail-to-topbar", "value": "860px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one primary action on a screen.",
+      "html": "<button class=\"ds-btn\">Draft a plan</button>",
+      "css": ".ds-btn { background: #dafa9c; color: #0f0f0f; border: 0; border-radius: 6px; min-height: 40px; padding: 0 16px; font: 500 13px/1 'Stack Sans Text', system-ui, sans-serif; cursor: pointer; transition: transform 140ms cubic-bezier(0.23,1,0.32,1), background-color 160ms ease; } .ds-btn:hover { background: #e9ffbd; } .ds-btn:active { transform: scale(0.97); } .ds-btn:focus-visible { outline: 3px solid #dafa9c; outline-offset: 3px; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "Stop run: transparent with a red edge.",
+      "html": "<button class=\"ds-btn-danger\">Stop run</button>",
+      "css": ".ds-btn-danger { background: transparent; color: #ff8a80; box-shadow: inset 0 0 0 1px #ff8a80; border: 0; border-radius: 6px; min-height: 40px; padding: 0 16px; font: 500 13px/1 'Stack Sans Text', system-ui, sans-serif; cursor: pointer; } .ds-btn-danger:hover { background: #ff8a80; color: #0f0f0f; } .ds-btn-danger:focus-visible { outline: 3px solid #dafa9c; outline-offset: 3px; }"
+    },
+    {
+      "name": "Live Tile",
+      "kind": "card",
+      "refersTo": "tile-live",
+      "description": "The reading that matters now, in lime, with its source named.",
+      "html": "<div class=\"ds-tile\"><span class=\"ds-tile-l\">Stage 3 of 5</span><span class=\"ds-tile-v\">100</span><span class=\"ds-tile-s\">VUs, 52 s of 60 s</span></div>",
+      "css": ".ds-tile { background: #dafa9c; color: #0f0f0f; border-radius: 6px; padding: 18px 20px 26px; display: grid; gap: 6px; width: 260px; font-family: 'Stack Sans Text', system-ui, sans-serif; } .ds-tile-l, .ds-tile-s { color: #3d4a24; font-size: 13px; } .ds-tile-v { font: 300 44px/1 'Stack Sans Headline', system-ui, sans-serif; letter-spacing: -0.03em; }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "description": "Status word with its tone colour.",
+      "html": "<span class=\"ds-badge\">pass</span>",
+      "css": ".ds-badge { display: inline-flex; padding: 1px 8px; border-radius: 4px; border: 1px solid currentColor; color: #8fe3a6; font: 500 12px/1.5 'Stack Sans Text', system-ui, sans-serif; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Test Bench",
+    "overview": "Macro looks like a well-kept test bench: a dark, flat field where the instrument readings are the only bright things. Lime marks the one live or primary thing on a screen, and large light-weight figures carry the numbers people came for.",
+    "keyCharacteristics": [
+      "Flat surfaces, no shadows, no gradients; depth comes from three tonal steps.",
+      "One accent, lime, used as a fill; olive where the accent must be text in light mode.",
+      "Numbers lead: titles and readings in Stack Sans Headline 300, everything else in Stack Sans Text.",
+      "State colours only where they carry meaning, always with words."
+    ],
+    "rules": [
+      { "name": "The One Live Thing Rule", "body": "On any screen, lime marks one thing: the primary action, or the answer that matters now.", "section": "colors" },
+      { "name": "The Olive Swap Rule", "body": "If the accent is text, a line or a focus ring, use --accent-text: lime in dark mode, olive in light mode.", "section": "colors" },
+      { "name": "The Readings Rule", "body": "Headline 300 is for titles and numbers only; controls, labels and data stay in Stack Sans Text.", "section": "typography" }
+    ],
+    "dos": [
+      "Do name the source of every number on screen (which stage, which limit).",
+      "Do keep status words next to every colour signal.",
+      "Do use the shared tokens.css for any new surface, and both themes."
+    ],
+    "donts": [
+      "Don't add shadows, gradients, glass or glows.",
+      "Don't put a badge or label above a heading as an eyebrow.",
+      "Don't use lime as text on a light ground; use olive.",
+      "Don't show internal requirement terms (Supervisor_Agent, Stop_Thresholds) in copy."
+    ]
+  }
+}

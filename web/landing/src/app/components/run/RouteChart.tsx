@@ -10,8 +10,9 @@ import { niceScale } from '../../../../../chart.ts';
 import { useWidth } from '../../hooks/useWidth.ts';
 
 const H = 300;
-const MIN_W = 560;
-const M = { top: 24, right: 132, bottom: 44, left: 56 };
+const MIN_W = 320;
+/** Dash patterns for the quiet routes, so each line can be told apart without colour. */
+const DASHES = ['', '7 4', '2 4', '10 3 2 3', '4 3'];
 
 interface Series {
   route: string;
@@ -21,6 +22,7 @@ interface Series {
 export function RouteChart({ stages, plan, limitMs }: { stages: readonly StageView[]; plan: TestPlan | null; limitMs: number }) {
   const [box, measured] = useWidth<HTMLDivElement>(720);
   const W = Math.max(MIN_W, measured);
+  const M = { top: 24, right: W < 520 ? 124 : 156, bottom: 44, left: W < 520 ? 44 : 56 };
   const total = Math.max(plan?.stages.length ?? 0, ...stages.map((s) => s.index + 1), 1);
   const done = stages.filter((s) => s.status === 'done' && s.metrics !== null);
 
@@ -51,15 +53,21 @@ export function RouteChart({ stages, plan, limitMs }: { stages: readonly StageVi
         series.map((s) => `${s.route}: ${s.points.map((p) => `stage ${p.stage + 1} ${fmtMs(p.p95)} ms`).join(', ')}`).join('. ') +
         '.';
 
-  // End labels, nudged apart so they never overlap.
+  // End labels, nudged apart from the bottom up so none overlap or drop into the axis labels.
+  const floor = M.top + ph - 4;
   const labels = series
-    .map((s) => ({ route: s.route, y: y(last(s)), lead: s === lead, x: x(s.points[s.points.length - 1]?.stage ?? 0) }))
-    .sort((a, b) => a.y - b.y);
+    .map((s) => ({
+      route: s.route,
+      y: Math.min(y(last(s)) + 4, floor),
+      at: y(last(s)),
+      lead: s === lead,
+      x: x(s.points[s.points.length - 1]?.stage ?? 0),
+    }))
+    .sort((a, b) => b.y - a.y);
   for (let i = 1; i < labels.length; i++) {
-    const prev = labels[i - 1]!;
-    if (labels[i]!.y - prev.y < 16) labels[i]!.y = prev.y + 16;
+    const below = labels[i - 1]!;
+    if (below.y - labels[i]!.y < 15) labels[i]!.y = below.y - 15;
   }
-
   return (
     <div ref={box} className="chart-box">
       <svg className="route-chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-labelledby="route-chart-title route-chart-desc">
@@ -75,12 +83,17 @@ export function RouteChart({ stages, plan, limitMs }: { stages: readonly StageVi
         ))}
         {Array.from({ length: total }, (_, i) => (
           <text key={i} className="route-chart__tick" x={x(i)} y={H - M.bottom + 22} textAnchor="middle">
-            Stage {i + 1}
+            {W < 520 ? i + 1 : `Stage ${i + 1}`}
           </text>
         ))}
+        {W < 520 ? (
+          <text className="route-chart__tick" x={M.left + pw / 2} y={H - 4} textAnchor="middle">
+            Stage
+          </text>
+        ) : null}
         <line className="route-chart__limit" x1={M.left} x2={M.left + pw} y1={y(limitMs)} y2={y(limitMs)} />
         <text className="route-chart__limit-label" x={M.left + 8} y={y(limitMs) - 8}>
-          stop limit {fmtMs(limitMs)} ms
+          stop threshold {fmtMs(limitMs)} ms
         </text>
         {series
           .filter((s) => s !== lead)
@@ -88,20 +101,32 @@ export function RouteChart({ stages, plan, limitMs }: { stages: readonly StageVi
           .map((s) => {
             const d = s.points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.stage).toFixed(1)} ${y(p.p95).toFixed(1)}`).join(' ');
             const cls = s === lead ? 'route-chart__line is-lead' : 'route-chart__line';
+            const quiet = series.filter((q) => q !== lead).indexOf(s);
+            const dash = s === lead ? undefined : DASHES[quiet % DASHES.length] || undefined;
             return (
               <g key={s.route} className={cls}>
-                <path d={d} />
+                <path d={d} strokeDasharray={dash} />
                 {s.points.map((p) => (
                   <circle key={p.stage} cx={x(p.stage)} cy={y(p.p95)} r={s === lead ? 4.5 : 3.5} />
                 ))}
               </g>
             );
           })}
-        {labels.map((l) => (
-          <text key={l.route} className={l.lead ? 'route-chart__name is-lead' : 'route-chart__name'} x={l.x + 12} y={l.y + 4}>
-            {l.route}
-          </text>
-        ))}
+        {labels.map((l) => {
+          // Each label carries a swatch drawn in its line's own dash pattern, and a leader to its last point.
+          const quiet = series.filter((q) => q !== lead).findIndex((q) => q.route === l.route);
+          const dash = l.lead ? undefined : DASHES[quiet % DASHES.length] || undefined;
+          const ly = l.y - 4;
+          return (
+            <g key={l.route} className={l.lead ? 'route-chart__label is-lead' : 'route-chart__label'}>
+              {Math.abs(ly - l.at) > 2 ? <path className="route-chart__leader" d={`M${l.x + 5} ${l.at} L${l.x + 10} ${ly}`} /> : null}
+              <line className="route-chart__swatch" x1={l.x + 12} x2={l.x + 30} y1={ly} y2={ly} strokeDasharray={dash} />
+              <text className={l.lead ? 'route-chart__name is-lead' : 'route-chart__name'} x={l.x + 35} y={l.y}>
+                {l.route}
+              </text>
+            </g>
+          );
+        })}
         {series.length === 0 ? (
           <text className="route-chart__empty" x={M.left + pw / 2} y={M.top + ph / 2} textAnchor="middle">
             Latency appears here when stage 1 finishes.

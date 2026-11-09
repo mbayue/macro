@@ -39,7 +39,9 @@ export function StageProfile({ stages, compact = false }: { stages: readonly Pro
             {s.state === 'running' ? <span className="profile__fill" /> : null}
           </span>
           <span className="profile__label">
-            <b>{s.vus.toLocaleString('en-US')}</b> users
+            <span>
+              <b>{s.vus.toLocaleString('en-US')}</b> VUs
+            </span>
             {compact ? null : <span>{s.durationSec} s</span>}
           </span>
         </div>

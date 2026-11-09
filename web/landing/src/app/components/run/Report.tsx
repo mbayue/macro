@@ -121,11 +121,12 @@ export function ReportChart({ report }: { report: CapacityReport }) {
           <ul className="legend">
             <li>
               <span className="legend__swatch legend__swatch--line" aria-hidden="true" />
-              p95 latency (left axis), limit {report.thresholds.p95Ms} ms (dashed line)
+              p95 latency, left axis. Dashed: {report.thresholds.p95Ms}
+              {'\u00a0'}ms threshold
             </li>
             <li>
               <span className="legend__swatch legend__swatch--bar" aria-hidden="true" />
-              Error rate (right axis), limit {report.thresholds.errorRatePct}% (dotted line)
+              Error rate, right axis. Dotted: {report.thresholds.errorRatePct}% threshold
             </li>
           </ul>
           <p className="muted">The stage table below holds the same numbers. Stages without metrics are not drawn.</p>

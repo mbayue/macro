@@ -10,7 +10,7 @@ const STEPS = [
 
 export function NextUp() {
   return (
-    <section className="next" aria-labelledby="next-steps-heading">
+    <section className="panel next" aria-labelledby="next-steps-heading">
       <h2 id="next-steps-heading">After you draft</h2>
       <ol className="next__list">
         {STEPS.map((s) => (

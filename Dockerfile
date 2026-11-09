@@ -8,11 +8,12 @@ WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --production
 
-# ---- 2. bundle the Web_UI into web/dist ----
+# ---- 2. build the web front end into web/dist (the app, and the React + Vite landing site) ----
 FROM oven/bun:1.4-slim AS web
 WORKDIR /app
-COPY package.json tsconfig.json ./
-COPY --from=deps /app/node_modules ./node_modules
+COPY package.json bun.lock tsconfig.json ./
+# The build needs the dev dependencies (Vite, React); none of them reach the runtime image.
+RUN bun install --frozen-lockfile
 COPY scripts ./scripts
 COPY web ./web
 # web/*.ts imports a few pure modules from src/ (formatters, types), so the bundler needs it.

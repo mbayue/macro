@@ -249,3 +249,18 @@ export interface GateDemoResponse {
   gate: Extract<GateView, { status: 'rejected' }>;
   requestsSent: 0;
 }
+
+// ---- POST /api/waitlist -----------------------------------------------------
+
+export interface WaitlistRequest {
+  email: string;
+  turnstileToken: string;
+}
+
+/**
+ * Always the same body, whether the email was new or already on the list, so the
+ * endpoint never reveals who has signed up.
+ */
+export interface WaitlistResponse {
+  ok: true;
+}

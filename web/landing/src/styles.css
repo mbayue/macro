@@ -225,7 +225,7 @@ a { color: inherit; }
 .stats__note { margin-top: 14px; font-size: var(--step-body); color: var(--ink); max-width: 48ch; min-height: 3em; }
 .bars { position: absolute; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 8px; align-items: end; height: 62vh; }
 .bar {
-  position: relative; height: calc(var(--v) / 1611 * 58vh); min-height: 6px;
+  position: relative; height: calc(var(--v, 0) * 58vh); min-height: 6px;
   background: var(--bar); border: 0; padding: 0; cursor: pointer;
   border-radius: 4px 4px 0 0;
   transform-origin: bottom; transition: background-color 150ms ease;
@@ -360,7 +360,7 @@ details[open] .plus::after { transform: rotate(0deg); }
   .stats__figure { font-size: 26vw; }
   .stats__claim { font-size: 22px; }
   .bars { position: relative; height: auto; grid-template-columns: 1fr; gap: 6px; margin-top: 32px; padding-right: var(--margin); }
-  .bar { height: 28px; width: calc(var(--v) / 1611 * 100%); min-width: 6px; border-radius: 0 4px 4px 0; transform-origin: left; }
+  .bar { height: 28px; width: calc(var(--v, 0) * 100%); min-width: 6px; border-radius: 0 4px 4px 0; transform-origin: left; }
   .bar:nth-child(n+9) { display: none; }
   .bar__val { left: auto; right: 8px; bottom: auto; top: 50%; transform: translateY(-50%); text-align: right; font-size: 17px; color: var(--accent-ink); }
   .bar:not(.bar--accent) .bar__val { color: var(--ink); right: auto; left: calc(100% + 8px); }
@@ -393,3 +393,19 @@ details[open] .plus::after { transform: rotate(0deg); }
 .btn--quiet { background: var(--surface-2); color: var(--ink); }
 @media (hover: hover) and (pointer: fine) { .btn--quiet:hover { background: #333333; } }
 @media (max-width: 48rem) { .pricing-head-mobile { display: block; } }
+
+/* ---- Stagger index, set as data-i (the CSP forbids style attributes) ---- */
+[data-i="1"] { --i: 1; } [data-i="2"] { --i: 2; } [data-i="3"] { --i: 3; } [data-i="4"] { --i: 4; }
+[data-i="5"] { --i: 5; } [data-i="6"] { --i: 6; } [data-i="7"] { --i: 7; } [data-i="8"] { --i: 8; }
+
+/* ---- Pricing note ---- */
+.pricing__cost { margin-top: 28px; max-width: 60ch; font-size: var(--step-small); color: var(--muted); }
+.plan-block dl > div { display: grid; gap: 4px; }
+
+/* ---- Waitlist ---- */
+.cta__turnstile:empty { display: none; }
+.cta__turnstile { margin-top: 20px; }
+.cta__note--bad { color: var(--bad); }
+.cta__fine { margin-top: 8px; font-size: var(--step-small); color: var(--muted); }
+.cta__fine a { color: var(--ink); }
+.cta input:disabled, .cta button:disabled { opacity: 0.6; cursor: progress; }

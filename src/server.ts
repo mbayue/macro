@@ -32,6 +32,7 @@ import type {
   RunView,
   StartResponse,
   StopResponse,
+  WaitlistResponse,
 } from './api-types.ts';
 import { planTrafficEvent } from './agents/planner.ts';
 import type { PlanOutcome } from './agents/planner.ts';
@@ -91,6 +92,7 @@ const MSG = {
   tooLarge: 'The request body is larger than 64 KiB.',
   trafficEvent: `The Traffic_Event must be text of ${TRAFFIC_EVENT_MIN} to 1,000 characters after leading and trailing spaces are removed.`,
   turnstile: 'Human verification failed. Please try again.',
+  email: 'Enter a valid email address.',
   inferenceNotConfigured: 'AI planning is not configured on this server.',
   planningFailed: 'The planning model could not produce a usable plan. Please try again.',
   planRejected: 'The Test_Plan was rejected. Nothing was stored and no Run was started.',
@@ -263,6 +265,48 @@ const GateDemoBody = z.object({ scenario: z.enum(['other_host', 'too_big', 'unkn
 
 /** At most this many gate-demo requests per client IP in any rolling minute (in memory only). */
 export const GATE_DEMO_LIMIT = { max: 30, windowMs: 60_000 } as const;
+
+// ------------------------------------------------------------------- waitlist
+
+const WaitlistBody = z.object({ email: z.string().max(320), turnstileToken: z.unknown().optional() });
+
+/** At most this many waitlist sign-ups per client IP in any rolling hour (in memory only). */
+export const WAITLIST_LIMIT = { max: 5, windowMs: 3_600_000 } as const;
+
+/** Longest address SMTP allows (RFC 5321 path limit). */
+const EMAIL_MAX = 254;
+const EMAIL_RE = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
+
+/** Trimmed, lower-cased email, or null when it is not a plausible address. */
+export function normaliseEmail(raw: string): string | null {
+  const email = raw.trim().toLowerCase();
+  if (email.length < 6 || email.length > EMAIL_MAX) return null;
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u001f\u007f<>"'`,;\\]/.test(email)) return null;
+  return EMAIL_RE.test(email) ? email : null;
+}
+
+/** A per-key rolling-window limiter kept in memory. */
+function rollingLimiter(limit: { max: number; windowMs: number }) {
+  const hits = new Map<string, number[]>();
+  return (key: string, at: number): { ok: true } | { ok: false; retryAt: number } => {
+    const since = at - limit.windowMs;
+    if (hits.size > 1000) {
+      for (const [k, list] of hits) {
+        if (list.every((t) => t <= since)) hits.delete(k);
+      }
+    }
+    const recent = (hits.get(key) ?? []).filter((t) => t > since);
+    const oldest = recent[0];
+    if (oldest !== undefined && recent.length >= limit.max) {
+      hits.set(key, recent);
+      return { ok: false, retryAt: oldest + limit.windowMs };
+    }
+    recent.push(at);
+    hits.set(key, recent);
+    return { ok: true };
+  };
+}
 
 interface GateDemoCase {
   title: string;
@@ -668,25 +712,41 @@ export function createApp(deps: AppDeps): App {
   };
 
   // Per-IP rolling limit for /api/gate-demo. Memory only; never touches the store.
-  const gateDemoHits = new Map<string, number[]>();
+  const gateDemoAllow = rollingLimiter(GATE_DEMO_LIMIT);
+  // Per-IP rolling limit for /api/waitlist. Memory only.
+  const waitlistAllow = rollingLimiter(WAITLIST_LIMIT);
 
-  function gateDemoAllow(ip: string, at: number): { ok: true } | { ok: false; retryAt: number } {
-    const since = at - GATE_DEMO_LIMIT.windowMs;
-    if (gateDemoHits.size > 1000) {
-      for (const [key, hits] of gateDemoHits) {
-        if (hits.every((t) => t <= since)) gateDemoHits.delete(key);
-      }
+  const postWaitlist: Handler = async ({ req, ip }) => {
+    const at = now();
+    const allowed = waitlistAllow(ip, at);
+    if (!allowed.ok) {
+      return apiError(
+        429,
+        'rate_limited',
+        'Too many sign-ups from this connection. Please try again later.',
+        { retryAt: allowed.retryAt },
+        retryAfter(allowed.retryAt, at),
+      );
     }
-    const recent = (gateDemoHits.get(ip) ?? []).filter((t) => t > since);
-    const oldest = recent[0];
-    if (oldest !== undefined && recent.length >= GATE_DEMO_LIMIT.max) {
-      gateDemoHits.set(ip, recent);
-      return { ok: false, retryAt: oldest + GATE_DEMO_LIMIT.windowMs };
+    const read = await readJsonBody(req);
+    if (!read.ok) return read.res;
+    const parsed = WaitlistBody.safeParse(read.value);
+    if (!parsed.success) return apiError(400, 'invalid_input', MSG.invalid);
+    const email = normaliseEmail(parsed.data.email);
+    if (email === null) return apiError(400, 'invalid_input', MSG.email);
+
+    const denied = await turnstileGate(parsed.data.turnstileToken, ip);
+    if (denied !== null) return denied;
+    try {
+      store.addWaitlistEmail(email, at);
+    } catch (err) {
+      logInternal('waitlist.add', err);
+      return apiError(500, 'internal', MSG.internal);
     }
-    recent.push(at);
-    gateDemoHits.set(ip, recent);
-    return { ok: true };
-  }
+    // The address is never logged; a new and a repeated sign-up get the same answer.
+    const body: WaitlistResponse = { ok: true };
+    return json(200, body);
+  };
 
   const postGateDemo: Handler = async ({ req, ip }) => {
     const at = now();
@@ -961,6 +1021,8 @@ export function createApp(deps: AppDeps): App {
     if (rel === '/') rel = '/index.html';
     // The app shell lives at /app/ (its views are hash routes, e.g. /app/#/run/<id>).
     if (rel === '/app' || rel === '/app/') rel = '/app/index.html';
+    // Prerendered legal pages, served without the .html suffix.
+    if (rel === '/privacy' || rel === '/terms') rel = `${rel}.html`;
     if (rel.split('/').some((seg) => seg.startsWith('.'))) return missing(); // no dotfiles, no "..", no "."
     const abs = resolve(webRoot, `.${rel}`);
     if (abs !== webRoot && !abs.startsWith(webRoot + sep)) return missing();
@@ -994,6 +1056,7 @@ export function createApp(deps: AppDeps): App {
     { method: 'POST', re: /^\/api\/runs$/, name: 'runs', handler: postRuns },
     { method: 'POST', re: /^\/api\/probe$/, name: 'probe', handler: postProbe },
     { method: 'POST', re: /^\/api\/gate-demo$/, name: 'gate_demo', handler: postGateDemo },
+    { method: 'POST', re: /^\/api\/waitlist$/, name: 'waitlist', handler: postWaitlist },
     { method: 'POST', re: /^\/api\/runs\/([^/]+)\/stop$/, name: 'stop', handler: postStop },
     { method: 'GET', re: /^\/api\/runs\/([^/]+)\/events$/, name: 'events', handler: getEvents },
     { method: 'GET', re: /^\/api\/runs\/([^/]+)$/, name: 'run', handler: getRunSnapshot },

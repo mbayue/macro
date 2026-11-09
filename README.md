@@ -122,10 +122,22 @@ YUE is a separate, pre-existing project and isn't in this repo. [`deploy/yue-dem
 
 ```bash
 bun install
-bun test           # 422 tests, no Docker needed
-bun run check      # tsc --noEmit
-bun run build:web
-bun run dev
+bun test             # 431 tests, no Docker needed
+bun run check        # tsc --noEmit
+bun run build:web    # the app at /app/ and the prerendered landing site at /, /privacy, /terms
+bun run dev          # the API; serves web/dist
+bun run dev:landing  # optional: Vite dev server for the landing site with hot reload (port 5173)
+```
+
+The landing site is React + Vite in `web/landing/`. Pages are prerendered at build time and hydrated in the browser, so they work under the strict CSP (no inline scripts or style attributes).
+
+### Waitlist
+
+`POST /api/waitlist` stores an email (normalised, once) after a Turnstile check, with at most 5 sign-ups per IP per hour. Only the email and the sign-up time are stored. On the VM:
+
+```bash
+docker exec macro-api bun src/admin/waitlist.ts list            # CSV
+docker exec macro-api bun src/admin/waitlist.ts remove <email>  # deletion request
 ```
 
 ## Limits
@@ -138,7 +150,7 @@ bun run dev
 
 ## Testing
 
-`bun test` runs 422 unit and property tests ([fast-check](https://fast-check.dev)). They cover the plan parser, the policy gate against an independent reference model, script generation, the proxy decision, sandbox lifecycle with a fake Docker, metrics and verdicts, agent fallbacks, the number check and run comparison. Sandbox behaviour on a real VM is checked by the live probe.
+`bun test` runs 431 unit and property tests ([fast-check](https://fast-check.dev)). They cover the plan parser, the policy gate against an independent reference model, script generation, the proxy decision, sandbox lifecycle with a fake Docker, metrics and verdicts, agent fallbacks, the number check and run comparison. Sandbox behaviour on a real VM is checked by the live probe.
 
 ## License
 

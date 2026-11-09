@@ -26,6 +26,7 @@ export type ReportAiStatus = 'pending' | 'ready' | 'unavailable';
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS drafts (id TEXT PRIMARY KEY, traffic_event TEXT NOT NULL, created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS waitlist (email TEXT PRIMARY KEY, created_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS plans (hash TEXT PRIMARY KEY, text TEXT NOT NULL, approved_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS runs (
   id TEXT PRIMARY KEY, kind TEXT NOT NULL CHECK (kind IN ('run','probe')),
@@ -586,6 +587,26 @@ export class Store {
   }
 
   // ------------------------------------------------------------ limit tables
+
+  // -------------------------------------------------------------- waitlist
+
+  /** Adds a normalised email. Returns true when it was new, false when it was already on the list. */
+  addWaitlistEmail(email: string, ts: number): boolean {
+    return this.db.prepare('INSERT OR IGNORE INTO waitlist (email, created_at) VALUES (?, ?)').run(email, ts).changes > 0;
+  }
+
+  /** Every waitlist entry, oldest first. */
+  listWaitlist(): { email: string; createdAt: number }[] {
+    return this.db
+      .prepare<{ email: string; created_at: number }, []>('SELECT email, created_at FROM waitlist ORDER BY created_at, email')
+      .all()
+      .map((r) => ({ email: r.email, createdAt: r.created_at }));
+  }
+
+  /** Removes one email (a deletion request). Returns true when a row was deleted. */
+  removeWaitlistEmail(email: string): boolean {
+    return this.db.prepare('DELETE FROM waitlist WHERE email = ?').run(email).changes > 0;
+  }
 
   recordPlanningRequest(ip: string, ts: number): void {
     this.db.prepare('INSERT INTO planning_requests (ip, ts) VALUES (?, ?)').run(ip, ts);

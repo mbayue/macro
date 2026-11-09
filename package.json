@@ -10,6 +10,7 @@
     "test": "bun test --path-ignore-patterns test/vm/**",
     "test:vm": "echo \"VM integration tests are wired in task 4.13\" && exit 1",
     "build:web": "bun run scripts/build-web.ts",
+    "dev:landing": "vite --config web/landing/vite.config.ts",
     "check": "tsc --noEmit"
   },
   "dependencies": {
@@ -17,7 +18,13 @@
   },
   "devDependencies": {
     "@types/bun": "^1.4.4",
+    "@types/react": "19",
+    "@types/react-dom": "19",
+    "@vitejs/plugin-react": "^6.3.0",
     "fast-check": "^4.10.2",
-    "typescript": "^6.0.3"
+    "react": "19",
+    "react-dom": "19",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.6"
   }
 }

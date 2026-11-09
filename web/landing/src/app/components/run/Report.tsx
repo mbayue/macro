@@ -207,7 +207,7 @@ export function ReportStages({ report }: { report: CapacityReport }) {
           <tbody>
             {report.stages.map((s) => (
               <tr key={s.index}>
-                <th scope="row" className="num">
+                <th scope="row" className="idx">
                   {s.displayIndex}
                 </th>
                 <td className="num">{s.vus}</td>
@@ -482,7 +482,7 @@ export function RunsPanel({ report }: { report: CapacityReport }) {
                       <a href={runHref(r.runId)}>{r.runId}</a>
                       {r.runId === report.runId ? <span className="muted"> (this run)</span> : null}
                     </th>
-                    <td className="num">{r.started}</td>
+                    <td className="idx">{r.started}</td>
                     <td>
                       <StatusBadge status={r.status} />
                     </td>

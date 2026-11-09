@@ -260,9 +260,7 @@ function LiveStages({ model }: { model: RunModel }) {
             <caption className="visually-hidden">Stages</caption>
             <thead>
               <tr>
-                <th scope="col" className="num">
-                  Stage
-                </th>
+                <th scope="col">Stage</th>
                 <th scope="col" className="num">
                   VUs
                 </th>
@@ -282,7 +280,7 @@ function LiveStages({ model }: { model: RunModel }) {
                 const m = s.status === 'done' ? (s.metrics?.overall ?? null) : null;
                 return (
                   <tr key={s.index}>
-                    <th scope="row" className="num">
+                    <th scope="row" className="idx">
                       {s.index + 1}
                     </th>
                     <td className="num">{s.vus}</td>
@@ -311,7 +309,7 @@ function LiveStages({ model }: { model: RunModel }) {
               })}
               {unstarted.map((p) => (
                 <tr key={`p${p.index}`} className="is-pending">
-                  <th scope="row" className="num">
+                  <th scope="row" className="idx">
                     {p.index + 1}
                   </th>
                   <td className="num">{p.vus}</td>

@@ -122,7 +122,9 @@ export function Shell({
 
       <main id="main" className="main" ref={mainRef} tabIndex={-1}>
         {children}
-        <p className="demo-note">This demo tests only the demo shop. Testing your own site needs domain verification, which is coming next.</p>
+        <footer className="app-foot">
+          <p>This demo tests only the demo shop. Testing your own site needs domain verification, which is coming next.</p>
+        </footer>
       </main>
 
       <div className="visually-hidden" aria-live="polite" aria-atomic="true">

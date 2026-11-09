@@ -17,13 +17,19 @@ export function ModelCalls({ calls }: { calls: readonly ModelCallView[] }) {
         <p className="muted">No model calls were recorded.</p>
       ) : (
         <TableWrap label="Model calls">
-          <table className="table">
+          <table className="table table--calls">
+            <colgroup>
+              <col className="w-idx" />
+              <col className="w-agent" />
+              <col className="w-model" />
+              <col className="w-outcome" />
+              <col className="w-latency" />
+              <col className="w-tokens" />
+            </colgroup>
             <caption className="visually-hidden">Model calls in request order</caption>
             <thead>
               <tr>
-                <th scope="col" className="num">
-                  #
-                </th>
+                <th scope="col">#</th>
                 <th scope="col">Agent</th>
                 <th scope="col">Model</th>
                 <th scope="col">Outcome</th>
@@ -36,7 +42,7 @@ export function ModelCalls({ calls }: { calls: readonly ModelCallView[] }) {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.n}>
-                  <th scope="row" className="num">
+                  <th scope="row" className="idx">
                     {r.n}
                   </th>
                   <td className="code">{r.agent}</td>

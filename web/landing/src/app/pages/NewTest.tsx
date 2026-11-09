@@ -11,6 +11,7 @@ import { countCodePoints } from '../../../../describe.ts';
 import { parseErrorText } from '../../../../dom.ts';
 import { GateRules } from '../components/GateRules.tsx';
 import { ModelCalls } from '../components/ModelCalls.tsx';
+import { NextUp } from '../components/NextUp.tsx';
 import { StageProfile } from '../components/StageProfile.tsx';
 import { TurnstileBox, useTurnstile } from '../components/Turnstile.tsx';
 import { AlertRegion, Badge, Busy, KeyValues, Panel, TableWrap, ViolationsTable } from '../components/ui.tsx';
@@ -188,6 +189,8 @@ export function NewTest() {
               onStarted={(runId) => navigate(`/run/${encodeURIComponent(runId)}`)}
               alive={alive}
             />
+          ) : busy === null ? (
+            <NextUp />
           ) : null}
         </div>
         <aside className="split__side" aria-label="Policy gate rules">
@@ -325,7 +328,7 @@ function PlanDetails({ plan, rationale }: { plan: TestPlan; rationale: string | 
               <tbody>
                 {plan.stages.map((s, i) => (
                   <tr key={i}>
-                    <th scope="row" className="num">
+                    <th scope="row" className="idx">
                       {i + 1}
                     </th>
                     <td className="num">{fmt(s.vus)}</td>

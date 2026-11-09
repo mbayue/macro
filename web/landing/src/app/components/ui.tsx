@@ -87,7 +87,7 @@ export function ViolationsTable({ violations }: { violations: readonly PolicyVio
         <tbody>
           {violations.map((v, i) => (
             <tr key={`${v.rule}-${v.path}-${i}`}>
-              <th scope="row" className="num">
+              <th scope="row" className="idx">
                 {v.rule}
               </th>
               <td className="code">{v.path === '' ? '(whole plan)' : v.path}</td>

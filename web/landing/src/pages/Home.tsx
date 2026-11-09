@@ -17,12 +17,19 @@ const TILES: readonly { name: string; note: string; result: string }[] = [
   { name: 'gVisor runsc', note: 'Every stage gets a fresh sandbox, removed after', result: 'Confirmed gone' },
 ];
 
-/** Entrance reveals and the bridge photo drift. Content is visible by default; this only adds motion. */
+/**
+ * Scroll reveals and the bridge photo drift. The hero is not part of this: it has a CSS-only entrance
+ * (.hero__rise, .stage in styles.css) so the first screen never waits for this script.
+ * Below the fold, .js [data-reveal] hides content until this runs; landing-early.js removes the
+ * js class after 3 s unless this hook has marked the page with motion-ready, so content can never
+ * stay hidden if the bundle fails to load.
+ */
 function useMotion(): void {
   useEffect(() => {
+    document.documentElement.classList.add('motion-ready');
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const frame = document.getElementById('bridge-frame');
-    const targets = document.querySelectorAll<HTMLElement>('[data-reveal], #bridge-figure, #stage, #bars');
+    const targets = document.querySelectorAll<HTMLElement>('[data-reveal], #bridge-figure, #bars');
     if (reduce || !('IntersectionObserver' in window)) {
       targets.forEach((el) => el.classList.add('in'));
       frame?.classList.add('in');
@@ -69,16 +76,18 @@ export function Home() {
       <main id="top">
         <section className="hero" aria-labelledby="hero-title">
           <div className="wrap hero__copy">
-            <h1 id="hero-title" data-reveal data-i="0">
+            <h1 id="hero-title" className="hero__rise" data-i="0">
               Find your breaking point
             </h1>
-            <p className="hero__lead" data-reveal data-i="1">
+            <p className="hero__lead hero__rise" data-i="1">
               Macro plans a load test from plain words, checks it against fixed rules, and runs it in a sandbox that can only reach
               your verified site.
             </p>
-            <a className="btn" href="/app/" data-reveal data-i="2">
-              Try the live demo
-            </a>
+            <div className="hero__rise" data-i="2">
+              <a className="btn" href="/app/">
+                Try the live demo
+              </a>
+            </div>
           </div>
           <div className="stage" id="stage">
             <PolicyGate />

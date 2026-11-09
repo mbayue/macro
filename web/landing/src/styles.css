@@ -12,8 +12,8 @@
   --bg: #f2f2ed;
   --surface: #e6e6df;
   --surface-2: #d9d9d1;
-  --bar: #c4c4bb;
-  --bar-hover: #a5a59c;
+  --bar: #7d7d75;
+  --bar-hover: #64645d;
   --ink: #0f0f0f;
   --muted: #55554f;
   --accent: #dafa9c;
@@ -52,8 +52,8 @@
   --bg: #0f0f0f;
   --surface: #1a1a1a;
   --surface-2: #262626;
-  --bar: #3d3d3d;
-  --bar-hover: #5a5a5a;
+  --bar: #6b6b6b;
+  --bar-hover: #8a8a8a;
   --ink: #ffffff;
   --muted: #a3a3a3;
   --accent-text: #dafa9c;
@@ -350,14 +350,21 @@ details[open] .plus::after { transform: rotate(0deg); }
 .js .bridge__frame img { transform: scale(1.12); transition: transform 1600ms var(--ease); }
 .js .bridge__frame.in { clip-path: inset(0 0 0 0); }
 .js .bridge__frame.in img { transform: scale(var(--drift, 1)); transition: transform 1600ms var(--ease); }
+.js .bar { transform: scaleY(0.04); } /* start state, so bars never show full height before .in */
 .js .bars.in .bar { animation: grow 900ms var(--ease) both; animation-delay: calc(var(--i) * 45ms); }
 @keyframes grow { from { transform: scaleY(0.04); } to { transform: none; } }
-.js .stage { transform: translateY(40px); opacity: 0; transition: transform 900ms var(--ease), opacity 700ms ease; }
-.js .stage.in { transform: none; opacity: 1; }
+/* Hero: a CSS-only entrance that runs on first paint, without waiting for React. "backwards" holds the
+   start state only during the delay, so the button's own hover and press styles work afterwards. */
+.hero__rise { animation: rise 600ms var(--ease) backwards; animation-delay: calc(var(--i, 0) * 75ms); }
+.stage { animation: rise-stage 700ms var(--ease) 225ms backwards; }
+@keyframes rise { from { opacity: 0; transform: translateY(24px); } }
+@keyframes rise-stage { from { opacity: 0; transform: translateY(40px); } }
 @media (prefers-reduced-motion: reduce) {
-  .js [data-reveal], .js .stage { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .js [data-reveal] { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .hero__rise, .stage { animation: none; }
   .js .bridge__frame { clip-path: none !important; }
   .js .bridge__frame img { transform: none !important; }
+  .js .bar { transform: none !important; }
   .js .bars.in .bar { animation: none; }
   *, *::before, *::after { transition-duration: 0.01ms !important; }
 }
@@ -411,6 +418,7 @@ details[open] .plus::after { transform: rotate(0deg); }
   .bar__val { left: auto; right: 8px; bottom: auto; top: 50%; transform: translateY(-50%); text-align: right; font-size: 17px; color: var(--bar-accent-ink); }
   .bar:not(.bar--accent) .bar__val { color: var(--ink); right: auto; left: calc(100% + 8px); }
   @keyframes grow { from { transform: scaleX(0.04); } to { transform: none; } }
+  .js .bar { transform: scaleX(0.04); }
   .ptable { display: none; }
   .plans-mobile { display: grid; gap: 40px; margin-top: 32px; }
   .pricing > .wrap > h2 { display: block; }

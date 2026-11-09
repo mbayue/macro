@@ -88,15 +88,18 @@ export function Waitlist() {
             <input
               id="cta-email"
               type="email"
+              name="email"
+              aria-label="Email address"
               placeholder="you@shop.com"
               autoComplete="email"
+              spellCheck={false}
               required
               value={email}
               disabled={state.kind === 'sending'}
               onChange={(e) => setEmail(e.target.value)}
             />{' '}
             to the{' '}
-            <button type="submit" disabled={state.kind === 'sending'}>
+            <button type="submit" aria-label="Join the waitlist" disabled={state.kind === 'sending'}>
               waitlist
             </button>
           </h2>

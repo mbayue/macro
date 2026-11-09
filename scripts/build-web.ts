@@ -2,7 +2,7 @@
  * Build the whole web front end into web/dist. Run with `bun run build:web`; exits non-zero on any error.
  *
  *   /            landing site (React + Vite, web/landing), prerendered then hydrated
- *   /privacy     \ prerendered, no client JS
+ *   /privacy     \ prerendered, plus a small script that highlights the section in view
  *   /terms       /
  *   /app/        the planner app (web/app.ts bundled by Bun, its shell copied from web/index.html)
  */
@@ -77,9 +77,11 @@ for (const [file, page] of [
 for (const name of ['index.html', 'privacy.html', 'terms.html', join('app', 'index.html'), 'app.js', 'style.css']) {
   if (!(await Bun.file(join(outDir, name)).exists())) fail(`Web build is missing ${name}.`);
 }
-const home = await readFile(join(outDir, 'index.html'), 'utf8');
-if (/\sstyle="/.test(home)) fail('index.html contains a style attribute, which the CSP blocks.');
-if (/<script(?![^>]*\ssrc=)[^>]*>/.test(home)) fail('index.html contains an inline script, which the CSP blocks.');
+for (const name of ['index.html', 'privacy.html', 'terms.html']) {
+  const html = await readFile(join(outDir, name), 'utf8');
+  if (/\sstyle="/.test(html)) fail(`${name} contains a style attribute, which the CSP blocks.`);
+  if (/<script(?![^>]*\ssrc=)[^>]*>/.test(html)) fail(`${name} contains an inline script, which the CSP blocks.`);
+}
 
 const bytes = result.outputs.reduce((sum, o) => sum + o.size, 0);
 console.log(`Built web/dist: app (${bytes} bytes of JS) and the prerendered landing site.`);

@@ -1,21 +1,66 @@
 @import './styles.css';
 
-/* Legal pages: one readable column on the page's centred grid, aligned with the wordmark. */
-.legal { padding-top: 140px; }
-.legal > * { max-width: 760px; }
+/*
+ * Legal pages. Wide screens: the text column on the left, aligned with the wordmark, and a sticky
+ * panel on the right with the key facts and the section index. Below 1100px: one column, the key
+ * facts sit between the lead and the text, and the index is dropped.
+ */
+.legal {
+  padding-top: 140px;
+  display: grid;
+  grid-template-columns: minmax(0, 760px) minmax(0, 320px);
+  justify-content: space-between;
+  column-gap: 64px;
+}
+.legal__head { grid-column: 1; grid-row: 1; }
+.legal__body { grid-column: 1; grid-row: 2; }
+.legal__side { grid-column: 2; grid-row: 1 / span 2; }
+.legal__panel { position: sticky; top: 32px; display: grid; gap: 40px; max-height: calc(100vh - 64px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+
 .legal h1 { font-size: var(--step-head); }
 .legal__updated { margin-top: 12px; font-size: var(--step-small); color: var(--muted); }
-.legal__lead { margin-top: 28px; font-size: var(--step-lead); line-height: 1.4; }
-.legal .legal__lead { max-width: 40ch; }
-.legal section { margin-top: 56px; }
-.legal h2 { font-size: var(--step-lead); font-family: var(--text); font-weight: 500; letter-spacing: -0.01em; }
-.legal p, .legal li { margin-top: 14px; max-width: 64ch; }
-.legal ul { padding-left: 1.2em; margin: 0; }
-.legal li::marker { color: var(--accent); }
+.legal__lead { margin-top: 28px; font-size: var(--step-lead); line-height: 1.4; max-width: 40ch; }
+.legal__body section { margin-top: 56px; scroll-margin-top: 32px; }
+.legal__body h2 { font-size: var(--step-lead); font-family: var(--text); font-weight: 500; letter-spacing: -0.01em; }
+.legal__body p, .legal__body li { margin-top: 14px; max-width: 64ch; }
+.legal__body ul { padding-left: 1.2em; margin: 0; }
+.legal__body li::marker { color: var(--accent); }
 .legal a { text-underline-offset: 0.2em; }
 .legal strong { font-weight: 500; }
 .legal + .foot { margin-top: 160px; }
+
+/* Key facts */
+.legal__facts { background: var(--surface); border-radius: var(--radius); padding: 24px; }
+.legal__facts h2 { font: 500 var(--step-body)/1.2 var(--text); letter-spacing: 0; color: var(--accent); }
+.legal__facts dl { margin: 18px 0 0; display: grid; gap: 16px; }
+.legal__facts dt { font-size: var(--step-small); color: var(--muted); }
+.legal__facts dd { margin: 2px 0 0; font-size: var(--step-small); line-height: 1.45; overflow-wrap: anywhere; }
+
+/* Section index; the link for the section in view gets aria-current from legal-spy.ts */
+.legal__toc-title { font-size: var(--step-small); color: var(--muted); }
+.legal__toc ol { list-style: none; margin: 12px 0 0; padding: 0; display: grid; font-size: var(--step-small); }
+.legal__toc a {
+  display: block; padding: 7px 0 7px 14px;
+  border-left: 2px solid var(--surface-2);
+  color: var(--muted); text-decoration: none;
+  transition: color 150ms ease, border-color 150ms ease;
+}
+.legal__toc a:hover { color: var(--ink); }
+.legal__toc a[aria-current="true"] { color: var(--ink); border-left-color: var(--accent); }
+
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.legal) { scroll-behavior: smooth; }
+}
+
+@media (max-width: 1100px) {
+  .legal { grid-template-columns: minmax(0, 760px); justify-content: start; }
+  .legal__head, .legal__side, .legal__body { grid-column: 1; grid-row: auto; }
+  .legal__side { margin-top: 40px; }
+  .legal__panel { position: static; max-height: none; overflow: visible; }
+  .legal__toc { display: none; }
+}
 @media (max-width: 48rem) {
   .legal { padding-top: 112px; }
-  .legal section { margin-top: 40px; }
+  .legal__body section { margin-top: 40px; }
+  .legal__facts { padding: 20px; }
 }

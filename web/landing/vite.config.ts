@@ -12,8 +12,8 @@ const root = fileURLToPath(new URL('.', import.meta.url));
 
 /**
  * Dev server only: prerender each page the same way the production build does, so the dev
- * pages match production (the legal pages have no client script and would otherwise be
- * empty), and serve /privacy and /terms without the .html suffix like the Macro API does.
+ * pages match production (the legal pages are not hydrated and would otherwise be empty),
+ * and serve /privacy and /terms without the .html suffix like the Macro API does.
  */
 function devPrerender(): Plugin {
   return {

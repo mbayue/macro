@@ -9,6 +9,7 @@ import type { TestPlan } from '../../../../../src/types.ts';
 import { type ApiError, type ApiResult, postApprove, postPlan, VERIFICATION_ERROR } from '../../../../api.ts';
 import { countCodePoints } from '../../../../describe.ts';
 import { parseErrorText } from '../../../../dom.ts';
+import { GateRules } from '../components/GateRules.tsx';
 import { ModelCalls } from '../components/ModelCalls.tsx';
 import { StageProfile } from '../components/StageProfile.tsx';
 import { TurnstileBox, useTurnstile } from '../components/Turnstile.tsx';
@@ -81,7 +82,9 @@ export function NewTest() {
     <div className="page">
       <header className="page__head">
         <h1 className="page__title">New load test</h1>
-        <p className="page__lead">Describe the traffic you expect. Macro drafts a staged plan, fixed rules check it, and nothing runs until you approve.</p>
+        <p className="page__lead">
+          Describe the traffic you expect. Macro drafts a staged plan, fixed rules check it, and nothing runs until you approve.
+        </p>
       </header>
 
       {config.runtimeError ? (
@@ -91,94 +94,106 @@ export function NewTest() {
         </div>
       ) : null}
 
-      <form
-        className="panel compose"
-        noValidate
-        onSubmit={(e) => {
-          e.preventDefault();
-          void startPlanning(text.trim());
-        }}
-      >
-        <label htmlFor="traffic-event" className="compose__label">
-          Describe the traffic you expect
-        </label>
-        <p id="traffic-event-hint" className="muted">
-          Say who arrives, when, and what they do. {min} to {fmt(max)} characters.
-        </p>
-        <textarea
-          id="traffic-event"
-          ref={textarea}
-          className="textarea"
-          rows={6}
-          autoComplete="off"
-          value={text}
-          readOnly={!idle}
-          aria-describedby="traffic-event-hint traffic-event-count traffic-event-problem"
-          aria-invalid={n > 0 && !inRange}
-          onChange={(e) => setText(e.target.value)}
-        />
-        <div className="compose__meta">
-          <span id="traffic-event-count" className={n > 0 && !inRange ? 'counter counter--bad' : 'counter'}>
-            {fmt(n)} / {fmt(max)}
-          </span>
-          <span id="traffic-event-problem" className="compose__problem">
-            {problem}
-          </span>
-        </div>
+      <div className="split">
+        <div className="split__main">
+          <form
+            className="panel compose"
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              void startPlanning(text.trim());
+            }}
+          >
+            <label htmlFor="traffic-event" className="compose__label">
+              Describe the traffic you expect
+            </label>
+            <p id="traffic-event-hint" className="muted">
+              Say who arrives, when, and what they do. {min} to {fmt(max)} characters.
+            </p>
+            <textarea
+              id="traffic-event"
+              ref={textarea}
+              className="textarea"
+              rows={6}
+              autoComplete="off"
+              value={text}
+              readOnly={!idle}
+              aria-describedby="traffic-event-hint traffic-event-count traffic-event-problem"
+              aria-invalid={n > 0 && !inRange}
+              onChange={(e) => setText(e.target.value)}
+            />
+            <div className="compose__meta">
+              <span id="traffic-event-count" className={n > 0 && !inRange ? 'counter counter--bad' : 'counter'}>
+                {fmt(n)} / {fmt(max)}
+              </span>
+              <span id="traffic-event-problem" className="compose__problem">
+                {problem}
+              </span>
+            </div>
 
-        {config.examples.length > 0 ? (
-          <div className="examples" role="group" aria-label="Examples">
-            <span className="muted">Examples fill the text box only:</span>
-            {config.examples.map((ex) => (
-              <button
-                key={ex.label}
-                type="button"
-                className="chip-btn"
-                disabled={!idle}
-                onClick={() => {
-                  setText(ex.text);
-                  textarea.current?.focus();
-                }}
-              >
-                {ex.label}
+            {config.examples.length > 0 ? (
+              <div className="examples" role="group" aria-label="Examples">
+                <span className="muted">Examples fill the text box only:</span>
+                {config.examples.map((ex) => (
+                  <button
+                    key={ex.label}
+                    type="button"
+                    className="chip-btn"
+                    disabled={!idle}
+                    onClick={() => {
+                      setText(ex.text);
+                      textarea.current?.focus();
+                    }}
+                  >
+                    {ex.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="compose__target">
+              <span className="muted">Target</span>
+              <span className="code">{config.webOrigin}</span>
+              <span className="muted">Demo target. Testing your own site will need domain verification (coming soon).</span>
+            </div>
+
+            <TurnstileBox boxRef={draftTurnstile.box} />
+            <div className="row">
+              <button type="submit" className="btn" disabled={!inRange || !idle}>
+                Draft a plan
               </button>
-            ))}
-          </div>
-        ) : null}
+              {showRetry ? (
+                <button
+                  type="button"
+                  className="btn btn--quiet"
+                  disabled={!idle}
+                  onClick={() => lastSubmitted !== null && void startPlanning(lastSubmitted)}
+                >
+                  Retry planning
+                </button>
+              ) : null}
+              {busy === 'planning' ? <Busy>Drafting a plan. This can take up to a minute.</Busy> : null}
+            </div>
+            <AlertRegion error={planError} />
+          </form>
 
-        <div className="compose__target">
-          <span className="muted">Target</span>
-          <span className="code">{config.webOrigin}</span>
-          <span className="muted">Demo target. Testing your own site will need domain verification (coming soon).</span>
-        </div>
-
-        <TurnstileBox boxRef={draftTurnstile.box} />
-        <div className="row">
-          <button type="submit" className="btn" disabled={!inRange || !idle}>
-            Draft a plan
-          </button>
-          {showRetry ? (
-            <button type="button" className="btn btn--quiet" disabled={!idle} onClick={() => lastSubmitted !== null && void startPlanning(lastSubmitted)}>
-              Retry planning
-            </button>
+          {review ? (
+            <Review
+              key={reviewSeq}
+              res={review}
+              stale={changedSinceDraft}
+              busy={busy}
+              setBusy={setBusy}
+              onCancel={cancelPlan}
+              onStarted={(runId) => navigate(`/run/${encodeURIComponent(runId)}`)}
+              alive={alive}
+            />
           ) : null}
-          {busy === 'planning' ? <Busy>Drafting a plan. This can take up to a minute.</Busy> : null}
         </div>
-        <AlertRegion error={planError} />
-      </form>
-
-      {review ? (
-        <Review
-          key={reviewSeq}
-          res={review}
-          stale={changedSinceDraft}
-          busy={busy}
-          setBusy={setBusy}
-          onCancel={cancelPlan}
-          onStarted={(runId) => navigate(`/run/${encodeURIComponent(runId)}`)}
-          alive={alive}
-        />
-      ) : null}
+        <aside className="split__side" aria-label="Policy gate rules">
+          <GateRules />
+        </aside>
+      </div>
     </div>
   );
 }
@@ -251,7 +266,15 @@ function Review({
           ) : null}
           <PlanDetails plan={plan} rationale={res.rationale} />
           {approvable && res.planText !== null ? (
-            <ApprovePanel plan={plan} planText={res.planText} busy={busy} setBusy={setBusy} onCancel={onCancel} onStarted={onStarted} alive={alive} />
+            <ApprovePanel
+              plan={plan}
+              planText={res.planText}
+              busy={busy}
+              setBusy={setBusy}
+              onCancel={onCancel}
+              onStarted={onStarted}
+              alive={alive}
+            />
           ) : !rejected ? (
             <div className="panel">
               <p>This plan has no policy result, so it cannot be approved.</p>

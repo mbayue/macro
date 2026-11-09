@@ -6,7 +6,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CapacityReport, MetricsView, RouteRowView, StageView } from '../../../../../../src/report/build.ts';
 import { type ApiError, getCompare, getRunsForPlan, postRun, VERIFICATION_ERROR } from '../../../../../api.ts';
-import { buildChartGeometry, chartDescription, chartInputFromReport } from '../../../../../chart.ts';
+import { buildChartGeometry, CHART_WIDTH, chartDescription, chartInputFromReport } from '../../../../../chart.ts';
+import { useWidth } from '../../hooks/useWidth.ts';
 import type { Comparison } from '../../../../../../src/report/compare.ts';
 import { headlineCompareRows, parseComparison, stageCompareRows } from '../../../../../compare-view.ts';
 import { fmtUtc } from '../../../../../dom.ts';
@@ -39,71 +40,131 @@ function verdictBadge(s: StageView) {
 }
 
 export function ReportChart({ report }: { report: CapacityReport }) {
+  const [box, measured] = useWidth<HTMLDivElement>(CHART_WIDTH);
   const input = chartInputFromReport(report);
   if (input.stages.length === 0) return null;
-  const g = buildChartGeometry(input);
+  const base = buildChartGeometry(input);
+  // The geometry is laid out at CHART_WIDTH; stretch it horizontally to the real width, so text keeps its size.
+  const width = Math.max(520, measured);
+  const k = (width - (CHART_WIDTH - base.plot.width)) / base.plot.width;
+  const sx = (x: number) => base.plot.x + (x - base.plot.x) * k;
+  const g = {
+    ...base,
+    width,
+    plot: { ...base.plot, width: base.plot.width * k },
+    points: base.points.map((p) => ({ ...p, cx: sx(p.cx) })),
+    bars: base.bars.map((b) => ({ ...b, x: sx(b.x + b.width / 2) - b.width / 2 })),
+    xLabels: base.xLabels.map((l) => ({ ...l, x: sx(l.x) })),
+  };
+  g.linePath = g.points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.cx.toFixed(1)} ${p.cy}`).join(' ');
   const { plot } = g;
   const right = plot.x + plot.width;
   const bottom = plot.y + plot.height;
   return (
     <Panel title="p95 latency and error rate per stage" id="report-chart-heading">
-      <TableWrap label="Chart of p95 latency and error rate per stage">
-        <svg className="stage-chart" viewBox={`0 0 ${g.width} ${g.height}`} role="img" aria-labelledby="report-chart-title report-chart-desc" focusable="false">
-          <title id="report-chart-title">p95 latency and error rate per stage</title>
-          <desc id="report-chart-desc">{chartDescription(input)}</desc>
-          {g.leftTicks.map((t) => (
-            <g key={`l${t.y}`}>
-              <line className="stage-chart__grid" x1={plot.x} x2={right} y1={t.y} y2={t.y} />
-              <text className="stage-chart__text" x={plot.x - 8} y={t.y + 4} textAnchor="end">
-                {t.label}
+      <div className="chart-split">
+        <div ref={box} className="chart-box">
+          <TableWrap label="Chart of p95 latency and error rate per stage">
+            <svg
+              className="stage-chart"
+              viewBox={`0 0 ${g.width} ${g.height}`}
+              role="img"
+              aria-labelledby="report-chart-title report-chart-desc"
+              focusable="false"
+            >
+              <title id="report-chart-title">p95 latency and error rate per stage</title>
+              <desc id="report-chart-desc">{chartDescription(input)}</desc>
+              {g.leftTicks.map((t) => (
+                <g key={`l${t.y}`}>
+                  <line className="stage-chart__grid" x1={plot.x} x2={right} y1={t.y} y2={t.y} />
+                  <text className="stage-chart__text" x={plot.x - 8} y={t.y + 4} textAnchor="end">
+                    {t.label}
+                  </text>
+                </g>
+              ))}
+              {g.rightTicks.map((t) => (
+                <text key={`r${t.y}`} className="stage-chart__text" x={right + 8} y={t.y + 4}>
+                  {t.label}
+                </text>
+              ))}
+              <line className="stage-chart__axis" x1={plot.x} x2={right} y1={bottom} y2={bottom} />
+              <text className="stage-chart__text" x={plot.x - 8} y={plot.y - 12} textAnchor="end">
+                p95 (ms)
               </text>
-            </g>
-          ))}
-          {g.rightTicks.map((t) => (
-            <text key={`r${t.y}`} className="stage-chart__text" x={right + 8} y={t.y + 4}>
-              {t.label}
-            </text>
-          ))}
-          <line className="stage-chart__axis" x1={plot.x} x2={right} y1={bottom} y2={bottom} />
-          <text className="stage-chart__text" x={plot.x - 8} y={plot.y - 12} textAnchor="end">
-            p95 (ms)
-          </text>
-          <text className="stage-chart__text" x={right + 8} y={plot.y - 12}>
-            Errors (%)
-          </text>
-          {g.bars.map((b) => (
-            <rect key={b.position} className="stage-chart__bar" x={b.x} y={b.y} width={b.width} height={b.height} />
-          ))}
-          <line className="stage-chart__limit" x1={plot.x} x2={right} y1={g.p95LimitY} y2={g.p95LimitY} />
-          <line className="stage-chart__limit stage-chart__limit--err" x1={plot.x} x2={right} y1={g.errorLimitY} y2={g.errorLimitY} />
-          {g.linePath !== '' ? <path className="stage-chart__line" d={g.linePath} /> : null}
-          {g.points.map((p) => (
-            <circle key={p.position} className="stage-chart__point" cx={p.cx} cy={p.cy} r={4} />
-          ))}
-          {g.xLabels.map((l) => (
-            <g key={l.stage}>
-              <text className="stage-chart__text" x={l.x} y={bottom + 20} textAnchor="middle">
-                {l.stage}
+              <text className="stage-chart__text" x={right + 8} y={plot.y - 12}>
+                Errors (%)
               </text>
-              <text className="stage-chart__text" x={l.x} y={bottom + 36} textAnchor="middle">
-                {l.vus}
-              </text>
-            </g>
-          ))}
-        </svg>
-      </TableWrap>
-      <ul className="legend">
-        <li>
-          <span className="legend__swatch legend__swatch--line" aria-hidden="true" />
-          p95 latency (left axis), limit {report.thresholds.p95Ms} ms (dashed line)
-        </li>
-        <li>
-          <span className="legend__swatch legend__swatch--bar" aria-hidden="true" />
-          Error rate (right axis), limit {report.thresholds.errorRatePct}% (dotted line)
-        </li>
-      </ul>
-      <p className="muted">The stage table below holds the same numbers. Stages without metrics are not drawn.</p>
+              {g.bars.map((b) => (
+                <rect key={b.position} className="stage-chart__bar" x={b.x} y={b.y} width={b.width} height={b.height} />
+              ))}
+              <line className="stage-chart__limit" x1={plot.x} x2={right} y1={g.p95LimitY} y2={g.p95LimitY} />
+              <line className="stage-chart__limit stage-chart__limit--err" x1={plot.x} x2={right} y1={g.errorLimitY} y2={g.errorLimitY} />
+              {g.linePath !== '' ? <path className="stage-chart__line" d={g.linePath} /> : null}
+              {g.points.map((p) => (
+                <circle key={p.position} className="stage-chart__point" cx={p.cx} cy={p.cy} r={4} />
+              ))}
+              {g.xLabels.map((l) => (
+                <g key={l.stage}>
+                  <text className="stage-chart__text" x={l.x} y={bottom + 20} textAnchor="middle">
+                    {l.stage}
+                  </text>
+                  <text className="stage-chart__text" x={l.x} y={bottom + 36} textAnchor="middle">
+                    {l.vus}
+                  </text>
+                </g>
+              ))}
+            </svg>
+          </TableWrap>
+        </div>
+        <div className="chart-split__side">
+          <ChartReadings report={report} />
+          <ul className="legend">
+            <li>
+              <span className="legend__swatch legend__swatch--line" aria-hidden="true" />
+              p95 latency (left axis), limit {report.thresholds.p95Ms} ms (dashed line)
+            </li>
+            <li>
+              <span className="legend__swatch legend__swatch--bar" aria-hidden="true" />
+              Error rate (right axis), limit {report.thresholds.errorRatePct}% (dotted line)
+            </li>
+          </ul>
+          <p className="muted">The stage table below holds the same numbers. Stages without metrics are not drawn.</p>
+        </div>
+      </div>
     </Panel>
+  );
+}
+
+/** The two readings the chart is for, stated as numbers from the stored metrics. */
+function ChartReadings({ report }: { report: CapacityReport }) {
+  const withMetrics = report.stages.filter((s) => s.overall !== null);
+  const topP95 = withMetrics.reduce<StageView | null>((a, s) => (a === null || s.overall!.raw.p95 > a.overall!.raw.p95 ? s : a), null);
+  const topErr = withMetrics.reduce<StageView | null>(
+    (a, s) => (a === null || s.overall!.raw.errorRatePct > a.overall!.raw.errorRatePct ? s : a),
+    null,
+  );
+  if (!topP95 || !topErr) return null;
+  return (
+    <dl className="readings">
+      <div>
+        <dt>Highest p95</dt>
+        <dd>
+          <span className="readings__value">{topP95.overall!.display.p95} ms</span>
+          <span className="muted">
+            stage {topP95.displayIndex}, {topP95.vus} VUs, limit {report.thresholds.p95Ms} ms
+          </span>
+        </dd>
+      </div>
+      <div>
+        <dt>Highest error rate</dt>
+        <dd>
+          <span className="readings__value">{topErr.overall!.display.errorRatePct}</span>
+          <span className="muted">
+            stage {topErr.displayIndex}, limit {report.thresholds.errorRatePct}%
+          </span>
+        </dd>
+      </div>
+    </dl>
   );
 }
 
@@ -156,7 +217,9 @@ export function ReportStages({ report }: { report: CapacityReport }) {
                   <MetricCells m={s.overall} />
                 ) : (
                   <td colSpan={7} className="muted">
-                    {s.status === 'error' ? `Stage failed${s.errorReason !== null ? `: ${s.errorReason}` : '.'}` : 'This Stage has no metrics.'}
+                    {s.status === 'error'
+                      ? `Stage failed${s.errorReason !== null ? `: ${s.errorReason}` : '.'}`
+                      : 'This Stage has no metrics.'}
                   </td>
                 )}
               </tr>
@@ -222,7 +285,9 @@ export function AiSection({ report }: { report: CapacityReport }) {
           AI-generated <Badge>AI</Badge>
         </h2>
       </div>
-      <p className="muted">Written by an AI model. The headline values and tables on this page come from the stored metrics, not from the AI.</p>
+      <p className="muted">
+        Written by an AI model. The headline values and tables on this page come from the stored metrics, not from the AI.
+      </p>
       {m.notes.length > 0 ? (
         <ul className="ai__notes" role={m.pending ? undefined : 'status'}>
           {m.notes.map((n) => (
@@ -230,42 +295,54 @@ export function AiSection({ report }: { report: CapacityReport }) {
           ))}
         </ul>
       ) : null}
-      {m.explanation !== null ? (
-        <div className="stack-tight">
-          <h3 className="h-small">Explanation</h3>
-          <p className="prose">{m.explanation}</p>
-        </div>
-      ) : null}
-      {m.suggestions.length > 0 ? (
-        <div className="stack-tight">
-          <h3 className="h-small">Suggestions</h3>
-          <ol className="ai__list">
-            {m.suggestions.map((s, i) => (
-              <li key={i} className="prose">
-                {s}
-              </li>
-            ))}
-          </ol>
-        </div>
-      ) : null}
+      <div className="ai__cols">
+        {m.explanation !== null ? (
+          <div className="stack-tight">
+            <h3 className="h-small">Explanation</h3>
+            <p className="prose">{m.explanation}</p>
+          </div>
+        ) : null}
+        {m.suggestions.length > 0 ? (
+          <div className="stack-tight">
+            <h3 className="h-small">Suggestions</h3>
+            <ol className="ai__list">
+              {m.suggestions.map((s, i) => (
+                <li key={i} className="prose">
+                  {s}
+                </li>
+              ))}
+            </ol>
+          </div>
+        ) : null}
+      </div>
     </section>
   );
 }
 
 export function ReportMeta({ report }: { report: CapacityReport }) {
+  const items: [string, React.ReactNode][] = [
+    ['Target', <span className="code">{report.target}</span>],
+    [
+      'Stop thresholds',
+      <span className="num">
+        p95 {report.thresholds.p95Ms} ms, error rate {report.thresholds.errorRatePct}%
+      </span>,
+    ],
+    ['Sandbox runtime', <span className="code">{report.runtime}</span>],
+    ['Run ID', <span className="code">{report.runId}</span>],
+    ['Plan hash', <span className="code break">{report.planHash}</span>],
+  ];
   return (
-    <KeyValues
-      items={[
-        ['Target', <span className="code">{report.target}</span>],
-        ['Run ID', <span className="code">{report.runId}</span>],
-        ['Plan hash', <span className="code break">{report.planHash}</span>],
-        ['Stop thresholds', <span className="num">p95 {report.thresholds.p95Ms} ms, error rate {report.thresholds.errorRatePct}%</span>],
-        ['Sandbox runtime', <span className="code">{report.runtime}</span>],
-      ]}
-    />
+    <dl className="meta-strip">
+      {items.map(([k, v]) => (
+        <div key={k} className={k === 'Plan hash' ? 'meta-strip__wide' : undefined}>
+          <dt>{k}</dt>
+          <dd>{v}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
-
 /** Re-run the same approved plan, list its runs, compare two of them. */
 export function RunsPanel({ report }: { report: CapacityReport }) {
   const { navigate, announce } = useApp();
@@ -300,7 +377,8 @@ export function RunsPanel({ report }: { report: CapacityReport }) {
     if (rerunBusy) return;
     setRerunError(null);
     // One confirmation. Cancel sends nothing, not even a Turnstile request.
-    if (!window.confirm(`Run "${report.planName}" again against ${report.target}? This starts a new run of the same approved plan.`)) return;
+    if (!window.confirm(`Run "${report.planName}" again against ${report.target}? This starts a new run of the same approved plan.`))
+      return;
     setRerunBusy(true);
     announce('Starting the run.');
     let result: Awaited<ReturnType<typeof postRun>>;

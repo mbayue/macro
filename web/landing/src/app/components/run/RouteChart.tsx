@@ -7,9 +7,10 @@ import type { StageView } from '../../../../../../src/api-types.ts';
 import { fmtMs } from '../../../../../../src/run/format.ts';
 import type { TestPlan } from '../../../../../../src/types.ts';
 import { niceScale } from '../../../../../chart.ts';
+import { useWidth } from '../../hooks/useWidth.ts';
 
-const W = 720;
 const H = 300;
+const MIN_W = 560;
 const M = { top: 24, right: 132, bottom: 44, left: 56 };
 
 interface Series {
@@ -18,6 +19,8 @@ interface Series {
 }
 
 export function RouteChart({ stages, plan, limitMs }: { stages: readonly StageView[]; plan: TestPlan | null; limitMs: number }) {
+  const [box, measured] = useWidth<HTMLDivElement>(720);
+  const W = Math.max(MIN_W, measured);
   const total = Math.max(plan?.stages.length ?? 0, ...stages.map((s) => s.index + 1), 1);
   const done = stages.filter((s) => s.status === 'done' && s.metrics !== null);
 
@@ -58,51 +61,53 @@ export function RouteChart({ stages, plan, limitMs }: { stages: readonly StageVi
   }
 
   return (
-    <svg className="route-chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-labelledby="route-chart-title route-chart-desc">
-      <title id="route-chart-title">p95 latency per route</title>
-      <desc id="route-chart-desc">{desc}</desc>
-      {maxY.ticks.map((t) => (
-        <g key={t}>
-          <line className="route-chart__grid" x1={M.left} x2={M.left + pw} y1={y(t)} y2={y(t)} />
-          <text className="route-chart__tick" x={M.left - 10} y={y(t) + 4} textAnchor="end">
-            {fmtMs(t)}
+    <div ref={box} className="chart-box">
+      <svg className="route-chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-labelledby="route-chart-title route-chart-desc">
+        <title id="route-chart-title">p95 latency per route</title>
+        <desc id="route-chart-desc">{desc}</desc>
+        {maxY.ticks.map((t) => (
+          <g key={t}>
+            <line className="route-chart__grid" x1={M.left} x2={M.left + pw} y1={y(t)} y2={y(t)} />
+            <text className="route-chart__tick" x={M.left - 10} y={y(t) + 4} textAnchor="end">
+              {fmtMs(t)}
+            </text>
+          </g>
+        ))}
+        {Array.from({ length: total }, (_, i) => (
+          <text key={i} className="route-chart__tick" x={x(i)} y={H - M.bottom + 22} textAnchor="middle">
+            Stage {i + 1}
           </text>
-        </g>
-      ))}
-      {Array.from({ length: total }, (_, i) => (
-        <text key={i} className="route-chart__tick" x={x(i)} y={H - M.bottom + 22} textAnchor="middle">
-          Stage {i + 1}
+        ))}
+        <line className="route-chart__limit" x1={M.left} x2={M.left + pw} y1={y(limitMs)} y2={y(limitMs)} />
+        <text className="route-chart__limit-label" x={M.left + 8} y={y(limitMs) - 8}>
+          stop limit {fmtMs(limitMs)} ms
         </text>
-      ))}
-      <line className="route-chart__limit" x1={M.left} x2={M.left + pw} y1={y(limitMs)} y2={y(limitMs)} />
-      <text className="route-chart__limit-label" x={M.left + 8} y={y(limitMs) - 8}>
-        stop limit {fmtMs(limitMs)} ms
-      </text>
-      {series
-        .filter((s) => s !== lead)
-        .concat(lead ? [lead] : [])
-        .map((s) => {
-          const d = s.points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.stage).toFixed(1)} ${y(p.p95).toFixed(1)}`).join(' ');
-          const cls = s === lead ? 'route-chart__line is-lead' : 'route-chart__line';
-          return (
-            <g key={s.route} className={cls}>
-              <path d={d} />
-              {s.points.map((p) => (
-                <circle key={p.stage} cx={x(p.stage)} cy={y(p.p95)} r={s === lead ? 4.5 : 3.5} />
-              ))}
-            </g>
-          );
-        })}
-      {labels.map((l) => (
-        <text key={l.route} className={l.lead ? 'route-chart__name is-lead' : 'route-chart__name'} x={l.x + 12} y={l.y + 4}>
-          {l.route}
-        </text>
-      ))}
-      {series.length === 0 ? (
-        <text className="route-chart__empty" x={M.left + pw / 2} y={M.top + ph / 2} textAnchor="middle">
-          Latency appears here when stage 1 finishes.
-        </text>
-      ) : null}
-    </svg>
+        {series
+          .filter((s) => s !== lead)
+          .concat(lead ? [lead] : [])
+          .map((s) => {
+            const d = s.points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.stage).toFixed(1)} ${y(p.p95).toFixed(1)}`).join(' ');
+            const cls = s === lead ? 'route-chart__line is-lead' : 'route-chart__line';
+            return (
+              <g key={s.route} className={cls}>
+                <path d={d} />
+                {s.points.map((p) => (
+                  <circle key={p.stage} cx={x(p.stage)} cy={y(p.p95)} r={s === lead ? 4.5 : 3.5} />
+                ))}
+              </g>
+            );
+          })}
+        {labels.map((l) => (
+          <text key={l.route} className={l.lead ? 'route-chart__name is-lead' : 'route-chart__name'} x={l.x + 12} y={l.y + 4}>
+            {l.route}
+          </text>
+        ))}
+        {series.length === 0 ? (
+          <text className="route-chart__empty" x={M.left + pw / 2} y={M.top + ph / 2} textAnchor="middle">
+            Latency appears here when stage 1 finishes.
+          </text>
+        ) : null}
+      </svg>
+    </div>
   );
 }

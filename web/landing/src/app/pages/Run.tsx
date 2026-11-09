@@ -50,7 +50,7 @@ export function RunPage({ id }: { id: string }) {
   const reason = model.run.statusReason;
 
   return (
-    <div className="page page--wide">
+    <div className="page">
       <header className="run-head">
         <div className="run-head__text">
           <div className="run-head__status">

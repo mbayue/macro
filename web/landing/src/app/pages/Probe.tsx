@@ -25,7 +25,10 @@ import { useApp } from '../context.tsx';
 
 const POLL_MS = 1000;
 
-type State = { kind: 'loading' } | { kind: 'fatal'; error: ApiError } | { kind: 'ready'; run: RunView; events: Map<number, EventView>; pollFailed: boolean };
+type State =
+  | { kind: 'loading' }
+  | { kind: 'fatal'; error: ApiError }
+  | { kind: 'ready'; run: RunView; events: Map<number, EventView>; pollFailed: boolean };
 
 export function ProbePage({ id }: { id: string }) {
   const { navigate, announce } = useApp();
@@ -143,43 +146,66 @@ export function ProbePage({ id }: { id: string }) {
         </h1>
         <p className="page__lead">The probe runs inside the sandbox and tries to escape it. Each attempt should be blocked.</p>
       </header>
-
-      {state.kind === 'loading' ? (
-        <p className="muted" role="status">
-          Loading the probe.
-        </p>
-      ) : state.kind === 'fatal' ? (
-        <>
-          <div className="alert" role="alert">
-            <ApiErrorText error={state.error} />
-          </div>
-          {state.error.code !== 'not_found' ? (
-            <div className="row">
-              <button type="button" className="btn btn--quiet" onClick={() => setAttempt((a) => a + 1)}>
-                Try again
-              </button>
-            </div>
+      <div className="split">
+        <div className="split__main">
+          {state.kind === 'loading' ? (
+            <p className="muted" role="status">
+              Loading the probe.
+            </p>
+          ) : state.kind === 'fatal' ? (
+            <>
+              <div className="alert" role="alert">
+                <ApiErrorText error={state.error} />
+              </div>
+              {state.error.code !== 'not_found' ? (
+                <div className="row">
+                  <button type="button" className="btn btn--quiet" onClick={() => setAttempt((a) => a + 1)}>
+                    Try again
+                  </button>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <ProbeBody run={state.run} events={state.events} pollFailed={state.pollFailed} />
+          )}
+        </div>
+        <aside className="split__side" aria-label="About this probe">
+          {state.kind === 'ready' ? (
+            <section className="panel" aria-labelledby="probe-info-heading">
+              <h2 id="probe-info-heading">This probe</h2>
+              <KeyValues
+                items={[
+                  ['Probe', <span className="code">{state.run.id}</span>],
+                  [
+                    'Status',
+                    <span className="kv__status">
+                      <StatusBadge status={state.run.status} /> {statusText(state.run)}
+                    </span>,
+                  ],
+                  ['Sandbox runtime', <span className="code">{state.run.runtime}</span>],
+                  ['Started', <span className="num">{fmtUtc(state.run.startedAt)}</span>],
+                  state.run.endedAt !== null ? ['Ended', <span className="num">{fmtUtc(state.run.endedAt)}</span>] : null,
+                ]}
+              />
+            </section>
           ) : null}
-        </>
-      ) : (
-        <ProbeBody run={state.run} events={state.events} pollFailed={state.pollFailed} />
-      )}
-
-      <details className="panel disclosure">
-        <summary>
-          <h2 className="disclosure__title">What each action does</h2>
-        </summary>
-        <dl className="explain">
-          {PROBE_ACTIONS.map((a) => (
-            <div key={a.id}>
-              <dt>
-                <span className="code">({a.id})</span> {a.label}
-              </dt>
-              <dd>{ACTION_EXPLANATIONS[a.id]}</dd>
-            </div>
-          ))}
-        </dl>
-      </details>
+          <details className="panel disclosure" open>
+            <summary>
+              <h2 className="disclosure__title">What each action does</h2>
+            </summary>
+            <dl className="explain">
+              {PROBE_ACTIONS.map((a) => (
+                <div key={a.id}>
+                  <dt>
+                    <span className="code">({a.id})</span> {a.label}
+                  </dt>
+                  <dd>{ACTION_EXPLANATIONS[a.id]}</dd>
+                </div>
+              ))}
+            </dl>
+          </details>
+        </aside>
+      </div>{' '}
     </div>
   );
 }
@@ -195,15 +221,6 @@ function ProbeBody({ run, events, pollFailed }: { run: RunView; events: Map<numb
 
   return (
     <>
-      <KeyValues
-        items={[
-          ['Probe', <span className="code">{run.id}</span>],
-          ['Status', <span className="kv__status"><StatusBadge status={run.status} /> {statusText(run)}</span>],
-          ['Sandbox runtime', <span className="code">{run.runtime}</span>],
-          ['Started', <span className="num">{fmtUtc(run.startedAt)}</span>],
-          run.endedAt !== null ? ['Ended', <span className="num">{fmtUtc(run.endedAt)}</span>] : null,
-        ]}
-      />
       {pollFailed && run.status === 'running' ? (
         <div className="alert" role="alert">
           <p>Could not refresh the probe. Trying again.</p>

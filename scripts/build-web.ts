@@ -74,10 +74,10 @@ for (const [file, page] of [
 }
 
 // ---- 3. sanity checks ----
-for (const name of ['index.html', 'privacy.html', 'terms.html', join('app', 'index.html'), 'app.js', 'style.css']) {
+for (const name of ['index.html', 'privacy.html', 'terms.html', join('app', 'index.html'), join('app-next', 'index.html'), 'app.js', 'style.css']) {
   if (!(await Bun.file(join(outDir, name)).exists())) fail(`Web build is missing ${name}.`);
 }
-for (const name of ['index.html', 'privacy.html', 'terms.html']) {
+for (const name of ['index.html', 'privacy.html', 'terms.html', join('app-next', 'index.html')]) {
   const html = await readFile(join(outDir, name), 'utf8');
   if (/\sstyle="/.test(html)) fail(`${name} contains a style attribute, which the CSP blocks.`);
   if (/<script(?![^>]*\ssrc=)[^>]*>/.test(html)) fail(`${name} contains an inline script, which the CSP blocks.`);

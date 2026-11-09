@@ -1,108 +1,9 @@
-/* Macro landing page. Served at /, the app lives at /app/. Fonts: Stack Sans (OFL, see fonts/OFL.txt). */
-@font-face { font-family: "Stack Sans Headline"; src: url("/landing/fonts/stack-sans-headline-300.woff2") format("woff2"); font-weight: 300; font-style: normal; font-display: swap; }
-@font-face { font-family: "Stack Sans Text"; src: url("/landing/fonts/stack-sans-text.woff2") format("woff2"); font-weight: 400 500; font-style: normal; font-display: swap; }
-/*
- * Colour tokens. :root holds the light palette; html[data-theme="dark"] (the default, set in the
- * HTML) switches to the original Soot palette (see src/theme.ts). Lime (--accent) is a fill colour in both themes; anywhere the accent is text,
- * a marker, a border or a focus ring, use --accent-text, because lime on a light page is unreadable.
- * The product UI fragments (.gate, .tile--shot) are dark in both themes, like the app they show.
- */
-:root {
-  color-scheme: light;
-  --bg: #f2f2ed;
-  --surface: #e6e6df;
-  --surface-2: #d9d9d1;
-  --bar: #7d7d75;
-  --bar-hover: #64645d;
-  --ink: #0f0f0f;
-  --muted: #55554f;
-  --accent: #dafa9c;
-  --accent-ink: #0f0f0f;
-  --accent-text: #4a6614;
-  --accent-hover: #c9f07a;
-  --bar-accent: #4a6614;
-  --bar-accent-ink: #ffffff;
-  --field-1: #ffffff;
-  --field-1-ink: #0f0f0f;
-  --field-1-soft: #5c5c5c;
-  --field-2: #dafa9c;
-  --ok: #17672f;
-  --bad: #b3261e;
-  --placeholder: #5e5e58;
-  --thumb-edge: #0f0f0f;
-  --ui-bg: #121212;
-  --ui-line: #2e2e2e;
-  --ui-field: #0a0a0a;
-
-  --display: "Stack Sans Headline", system-ui, sans-serif;
-  --text: "Stack Sans Text", system-ui, sans-serif;
-
-  --step-small: clamp(0.8125rem, 0.79rem + 0.1vw, 0.875rem);
-  --step-body: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
-  --step-lead: clamp(1.25rem, 1.1rem + 0.7vw, 1.625rem);
-  --step-head: clamp(2rem, 1.3rem + 3.2vw, 4rem);
-  --step-display: clamp(3.25rem, 5.2vw, 5rem);
-
-  --margin: clamp(16px, 2.2vw, 32px);
-  --radius: 6px;
-  --ease: cubic-bezier(0.23, 1, 0.32, 1);
-}
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --bg: #0f0f0f;
-  --surface: #1a1a1a;
-  --surface-2: #262626;
-  --bar: #6b6b6b;
-  --bar-hover: #8a8a8a;
-  --ink: #ffffff;
-  --muted: #a3a3a3;
-  --accent-text: #dafa9c;
-  --accent-hover: #e9ffbd;
-  --bar-accent: #dafa9c;
-  --bar-accent-ink: #0f0f0f;
-  --ok: #8fe3a6;
-  --bad: #ff8a80;
-  --placeholder: #959595;
-  --thumb-edge: transparent;
-}
+@import './tokens.css';
+/* Macro landing page. Served at /, the app lives at /app/. Shared tokens and base styles: tokens.css. */
 /* Product UI fragments keep the app's dark colours in both themes. */
 .gate, .tile--shot { --ink: #ffffff; --muted: #a3a3a3; --ok: #8fe3a6; --bad: #ff8a80; --accent-text: #dafa9c; color: var(--ink); }
 
-*, *::before, *::after { box-sizing: border-box; }
-html, body { overflow-x: clip; }
-html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--ink);
-  font-family: var(--text);
-  font-size: var(--step-body);
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-}
-h1, h2, h3 { font-family: var(--display); font-weight: 300; letter-spacing: -0.022em; line-height: 1.05; margin: 0; text-wrap: balance; overflow-wrap: break-word; min-width: 0; }
-p { margin: 0; text-wrap: pretty; }
-img { display: block; max-width: 100%; height: auto; }
-a { color: inherit; }
-:focus-visible { outline: 3px solid var(--accent-text); outline-offset: 3px; }
-::selection { background: var(--accent); color: var(--accent-ink); }
-.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 .wrap { width: 100%; max-width: 1440px; margin: 0 auto; padding: 0 var(--margin); }
-
-/* ---- Buttons: one shape on the whole page ---- */
-.btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  min-height: 48px; padding: 0 22px;
-  border: 0; border-radius: var(--radius);
-  background: var(--accent); color: var(--accent-ink);
-  font: 500 var(--step-body)/1 var(--text);
-  text-decoration: none; cursor: pointer;
-  transition: transform 140ms var(--ease), background-color 160ms ease;
-}
-.btn:active { transform: scale(0.97); }
-@media (hover: hover) and (pointer: fine) { .btn:hover { background: var(--accent-hover); } }
-.btn--ink { background: var(--field-1-ink); color: var(--field-1); }
-@media (hover: hover) and (pointer: fine) { .btn--ink:hover { background: #2b2b2b; } }
 
 /* ---- Nav ---- */
 .nav { position: absolute; inset: 0 0 auto 0; z-index: 3; }
@@ -113,25 +14,7 @@ a { color: inherit; }
 .nav ul a:hover { color: var(--ink); }
 .nav ul a.btn, .nav ul a.btn:hover { color: var(--accent-ink); }
 .nav .btn { min-height: 40px; padding: 0 16px; font-size: var(--step-small); }
-/* Skip link: off screen until focused with the keyboard, then shown above the nav. */
-.skip-link {
-  position: absolute; left: var(--margin); top: 12px; z-index: 10; transform: translateY(-200%);
-  padding: 10px 16px; border-radius: var(--radius);
-  background: var(--accent); color: var(--accent-ink); font-size: var(--step-small); font-weight: 500; text-decoration: none;
-}
-.skip-link:focus { transform: none; }
 .nav ul .nav__theme { margin-right: -12px; }
-.theme-toggle {
-  display: grid; place-items: center; width: 40px; height: 40px; padding: 0;
-  border: 0; border-radius: var(--radius); background: transparent; color: var(--ink); cursor: pointer;
-  transition: background-color 150ms ease, transform 140ms var(--ease);
-}
-.theme-toggle:active { transform: scale(0.97); }
-@media (hover: hover) and (pointer: fine) { .theme-toggle:hover { background: var(--surface); } }
-.theme-toggle__sun { display: none; }
-:root[data-theme="dark"] .theme-toggle__sun { display: block; }
-:root[data-theme="dark"] .theme-toggle__moon { display: none; }
-
 /* ---- Hero ---- */
 .hero { position: relative; min-height: max(100svh, 820px); overflow: hidden; }
 .hero__copy { position: relative; z-index: 2; padding-top: 150px; }
@@ -363,8 +246,6 @@ details[open] .plus::after { transform: rotate(0deg); }
 .js .bars.in .bar__val { opacity: 1; transition-delay: calc(600ms + var(--i, 0) * 45ms); }
 /* The approve copy changes colour with its field (the reveal transition would otherwise drop color). */
 .js .showcase p[data-reveal] { transition: opacity 600ms var(--ease), transform 700ms var(--ease), color 260ms ease; transition-delay: 75ms, 75ms, 0ms; }
-/* Theme switch: everything changes colour in the same frame (see theme.ts). */
-.theme-switching *, .theme-switching *::before, .theme-switching *::after { transition: none !important; }
 .js .bar { transform: scaleY(0.04); } /* start state, so bars never show full height before .in */
 .js .bars.in .bar { animation: grow 900ms var(--ease) both; animation-delay: calc(var(--i) * 45ms); }
 @keyframes grow { from { transform: scaleY(0.04); } to { transform: none; } }

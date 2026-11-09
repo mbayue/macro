@@ -7,7 +7,7 @@ import { currentTheme, setTheme } from '../theme.ts';
  * theme.ts bindThemeToggle() wires the same button there. The icon follows html[data-theme] in CSS,
  * so it is right before any script runs; aria-pressed is corrected once the script has run.
  */
-function ThemeToggle() {
+export function ThemeToggle() {
   const [dark, setDark] = useState(true);
   useEffect(() => setDark(currentTheme() === 'dark'), []);
   return (

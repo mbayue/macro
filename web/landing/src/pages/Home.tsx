@@ -157,8 +157,8 @@ export function Home() {
         <section className="faq wrap" aria-labelledby="faq-title">
           <h2 id="faq-title">Before you ask</h2>
           <div className="faq__list">
-            {FAQ.map((item, i) => (
-              <details name="faq" key={item.q} open={i === 0}>
+            {FAQ.map((item) => (
+              <details name="faq" key={item.q}>
                 <summary>
                   {item.q}
                   <span className="plus" aria-hidden="true" />

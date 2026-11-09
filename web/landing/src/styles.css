@@ -387,7 +387,7 @@ details[open] .plus::after { transform: rotate(0deg); }
   .hero h1 { font-size: 10vw; }
   .hero__lead { font-size: 16px; }
   .stage { position: relative; left: auto; top: auto; margin-top: 48px; height: 640px; clip-path: polygon(72px 0, 100% 0, 100% 100%, 0 100%, 0 56px); overflow: hidden; }
-  .gate { left: 16px; top: 72px; width: 560px; }
+  .gate { left: 16px; top: 72px; width: calc(100vw - 32px); }
   .gate__row { grid-template-columns: 1fr; }
   .bridge { padding-top: 120px; }
   .showcase { margin-top: 120px; min-height: 86svh; }

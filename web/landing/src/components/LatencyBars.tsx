@@ -3,7 +3,7 @@ import { BAR_ACCENT, BAR_LABELLED, BAR_MAX, BAR_PHONE_ORDER, BARS } from '../dat
 
 const fmt = (n: number): string => n.toLocaleString('en-US');
 const DEFAULT_NOTE =
-  'store_home at 200 virtual users, p95 latency. The limit was 1,500 ms. Three routes over four stages, from a real run on the demo shop.';
+  'store_home at 200 virtual users, p95 latency. The limit was 1,500 ms. The run as a whole stayed under it, so the report names store_home as the first route to slow down, not as the breaking point. Three routes over four stages, from a real run on the demo shop.';
 const ALL = BARS.map((_, i) => i);
 
 function label(i: number): string {

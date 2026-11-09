@@ -45,7 +45,7 @@ Two Vultr Cloud Compute VMs (Singapore), Vultr Firewall limited to Cloudflare ra
 
 ## Video script (3 to 4 minutes)
 
-Record at 1080p. Keep the browser zoom at 100%. Have two tabs open: https://macro.my.id and a terminal on the `macro` VM (`docker ps`).
+Record at 1080p. Keep the browser zoom at 100%. Have two tabs open: https://macro.my.id/app/ and a terminal on the `macro` VM (`docker ps`).
 
 | Time | Show | Say |
 | --- | --- | --- |

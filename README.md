@@ -4,7 +4,7 @@
 
 Describe the traffic you expect in plain words ("a new banner drops tonight, 500 players open the store, 10% order"). An AI agent drafts a staged load test, fixed code checks it, you approve it, and k6 runs it inside a sandbox that can reach only the demo shop. You get a capacity report: safe capacity, breaking point, and the first route that slowed down.
 
-- Live demo: **https://macro.my.id** (no sign-in, protected by Cloudflare Turnstile)
+- Website: **https://macro.my.id** · live demo app: **https://macro.my.id/app/** (no sign-in, protected by Cloudflare Turnstile)
 - Built for lablab.ai **Vultr: Agent Rush**, Challenge 1 "Blast Radius Zero"
 
 **The model proposes, code decides.** The AI drafts the plan, advises whether to continue after each stage, and explains the result. The target, limits, k6 script, sandbox settings, stop rules and every number in the report come from fixed code.
@@ -62,7 +62,7 @@ One trust boundary to know about: `macro-api` mounts the Docker socket, so it is
 
 ## See it contained
 
-1. Open https://macro.my.id, complete the Turnstile check and click **Run containment probe**.
+1. Open https://macro.my.id/app/, complete the Turnstile check and click **Run containment probe**.
 2. A fixed k6 script ([`src/k6/probe.js`](src/k6/probe.js)) tries five things from inside a sandbox:
    - HTTPS to `example.com`, which is not allowlisted
    - HTTP to the cloud metadata address `169.254.169.254`

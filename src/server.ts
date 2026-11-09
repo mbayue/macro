@@ -959,6 +959,8 @@ export function createApp(deps: AppDeps): App {
     let rel = safeDecode(pathname);
     if (rel === null || rel.includes('\0') || rel.includes('\\') || !rel.startsWith('/')) return missing();
     if (rel === '/') rel = '/index.html';
+    // The app shell lives at /app/ (its views are hash routes, e.g. /app/#/run/<id>).
+    if (rel === '/app' || rel === '/app/') rel = '/app/index.html';
     if (rel.split('/').some((seg) => seg.startsWith('.'))) return missing(); // no dotfiles, no "..", no "."
     const abs = resolve(webRoot, `.${rel}`);
     if (abs !== webRoot && !abs.startsWith(webRoot + sep)) return missing();

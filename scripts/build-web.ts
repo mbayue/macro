@@ -27,12 +27,15 @@ if (!result.success) {
   process.exit(1);
 }
 
-await cp(join(webDir, 'index.html'), join(outDir, 'index.html'));
+await cp(join(webDir, 'index.html'), join(outDir, 'app', 'index.html'), { recursive: true });
 await cp(join(webDir, 'style.css'), join(outDir, 'style.css'));
 await cp(join(webDir, 'favicon.svg'), join(outDir, 'favicon.svg'));
 await cp(join(webDir, 'fonts'), join(outDir, 'fonts'), { recursive: true });
+// The marketing landing page is the site root; the app is served from /app/.
+await cp(join(webDir, 'landing', 'index.html'), join(outDir, 'index.html'));
+await cp(join(webDir, 'landing'), join(outDir, 'landing'), { recursive: true });
 
-for (const name of ['index.html', 'app.js', 'style.css']) {
+for (const name of ['index.html', join('app', 'index.html'), 'app.js', 'style.css', join('landing', 'landing.css'), join('landing', 'landing.js')]) {
   if (!(await Bun.file(join(outDir, name)).exists())) {
     console.error(`Web build is missing ${name}.`);
     process.exit(1);

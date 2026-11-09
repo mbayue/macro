@@ -49,20 +49,37 @@ function useMotion(): void {
     );
     targets.forEach((el) => io.observe(el));
 
+    // Bridge drift: set on the image itself (not its parent), one direction (1.06 -> 1.0 while the
+    // photo crosses the viewport, continuing the zoom-out of its reveal), and the scroll listener
+    // runs only while the photo is on screen.
+    const img = frame?.querySelector('img');
+    const figure = document.getElementById('bridge-figure');
     let ticking = false;
     const onScroll = () => {
-      if (ticking || !frame) return;
+      if (ticking || !frame || !img) return;
       ticking = true;
       requestAnimationFrame(() => {
         const r = frame.getBoundingClientRect();
         const p = Math.min(1, Math.max(0, 1 - r.bottom / (window.innerHeight + r.height)));
-        frame.style.setProperty('--drift', (1 + p * 0.06).toFixed(4));
+        img.style.setProperty('--drift', (1.06 - p * 0.06).toFixed(4));
         ticking = false;
       });
     };
-    window.addEventListener('scroll', onScroll, { passive: true });
+    let listening = false;
+    const near = new IntersectionObserver(([en]) => {
+      if (en?.isIntersecting && !listening) {
+        window.addEventListener('scroll', onScroll, { passive: true });
+        listening = true;
+        onScroll();
+      } else if (!en?.isIntersecting && listening) {
+        window.removeEventListener('scroll', onScroll);
+        listening = false;
+      }
+    });
+    if (figure) near.observe(figure);
     return () => {
       io.disconnect();
+      near.disconnect();
       window.removeEventListener('scroll', onScroll);
     };
   }, []);

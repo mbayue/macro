@@ -14,8 +14,11 @@ export function currentTheme(): Theme {
 
 export function setTheme(theme: Theme): void {
   const root = document.documentElement;
+  // Switch every colour in the same frame: transitions are off until the new theme has painted.
+  root.classList.add('theme-switching');
   if (theme === 'dark') root.dataset.theme = 'dark';
   else delete root.dataset.theme;
+  requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove('theme-switching')));
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLOR[theme]);
   try {
     localStorage.setItem(THEME_KEY, theme);

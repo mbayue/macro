@@ -42,32 +42,37 @@ function ThemeToggle() {
 export function Nav({ home }: { home: boolean }) {
   const anchor = (id: string) => (home ? `#${id}` : `/#${id}`);
   return (
-    <header className="nav">
-      <div className="wrap">
-        <a className="wordmark" href="/">
-          Macro
-        </a>
-        <ul>
-          <li>
-            <a href={anchor('how')}>How it works</a>
-          </li>
-          <li>
-            <a href={anchor('containment')}>Containment</a>
-          </li>
-          <li>
-            <a href={anchor('pricing')}>Pricing</a>
-          </li>
-          <li className="nav__theme">
-            <ThemeToggle />
-          </li>
-          <li>
-            <a className="btn" href="/app/">
-              Try the live demo
-            </a>
-          </li>
-        </ul>
-      </div>
-    </header>
+    <>
+      <a className="skip-link" href="#top">
+        Skip to content
+      </a>
+      <header className="nav">
+        <div className="wrap">
+          <a className="wordmark" href="/">
+            Macro
+          </a>
+          <ul>
+            <li>
+              <a href={anchor('how')}>How it works</a>
+            </li>
+            <li>
+              <a href={anchor('containment')}>Containment</a>
+            </li>
+            <li>
+              <a href={anchor('pricing')}>Pricing</a>
+            </li>
+            <li className="nav__theme">
+              <ThemeToggle />
+            </li>
+            <li>
+              <a className="btn" href="/app/">
+                Try the live demo
+              </a>
+            </li>
+          </ul>
+        </div>
+      </header>
+    </>
   );
 }
 

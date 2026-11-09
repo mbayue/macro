@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { HOW_STEPS } from '../data.ts';
 
 const LAST = HOW_STEPS.length - 1;
+/** Matches the 120ms swap-out transition on .how.is-swapping in styles.css. */
+const SWAP_OUT_MS = 120;
 
 /** Drag (or arrow-key) through the four stages; the clause and the screenshot swap together. */
 export function HowItWorks() {
@@ -16,18 +18,15 @@ export function HowItWorks() {
     fill.current?.style.setProperty('--fill', `${(step / LAST) * 100}%`);
   }, [step]);
 
+  // Fade out quickly (the system responding), swap the content, then fade in. Reduced motion keeps
+  // this: it is an opacity change, and styles.css drops the blur.
   useEffect(() => {
     if (step === shown) return;
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduce) {
-      setShown(step);
-      return;
-    }
     setSwapping(true);
     const t = window.setTimeout(() => {
       setShown(step);
       setSwapping(false);
-    }, 200);
+    }, SWAP_OUT_MS);
     return () => window.clearTimeout(t);
   }, [step, shown]);
 

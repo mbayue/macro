@@ -28,7 +28,7 @@
   --field-2: #dafa9c;
   --ok: #17672f;
   --bad: #b3261e;
-  --placeholder: #77776f;
+  --placeholder: #5e5e58;
   --thumb-edge: #0f0f0f;
   --ui-bg: #121212;
   --ui-line: #2e2e2e;
@@ -62,7 +62,7 @@
   --bar-accent-ink: #0f0f0f;
   --ok: #8fe3a6;
   --bad: #ff8a80;
-  --placeholder: #7a7a7a;
+  --placeholder: #959595;
   --thumb-edge: transparent;
 }
 /* Product UI fragments keep the app's dark colours in both themes. */
@@ -113,13 +113,20 @@ a { color: inherit; }
 .nav ul a:hover { color: var(--ink); }
 .nav ul a.btn, .nav ul a.btn:hover { color: var(--accent-ink); }
 .nav .btn { min-height: 40px; padding: 0 16px; font-size: var(--step-small); }
+/* Skip link: off screen until focused with the keyboard, then shown above the nav. */
+.skip-link {
+  position: absolute; left: var(--margin); top: 12px; z-index: 10; transform: translateY(-200%);
+  padding: 10px 16px; border-radius: var(--radius);
+  background: var(--accent); color: var(--accent-ink); font-size: var(--step-small); font-weight: 500; text-decoration: none;
+}
+.skip-link:focus { transform: none; }
 .nav ul .nav__theme { margin-right: -12px; }
 .theme-toggle {
   display: grid; place-items: center; width: 40px; height: 40px; padding: 0;
   border: 0; border-radius: var(--radius); background: transparent; color: var(--ink); cursor: pointer;
   transition: background-color 150ms ease, transform 140ms var(--ease);
 }
-.theme-toggle:active { transform: scale(0.94); }
+.theme-toggle:active { transform: scale(0.97); }
 @media (hover: hover) and (pointer: fine) { .theme-toggle:hover { background: var(--surface); } }
 .theme-toggle__sun { display: none; }
 :root[data-theme="dark"] .theme-toggle__sun { display: block; }
@@ -193,7 +200,7 @@ a { color: inherit; }
 .showcase {
   position: relative; margin-top: 180px; min-height: 92svh; overflow: hidden;
   background: var(--field-1); color: var(--field-1-ink);
-  transition: background-color 320ms ease;
+  transition: background-color 260ms ease;
 }
 .showcase.is-on { background: var(--field-2); }
 .showcase__copy { position: relative; z-index: 2; padding-top: 64px; }
@@ -212,7 +219,7 @@ a { color: inherit; }
   position: relative; width: 7.4em; height: 3.4em; padding: 0; font-size: inherit;
   border-radius: 1.7em; border: 0.06em solid var(--field-1-ink);
   background: #e9e9e9; cursor: pointer;
-  transition: background-color 320ms ease;
+  transition: background-color 260ms ease;
 }
 .showcase.is-on .switch button { background: var(--field-1-ink); }
 .switch__knob {
@@ -225,17 +232,18 @@ a { color: inherit; }
 /* ---- How it works: drag through the stages ---- */
 .how { margin-top: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr auto; min-height: 88svh; position: relative; }
 .how__clause { background: var(--surface); padding: 72px var(--margin) 96px; }
-.how__clause h2 { font-size: var(--step-head); max-width: 12ch; transition: opacity 200ms ease; }
-.how__clause p { margin-top: 24px; max-width: 40ch; color: var(--ink); transition: opacity 200ms ease; }
+.how__clause h2 { font-size: var(--step-head); max-width: 12ch; transition: opacity 200ms var(--ease), filter 200ms var(--ease); }
+.how__clause p { margin-top: 24px; max-width: 40ch; color: var(--ink); transition: opacity 200ms var(--ease), filter 200ms var(--ease); }
 .how__shot { background: var(--field-1); display: grid; place-items: center; padding: 72px var(--margin) 96px; }
-.how__shot img { width: min(640px, 100%); border-radius: 8px; transition: opacity 200ms ease; }
-.how.is-swapping .how__clause h2, .how.is-swapping .how__clause p, .how.is-swapping .how__shot img { opacity: 0; }
+.how__shot img { width: min(640px, 100%); border-radius: 8px; transition: opacity 200ms var(--ease), filter 200ms var(--ease); }
+/* The swap out is the system's response, so it is quicker (120ms, HowItWorks.tsx SWAP_OUT_MS) than the fade in. */
+.how.is-swapping .how__clause h2, .how.is-swapping .how__clause p, .how.is-swapping .how__shot img { opacity: 0; filter: blur(2px); transition-duration: 120ms; }
 /* The slider gets its own dark band under both halves: the white fill and the current label stay readable at every stop. */
 .how__control { grid-column: 1 / -1; position: relative; padding: 24px var(--margin) 28px; background: var(--surface); }
 .how__control input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 32px; background: transparent; cursor: pointer; }
 .how__control input[type="range"]::-webkit-slider-runnable-track { height: 8px; border-radius: 4px; background: transparent; }
 .how__track { position: absolute; left: 0; right: 0; top: 12px; height: 8px; border-radius: 4px; background: var(--bar); pointer-events: none; }
-.how__track span { display: block; height: 100%; width: var(--fill, 0%); border-radius: 4px; background: var(--ink); transition: width 200ms var(--ease); }
+.how__track span { display: block; height: 100%; width: var(--fill, 0%); border-radius: 4px; background: var(--ink); } /* no transition: the native thumb snaps between stops, so the fill snaps with it */
 .how__slider { position: relative; }
 .how__slider input { position: relative; }
 .how__control input[type="range"]::-moz-range-track { height: 8px; border-radius: 4px; background: transparent; }
@@ -350,6 +358,13 @@ details[open] .plus::after { transform: rotate(0deg); }
 .js .bridge__frame img { transform: scale(1.12); transition: transform 1600ms var(--ease); }
 .js .bridge__frame.in { clip-path: inset(0 0 0 0); }
 .js .bridge__frame.in img { transform: scale(var(--drift, 1)); transition: transform 1600ms var(--ease); }
+/* Bar values fade in once their bar has grown, instead of being squashed by the bar's scale. */
+.js .bar__val { opacity: 0; transition: opacity 200ms var(--ease); }
+.js .bars.in .bar__val { opacity: 1; transition-delay: calc(600ms + var(--i, 0) * 45ms); }
+/* The approve copy changes colour with its field (the reveal transition would otherwise drop color). */
+.js .showcase p[data-reveal] { transition: opacity 600ms var(--ease), transform 700ms var(--ease), color 260ms ease; transition-delay: 75ms, 75ms, 0ms; }
+/* Theme switch: everything changes colour in the same frame (see theme.ts). */
+.theme-switching *, .theme-switching *::before, .theme-switching *::after { transition: none !important; }
 .js .bar { transform: scaleY(0.04); } /* start state, so bars never show full height before .in */
 .js .bars.in .bar { animation: grow 900ms var(--ease) both; animation-delay: calc(var(--i) * 45ms); }
 @keyframes grow { from { transform: scaleY(0.04); } to { transform: none; } }
@@ -360,13 +375,17 @@ details[open] .plus::after { transform: rotate(0deg); }
 @keyframes rise { from { opacity: 0; transform: translateY(24px); } }
 @keyframes rise-stage { from { opacity: 0; transform: translateY(40px); } }
 @media (prefers-reduced-motion: reduce) {
-  .js [data-reveal] { opacity: 1 !important; transform: none !important; transition: none !important; }
+  /* Reduced motion: no movement, but opacity and colour changes stay (gentler, not zero). */
+  .js [data-reveal] { transform: none !important; transition: opacity 200ms ease !important; }
   .hero__rise, .stage { animation: none; }
   .js .bridge__frame { clip-path: none !important; }
   .js .bridge__frame img { transform: none !important; }
   .js .bar { transform: none !important; }
   .js .bars.in .bar { animation: none; }
-  *, *::before, *::after { transition-duration: 0.01ms !important; }
+  .js .bar__val { opacity: 1 !important; }
+  .how.is-swapping .how__clause h2, .how.is-swapping .how__clause p, .how.is-swapping .how__shot img { filter: none; }
+  .btn, .theme-toggle, .gate__presets button, .cta button, .switch__knob, .plus::before, .plus::after { transition-property: background-color, color, border-color; }
+  .btn:active, .theme-toggle:active, .gate__presets button:active, .cta button:active { transform: none; }
 }
 
 /* ---- Tablet ---- */

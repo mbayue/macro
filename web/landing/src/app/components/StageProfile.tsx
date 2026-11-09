@@ -1,7 +1,7 @@
 /**
  * The plan's load profile as bars standing on a baseline, the same gesture as the landing page's
- * latency bars: width by duration, height by virtual users. Decorative; the stage table next to it
- * holds the same numbers for assistive technology.
+ * latency bars: width by duration, height by virtual users. Decorative; a stage list or table
+ * beside it holds the same numbers for assistive technology.
  */
 import { useEffect, useRef } from 'react';
 

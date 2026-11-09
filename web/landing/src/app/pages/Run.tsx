@@ -386,8 +386,17 @@ function LiveStages({ model }: { model: RunModel }) {
         <p className="muted">No Stage has started yet.</p>
       ) : (
         <TableWrap label="Stages">
-          <table className="table">
+          <table className="table table--stages">
             <caption className="visually-hidden">Stages</caption>
+            <colgroup>
+              <col className="w-stage" />
+              <col className="w-vus" />
+              <col className="w-dur" />
+              {Array.from({ length: 7 }, (_, i) => (
+                <col key={i} />
+              ))}
+              <col className="w-verdict" />
+            </colgroup>
             <thead>
               <tr>
                 <th scope="col">Stage</th>
@@ -397,12 +406,14 @@ function LiveStages({ model }: { model: RunModel }) {
                 <th scope="col" className="num">
                   Duration
                 </th>
-                <th scope="col">Verdict</th>
                 {['Requests', 'Requests/s', 'Error rate', 'HTTP 429', 'p50 (ms)', 'p95 (ms)', 'p99 (ms)'].map((h) => (
                   <th key={h} scope="col" className="num">
                     {h}
                   </th>
                 ))}
+                <th scope="col" className="end">
+                  Verdict
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -417,22 +428,13 @@ function LiveStages({ model }: { model: RunModel }) {
                     <td className="num">{s.durationSec} s</td>
                     {s.status === 'error' ? (
                       <>
-                        <td>
+                        <td colSpan={7}>{s.errorReason ?? 'No reason was recorded.'}</td>
+                        <td className="end">
                           <Badge tone="bad">error</Badge>
                         </td>
-                        <td colSpan={7}>{s.errorReason ?? 'No reason was recorded.'}</td>
                       </>
                     ) : (
                       <>
-                        <td>
-                          {s.status === 'running' ? (
-                            <Badge tone="live">running</Badge>
-                          ) : s.verdict ? (
-                            <Badge tone={s.verdict === 'pass' ? 'ok' : 'bad'}>{s.verdict}</Badge>
-                          ) : (
-                            DASH
-                          )}
-                        </td>
                         {m
                           ? [
                               fmtCount(m.requests),
@@ -448,6 +450,15 @@ function LiveStages({ model }: { model: RunModel }) {
                               </td>
                             ))
                           : dash}
+                        <td className="end">
+                          {s.status === 'running' ? (
+                            <Badge tone="live">running</Badge>
+                          ) : s.verdict ? (
+                            <Badge tone={s.verdict === 'pass' ? 'ok' : 'bad'}>{s.verdict}</Badge>
+                          ) : (
+                            DASH
+                          )}
+                        </td>
                       </>
                     )}
                   </tr>
@@ -460,10 +471,10 @@ function LiveStages({ model }: { model: RunModel }) {
                   </th>
                   <td className="num">{p.vus}</td>
                   <td className="num">{p.durationSec} s</td>
-                  <td>
+                  {dash}
+                  <td className="end">
                     <Badge>{pending}</Badge>
                   </td>
-                  {dash}
                 </tr>
               ))}
             </tbody>

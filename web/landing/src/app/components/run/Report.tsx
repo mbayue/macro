@@ -54,8 +54,17 @@ export function ReportStages({ report }: { report: CapacityReport }) {
   return (
     <Panel title="Stages" id="report-stages-heading">
       <TableWrap label="Stages">
-        <table className="table">
+        <table className="table table--stages">
           <caption className="visually-hidden">Stages</caption>
+          <colgroup>
+            <col className="w-stage" />
+            <col className="w-vus" />
+            <col className="w-dur" />
+            {METRIC_HEADS.map((h) => (
+              <col key={h} />
+            ))}
+            <col className="w-verdict" />
+          </colgroup>
           <thead>
             <tr>
               <th scope="col">Stage</th>
@@ -65,12 +74,14 @@ export function ReportStages({ report }: { report: CapacityReport }) {
               <th scope="col" className="num">
                 Duration (s)
               </th>
-              <th scope="col">Verdict</th>
               {METRIC_HEADS.map((h) => (
                 <th key={h} scope="col" className="num">
                   {h}
                 </th>
               ))}
+              <th scope="col" className="end">
+                Verdict
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -81,7 +92,6 @@ export function ReportStages({ report }: { report: CapacityReport }) {
                 </th>
                 <td className="num">{s.vus}</td>
                 <td className="num">{s.durationSec}</td>
-                <td>{verdictBadge(s)}</td>
                 {s.overall !== null ? (
                   <MetricCells m={s.overall} />
                 ) : (
@@ -91,6 +101,7 @@ export function ReportStages({ report }: { report: CapacityReport }) {
                       : 'This Stage has no metrics.'}
                   </td>
                 )}
+                <td className="end">{verdictBadge(s)}</td>
               </tr>
             ))}
           </tbody>
@@ -323,8 +334,16 @@ export function RunsPanel({ report }: { report: CapacityReport }) {
         <p className="muted">No runs of this plan were found.</p>
       ) : (
         <TableWrap label="Runs of this plan">
-          <table className="table">
+          <table className="table table--runs">
             <caption className="visually-hidden">Most recent runs of this plan, newest first (up to {MAX_LISTED_RUNS})</caption>
+            <colgroup>
+              <col className="w-check" />
+              <col />
+              <col className="w-started" />
+              <col className="w-status" />
+              <col className="w-num" />
+              <col className="w-num" />
+            </colgroup>
             <thead>
               <tr>
                 <th scope="col">

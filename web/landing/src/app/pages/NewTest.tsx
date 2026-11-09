@@ -376,6 +376,7 @@ function PlanDetails({ plan, rationale }: { plan: TestPlan; rationale: string | 
   const { config } = useApp();
   const catalog = new Map<string, (typeof config.catalog)[number]>(config.catalog.map((r) => [r.id, r]));
   const captionId = useId();
+  const { totalSec } = planSize(plan);
   return (
     <Panel className="plan">
       <p className="plan__name">{plan.name}</p>
@@ -388,14 +389,39 @@ function PlanDetails({ plan, rationale }: { plan: TestPlan; rationale: string | 
         </div>
       ) : null}
 
-      <div className="plan__grid">
-        <div>
+      <div className="plan__note">
+        <h3 className="h-small">Stop thresholds</h3>
+        <p className="prose">
+          The run stops early if p95 latency goes over <b className="num">{fmt(plan.stopThresholds.p95Ms)} ms</b> or the error rate goes over{' '}
+          <b className="num">{plan.stopThresholds.errorRatePct}%</b>.
+        </p>
+      </div>
+
+      <div className="plan__stages">
+        <div className="plan__stages-head">
           <h3 className="h-small" id={captionId}>
             Stages
           </h3>
-          <StageProfile stages={plan.stages.map((s) => ({ vus: s.vus, durationSec: s.durationSec, state: 'planned' as const }))} />
+          <span className="muted num">
+            {plan.stages.length} {plan.stages.length === 1 ? 'stage' : 'stages'}, {fmt(totalSec)} s in total
+          </span>
+        </div>
+        {/* The chart is decorative; this list is what assistive technology reads. */}
+        <ol className="visually-hidden" aria-labelledby={captionId}>
+          {plan.stages.map((s, i) => (
+            <li key={i}>
+              Stage {i + 1}: {fmt(s.vus)} VUs for {s.durationSec} s
+            </li>
+          ))}
+        </ol>
+        <StageProfile stages={plan.stages.map((s) => ({ vus: s.vus, durationSec: s.durationSec, state: 'planned' as const }))} />
+        <details className="disclosure disclosure--inline plan__table">
+          <summary>
+            <span className="disclosure__title">Show the stages as a table</span>
+          </summary>
           <TableWrap label="Stages">
-            <table className="table" aria-labelledby={captionId}>
+            <table className="table">
+              <caption className="visually-hidden">Stages</caption>
               <thead>
                 <tr>
                   <th scope="col">Stage</th>
@@ -420,16 +446,7 @@ function PlanDetails({ plan, rationale }: { plan: TestPlan; rationale: string | 
               </tbody>
             </table>
           </TableWrap>
-        </div>
-        <div>
-          <h3 className="h-small">Stop thresholds</h3>
-          <KeyValues
-            items={[
-              ['p95 latency limit', <span className="num">{fmt(plan.stopThresholds.p95Ms)} ms</span>],
-              ['Error rate limit', <span className="num">{plan.stopThresholds.errorRatePct}%</span>],
-            ]}
-          />
-        </div>
+        </details>
       </div>
 
       <h3 className="h-small">Journey</h3>

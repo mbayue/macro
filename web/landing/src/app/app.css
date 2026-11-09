@@ -169,11 +169,13 @@ a { text-underline-offset: 0.2em; }
  * Fixed column grids. One rule for every data table: columns holding labels, dates or badges are
  * sized to their content, and the number columns share what is left evenly.
  */
+/* Stages: the stage number is the row label; VUs and Duration share the even grid with the metrics. */
 .table--stages { table-layout: fixed; min-width: 860px; }
-.table--stages .w-stage { width: 52px; }
-.table--stages .w-vus { width: 60px; }
-.table--stages .w-dur { width: 104px; }
+.table--stages .w-stage { width: 64px; }
 .table--stages .w-verdict { width: 96px; }
+/* Nine number columns get narrow on smaller laptops: headers wrap there instead of overflowing. */
+.table--stages thead th, .table--stages thead th.num { white-space: normal; text-wrap: balance; }
+.table--stages th, .table--stages td { padding-inline: 8px; }
 /* Runs of this plan: the run ID (left-aligned text) takes the spare width; the two numbers are equal. */
 .table--runs { table-layout: fixed; min-width: 1040px; }
 .table--runs .w-check { width: 48px; }

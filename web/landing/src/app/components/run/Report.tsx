@@ -72,7 +72,7 @@ export function ReportStages({ report }: { report: CapacityReport }) {
                 VUs
               </th>
               <th scope="col" className="num">
-                Duration (s)
+                Duration
               </th>
               {METRIC_HEADS.map((h) => (
                 <th key={h} scope="col" className="num">
@@ -91,7 +91,7 @@ export function ReportStages({ report }: { report: CapacityReport }) {
                   {s.displayIndex}
                 </th>
                 <td className="num">{s.vus}</td>
-                <td className="num">{s.durationSec}</td>
+                <td className="num">{s.durationSec} s</td>
                 {s.overall !== null ? (
                   <MetricCells m={s.overall} />
                 ) : (

@@ -2,6 +2,10 @@ import type { ModelCallView } from '../../../../../src/api-types.ts';
 import { modelCallRows } from '../../../../report-view.ts';
 import { Badge, TableWrap, type Tone } from './ui.tsx';
 
+const NOT_REPORTED = 'not reported';
+const tokenText = (n: number | null): string => (n === null ? NOT_REPORTED : String(n));
+const totalText = (a: number | null, b: number | null): string => (a === null && b === null ? NOT_REPORTED : String((a ?? 0) + (b ?? 0)));
+
 const outcomeTone = (o: ModelCallView['outcome']): Tone => (o === 'success' ? 'ok' : o === 'timeout' ? 'warn' : 'bad');
 
 /** Every AI call behind this screen, with model, latency and tokens. Collapsed by default. */
@@ -24,7 +28,9 @@ export function ModelCalls({ calls }: { calls: readonly ModelCallView[] }) {
               <col className="w-model" />
               <col className="w-outcome" />
               <col className="w-latency" />
-              <col className="w-tokens" />
+              <col className="w-tok" />
+              <col className="w-tok" />
+              <col className="w-tok" />
             </colgroup>
             <caption className="visually-hidden">Model calls in request order</caption>
             <thead>
@@ -36,24 +42,37 @@ export function ModelCalls({ calls }: { calls: readonly ModelCallView[] }) {
                 <th scope="col" className="num">
                   Latency (ms)
                 </th>
-                <th scope="col">Tokens</th>
+                <th scope="col" className="num">
+                  Prompt tokens
+                </th>
+                <th scope="col" className="num">
+                  Completion tokens
+                </th>
+                <th scope="col" className="num">
+                  Total tokens
+                </th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
-                <tr key={r.n}>
-                  <th scope="row" className="idx">
-                    {r.n}
-                  </th>
-                  <td className="code">{r.agent}</td>
-                  <td className="code">{r.model}</td>
-                  <td>
-                    <Badge tone={outcomeTone(r.outcome)}>{r.outcome}</Badge>
-                  </td>
-                  <td className="num">{r.latency}</td>
-                  <td>{r.tokens}</td>
-                </tr>
-              ))}
+              {rows.map((r, i) => {
+                const c = calls[i]!;
+                return (
+                  <tr key={r.n}>
+                    <th scope="row" className="idx">
+                      {r.n}
+                    </th>
+                    <td className="code">{r.agent}</td>
+                    <td className="code">{r.model}</td>
+                    <td>
+                      <Badge tone={outcomeTone(r.outcome)}>{r.outcome}</Badge>
+                    </td>
+                    <td className="num">{r.latency}</td>
+                    <td className={c.promptTokens === null ? 'num muted' : 'num'}>{tokenText(c.promptTokens)}</td>
+                    <td className={c.completionTokens === null ? 'num muted' : 'num'}>{tokenText(c.completionTokens)}</td>
+                    <td className="num">{totalText(c.promptTokens, c.completionTokens)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </TableWrap>

@@ -155,12 +155,12 @@ a { text-underline-offset: 0.2em; }
 .table .idx { text-align: left; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .table--calls { table-layout: fixed; }
 .table--calls .w-idx { width: 4%; }
-.table--calls .w-agent { width: 15%; }
+.table--calls .w-agent { width: 14%; }
 .table--calls .w-model { width: 20%; }
-.table--calls .w-outcome { width: 14%; }
+.table--calls .w-outcome { width: 13%; }
 .table--calls .w-latency { width: 13%; }
-.table--calls .w-tokens { width: 34%; }
-.table--calls th:last-child, .table--calls td:last-child { padding-left: 40px; }
+.table--calls .w-tok { width: 12%; }
+.table--calls th:last-child, .table--calls td:last-child { padding-right: 0; }
 .table tr.is-pending td, .table tr.is-pending th { color: var(--muted); }
 .table tr:last-child th, .table tr:last-child td { border-bottom: 0; }
 .check { width: 18px; height: 18px; accent-color: var(--accent-text); }
@@ -376,7 +376,6 @@ a { text-underline-offset: 0.2em; }
   .rail__brand { display: none; }
   .main { padding: 24px 16px 0; min-height: calc(100vh - 60px); }
   .table--calls { table-layout: auto; }
-  .table--calls th:last-child, .table--calls td:last-child { padding-left: 12px; }
   .shell .page__title { font-size: 1.75rem; }
   .run-head { flex-direction: column; }
   .run-head__actions { justify-items: start; text-align: left; max-width: none; }

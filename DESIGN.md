@@ -34,6 +34,12 @@ typography:
     fontWeight: 300
     lineHeight: 1.1
     letterSpacing: "-0.02em"
+  section-title:
+    fontFamily: "Stack Sans Headline, system-ui, sans-serif"
+    fontSize: "1.75rem"
+    fontWeight: 300
+    lineHeight: 1.1
+    letterSpacing: "-0.02em"
   figure:
     fontFamily: "Stack Sans Headline, system-ui, sans-serif"
     fontSize: "2.75rem"
@@ -53,6 +59,10 @@ typography:
   label:
     fontFamily: "Stack Sans Text, system-ui, sans-serif"
     fontSize: "0.8125rem"
+    fontWeight: 400
+  chart-text:
+    fontFamily: "Stack Sans Text, system-ui, sans-serif"
+    fontSize: "12px"
     fontWeight: 400
   code:
     fontFamily: "ui-monospace, SF Mono, Cascadia Mono, Menlo, Consolas, monospace"

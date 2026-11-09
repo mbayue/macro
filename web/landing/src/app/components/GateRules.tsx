@@ -1,15 +1,19 @@
 /**
  * What the policy gate allows, stated from the fixed rules in src/plan/policy.ts, plus the
  * routes a plan may use (from /api/config). Shown beside the New test form so people write
- * descriptions that can pass.
+ * descriptions that can pass. Once a plan is ready to approve, the rules fold away under the
+ * approve panel (`folded`).
  */
 import { useApp } from '../context.tsx';
 import { KeyValues, Panel } from './ui.tsx';
 
-export function GateRules() {
+const TITLE = 'What the policy gate allows';
+const NOTE = 'Fixed code checks every plan against these rules before it can be approved. The AI cannot change them.';
+
+function Rules() {
   const { config } = useApp();
   return (
-    <Panel title="What the policy gate allows" id="gate-rules-heading" note="Fixed code checks every plan against these rules before it can be approved. The AI cannot change them.">
+    <>
       <KeyValues
         items={[
           ['Target', <span className="code">{config.webOrigin}</span>],
@@ -29,6 +33,25 @@ export function GateRules() {
           </li>
         ))}
       </ul>
+    </>
+  );
+}
+
+export function GateRules({ folded = false }: { folded?: boolean }) {
+  if (folded) {
+    return (
+      <details className="panel disclosure">
+        <summary>
+          <h2 className="disclosure__title">{TITLE}</h2>
+        </summary>
+        <p className="panel__note">{NOTE}</p>
+        <Rules />
+      </details>
+    );
+  }
+  return (
+    <Panel title={TITLE} id="gate-rules-heading" note={NOTE}>
+      <Rules />
     </Panel>
   );
 }

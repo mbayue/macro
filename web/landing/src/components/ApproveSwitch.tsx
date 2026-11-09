@@ -10,7 +10,7 @@ export function ApproveSwitch() {
           Plan is {on ? 'approved' : 'draft'}
         </h2>
         <p data-reveal data-i="1">
-          Nothing reaches your site until you approve. The approved plan is stored under its SHA-256 hash, and the run executes exactly that text.
+          Nothing reaches your site until you approve. The approved plan is stored with a fingerprint of its exact text (SHA-256), and the run executes exactly that text.
         </p>
       </div>
       <div className="switch" data-ui>

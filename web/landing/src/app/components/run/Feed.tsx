@@ -120,7 +120,7 @@ export function Feed({
                   <li key={`c${e.id}`} className={warn ? 'feed__item is-warn' : 'feed__item'}>
                     <Time ts={it.ts} />
                     <p>
-                      {warn ? <Badge tone="warn">Warning</Badge> : <Badge>Containment</Badge>} <b>{containmentLabel(e.type)}</b>
+                      <Badge tone={warn ? 'warn' : 'neutral'}>Containment</Badge> <b>{containmentLabel(e.type)}</b>
                       {e.stageIdx !== null ? <span className="muted">, stage {e.stageIdx + 1}</span> : <span className="muted">, run</span>}
                     </p>
                     {where ? <p className="feed__detail code">{where}</p> : null}

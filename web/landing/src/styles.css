@@ -9,6 +9,8 @@
 .nav { position: absolute; inset: 0 0 auto 0; z-index: 3; }
 .nav .wrap { display: flex; align-items: center; justify-content: space-between; padding-top: 28px; }
 .wordmark { font: 500 1.375rem/1 var(--display); letter-spacing: -0.02em; text-decoration: none; }
+/* At least 24px of hit area on the wordmark, without moving it. */
+.nav .wordmark { display: inline-block; padding: 6px 4px; margin: -6px -4px; }
 .nav ul { display: flex; gap: 28px; align-items: center; list-style: none; margin: 0; padding: 0; font-size: var(--step-small); }
 .nav ul a { text-decoration: none; color: var(--muted); transition: color 150ms ease; }
 .nav ul a:hover { color: var(--ink); }
@@ -317,6 +319,8 @@ details[open] .plus::after { transform: rotate(0deg); }
   .bar:nth-child(n+9) { display: none; }
   .bar__val { left: auto; right: 8px; bottom: auto; top: 50%; transform: translateY(-50%); text-align: right; font-size: 17px; color: var(--bar-accent-ink); }
   .bar:not(.bar--accent) .bar__val { color: var(--ink); right: auto; left: calc(100% + 8px); }
+  /* Short bars are hard to tap: the whole row is the hit area, not just the drawn length. */
+  .bar::before { content: ""; position: absolute; inset: 0 auto 0 0; width: calc(100vw - 2 * var(--margin)); }
   @keyframes grow { from { transform: scaleX(0.04); } to { transform: none; } }
   .js .bar { transform: scaleX(0.04); }
   .ptable { display: none; }

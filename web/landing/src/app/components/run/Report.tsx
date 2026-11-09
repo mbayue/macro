@@ -6,8 +6,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CapacityReport, MetricsView, RouteRowView, StageView } from '../../../../../../src/report/build.ts';
 import { type ApiError, getCompare, getRunsForPlan, postRun, VERIFICATION_ERROR } from '../../../../../api.ts';
-import { buildChartGeometry, CHART_WIDTH, chartDescription, chartInputFromReport } from '../../../../../chart.ts';
-import { useWidth } from '../../hooks/useWidth.ts';
 import type { Comparison } from '../../../../../../src/report/compare.ts';
 import { headlineCompareRows, parseComparison, stageCompareRows } from '../../../../../compare-view.ts';
 import { fmtUtc } from '../../../../../dom.ts';
@@ -15,7 +13,7 @@ import { aiModel, canRerun, MAX_LISTED_RUNS, reportNotices, type RunListRow, run
 import { useApp } from '../../context.tsx';
 import { runHref } from '../../router.ts';
 import { TurnstileBox, useTurnstile } from '../Turnstile.tsx';
-import { AlertRegion, ApiErrorText, Badge, Busy, KeyValues, Panel, StatusBadge, TableWrap } from '../ui.tsx';
+import { AlertRegion, ApiErrorText, Badge, Busy, Panel, StatusBadge, TableWrap } from '../ui.tsx';
 
 const METRIC_HEADS = ['Requests', 'Requests/s', 'Error rate', 'HTTP 429', 'p50 (ms)', 'p95 (ms)', 'p99 (ms)'] as const;
 
@@ -37,136 +35,6 @@ function verdictBadge(s: StageView) {
   if (s.verdict === 'pass') return <Badge tone="ok">pass</Badge>;
   if (s.verdict === 'fail') return <Badge tone="bad">fail</Badge>;
   return <Badge>no metrics</Badge>;
-}
-
-export function ReportChart({ report }: { report: CapacityReport }) {
-  const [box, measured] = useWidth<HTMLDivElement>(CHART_WIDTH);
-  const input = chartInputFromReport(report);
-  if (input.stages.length === 0) return null;
-  const base = buildChartGeometry(input);
-  // The geometry is laid out at CHART_WIDTH; stretch it horizontally to the real width, so text keeps its size.
-  const width = Math.max(520, measured);
-  const k = (width - (CHART_WIDTH - base.plot.width)) / base.plot.width;
-  const sx = (x: number) => base.plot.x + (x - base.plot.x) * k;
-  const g = {
-    ...base,
-    width,
-    plot: { ...base.plot, width: base.plot.width * k },
-    points: base.points.map((p) => ({ ...p, cx: sx(p.cx) })),
-    bars: base.bars.map((b) => ({ ...b, x: sx(b.x + b.width / 2) - b.width / 2 })),
-    xLabels: base.xLabels.map((l) => ({ ...l, x: sx(l.x) })),
-  };
-  g.linePath = g.points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.cx.toFixed(1)} ${p.cy}`).join(' ');
-  const { plot } = g;
-  const right = plot.x + plot.width;
-  const bottom = plot.y + plot.height;
-  return (
-    <Panel title="p95 latency and error rate per stage" id="report-chart-heading">
-      <div className="chart-split">
-        <div ref={box} className="chart-box">
-          <TableWrap label="Chart of p95 latency and error rate per stage">
-            <svg
-              className="stage-chart"
-              viewBox={`0 0 ${g.width} ${g.height}`}
-              role="img"
-              aria-labelledby="report-chart-title report-chart-desc"
-              focusable="false"
-            >
-              <title id="report-chart-title">p95 latency and error rate per stage</title>
-              <desc id="report-chart-desc">{chartDescription(input)}</desc>
-              {g.leftTicks.map((t) => (
-                <g key={`l${t.y}`}>
-                  <line className="stage-chart__grid" x1={plot.x} x2={right} y1={t.y} y2={t.y} />
-                  <text className="stage-chart__text" x={plot.x - 8} y={t.y + 4} textAnchor="end">
-                    {t.label}
-                  </text>
-                </g>
-              ))}
-              {g.rightTicks.map((t) => (
-                <text key={`r${t.y}`} className="stage-chart__text" x={right + 8} y={t.y + 4}>
-                  {t.label}
-                </text>
-              ))}
-              <line className="stage-chart__axis" x1={plot.x} x2={right} y1={bottom} y2={bottom} />
-              <text className="stage-chart__text" x={plot.x - 8} y={plot.y - 12} textAnchor="end">
-                p95 (ms)
-              </text>
-              <text className="stage-chart__text" x={right + 8} y={plot.y - 12}>
-                Errors (%)
-              </text>
-              {g.bars.map((b) => (
-                <rect key={b.position} className="stage-chart__bar" x={b.x} y={b.y} width={b.width} height={b.height} />
-              ))}
-              <line className="stage-chart__limit" x1={plot.x} x2={right} y1={g.p95LimitY} y2={g.p95LimitY} />
-              <line className="stage-chart__limit stage-chart__limit--err" x1={plot.x} x2={right} y1={g.errorLimitY} y2={g.errorLimitY} />
-              {g.linePath !== '' ? <path className="stage-chart__line" d={g.linePath} /> : null}
-              {g.points.map((p) => (
-                <circle key={p.position} className="stage-chart__point" cx={p.cx} cy={p.cy} r={4} />
-              ))}
-              {g.xLabels.map((l) => (
-                <g key={l.stage}>
-                  <text className="stage-chart__text" x={l.x} y={bottom + 20} textAnchor="middle">
-                    {l.stage}
-                  </text>
-                  <text className="stage-chart__text" x={l.x} y={bottom + 36} textAnchor="middle">
-                    {l.vus}
-                  </text>
-                </g>
-              ))}
-            </svg>
-          </TableWrap>
-        </div>
-        <div className="chart-split__side">
-          <ChartReadings report={report} />
-          <ul className="legend">
-            <li>
-              <span className="legend__swatch legend__swatch--line" aria-hidden="true" />
-              p95 latency, left axis. Dashed: {report.thresholds.p95Ms}
-              {'\u00a0'}ms threshold
-            </li>
-            <li>
-              <span className="legend__swatch legend__swatch--bar" aria-hidden="true" />
-              Error rate, right axis. Dotted: {report.thresholds.errorRatePct}% threshold
-            </li>
-          </ul>
-          <p className="muted">The stage table below holds the same numbers. Stages without metrics are not drawn.</p>
-        </div>
-      </div>
-    </Panel>
-  );
-}
-
-/** The two readings the chart is for, stated as numbers from the stored metrics. */
-function ChartReadings({ report }: { report: CapacityReport }) {
-  const withMetrics = report.stages.filter((s) => s.overall !== null);
-  const topP95 = withMetrics.reduce<StageView | null>((a, s) => (a === null || s.overall!.raw.p95 > a.overall!.raw.p95 ? s : a), null);
-  const topErr = withMetrics.reduce<StageView | null>(
-    (a, s) => (a === null || s.overall!.raw.errorRatePct > a.overall!.raw.errorRatePct ? s : a),
-    null,
-  );
-  if (!topP95 || !topErr) return null;
-  return (
-    <dl className="readings">
-      <div>
-        <dt>Highest p95</dt>
-        <dd>
-          <span className="readings__value">{topP95.overall!.display.p95} ms</span>
-          <span className="muted">
-            stage {topP95.displayIndex}, {topP95.vus} VUs, limit {report.thresholds.p95Ms} ms
-          </span>
-        </dd>
-      </div>
-      <div>
-        <dt>Highest error rate</dt>
-        <dd>
-          <span className="readings__value">{topErr.overall!.display.errorRatePct}</span>
-          <span className="muted">
-            stage {topErr.displayIndex}, limit {report.thresholds.errorRatePct}%
-          </span>
-        </dd>
-      </div>
-    </dl>
-  );
 }
 
 export function ReportNotices({ report }: { report: CapacityReport }) {

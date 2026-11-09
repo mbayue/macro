@@ -7,9 +7,10 @@ import { useEffect, useRef } from 'react';
 import type { StageView } from '../../../../../src/api-types.ts';
 import { fmtCount, fmtMs, fmtPct, fmtRps } from '../../../../../src/run/format.ts';
 import { currentStage, elapsedMs, formatElapsed, isTerminal, type RunModel } from '../../../../run-view.ts';
-import { headlineItems } from '../../../../report-view.ts';
+import { headlineItems, reportNotices } from '../../../../report-view.ts';
+import type { CapacityReport, StageView as ReportStageView } from '../../../../../src/report/build.ts';
 import { Feed } from '../components/run/Feed.tsx';
-import { AiSection, ReportChart, ReportMeta, ReportNotices, ReportStages, RunsPanel } from '../components/run/Report.tsx';
+import { AiSection, ReportMeta, ReportNotices, ReportStages, RunsPanel } from '../components/run/Report.tsx';
 import { RouteChart } from '../components/run/RouteChart.tsx';
 import { ModelCalls } from '../components/ModelCalls.tsx';
 import { type ProfileStage, StageProfile } from '../components/StageProfile.tsx';
@@ -84,10 +85,16 @@ export function RunPage({ id }: { id: string }) {
             <p className="muted">Ends the current stage and keeps the results so far.</p>
             <AlertRegion error={stopError} />
           </div>
+        ) : report ? (
+          <div className="run-head__actions">
+            <button type="button" className="btn btn--quiet" onClick={goToRunsPanel}>
+              Run again and compare
+            </button>
+          </div>
         ) : null}
       </header>
 
-      {ended && reason ? (
+      {ended && reason && !report ? (
         (model.run.status === 'failed' || model.run.status === 'interrupted') && model.report === null ? (
           <div className="alert" role="alert">
             <p className="alert__message">Run {model.run.status.replace(/_/g, ' ')}</p>
@@ -98,8 +105,14 @@ export function RunPage({ id }: { id: string }) {
         )
       ) : null}
 
-      {report ? <ReportTiles model={model} /> : <LiveTiles model={model} now={now} />}
-      {report ? <ReportNotices report={report} /> : null}
+      {report ? <p className="verdict">{verdictLine(report)}</p> : null}
+      {report ? <ReportTiles model={model} now={now} /> : <LiveTiles model={model} now={now} />}
+      {report && (reason || reportNotices(report).length > 0) ? (
+        <div className="report-notes">
+          {reason ? <p>{reason}</p> : null}
+          <ReportNotices report={report} />
+        </div>
+      ) : null}
 
       <div className="board">
         <section className="panel board__chart" aria-labelledby="route-chart-heading">
@@ -114,7 +127,7 @@ export function RunPage({ id }: { id: string }) {
         <Feed stages={model.stages} decisions={model.decisions} containment={model.containment} total={model.plan?.stages.length ?? null} />
       </div>
 
-      <StageProfile stages={profile(model, now)} compact />
+      {report ? null : <StageProfile stages={profile(model, now)} compact />}
 
       {report ? (
         <article className="report" aria-labelledby="report-heading">
@@ -122,7 +135,6 @@ export function RunPage({ id }: { id: string }) {
             <h2 id="report-heading">Capacity report</h2>
             <ReportMeta report={report} />
           </div>
-          <ReportChart report={report} />
           <ReportStages report={report} />
           <AiSection report={report} />
           <ModelCalls calls={model.modelCalls} />
@@ -160,6 +172,63 @@ export function plainReason(text: string): string {
     .replace(/Stage_Verdicts?/g, 'stage verdict')
     .replace(/\b([A-Z][a-z]+)_([A-Z][a-z]+)\b/g, (_m, a: string, b: string) => `${a.toLowerCase()} ${b.toLowerCase()}`)
     .replace(/\bStage (\d)/g, 'stage $1');
+}
+
+/** Bring the "Run again and compare" panel into view and put focus on its heading. */
+function goToRunsPanel() {
+  const el = document.getElementById('report-runs-heading');
+  if (!el) return;
+  el.setAttribute('tabindex', '-1');
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  el.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
+  el.focus({ preventScroll: true });
+}
+
+const fmtN = (n: number): string => n.toLocaleString('en-US');
+
+/** Which overall limit a failing stage went over, in words, from the stored numbers. */
+function overWhat(s: ReportStageView, th: CapacityReport['thresholds']): string {
+  const m = s.overall;
+  if (m === null) return 'a stop threshold';
+  const p95 = m.raw.p95 > th.p95Ms;
+  const err = m.raw.errorRatePct > th.errorRatePct;
+  if (p95 && err) return `p95 latency (${m.display.p95} ms) and error rate (${m.display.errorRatePct}) went over their limits`;
+  if (p95) return `p95 latency went over the ${fmtN(th.p95Ms)} ms limit (${m.display.p95} ms)`;
+  if (err) return `error rate went over the ${th.errorRatePct}% limit (${m.display.errorRatePct})`;
+  return 'a stop threshold was crossed';
+}
+
+/**
+ * The report's answer in one sentence, built only from the headline values and stage rows
+ * (never from AI text): how much load held, where it broke, and the first route to go over.
+ */
+export function verdictLine(report: CapacityReport): string {
+  const { safeCapacity: safe, breakingPoint: brk, firstDegradedRoute: route } = report.headline;
+  const th = report.thresholds;
+  const measured = report.stages.filter((s) => s.overall !== null);
+  if (measured.length === 0) return 'No stage produced metrics, so this run has no capacity answer.';
+  const top = Math.max(...measured.map((s) => s.vus));
+  const brkStage = brk === null ? undefined : measured.find((s) => s.vus === brk && s.verdict === 'fail');
+
+  let line: string;
+  if (safe !== null && brk === null) {
+    line = `Holds ${fmtN(top)} VUs, the most this run tested: every stage stayed under both limits overall.`;
+  } else if (safe !== null && brk !== null) {
+    line = `Holds ${fmtN(safe)} VUs. At ${fmtN(brk)} VUs, ${brkStage ? overWhat(brkStage, th) : 'a stop threshold was crossed'}.`;
+  } else if (brk !== null) {
+    line = `No stage held: at ${fmtN(brk)} VUs, the first stage measured, ${brkStage ? overWhat(brkStage, th) : 'a stop threshold was crossed'}.`;
+  } else {
+    line = `Tested up to ${fmtN(top)} VUs.`;
+  }
+
+  if (route) {
+    const hit = measured.map((s) => ({ s, r: s.routes.find((r) => r.route === route && r.exceedsThresholds) })).find((x) => x.r);
+    if (hit?.r) {
+      const what = hit.r.raw.p95 > th.p95Ms ? `the ${fmtN(th.p95Ms)} ms p95 limit` : `the ${th.errorRatePct}% error limit`;
+      line += ` ${route} was the first route over ${what}, at ${fmtN(hit.s.vus)} VUs.`;
+    }
+  }
+  return line;
 }
 
 function lastDone(stages: readonly StageView[]): StageView | null {
@@ -219,11 +288,13 @@ function LiveTiles({ model, now }: { model: RunModel; now: number }) {
 }
 
 /** The same four places as the live tiles, now holding the report's answers. */
-function ReportTiles({ model }: { model: RunModel }) {
+function ReportTiles({ model, now }: { model: RunModel; now: number }) {
   const report = model.report!;
   const items = headlineItems(report);
   const [safe, breaking, route] = items;
   const th = report.thresholds;
+  const ran = report.stages;
+  const planned = Math.max(model.plan?.stages.length ?? 0, ran.length);
   // Where the first degraded route went over: its stage and p95, from the same stored rows.
   const firstRoute = report.headline.firstDegradedRoute;
   const where = firstRoute
@@ -254,9 +325,11 @@ function ReportTiles({ model }: { model: RunModel }) {
       {tile(breaking, false, breakSub)}
       {tile(route, false, routeSub)}
       <div className="tile">
-        <span className="tile__label">Run status</span>
-        <span className="tile__value tile__value--text">{report.headline.status.replace(/_/g, ' ')}</span>
-        <span className="tile__sub">sandbox {report.runtime}</span>
+        <span className="tile__label">Tested up to</span>
+        <span className="tile__value">{ran.length > 0 ? fmtN(Math.max(...ran.map((s) => s.vus))) : DASH}</span>
+        <span className="tile__sub">
+          VUs, {ran.length} of {planned} {planned === 1 ? 'stage' : 'stages'} run, {formatElapsed(elapsedMs(model.run, now))} in total
+        </span>
       </div>
     </div>
   );

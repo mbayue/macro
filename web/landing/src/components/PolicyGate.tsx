@@ -53,7 +53,7 @@ export function PolicyGate() {
         <span className="gate__title">
           Policy gate <span>checks every plan before it runs</span>
         </span>
-        <span className={accepted ? 'chip chip--ok' : 'chip chip--bad'}>{accepted ? 'Accepted' : 'Rejected'}</span>
+        <span className={accepted ? 'chip chip--ok' : 'chip chip--bad'}>{accepted ? 'Passed' : 'Rejected'}</span>
       </div>
       <div className="gate__body">
         <div>

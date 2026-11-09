@@ -292,7 +292,8 @@ function ProbeBody({ run, events, pollFailed }: { run: RunView; events: Map<numb
                 <p>
                   {l.warn ? (
                     <>
-                      <Badge tone="warn">Warning</Badge>{' '}
+                      {/* In a probe a blocked attempt or a cap that held is the expected result, so it reads as contained. */}
+                      <Badge tone="ok">contained</Badge>{' '}
                     </>
                   ) : null}
                   {l.text}

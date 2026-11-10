@@ -232,6 +232,10 @@ export interface RunListResponse {
   runs: RunListItem[];
 }
 
+export interface AccountRunsResponse {
+  runs: RunListItem[];
+}
+
 // ---- SSE ------------------------------------------------------------------
 // GET /api/runs/:id/events: `id: <event id>`, `event: <EventType>`, `data: <EventView JSON>`.
 // A comment line `: hb` every 3 s. EventSource reconnects with Last-Event-ID and the server

@@ -1,45 +1,93 @@
 /**
- * Recent runs (`#/runs`): runs and probes opened in this browser (local storage only), each with
- * its live status. An entry the server no longer knows is removed.
+ * Recent runs (`#/runs`): signed-in account runs when available; otherwise browser-local list.
  */
 import { useEffect, useState } from 'react';
 import type { RunStatus } from '../../../../../src/types.ts';
 import { getRun } from '../lib/api.ts';
 import { fmtUtc } from '../lib/format.ts';
-import { forgetRun, loadRecentRuns, type RecentRun } from '../lib/recent-runs.ts';
+import { forgetRun, loadRecentRuns } from '../lib/recent-runs.ts';
 import { Badge, StatusBadge } from '../components/ui.tsx';
+import { useApp } from '../context.tsx';
 import { probeHref, runHref } from '../router.ts';
 
 type Status = RunStatus | 'checking' | 'unknown';
 
+type Row = {
+  id: string;
+  kind: 'run' | 'probe';
+  name: string;
+  startedAt: number;
+};
+
 export function RecentRunsPage() {
-  const [list, setList] = useState<RecentRun[]>(() => loadRecentRuns());
+  const { me } = useApp();
+  const [list, setList] = useState<Row[]>(() =>
+    loadRecentRuns().map((r) => ({ id: r.id, kind: r.kind, name: r.name, startedAt: r.startedAt })),
+  );
   const [status, setStatus] = useState<Record<string, Status>>({});
+  const [source, setSource] = useState<'account' | 'browser'>('browser');
 
   useEffect(() => {
     const abort = new AbortController();
-    for (const r of loadRecentRuns()) {
-      void getRun(r.id, abort.signal).then((res) => {
-        if (abort.signal.aborted) return;
-        if (res.ok) setStatus((s) => ({ ...s, [r.id]: res.data.run.status }));
-        else if (res.error.code === 'not_found') {
-          forgetRun(r.id);
-          setList((l) => l.filter((x) => x.id !== r.id));
-        } else setStatus((s) => ({ ...s, [r.id]: 'unknown' }));
-      });
-    }
+    void (async () => {
+      if (me !== null) {
+        try {
+          const res = await fetch('/api/account/runs', { credentials: 'same-origin', signal: abort.signal });
+          if (res.ok) {
+            const body = (await res.json()) as {
+              runs: { runId: string; startedAt: number; status: RunStatus }[];
+            };
+            setSource('account');
+            setList(
+              body.runs.map((r) => ({
+                id: r.runId,
+                kind: 'run' as const,
+                name: 'Load test',
+                startedAt: r.startedAt,
+              })),
+            );
+            setStatus(Object.fromEntries(body.runs.map((r) => [r.runId, r.status])));
+            return;
+          }
+        } catch {
+          /* fall through to browser list */
+        }
+      }
+
+      setSource('browser');
+      const local = loadRecentRuns();
+      setList(local.map((r) => ({ id: r.id, kind: r.kind, name: r.name, startedAt: r.startedAt })));
+      for (const r of local) {
+        void getRun(r.id, abort.signal).then((res) => {
+          if (abort.signal.aborted) return;
+          if (res.ok) setStatus((s) => ({ ...s, [r.id]: res.data.run.status }));
+          else if (res.error.code === 'not_found') {
+            forgetRun(r.id);
+            setList((l) => l.filter((x) => x.id !== r.id));
+          } else setStatus((s) => ({ ...s, [r.id]: 'unknown' }));
+        });
+      }
+    })();
     return () => abort.abort();
-  }, []);
+  }, [me]);
 
   return (
     <div className="page">
       <header className="page__head">
         <h1 className="page__title">Recent runs</h1>
-        <p className="page__lead">Runs and probes you opened in this browser. The list stays on this device and is never sent to Macro.</p>
+        <p className="page__lead">
+          {source === 'account'
+            ? 'Runs attached to your Macro account, newest first.'
+            : 'Runs and probes you opened in this browser. The list stays on this device until you sign in.'}
+        </p>
       </header>
       {list.length === 0 ? (
         <div className="empty">
-          <p>No runs yet. Every run you start or open appears here, so you can get back to it.</p>
+          <p>
+            {source === 'account'
+              ? 'No account runs yet. Draft a plan and approve it, or claim demo runs from this browser after sign-in.'
+              : 'No runs yet. Every run you start or open appears here, so you can get back to it.'}
+          </p>
           <div className="row">
             <a className="btn" href="#/">
               Start a new test
@@ -62,7 +110,15 @@ export function RecentRunsPage() {
                     <span className="muted">started {fmtUtc(r.startedAt)}</span>
                   </span>
                   <span className="runs__status">
-                    {st === 'checking' ? <Badge>checking</Badge> : st === 'unknown' ? <Badge>status unknown</Badge> : st === 'running' ? <Badge tone="live">running now</Badge> : <StatusBadge status={st} />}
+                    {st === 'checking' ? (
+                      <Badge>checking</Badge>
+                    ) : st === 'unknown' ? (
+                      <Badge>status unknown</Badge>
+                    ) : st === 'running' ? (
+                      <Badge tone="live">running now</Badge>
+                    ) : (
+                      <StatusBadge status={st} />
+                    )}
                   </span>
                 </a>
               </li>

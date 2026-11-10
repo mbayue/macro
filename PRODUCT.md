@@ -24,8 +24,9 @@ A session: describe the traffic, review and approve the plan, watch a run of a f
 
 ## Capabilities and Constraints
 
-- Today the live demo can only test one target: the demo shop at yue.macro.my.id. Testing your own site needs domain verification, which is not built yet (Phase 2). Copy must not imply it works today.
-- Every action that costs money or load (draft plan, approve, re-run, probe) requires Cloudflare Turnstile; there are per-IP and daily limits.
+- Demo shop tests work signed out against yue.macro.my.id. Own-site tests require a Macro account (GitHub or magic link) and one verified HTTPS origin (DNS TXT or `/.well-known/`). Copy must stay honest about what is verified vs demo-only.
+- Signed-out planning and starts still require Cloudflare Turnstile; signed-in sessions skip Turnstile. Limits apply per IP when signed out and per account when signed in.
+- Accounts also keep a draft across devices, private own-site reports, and a claimed recent-runs list. Containment probes remain demo-shop only in v1.
 - Strict CSP: no inline scripts, no style attributes. Untrusted text (user input, AI output) is rendered as text, never HTML.
 - The planner app is React 19 + Vite at /app/, next to the landing site.
 - Confirmed: the app is the tool only (new test, live run, report with re-run and compare, probe, recent runs); the intro and the policy gate demo live on the landing page.

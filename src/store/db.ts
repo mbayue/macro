@@ -597,6 +597,16 @@ export class Store {
       .map(toRun);
   }
 
+  /** Newest first runs owned by the user (claimed or started while signed in). */
+  listRunsForOwner(userId: string, limit = 50): RunRow[] {
+    return this.db
+      .prepare<RawRun, [string, number]>(
+        `SELECT ${RUN_COLS} FROM runs WHERE owner_user_id = ? ORDER BY started_at DESC, rowid DESC LIMIT ?`,
+      )
+      .all(userId, limit)
+      .map(toRun);
+  }
+
   /** Runs and probes with `started_at >= sinceMs`. Pass the UTC day start for the daily limit. */
   countRunsStartedSince(sinceMs: number): number {
     return (

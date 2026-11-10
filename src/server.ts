@@ -33,6 +33,7 @@ import type {
   StartResponse,
   StopResponse,
   AccountDraft,
+  AccountRunsResponse,
   ClaimResponse,
   MagicLinkResponse,
   MeResponse,
@@ -1619,6 +1620,26 @@ export function createApp(deps: AppDeps): App {
     }
   };
 
+  const getAccountRuns: Handler = async ({ req }) => {
+    if (config.auth === undefined) {
+      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
+    }
+    const auth = requireSession(req);
+    if (auth instanceof Response) return auth;
+    const runs: RunListItem[] = store.listRunsForOwner(auth.user.id, 50).map((r) => {
+      const body = store.getReport(r.id)?.body;
+      return {
+        runId: r.id,
+        startedAt: r.startedAt,
+        status: r.status,
+        safeCapacity: headlineValue(body, 'safeCapacity'),
+        breakingPoint: headlineValue(body, 'breakingPoint'),
+      };
+    });
+    const body: AccountRunsResponse = { runs };
+    return json(200, body);
+  };
+
   // ------------------------------------------------------------------ routing
 
   const routes: RouteDef[] = [
@@ -1642,6 +1663,7 @@ export function createApp(deps: AppDeps): App {
     { method: 'POST', re: /^\/api\/verify\/clear$/, name: 'verify_clear', handler: postVerifyClear },
     { method: 'GET', re: /^\/api\/draft$/, name: 'draft_get', handler: getDraft },
     { method: 'PUT', re: /^\/api\/draft$/, name: 'draft_put', handler: putDraft },
+    { method: 'GET', re: /^\/api\/account\/runs$/, name: 'account_runs', handler: getAccountRuns },
     { method: 'POST', re: /^\/api\/runs\/([^/]+)\/stop$/, name: 'stop', handler: postStop },
     { method: 'GET', re: /^\/api\/runs\/([^/]+)\/events$/, name: 'events', handler: getEvents },
     { method: 'GET', re: /^\/api\/runs\/([^/]+)$/, name: 'run', handler: getRunSnapshot },

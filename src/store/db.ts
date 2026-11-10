@@ -4,6 +4,8 @@
 import { Database } from 'bun:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { ContestedOriginError } from '../auth/types.ts';
+import type { SessionRow, UserRow, VerifiedOriginRow } from '../auth/types.ts';
 import type {
   DecisionSource,
   DecisionValue,
@@ -15,6 +17,9 @@ import type {
   StageStatus,
   StageVerdict,
 } from '../types.ts';
+
+export type { SessionRow, UserRow, VerifiedOriginRow } from '../auth/types.ts';
+export { ContestedOriginError } from '../auth/types.ts';
 
 export const LIMIT_ROW_TTL_MS = 24 * 3_600_000;
 export const PURGE_INTERVAL_MS = 3_600_000;
@@ -60,6 +65,34 @@ CREATE TABLE IF NOT EXISTS model_calls (
 );
 CREATE TABLE IF NOT EXISTS planning_requests (ip TEXT NOT NULL, ts INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS client_starts (ip TEXT NOT NULL, ts INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  primary_email TEXT NOT NULL UNIQUE,
+  github_login TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS auth_identities (
+  provider TEXT NOT NULL CHECK (provider IN ('email','github')),
+  provider_subject TEXT NOT NULL,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  PRIMARY KEY (provider, provider_subject)
+);
+CREATE INDEX IF NOT EXISTS auth_identities_user ON auth_identities(user_id);
+CREATE TABLE IF NOT EXISTS sessions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at INTEGER NOT NULL,
+  last_seen_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id);
+CREATE TABLE IF NOT EXISTS verified_origins (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  origin TEXT NOT NULL,
+  host TEXT NOT NULL UNIQUE,
+  verified_at INTEGER NOT NULL,
+  token TEXT NOT NULL
+);
 `;
 
 // ---------------------------------------------------------------- public types
@@ -200,6 +233,26 @@ interface RawModelCall {
 }
 interface TsRow { ts: number }
 interface CountRow { n: number }
+interface RawUser {
+  id: string;
+  primary_email: string;
+  github_login: string | null;
+  created_at: number;
+}
+interface RawSession {
+  id: string;
+  user_id: string;
+  created_at: number;
+  last_seen_at: number;
+  expires_at: number;
+}
+interface RawVerifiedOrigin {
+  user_id: string;
+  origin: string;
+  host: string;
+  verified_at: number;
+  token: string;
+}
 
 const RUN_COLS =
   'id, kind, plan_hash, status, status_reason, runtime, started_at, ended_at, probe_result';
@@ -262,6 +315,39 @@ function toModelCall(r: RawModelCall): ModelCallRow {
     completionTokens: r.completion_tokens,
     ts: r.ts,
   };
+}
+
+function toUser(r: RawUser): UserRow {
+  return {
+    id: r.id,
+    primaryEmail: r.primary_email,
+    githubLogin: r.github_login,
+    createdAt: r.created_at,
+  };
+}
+
+function toSession(r: RawSession): SessionRow {
+  return {
+    id: r.id,
+    userId: r.user_id,
+    createdAt: r.created_at,
+    lastSeenAt: r.last_seen_at,
+    expiresAt: r.expires_at,
+  };
+}
+
+function toVerifiedOrigin(r: RawVerifiedOrigin): VerifiedOriginRow {
+  return {
+    userId: r.user_id,
+    origin: r.origin,
+    host: r.host,
+    verifiedAt: r.verified_at,
+    token: r.token,
+  };
+}
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
 }
 
 // --------------------------------------------------------------------- Store
@@ -657,5 +743,120 @@ export class Store {
     }, opts.intervalMs ?? PURGE_INTERVAL_MS);
     timer.unref();
     return () => clearInterval(timer);
+  }
+
+  // ------------------------------------------------------------------- auth
+
+  createUser(email: string, now: number): UserRow {
+    const primaryEmail = normalizeEmail(email);
+    const id = crypto.randomUUID();
+    this.db
+      .prepare('INSERT INTO users (id, primary_email, github_login, created_at) VALUES (?, ?, NULL, ?)')
+      .run(id, primaryEmail, now);
+    return { id, primaryEmail, githubLogin: null, createdAt: now };
+  }
+
+  findUserByEmail(email: string): UserRow | null {
+    const r = this.db
+      .prepare<RawUser, [string]>(
+        'SELECT id, primary_email, github_login, created_at FROM users WHERE primary_email = ?',
+      )
+      .get(normalizeEmail(email));
+    return r ? toUser(r) : null;
+  }
+
+  linkIdentity(userId: string, provider: 'email' | 'github', providerSubject: string): void {
+    const subject = provider === 'email' ? normalizeEmail(providerSubject) : providerSubject;
+    this.db
+      .prepare(
+        `INSERT INTO auth_identities (provider, provider_subject, user_id) VALUES (?, ?, ?)
+         ON CONFLICT(provider, provider_subject) DO UPDATE SET user_id = excluded.user_id`,
+      )
+      .run(provider, subject, userId);
+  }
+
+  findUserByIdentity(provider: 'email' | 'github', providerSubject: string): UserRow | null {
+    const subject = provider === 'email' ? normalizeEmail(providerSubject) : providerSubject;
+    const r = this.db
+      .prepare<RawUser, [string, string]>(
+        `SELECT u.id, u.primary_email, u.github_login, u.created_at
+         FROM auth_identities i
+         JOIN users u ON u.id = i.user_id
+         WHERE i.provider = ? AND i.provider_subject = ?`,
+      )
+      .get(provider, subject);
+    return r ? toUser(r) : null;
+  }
+
+  createSession(userId: string, now: number, ttlMs: number): SessionRow {
+    const id = crypto.randomUUID();
+    const expiresAt = now + ttlMs;
+    this.db
+      .prepare(
+        'INSERT INTO sessions (id, user_id, created_at, last_seen_at, expires_at) VALUES (?, ?, ?, ?, ?)',
+      )
+      .run(id, userId, now, now, expiresAt);
+    return { id, userId, createdAt: now, lastSeenAt: now, expiresAt };
+  }
+
+  getSession(id: string): SessionRow | null {
+    const r = this.db
+      .prepare<RawSession, [string]>(
+        'SELECT id, user_id, created_at, last_seen_at, expires_at FROM sessions WHERE id = ?',
+      )
+      .get(id);
+    return r ? toSession(r) : null;
+  }
+
+  touchSession(id: string, now: number, ttlMs: number): SessionRow | null {
+    const expiresAt = now + ttlMs;
+    const res = this.db
+      .prepare('UPDATE sessions SET last_seen_at = ?, expires_at = ? WHERE id = ?')
+      .run(now, expiresAt, id);
+    if (res.changes === 0) return null;
+    return this.getSession(id);
+  }
+
+  deleteSession(id: string): void {
+    this.db.prepare('DELETE FROM sessions WHERE id = ?').run(id);
+  }
+
+  setVerifiedOrigin(userId: string, origin: string, host: string, token: string, now: number): void {
+    this.transaction(() => {
+      const owner = this.db
+        .prepare<{ user_id: string }, [string]>('SELECT user_id FROM verified_origins WHERE host = ?')
+        .get(host);
+      if (owner !== null && owner.user_id !== userId) {
+        throw new ContestedOriginError(host);
+      }
+      this.db.prepare('DELETE FROM verified_origins WHERE user_id = ?').run(userId);
+      this.db
+        .prepare(
+          'INSERT INTO verified_origins (user_id, origin, host, verified_at, token) VALUES (?, ?, ?, ?, ?)',
+        )
+        .run(userId, origin, host, now, token);
+    });
+  }
+
+  clearVerifiedOrigin(userId: string): void {
+    this.db.prepare('DELETE FROM verified_origins WHERE user_id = ?').run(userId);
+  }
+
+  getVerifiedOrigin(userId: string): VerifiedOriginRow | null {
+    const r = this.db
+      .prepare<RawVerifiedOrigin, [string]>(
+        'SELECT user_id, origin, host, verified_at, token FROM verified_origins WHERE user_id = ?',
+      )
+      .get(userId);
+    return r ? toVerifiedOrigin(r) : null;
+  }
+
+  findVerifiedOriginByHost(host: string): VerifiedOriginRow | null {
+    const r = this.db
+      .prepare<RawVerifiedOrigin, [string]>(
+        'SELECT user_id, origin, host, verified_at, token FROM verified_origins WHERE host = ?',
+      )
+      .get(host);
+    return r ? toVerifiedOrigin(r) : null;
   }
 }

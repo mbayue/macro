@@ -105,8 +105,22 @@ Main settings (full list in [`.env.example`](.env.example) and [`src/config.ts`]
 | `TARGET_ORIGINS` | The whole allowlist: the web origin, then the API origin. |
 | `SANDBOX_RUNTIME` | `runsc` (default) or `runc` to opt out of gVisor. |
 | `K6_IMAGE` | Must be pinned by `@sha256:` digest. |
+| Auth block (all or nothing) | `SESSION_SECRET`, `PUBLIC_BASE_URL`, `RESEND_API_KEY`, `RESEND_FROM`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_REDIRECT_URI`. Omit all to disable sign-in; set every one to enable accounts. |
 
 If a sandbox prerequisite is missing (Docker, gVisor, the proxy image), the API still starts but refuses every run, and `GET /api/config` names the problem.
+
+### Accounts and own-site testing
+
+Auth is optional. With the auth env block unset, `/api/me` and verify routes stay unavailable and the planner works as a signed-out demo against `TARGET_ORIGINS` only.
+
+When auth is configured:
+
+1. Open `/app/#/sign-in` (GitHub OAuth or Resend magic link). GitHub must provide a verified email or Macro refuses the sign-in.
+2. On **New test**, choose **Demo shop** (public, works signed out) or **My site** (requires sign-in and a verified origin).
+3. Verify one HTTPS host with either a DNS TXT record at `_macro-verify.<host>` or a file at `/.well-known/macro-site-verification` containing the issued token, then check from the inline panel.
+4. Own-site runs are private to the account; demo runs stay public and can be claimed onto the account from browser recent-runs after sign-in.
+
+Local smoke (auth configured): sign in → verify a throwaway host you control → draft Demo and My site plans → confirm a private own-site report 404s when signed out → sign out lands on New test.
 
 ### Demo target VM
 
@@ -141,15 +155,15 @@ docker exec macro-api bun src/admin/waitlist.ts remove <email>  # deletion reque
 
 ## Limits
 
-- **Only the demo target can be tested.** Arbitrary targets would make Macro a DDoS tool. Domain verification with a DNS TXT record is future work.
+- **Targets are gated.** Signed-out clients only hit the demo allowlist. Signed-in clients may add one verified HTTPS origin (DNS TXT or `/.well-known/`). Contested hosts stay with the first verifier until clear or replace.
 - **One load generator** in Singapore with 1 CPU per sandbox. At high VU counts, the generator itself can become the limit.
 - **"First degraded route" is an observation, not a root cause.**
-- **Demo quotas:** one active run at a time, 6 starts per client per hour, 50 per day, and a 15-minute cap per run.
-- **Not built:** regional runs from other Vultr regions, and report export.
+- **Quotas:** one active run at a time, rolling planning and start limits (per IP when signed out, per account when signed in), a daily start cap, and a 15-minute cap per run.
+- **Not built:** regional runs from other Vultr regions, report export, multi-seat orgs, and own-site containment probes.
 
 ## Testing
 
-`bun test` runs 431 unit and property tests ([fast-check](https://fast-check.dev)). They cover the plan parser, the policy gate against an independent reference model, script generation, the proxy decision, sandbox lifecycle with a fake Docker, metrics and verdicts, agent fallbacks, the number check and run comparison. Sandbox behaviour on a real VM is checked by the live probe.
+`bun test` runs the unit and property suite ([fast-check](https://fast-check.dev)). They cover the plan parser, the policy gate against an independent reference model, script generation, the proxy decision, sandbox lifecycle with a fake Docker, metrics and verdicts, agent fallbacks, the number check and run comparison, plus account auth, verification, drafts, and run privacy. Sandbox behaviour on a real VM is checked by the live probe.
 
 ## License
 

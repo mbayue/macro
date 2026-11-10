@@ -11,3 +11,6 @@ dist/
 data/
 *.sqlite
 *.log
+
+.impeccable
+.kiro

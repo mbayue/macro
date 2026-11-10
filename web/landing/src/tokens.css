@@ -6,37 +6,40 @@
 @font-face { font-family: "Stack Sans Headline"; src: url("/landing/fonts/stack-sans-headline-300.woff2") format("woff2"); font-weight: 300; font-style: normal; font-display: swap; }
 @font-face { font-family: "Stack Sans Text"; src: url("/landing/fonts/stack-sans-text.woff2") format("woff2"); font-weight: 400 500; font-style: normal; font-display: swap; }
 /*
- * Colour tokens. :root holds the light palette; html[data-theme="dark"] (the default, set in the
- * HTML) switches to the original Soot palette (see src/theme.ts). Lime (--accent) is a fill colour in both themes; anywhere the accent is text,
- * a marker, a border or a focus ring, use --accent-text, because lime on a light page is unreadable.
- * The product UI fragments (.gate, .tile--shot) are dark in both themes, like the app they show.
+ * Colour tokens, taken from mongodb.com. :root is the light palette; html[data-theme="dark"]
+ * (the default, set in the HTML) switches to evergreen (see src/theme.ts). Spring green (--accent)
+ * is a fill in both themes. Anywhere the accent is text, a marker, a border or a focus ring, use
+ * --accent-text: forest on a light page, spring green on evergreen. Spring green as text on cream
+ * fails contrast. The product UI fragments (.gate, .tile--shot) stay on the dark evergreen field
+ * in both themes, like the app.
  */
 :root {
   color-scheme: light;
-  --bg: #f2f2ed;
-  --surface: #e6e6df;
-  --surface-2: #d9d9d1;
-  --bar: #7d7d75;
-  --bar-hover: #64645d;
-  --ink: #0f0f0f;
-  --muted: #55554f;
-  --accent: #dafa9c;
-  --accent-ink: #0f0f0f;
-  --accent-text: #4a6614;
-  --accent-hover: #c9f07a;
-  --bar-accent: #4a6614;
+  --bg: #fdfff5;
+  --surface: #f1f5eb;
+  --surface-2: #e4e8e0;
+  --bar: #616c6d;
+  --bar-hover: #404f54;
+  --ink: #001e2b;
+  --muted: #404f54;
+  --accent: #00ed64;
+  --accent-ink: #001e2b;
+  --accent-text: #00684a;
+  --accent-hover: #00aa57;
+  --accent-ink-soft: #014e3d;
+  --bar-accent: #00684a;
   --bar-accent-ink: #ffffff;
   --field-1: #ffffff;
-  --field-1-ink: #0f0f0f;
-  --field-1-soft: #5c5c5c;
-  --field-2: #dafa9c;
-  --ok: #17672f;
+  --field-1-ink: #001e2b;
+  --field-1-soft: #404f54;
+  --field-2: #00ed64;
+  --ok: #00684a;
   --bad: #b3261e;
-  --placeholder: #5e5e58;
-  --thumb-edge: #0f0f0f;
-  --ui-bg: #121212;
-  --ui-line: #2e2e2e;
-  --ui-field: #0a0a0a;
+  --placeholder: #616c6d;
+  --thumb-edge: #001e2b;
+  --ui-bg: #001e2b;
+  --ui-line: #21313a;
+  --ui-field: #061621;
 
   --display: "Stack Sans Headline", system-ui, sans-serif;
   --text: "Stack Sans Text", system-ui, sans-serif;
@@ -53,20 +56,20 @@
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0f0f0f;
-  --surface: #1a1a1a;
-  --surface-2: #262626;
-  --bar: #6b6b6b;
-  --bar-hover: #8a8a8a;
+  --bg: #001e2b;
+  --surface: #061621;
+  --surface-2: #21313a;
+  --bar: #616c6d;
+  --bar-hover: #9ea2a1;
   --ink: #ffffff;
-  --muted: #a3a3a3;
-  --accent-text: #dafa9c;
-  --accent-hover: #e9ffbd;
-  --bar-accent: #dafa9c;
-  --bar-accent-ink: #0f0f0f;
-  --ok: #8fe3a6;
+  --muted: #9ea2a1;
+  --accent-text: #00ed64;
+  --accent-hover: #00aa57;
+  --bar-accent: #00ed64;
+  --bar-accent-ink: #001e2b;
+  --ok: #00ed64;
   --bad: #ff8a80;
-  --placeholder: #959595;
+  --placeholder: #9ea2a1;
   --thumb-edge: transparent;
 }
 *, *::before, *::after { box-sizing: border-box; }
@@ -102,7 +105,7 @@ a { color: inherit; }
 .btn:active { transform: scale(0.97); }
 @media (hover: hover) and (pointer: fine) { .btn:hover { background: var(--accent-hover); } }
 .btn--ink { background: var(--field-1-ink); color: var(--field-1); }
-@media (hover: hover) and (pointer: fine) { .btn--ink:hover { background: #2b2b2b; } }
+@media (hover: hover) and (pointer: fine) { .btn--ink:hover { background: #023430; } }
 
 /* Skip link: off screen until focused with the keyboard, then shown above the nav. */
 .skip-link {

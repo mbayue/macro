@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 /**
- * Run (`#/run/<id>`): the live board. While the test runs, the lime tile is the stage in progress
+ * Run (`#/run/<id>`): the live board. While the test runs, the spring-green tile is the stage in progress
  * and the other tiles name the stage their numbers came from (metrics exist per finished stage).
  * When the run ends the same tiles become the report's headline, and the report follows below.
  */
@@ -354,7 +354,7 @@ function profile(model: RunModel, now: number): ProfileStage[] {
   });
 }
 
-/** Progress through the running stage, drawn along the bottom of the lime tile. */
+/** Progress through the running stage, drawn along the bottom of the spring-green tile. */
 function TileProgress({ value }: { value: number }) {
   const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {

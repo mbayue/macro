@@ -2,23 +2,23 @@
 name: Macro
 description: Load tests that stay contained. One world for the landing site, the legal pages and the app.
 colors:
-  soot: "#0f0f0f"
-  soot-surface: "#1a1a1a"
-  soot-surface-2: "#262626"
-  soot-bar: "#6b6b6b"
-  paper: "#f2f2ed"
-  paper-surface: "#e6e6df"
-  paper-surface-2: "#d9d9d1"
-  paper-bar: "#7d7d75"
-  ink-dark: "#0f0f0f"
+  evergreen: "#001e2b"
+  evergreen-surface: "#061621"
+  evergreen-surface-2: "#21313a"
+  evergreen-bar: "#616c6d"
+  cream: "#fdfff5"
+  cream-surface: "#f1f5eb"
+  cream-surface-2: "#e4e8e0"
+  cream-bar: "#616c6d"
+  ink-dark: "#001e2b"
   ink-light: "#ffffff"
-  muted-dark: "#a3a3a3"
-  muted-light: "#55554f"
-  lime: "#dafa9c"
-  olive: "#4a6614"
-  lime-ink-soft: "#3d4a24"
-  ok-dark: "#8fe3a6"
-  ok-light: "#17672f"
+  muted-dark: "#9ea2a1"
+  muted-light: "#404f54"
+  spring: "#00ed64"
+  forest: "#00684a"
+  spring-ink-soft: "#014e3d"
+  ok-dark: "#00ed64"
+  ok-light: "#00684a"
   warn-dark: "#f2c46d"
   warn-light: "#7a4e00"
   bad-dark: "#ff8a80"
@@ -77,27 +77,27 @@ spacing:
   section: "24px"
 components:
   button-primary:
-    backgroundColor: "{colors.lime}"
+    backgroundColor: "{colors.spring}"
     textColor: "{colors.ink-dark}"
     rounded: "{rounded.md}"
     height: "40px"
     padding: "0 16px"
   button-quiet:
-    backgroundColor: "{colors.soot-surface-2}"
+    backgroundColor: "{colors.evergreen-surface-2}"
     textColor: "{colors.ink-light}"
     rounded: "{rounded.md}"
     height: "40px"
-  button-on-lime:
+  button-on-spring:
     backgroundColor: "{colors.ink-dark}"
     textColor: "{colors.ink-light}"
     rounded: "{rounded.md}"
     height: "40px"
   panel:
-    backgroundColor: "{colors.soot-surface}"
+    backgroundColor: "{colors.evergreen-surface}"
     rounded: "{rounded.md}"
     padding: "20px 24px"
   tile-live:
-    backgroundColor: "{colors.lime}"
+    backgroundColor: "{colors.spring}"
     textColor: "{colors.ink-dark}"
     rounded: "{rounded.md}"
     padding: "18px 20px 26px"
@@ -109,33 +109,34 @@ components:
 
 **Creative North Star: "The Test Bench"** (proposed name; change it freely)
 
-Macro looks like a well-kept test bench: a dark, flat field where the instrument readings are the only bright things. The soot ground and its two surface steps hold everything; lime marks the one live or primary thing on a screen, and large light-weight figures carry the numbers people came for. The same world runs the landing site (persuade), the legal pages (read) and the app (operate); the app keeps it but swaps the landing page's fluid display scale for fixed product steps.
+Macro looks like a well-kept test bench: a dark evergreen field where the instrument readings are the only bright things. The evergreen ground and its two surface steps hold everything; spring green marks the one live or primary thing on a screen, and large light-weight figures carry the numbers people came for. The same world runs the landing site (persuade), the legal pages (read) and the app (operate); the app keeps it but swaps the landing page's fluid display scale for fixed product steps.
 
-Dark is the default (the HTML ships `data-theme="dark"`); light is a full alternate theme on warm paper, chosen per person and stored in the browser. Every token below exists in both.
+Dark is the default (the HTML ships `data-theme="dark"`); light is a full alternate theme on cream, chosen per person and stored in the browser. Every token below exists in both.
 
 **Key Characteristics:**
 - Flat surfaces, no shadows, no gradients; depth comes from three tonal steps.
-- One accent, lime, used as a fill. Where the accent must be text, a line or a focus ring, it becomes olive in light mode.
+- One accent, spring green, used as a fill. Where the accent must be text, a line or a focus ring, it becomes forest in light mode.
 - Numbers lead: page titles and readings in Stack Sans Headline 300, everything else in Stack Sans Text.
 - State colours (ok, warn, bad) only where they carry meaning, always with words.
 
 ## Colors
 
-A near-black workshop field with one fluorescent accent.
+An evergreen field with one spring-green accent, the same colours as mongodb.com.
 
 ### Primary
-- **Bench Lime** (#dafa9c): the primary button, the live tile, the running stage, the approve panel, the passed-probe result. A fill, never body text on a light ground.
-- **Bench Olive** (#4a6614): the accent as text, marker, chart line and focus ring in light mode (5.8:1 on paper). In dark mode the lime itself plays this role.
+- **Spring green** (#00ed64): the primary button, the live tile, the running stage, the approve panel, the passed-probe result. A fill, never body text on a light ground.
+- **Forest** (#00684a): the accent as text, marker, chart line and focus ring in light mode (6.8:1 on cream). In dark mode the spring green itself plays this role.
+- **Spring ink soft** (#014e3d): secondary text on a spring-green fill. Forest on spring green is only 4.3:1.
 
 ### Neutral
-- **Soot** (#0f0f0f), **Soot Surface** (#1a1a1a), **Soot Surface 2** (#262626): dark ground, panels and rails, then rows, hovers and hairlines.
-- **Paper** (#f2f2ed), **Paper Surface** (#e6e6df), **Paper Surface 2** (#d9d9d1): the same three steps in light mode.
-- **Bar** (#6b6b6b dark, #7d7d75 light): input borders, chart bars and quiet chart lines; chosen to meet 3:1 against its surface.
-- **Muted** (#a3a3a3 dark, #55554f light): labels, captions, secondary text; both pass 4.5:1 on every surface.
+- **Evergreen** (#001e2b), **Evergreen Surface** (#061621), **Evergreen Surface 2** (#21313a): dark ground, panels and rails, then rows and hovers.
+- **Cream** (#fdfff5), **Cream Surface** (#f1f5eb), **Cream Surface 2** (#e4e8e0): the same three steps in light mode.
+- **Bar** (#616c6d both themes; hover #9ea2a1 dark, #404f54 light): input borders, chart bars and quiet chart lines.
+- **Muted** (#9ea2a1 dark, #404f54 light): labels, captions, secondary text; both pass 4.5:1 on every surface.
 
 ### Named Rules
-**The One Live Thing Rule.** On any screen, lime marks one thing: the primary action, or the answer that matters now (the running stage, then safe capacity). A second lime area must be the next step of the same task, never decoration.
-**The Olive Swap Rule.** If the accent is text, a line or a focus ring, use `--accent-text`: lime in dark mode, olive in light mode.
+**The One Live Thing Rule.** On any screen, spring green marks one thing: the primary action, or the answer that matters now (the running stage, then safe capacity). A second spring-green area must be the next step of the same task, never decoration.
+**The Forest Swap Rule.** If the accent is text, a line or a focus ring, use `--accent-text`: spring green in dark mode, forest in light mode.
 
 ## Typography
 
@@ -172,25 +173,25 @@ One corner language: 6px on buttons, panels, tiles, inputs and bars; 4px on badg
 
 ### Buttons
 - **Shape:** 6px radius, 40px tall in the app (48px on the landing page).
-- **Primary:** lime fill, near-black text; hover lightens the lime. Press scales to 0.97.
-- **Quiet:** surface-2 fill for secondary actions. **Danger:** transparent with a 1px red edge (Stop run). **On lime:** ink fill or a 1px ink outline (Approve and run, Cancel).
-- **Focus:** 3px outline in the accent-text colour, 3px offset; ink on lime areas.
+- **Primary:** spring-green fill, evergreen text; hover deepens the green. Press scales to 0.97.
+- **Quiet:** surface-2 fill for secondary actions. **Danger:** transparent with a 1px red edge (Stop run). **On spring green:** ink fill or a 1px ink outline (Approve and run, Cancel).
+- **Focus:** 3px outline in the accent-text colour, 3px offset; ink on spring-green areas.
 
 ### Badges
-- **Style:** 1px border and text in the tone colour, 4px radius, 0.75rem/500. Running is a lime fill. The word always states the status.
+- **Style:** 1px border and text in the tone colour, 4px radius, 0.75rem/500. Running is a spring-green fill. The word always states the status.
 
 ### Panels and tiles
 - **Panel:** surface fill, 6px radius, 20px by 24px padding, heading row with a quiet note on the right.
-- **Tile:** a panel holding one reading: label, figure, sub-line naming its source. The live tile is lime with a progress bar along its foot.
+- **Tile:** a panel holding one reading: label, figure, sub-line naming its source. The live tile is spring green with a progress bar along its foot.
 
 ### Inputs
 - **Style:** ground-coloured field inside a panel, 1px bar-coloured border, 6px radius. **Focus:** 2px accent-text outline and border.
 
 ### Navigation
-- **Rail:** wordmark, the lime New test button, quiet links, then this browser's recent runs, then the theme toggle and legal links. Current item: surface-2 fill and ink text.
+- **Rail:** wordmark, the spring-green New test button, quiet links, then this browser's recent runs, then the theme toggle and legal links. Current item: surface-2 fill and ink text.
 
 ### Live board (signature)
-- Four tiles; while running the lime tile is the stage in progress, and when the run ends the same tiles become the report's headline (safe capacity in lime at the landing figure scale, breaking point, first degraded route, status). Every live number names the stage it came from.
+- Four tiles; while running the spring-green tile is the stage in progress, and when the run ends the same tiles become the report's headline (safe capacity in spring green at the landing figure scale, breaking point, first degraded route, status). Every live number names the stage it came from.
 
 ## Do's and Don'ts
 
@@ -202,5 +203,5 @@ One corner language: 6px on buttons, panels, tiles, inputs and bars; 4px on badg
 ### Don't:
 - **Don't** add shadows, gradients, glass or glows.
 - **Don't** put a badge or label above a heading as an eyebrow.
-- **Don't** use lime as text on a light ground; use olive.
+- **Don't** use spring green as text on a light ground; use forest.
 - **Don't** show internal requirement terms (Supervisor_Agent, Stop_Thresholds) in copy.

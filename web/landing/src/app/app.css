@@ -1,36 +1,7 @@
 @import '../tokens.css';
 
-/*
- * Macro app (/app/). Same type scale as before. Colour is the mongodb.com palette, scoped
- * here so the landing page keeps its own tokens.
- * Light: cream page (#fdfff5), evergreen ink (#001e2b), spring green (#00ed64) as the one primary fill.
- * Dark: evergreen page, white ink, the same spring green fill with evergreen text on it.
- */
+/* Macro app (/app/). Colours come from tokens.css. This file adds the operate scale. */
 :root {
-  --bg: #fdfff5;
-  --surface: #f1f5eb;
-  --surface-2: #e4e8e0;
-  --bar: #616c6d;
-  --bar-hover: #404f54;
-  --ink: #001e2b;
-  --muted: #404f54;
-  --accent: #00ed64;
-  --accent-ink: #001e2b;
-  --accent-text: #00684a;
-  --accent-hover: #00aa57;
-  --bar-accent: #00684a;
-  --bar-accent-ink: #ffffff;
-  --field-1: #ffffff;
-  --field-1-ink: #001e2b;
-  --field-1-soft: #404f54;
-  --field-2: #00ed64;
-  --ok: #00684a;
-  --bad: #b3261e;
-  --placeholder: #616c6d;
-  --thumb-edge: #001e2b;
-  --ui-bg: #001e2b;
-  --ui-line: #21313a;
-  --ui-field: #061621;
   --warn: #7a4e00;
   --fs-xs: 0.75rem;
   --fs-sm: 0.8125rem;
@@ -41,27 +12,8 @@
   --fs-num: 2.75rem;
   --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
   --rail: 240px;
-  /* Secondary text on a spring-green fill. #00684a fails 4.5:1 on #00ed64; #014e3d passes. */
-  --lime-ink-soft: #014e3d;
 }
-:root[data-theme="dark"] {
-  --bg: #001e2b;
-  --surface: #061621;
-  --surface-2: #21313a;
-  --bar: #616c6d;
-  --bar-hover: #9ea2a1;
-  --ink: #ffffff;
-  --muted: #9ea2a1;
-  --accent-text: #00ed64;
-  --accent-hover: #00aa57;
-  --bar-accent: #00ed64;
-  --bar-accent-ink: #001e2b;
-  --ok: #00ed64;
-  --bad: #ff8a80;
-  --placeholder: #9ea2a1;
-  --thumb-edge: transparent;
-  --warn: #f2c46d;
-}
+:root[data-theme="dark"] { --warn: #f2c46d; }
 
 body { font-size: var(--fs-base); }
 .boot { padding: 32px; color: var(--muted); }
@@ -293,7 +245,7 @@ a { text-underline-offset: 0.2em; }
   background: var(--accent); color: var(--accent-ink);
 }
 .shell .approve h2 { font: 300 1.75rem/1.1 var(--display); letter-spacing: -0.02em; margin-bottom: 6px; }
-.approve .kv dt { color: var(--lime-ink-soft); }
+.approve .kv dt { color: var(--accent-ink-soft); }
 .approve :focus-visible { outline-color: var(--accent-ink); }
 .approve .alert { border-color: var(--accent-ink); }
 
@@ -347,7 +299,7 @@ a { text-underline-offset: 0.2em; }
 /* When the run ends, the spring-green tile carries the answer at the landing page's figure scale. */
 .tiles--report .tile--live .tile__value { font-size: clamp(3.5rem, 2.6rem + 2.4vw, 5.5rem); letter-spacing: -0.04em; }
 .tile--live { background: var(--accent); color: var(--accent-ink); }
-.tile--live .tile__label, .tile--live .tile__sub { color: var(--lime-ink-soft); }
+.tile--live .tile__label, .tile--live .tile__sub { color: var(--accent-ink-soft); }
 .tile--bad .tile__value { color: var(--bad); }
 .tile--warn .tile__value { color: var(--warn); }
 .tile--ok .tile__value { color: var(--ok); }

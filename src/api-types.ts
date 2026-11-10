@@ -278,3 +278,12 @@ export interface MagicLinkRequest {
 export interface MagicLinkResponse {
   ok: true;
 }
+
+export interface MeResponse {
+  user: {
+    id: string;
+    email: string;
+    githubLogin: string | null;
+  };
+  verifiedOrigin: { origin: string; host: string } | null;
+}

@@ -773,6 +773,13 @@ export class Store {
     return r ? toUser(r) : null;
   }
 
+  getUser(id: string): UserRow | null {
+    const r = this.db
+      .prepare<RawUser, [string]>('SELECT id, primary_email, github_login, created_at FROM users WHERE id = ?')
+      .get(id);
+    return r ? toUser(r) : null;
+  }
+
   linkIdentity(userId: string, provider: 'email' | 'github', providerSubject: string): void {
     const subject = provider === 'email' ? normalizeEmail(providerSubject) : providerSubject;
     this.db

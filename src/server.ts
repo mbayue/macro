@@ -33,6 +33,7 @@ import type {
   StartResponse,
   StopResponse,
   MagicLinkResponse,
+  MeResponse,
   WaitlistResponse,
 } from './api-types.ts';
 import { planTrafficEvent } from './agents/planner.ts';
@@ -49,7 +50,13 @@ import {
   MAGIC_LINK_TTL_MS,
 } from './auth/magic-link.ts';
 import type { ResendMailer } from './auth/magic-link.ts';
-import { serializeSessionCookie, SESSION_TTL_MS } from './auth/session.ts';
+import {
+  parseSessionId,
+  serializeClearSessionCookie,
+  serializeSessionCookie,
+  SESSION_TTL_MS,
+} from './auth/session.ts';
+import type { SessionRow, UserRow } from './auth/types.ts';
 import type { Config } from './config.ts';
 import { ROUTE_CATALOG } from './plan/catalog.ts';
 import { parsePlan } from './plan/parser.ts';
@@ -112,6 +119,7 @@ const MSG = {
   notFound: 'Not found.',
   methodNotAllowed: 'This endpoint does not accept that HTTP method.',
   authUnavailable: 'Sign-in is not configured on this server.',
+  authRequired: 'Sign in to continue.',
   magicLinkInvalid: 'This sign-in link is invalid or has already been used.',
   oauthFailed: 'GitHub sign-in failed. Please try again.',
   internal: 'Something went wrong on the server. Please try again.',
@@ -562,6 +570,42 @@ export function createApp(deps: AppDeps): App {
     return ok ? null : apiError(403, 'turnstile_failed', MSG.turnstile);
   }
 
+  /** Valid non-expired session, or null. Slides expiry on success. */
+  function resolveSession(req: Request): { user: UserRow; session: SessionRow } | null {
+    const sid = parseSessionId(req.headers.get('cookie'));
+    if (sid === null) return null;
+    const session = store.getSession(sid);
+    if (session === null) return null;
+    const at = now();
+    if (session.expiresAt < at) {
+      store.deleteSession(sid);
+      return null;
+    }
+    const user = store.getUser(session.userId);
+    if (user === null) return null;
+    const touched = store.touchSession(sid, at, SESSION_TTL_MS) ?? session;
+    return { user, session: touched };
+  }
+
+  function requireSession(req: Request): { user: UserRow; session: SessionRow } | Response {
+    const auth = resolveSession(req);
+    if (auth === null) return apiError(401, 'auth_required', MSG.authRequired);
+    return auth;
+  }
+
+  /** Skip Turnstile when a valid session is present. */
+  async function turnstileUnlessSignedIn(
+    req: Request,
+    token: unknown,
+    ip: string,
+  ): Promise<{ denied: Response | null; subject: string; user: UserRow | null }> {
+    const auth = resolveSession(req);
+    if (auth !== null) {
+      return { denied: null, subject: `user:${auth.user.id}`, user: auth.user };
+    }
+    return { denied: await turnstileGate(token, ip), subject: ip, user: null };
+  }
+
   function admissionFailure(res: Extract<AdmissionResult, { ok: false }>, at: number): Response {
     const extras: ErrorExtras = {
       ...(res.retryAt !== undefined ? { retryAt: res.retryAt } : {}),
@@ -583,11 +627,11 @@ export function createApp(deps: AppDeps): App {
   }
 
   /** Admission, then the `running` status event, then the controller. */
-  function admitAndStart(kind: RunKind, planHash: string | undefined, ip: string): Response {
+  function admitAndStart(kind: RunKind, planHash: string | undefined, subject: string): Response {
     const at = now();
     const admitted = admitStart(
       { store, config },
-      { kind, ...(planHash !== undefined ? { planHash } : {}), ip, now: at },
+      { kind, ...(planHash !== undefined ? { planHash } : {}), ip: subject, now: at },
     );
     if (!admitted.ok) return admissionFailure(admitted, at);
     const runId = admitted.runId;
@@ -610,6 +654,33 @@ export function createApp(deps: AppDeps): App {
   // ---------------------------------------------------------------- handlers
 
   const health: Handler = () => json(200, { ok: true });
+
+  const getMe: Handler = async ({ req }) => {
+    const auth = requireSession(req);
+    if (auth instanceof Response) return auth;
+    const verified = store.getVerifiedOrigin(auth.user.id);
+    const body: MeResponse = {
+      user: {
+        id: auth.user.id,
+        email: auth.user.primaryEmail,
+        githubLogin: auth.user.githubLogin,
+      },
+      verifiedOrigin: verified === null ? null : { origin: verified.origin, host: verified.host },
+    };
+    return json(200, body);
+  };
+
+  const postSignOut: Handler = async ({ req }) => {
+    const sid = parseSessionId(req.headers.get('cookie'));
+    if (sid !== null) store.deleteSession(sid);
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Set-Cookie': serializeClearSessionCookie(),
+        'cache-control': 'no-store',
+      },
+    });
+  };
 
   const getConfig: Handler = () => {
     const body: ConfigResponse = {
@@ -639,19 +710,20 @@ export function createApp(deps: AppDeps): App {
     const length = [...trafficEvent].length;
     if (length < TRAFFIC_EVENT_MIN || length > TRAFFIC_EVENT_MAX) return apiError(400, 'invalid_input', MSG.trafficEvent);
 
-    const denied = await turnstileGate(parsed.data.turnstileToken, ip);
-    if (denied !== null) return denied; // 9.8: does not count toward any limit
+    const authGate = await turnstileUnlessSignedIn(req, parsed.data.turnstileToken, ip);
+    if (authGate.denied !== null) return authGate.denied; // 9.8: does not count toward any limit
+    const subject = authGate.subject;
 
-    // 9.4: rolling per-IP planning limit; the request is recorded in the same transaction as the check.
+    // 9.4: rolling per-IP (or per-account) planning limit; recorded with the check.
     const at = now();
     const limit = store.transaction(() => {
       const check = rollingCheck({
-        timestamps: store.planningRequestTimestamps(ip, at - PLANNING_LIMIT.windowMs),
+        timestamps: store.planningRequestTimestamps(subject, at - PLANNING_LIMIT.windowMs),
         now: at,
         windowMs: PLANNING_LIMIT.windowMs,
         max: PLANNING_LIMIT.max,
       });
-      if (check.allowed) store.recordPlanningRequest(ip, at);
+      if (check.allowed) store.recordPlanningRequest(subject, at);
       return check;
     });
     if (!limit.allowed) {
@@ -725,8 +797,8 @@ export function createApp(deps: AppDeps): App {
     const parsed = ApproveBody.safeParse(read.value);
     if (!parsed.success) return apiError(400, 'invalid_input', MSG.invalid);
 
-    const denied = await turnstileGate(parsed.data.turnstileToken, ip);
-    if (denied !== null) return denied;
+    const authGate = await turnstileUnlessSignedIn(req, parsed.data.turnstileToken, ip);
+    if (authGate.denied !== null) return authGate.denied;
 
     // 4.9, 5.6: parse and gate the exact text the user approved; reject without storing anything.
     const result = parsePlan(parsed.data.planText);
@@ -743,7 +815,7 @@ export function createApp(deps: AppDeps): App {
     const text = printPlan(result.plan);
     const hash = hashPlanText(text);
     store.storeApprovedPlan({ hash, text, approvedAt: now() });
-    return admitAndStart('run', hash, ip);
+    return admitAndStart('run', hash, authGate.subject);
   };
 
   const postRuns: Handler = async ({ req, ip }) => {
@@ -752,9 +824,9 @@ export function createApp(deps: AppDeps): App {
     const parsed = RerunBody.safeParse(read.value);
     if (!parsed.success) return apiError(400, 'invalid_input', MSG.invalid);
 
-    const denied = await turnstileGate(parsed.data.turnstileToken, ip);
-    if (denied !== null) return denied;
-    return admitAndStart('run', parsed.data.planHash, ip);
+    const authGate = await turnstileUnlessSignedIn(req, parsed.data.turnstileToken, ip);
+    if (authGate.denied !== null) return authGate.denied;
+    return admitAndStart('run', parsed.data.planHash, authGate.subject);
   };
 
   const postProbe: Handler = async ({ req, ip }) => {
@@ -763,9 +835,9 @@ export function createApp(deps: AppDeps): App {
     const parsed = ProbeBody.safeParse(read.value);
     if (!parsed.success) return apiError(400, 'invalid_input', MSG.invalid);
 
-    const denied = await turnstileGate(parsed.data.turnstileToken, ip);
-    if (denied !== null) return denied;
-    return admitAndStart('probe', undefined, ip);
+    const authGate = await turnstileUnlessSignedIn(req, parsed.data.turnstileToken, ip);
+    if (authGate.denied !== null) return authGate.denied;
+    return admitAndStart('probe', undefined, authGate.subject);
   };
 
   // Per-IP rolling limit for /api/gate-demo. Memory only; never touches the store.
@@ -1259,6 +1331,8 @@ export function createApp(deps: AppDeps): App {
     { method: 'GET', re: /^\/api\/auth\/magic-link\/consume$/, name: 'magic_link_consume', handler: getMagicLinkConsume },
     { method: 'GET', re: /^\/api\/auth\/github\/start$/, name: 'github_start', handler: getGithubStart },
     { method: 'GET', re: /^\/api\/auth\/github\/callback$/, name: 'github_callback', handler: getGithubCallback },
+    { method: 'GET', re: /^\/api\/me$/, name: 'me', handler: getMe },
+    { method: 'POST', re: /^\/api\/auth\/sign-out$/, name: 'sign_out', handler: postSignOut },
     { method: 'POST', re: /^\/api\/runs\/([^/]+)\/stop$/, name: 'stop', handler: postStop },
     { method: 'GET', re: /^\/api\/runs\/([^/]+)\/events$/, name: 'events', handler: getEvents },
     { method: 'GET', re: /^\/api\/runs\/([^/]+)$/, name: 'run', handler: getRunSnapshot },

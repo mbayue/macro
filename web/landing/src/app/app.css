@@ -52,67 +52,38 @@ a { text-underline-offset: 0.2em; }
 .shell .rail__heading { font-size: var(--fs-xs); color: var(--muted); padding: 0 10px; font-weight: 400; }
 .rail__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rail__id { font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted); }
-.rail__foot {
-  margin-top: auto;
-  padding: 16px 10px 0;
-  display: grid;
-  gap: 14px;
-  width: 100%;
-  box-sizing: border-box;
-}
-.rail__account { display: grid; gap: 2px; min-width: 0; }
-.rail__account-name {
+.rail__foot { margin-top: auto; padding: 16px 6px 0; display: grid; gap: 10px; justify-items: start; }
+.rail__identity { display: grid; gap: 2px; padding: 0 4px; max-width: 100%; min-width: 0; }
+.rail__identity-row { display: flex; align-items: baseline; gap: 8px; min-width: 0; max-width: 100%; }
+.rail__identity-name {
   margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: var(--fs-sm);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.rail__account-site {
-  margin: 0;
-  font-size: var(--fs-xs);
-  font-family: var(--mono);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.rail__account-action {
-  justify-self: start;
+.rail__identity-site { margin: 0; font-size: var(--fs-xs); font-family: var(--mono); }
+.rail__identity-out {
+  flex: 0 0 auto;
   margin: 0;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--muted);
   font: 400 var(--fs-xs)/1.4 var(--text);
-  text-decoration: underline;
-  text-underline-offset: 0.18em;
   cursor: pointer;
 }
-a.rail__account-action { display: inline-block; font-size: var(--fs-sm); }
-@media (hover: hover) and (pointer: fine) { .rail__account-action:hover { color: var(--ink); } }
-.rail__account-action[aria-current="page"] { color: var(--ink); }
-.rail__meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--surface-2);
-}
+@media (hover: hover) and (pointer: fine) { .rail__identity-out:hover { color: var(--ink); } }
+/* Content-width Sign in: rail__link is grid and would otherwise stretch to the foot width. */
+.rail__identity-link { width: max-content; max-width: 100%; }
 /* The theme button gets a resting tile, so it reads as a button on the rail. */
-.rail .theme-toggle { background: var(--surface-2); flex: 0 0 auto; }
+.rail .theme-toggle { background: var(--surface-2); }
 @media (hover: hover) and (pointer: fine) { .rail .theme-toggle:hover { background: var(--bar); color: var(--bg); } }
-.rail__links {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-  font-size: var(--fs-xs);
-}
-.rail__links a { color: var(--muted); text-decoration: none; }
-@media (hover: hover) and (pointer: fine) { .rail__links a:hover { color: var(--ink); } }
+.rail__links { list-style: none; margin: 0; padding: 0 4px; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: var(--fs-xs); }
+.rail__links a { color: var(--muted); }
+
 /* Main is a column: the page, then the footer, pushed to the bottom of the screen when the page is short. */
 .main { min-width: 0; padding: 32px 40px 0; min-height: 100vh; display: flex; flex-direction: column; }
 .main > .page { flex: none; }

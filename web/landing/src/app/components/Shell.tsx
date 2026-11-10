@@ -118,39 +118,41 @@ export function Shell({
         ) : null}
 
         <div className="rail__foot">
-          {me === null ? (
-            <a
-              className="rail__account-action"
-              href="#/sign-in"
-              aria-current={route.view === 'sign-in' ? 'page' : undefined}
-            >
-              Sign in
-            </a>
-          ) : (
-            <div className="rail__account">
-              <p className="rail__account-name">{me.user.githubLogin ?? me.user.email}</p>
-              {me.verifiedOrigin !== null ? (
-                <p className="rail__account-site muted">{me.verifiedOrigin.host}</p>
-              ) : null}
-              <button type="button" className="rail__account-action" onClick={() => void onSignOut()}>
-                Sign out
-              </button>
-            </div>
-          )}
-          <div className="rail__meta">
-            <ThemeToggle />
-            <ul className="rail__links">
-              <li>
-                <a href="/">About</a>
-              </li>
-              <li>
-                <a href="/privacy">Privacy</a>
-              </li>
-              <li>
-                <a href="/terms">Terms</a>
-              </li>
-            </ul>
+          <div className="rail__identity">
+            {me === null ? (
+              <a
+                className="rail__link rail__identity-link"
+                href="#/sign-in"
+                aria-current={route.view === 'sign-in' ? 'page' : undefined}
+              >
+                Sign in
+              </a>
+            ) : (
+              <>
+                <div className="rail__identity-row">
+                  <p className="rail__identity-name">{me.user.githubLogin ?? me.user.email}</p>
+                  <button type="button" className="rail__identity-out" onClick={() => void onSignOut()}>
+                    Sign out
+                  </button>
+                </div>
+                <p className="rail__identity-site muted">
+                  {me.verifiedOrigin !== null ? me.verifiedOrigin.host : 'none'}
+                </p>
+              </>
+            )}
           </div>
+          <ThemeToggle />
+          <ul className="rail__links">
+            <li>
+              <a href="/">About Macro</a>
+            </li>
+            <li>
+              <a href="/privacy">Privacy</a>
+            </li>
+            <li>
+              <a href="/terms">Terms</a>
+            </li>
+          </ul>
         </div>
       </nav>
 

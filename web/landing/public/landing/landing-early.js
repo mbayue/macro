@@ -17,7 +17,8 @@ try {
   if (localStorage.getItem('macro-theme') === 'light') {
     delete document.documentElement.dataset.theme;
     var themeColor = document.querySelector('meta[name="theme-color"]');
-    if (themeColor) themeColor.setAttribute('content', '#f2f2ed');
+    var onApp = location.pathname === '/app' || location.pathname.indexOf('/app/') === 0;
+    if (themeColor) themeColor.setAttribute('content', onApp ? '#fdfff5' : '#f2f2ed');
   }
 } catch (e) {
   /* Storage blocked: stay dark. */

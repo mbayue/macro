@@ -1,11 +1,36 @@
 @import '../tokens.css';
 
 /*
- * Macro app (/app/). Same world as the landing page (tokens.css); an operate scale on top:
- * fixed rem steps, Stack Sans Text for every control and label, Stack Sans Headline 300 only for
- * page titles and the big numbers. Lime marks the one live or primary thing on screen.
+ * Macro app (/app/). Same type scale as before. Colour is the mongodb.com palette, scoped
+ * here so the landing page keeps its own tokens.
+ * Light: cream page (#fdfff5), evergreen ink (#001e2b), spring green (#00ed64) as the one primary fill.
+ * Dark: evergreen page, white ink, the same spring green fill with evergreen text on it.
  */
 :root {
+  --bg: #fdfff5;
+  --surface: #f1f5eb;
+  --surface-2: #e4e8e0;
+  --bar: #616c6d;
+  --bar-hover: #404f54;
+  --ink: #001e2b;
+  --muted: #404f54;
+  --accent: #00ed64;
+  --accent-ink: #001e2b;
+  --accent-text: #00684a;
+  --accent-hover: #00aa57;
+  --bar-accent: #00684a;
+  --bar-accent-ink: #ffffff;
+  --field-1: #ffffff;
+  --field-1-ink: #001e2b;
+  --field-1-soft: #404f54;
+  --field-2: #00ed64;
+  --ok: #00684a;
+  --bad: #b3261e;
+  --placeholder: #616c6d;
+  --thumb-edge: #001e2b;
+  --ui-bg: #001e2b;
+  --ui-line: #21313a;
+  --ui-field: #061621;
   --warn: #7a4e00;
   --fs-xs: 0.75rem;
   --fs-sm: 0.8125rem;
@@ -16,9 +41,27 @@
   --fs-num: 2.75rem;
   --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
   --rail: 240px;
-  --lime-ink-soft: #3d4a24;
+  /* Secondary text on a spring-green fill. #00684a fails 4.5:1 on #00ed64; #014e3d passes. */
+  --lime-ink-soft: #014e3d;
 }
-:root[data-theme="dark"] { --warn: #f2c46d; }
+:root[data-theme="dark"] {
+  --bg: #001e2b;
+  --surface: #061621;
+  --surface-2: #21313a;
+  --bar: #616c6d;
+  --bar-hover: #9ea2a1;
+  --ink: #ffffff;
+  --muted: #9ea2a1;
+  --accent-text: #00ed64;
+  --accent-hover: #00aa57;
+  --bar-accent: #00ed64;
+  --bar-accent-ink: #001e2b;
+  --ok: #00ed64;
+  --bad: #ff8a80;
+  --placeholder: #9ea2a1;
+  --thumb-edge: transparent;
+  --warn: #f2c46d;
+}
 
 body { font-size: var(--fs-base); }
 .boot { padding: 32px; color: var(--muted); }
@@ -91,11 +134,17 @@ a { text-underline-offset: 0.2em; }
 .shell .btn { min-height: 40px; padding: 0 16px; font-size: var(--fs-sm); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 .btn--quiet { background: var(--surface-2); color: var(--ink); }
-@media (hover: hover) and (pointer: fine) { .btn--quiet:not(:disabled):hover { background: var(--bar); color: var(--bg); } }
+@media (hover: hover) and (pointer: fine) {
+  .btn--quiet:not(:disabled):hover { background: var(--bar); color: var(--bg); }
+  /* Dark --bar is a 3:1 border, too dark for evergreen text. Hover stays a raised surface. */
+  :root[data-theme="dark"] .btn--quiet:not(:disabled):hover,
+  :root[data-theme="dark"] .rail .theme-toggle:hover { background: var(--surface-2); color: var(--ink); }
+  .btn--ink:hover { background: #023430; }
+}
 .btn--danger { background: transparent; color: var(--bad); box-shadow: inset 0 0 0 1px var(--bad); }
 @media (hover: hover) and (pointer: fine) { .btn--danger:not(:disabled):hover { background: var(--bad); color: var(--bg); } }
 .btn--line { background: transparent; color: inherit; box-shadow: inset 0 0 0 1px currentColor; }
-@media (hover: hover) and (pointer: fine) { .btn--line:not(:disabled):hover { background: rgba(15, 15, 15, 0.08); } }
+@media (hover: hover) and (pointer: fine) { .btn--line:not(:disabled):hover { background: color-mix(in srgb, var(--ink) 8%, transparent); } }
 .chip-btn {
   min-height: 32px; padding: 0 12px; border-radius: var(--radius);
   background: transparent; color: var(--ink); border: 1px solid var(--bar);
@@ -293,9 +342,9 @@ a { text-underline-offset: 0.2em; }
 .tile__value--text { font-size: 1.75rem; letter-spacing: -0.015em; line-height: 1.1; }
 .tile__sub { font-size: var(--fs-xs); color: var(--muted); }
 .tile { position: relative; overflow: hidden; }
-.tile__progress { position: absolute; left: 20px; right: 20px; bottom: 12px; height: 6px; border-radius: 3px; overflow: hidden; background: rgba(15, 15, 15, 0.14); }
+.tile__progress { position: absolute; left: 20px; right: 20px; bottom: 12px; height: 6px; border-radius: 3px; overflow: hidden; background: color-mix(in srgb, var(--ink) 14%, transparent); }
 .tile__progress span { display: block; height: 100%; width: calc(var(--p, 0) * 100%); background: var(--accent-ink); transition: width 900ms linear; }
-/* When the run ends, the lime tile carries the answer at the landing page's figure scale. */
+/* When the run ends, the spring-green tile carries the answer at the landing page's figure scale. */
 .tiles--report .tile--live .tile__value { font-size: clamp(3.5rem, 2.6rem + 2.4vw, 5.5rem); letter-spacing: -0.04em; }
 .tile--live { background: var(--accent); color: var(--accent-ink); }
 .tile--live .tile__label, .tile--live .tile__sub { color: var(--lime-ink-soft); }

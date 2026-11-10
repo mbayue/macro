@@ -32,6 +32,7 @@ import type {
   RunView,
   StartResponse,
   StopResponse,
+  AccountDraft,
   MagicLinkResponse,
   MeResponse,
   VerifyCheckResponse,
@@ -146,6 +147,34 @@ const MSG = {
 const VerifyStartBody = z.object({
   host: z.string().min(1).max(253),
 });
+
+const AccountDraftBody = z.object({
+  trafficEvent: z.string().max(TRAFFIC_EVENT_MAX),
+  targetMode: z.enum(['demo', 'own']),
+  targetOrigin: z.string().max(253).nullable(),
+  lastEditedAt: z.number().int().nonnegative(),
+});
+
+const EMPTY_DRAFT: AccountDraft = {
+  trafficEvent: '',
+  targetMode: 'demo',
+  targetOrigin: null,
+  lastEditedAt: 0,
+};
+
+function toAccountDraftView(row: {
+  trafficEvent: string;
+  targetMode: 'demo' | 'own';
+  targetOrigin: string | null;
+  lastEditedAt: number;
+}): AccountDraft {
+  return {
+    trafficEvent: row.trafficEvent,
+    targetMode: row.targetMode,
+    targetOrigin: row.targetOrigin,
+    lastEditedAt: row.lastEditedAt,
+  };
+}
 
 const OAUTH_STATE_COOKIE = 'macro_oauth_state';
 const OAUTH_STATE_TTL_SEC = 600;
@@ -567,7 +596,7 @@ interface Ctx {
 }
 type Handler = (c: Ctx) => Response | Promise<Response>;
 interface RouteDef {
-  method: 'GET' | 'POST';
+  method: 'GET' | 'POST' | 'PUT';
   re: RegExp;
   name: string;
   handler: Handler;
@@ -1484,6 +1513,44 @@ export function createApp(deps: AppDeps): App {
     return json(200, body);
   };
 
+  const getDraft: Handler = async ({ req }) => {
+    if (config.auth === undefined) {
+      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
+    }
+    const auth = requireSession(req);
+    if (auth instanceof Response) return auth;
+    const row = store.getAccountDraft(auth.user.id);
+    return json(200, row === null ? EMPTY_DRAFT : toAccountDraftView(row));
+  };
+
+  const putDraft: Handler = async ({ req }) => {
+    if (config.auth === undefined) {
+      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
+    }
+    const auth = requireSession(req);
+    if (auth instanceof Response) return auth;
+    const read = await readJsonBody(req);
+    if (!read.ok) return read.res;
+    const parsed = AccountDraftBody.safeParse(read.value);
+    if (!parsed.success) return apiError(400, 'invalid_input', MSG.invalid);
+    const incoming = parsed.data;
+    try {
+      const result = store.putAccountDraft(auth.user.id, {
+        trafficEvent: incoming.trafficEvent,
+        targetMode: incoming.targetMode,
+        targetOrigin: incoming.targetOrigin,
+        lastEditedAt: incoming.lastEditedAt,
+      });
+      if ('conflict' in result) {
+        return json(409, { draft: toAccountDraftView(result.conflict) });
+      }
+      return json(200, toAccountDraftView(result.stored));
+    } catch (err) {
+      logInternal('draft.put', err);
+      return apiError(500, 'internal', MSG.internal);
+    }
+  };
+
   // ------------------------------------------------------------------ routing
 
   const routes: RouteDef[] = [
@@ -1504,6 +1571,8 @@ export function createApp(deps: AppDeps): App {
     { method: 'POST', re: /^\/api\/verify\/start$/, name: 'verify_start', handler: postVerifyStart },
     { method: 'POST', re: /^\/api\/verify\/check$/, name: 'verify_check', handler: postVerifyCheck },
     { method: 'POST', re: /^\/api\/verify\/clear$/, name: 'verify_clear', handler: postVerifyClear },
+    { method: 'GET', re: /^\/api\/draft$/, name: 'draft_get', handler: getDraft },
+    { method: 'PUT', re: /^\/api\/draft$/, name: 'draft_put', handler: putDraft },
     { method: 'POST', re: /^\/api\/runs\/([^/]+)\/stop$/, name: 'stop', handler: postStop },
     { method: 'GET', re: /^\/api\/runs\/([^/]+)\/events$/, name: 'events', handler: getEvents },
     { method: 'GET', re: /^\/api\/runs\/([^/]+)$/, name: 'run', handler: getRunSnapshot },

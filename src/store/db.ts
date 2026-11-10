@@ -6,6 +6,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { ContestedOriginError } from '../auth/types.ts';
 import type {
+  AccountDraftRow,
   PendingOriginVerificationRow,
   SessionRow,
   UserRow,
@@ -24,6 +25,7 @@ import type {
 } from '../types.ts';
 
 export type {
+  AccountDraftRow,
   PendingOriginVerificationRow,
   SessionRow,
   UserRow,
@@ -109,6 +111,13 @@ CREATE TABLE IF NOT EXISTS pending_origin_verifications (
   host TEXT NOT NULL,
   token TEXT NOT NULL,
   created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS account_drafts (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  traffic_event TEXT NOT NULL,
+  target_mode TEXT NOT NULL CHECK (target_mode IN ('demo','own')),
+  target_origin TEXT,
+  last_edited_at INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS magic_link_tokens (
   token_hash TEXT PRIMARY KEY,
@@ -285,6 +294,13 @@ interface RawPendingOriginVerification {
   token: string;
   created_at: number;
 }
+interface RawAccountDraft {
+  user_id: string;
+  traffic_event: string;
+  target_mode: 'demo' | 'own';
+  target_origin: string | null;
+  last_edited_at: number;
+}
 
 const RUN_COLS =
   'id, kind, plan_hash, status, status_reason, runtime, started_at, ended_at, probe_result';
@@ -385,6 +401,16 @@ function toPendingOriginVerification(r: RawPendingOriginVerification): PendingOr
     host: r.host,
     token: r.token,
     createdAt: r.created_at,
+  };
+}
+
+function toAccountDraft(r: RawAccountDraft): AccountDraftRow {
+  return {
+    userId: r.user_id,
+    trafficEvent: r.traffic_event,
+    targetMode: r.target_mode,
+    targetOrigin: r.target_origin,
+    lastEditedAt: r.last_edited_at,
   };
 }
 
@@ -940,6 +966,52 @@ export class Store {
 
   clearPendingOriginVerification(userId: string): void {
     this.db.prepare('DELETE FROM pending_origin_verifications WHERE user_id = ?').run(userId);
+  }
+
+  getAccountDraft(userId: string): AccountDraftRow | null {
+    const r = this.db
+      .prepare<RawAccountDraft, [string]>(
+        `SELECT user_id, traffic_event, target_mode, target_origin, last_edited_at
+         FROM account_drafts WHERE user_id = ?`,
+      )
+      .get(userId);
+    return r ? toAccountDraft(r) : null;
+  }
+
+  /**
+   * Store the draft when client lastEditedAt is >= stored (equal → body wins).
+   * Returns `{ stored }` on accept, or `{ conflict: existing }` when the server draft is newer.
+   */
+  putAccountDraft(
+    userId: string,
+    draft: Omit<AccountDraftRow, 'userId'>,
+  ): { stored: AccountDraftRow } | { conflict: AccountDraftRow } {
+    return this.transaction(() => {
+      const existing = this.getAccountDraft(userId);
+      if (existing !== null && existing.lastEditedAt > draft.lastEditedAt) {
+        return { conflict: existing };
+      }
+      this.db
+        .prepare(
+          `INSERT INTO account_drafts (user_id, traffic_event, target_mode, target_origin, last_edited_at)
+           VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(user_id) DO UPDATE SET
+             traffic_event = excluded.traffic_event,
+             target_mode = excluded.target_mode,
+             target_origin = excluded.target_origin,
+             last_edited_at = excluded.last_edited_at`,
+        )
+        .run(userId, draft.trafficEvent, draft.targetMode, draft.targetOrigin, draft.lastEditedAt);
+      return {
+        stored: {
+          userId,
+          trafficEvent: draft.trafficEvent,
+          targetMode: draft.targetMode,
+          targetOrigin: draft.targetOrigin,
+          lastEditedAt: draft.lastEditedAt,
+        },
+      };
+    });
   }
 
   createMagicLinkToken(

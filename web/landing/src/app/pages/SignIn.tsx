@@ -22,7 +22,7 @@ export function SignIn() {
     setBusy(true);
     setError(null);
     setSent(false);
-    const result = await postMagicLink(email.trim(), '/app/#/');
+    const result = await postMagicLink(email.trim(), '/app/#/'); // return to New test; draft hydrates from account + stash
     setBusy(false);
     if (!result.ok) {
       setError(result.error.message);

@@ -32,6 +32,14 @@ export interface PendingOriginVerificationRow {
   createdAt: number;
 }
 
+export interface AccountDraftRow {
+  userId: string;
+  trafficEvent: string;
+  targetMode: 'demo' | 'own';
+  targetOrigin: string | null;
+  lastEditedAt: number;
+}
+
 /** Thrown when setVerifiedOrigin hits a host another account already holds. */
 export class ContestedOriginError extends Error {
   readonly code = 'contested_origin' as const;

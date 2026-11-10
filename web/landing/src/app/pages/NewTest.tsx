@@ -10,6 +10,8 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { PlanResponse } from '../../../../../src/api-types.ts';
 import type { TestPlan } from '../../../../../src/types.ts';
+import type { AccountDraft } from '../../../../../src/api-types.ts';
+import { getDraft, putDraft, stashLocalDraft, takeLocalDraft } from '../lib/auth-api.ts';
 import { type ApiError, type ApiResult, postApprove, postPlan, VERIFICATION_ERROR } from '../lib/api.ts';
 import { countCodePoints } from '../lib/describe.ts';
 import { parseErrorText } from '../lib/format.ts';
@@ -53,10 +55,12 @@ export function NewTest() {
   const [editing, setEditing] = useState(false);
   const [panelInView, setPanelInView] = useState(true);
   const [targetMode, setTargetMode] = useState<TargetMode>('demo');
+  const [lastEditedAt, setLastEditedAt] = useState(() => Date.now());
   const textarea = useRef<HTMLTextAreaElement>(null);
   const focusComposer = useRef(false);
   const startFromBar = useRef<(() => void) | null>(null);
   const alive = useRef(true);
+  const draftHydrated = useRef(false);
   const draftTurnstile = useTurnstile();
 
   useEffect(() => () => void (alive.current = false), []);
@@ -81,20 +85,69 @@ export function NewTest() {
   const ownNeedsVerify = targetMode === 'own' && (me === null || verifiedOrigin === null);
   const activeOrigin = targetMode === 'own' && verifiedOrigin !== null ? verifiedOrigin.origin : config.webOrigin;
 
+  function currentDraft(): AccountDraft {
+    return {
+      trafficEvent: text,
+      targetMode,
+      targetOrigin: targetMode === 'own' && verifiedOrigin !== null ? verifiedOrigin.origin : null,
+      lastEditedAt,
+    };
+  }
+
+  function applyDraft(d: AccountDraft) {
+    setText(d.trafficEvent);
+    setTargetMode(d.targetMode);
+    setLastEditedAt(d.lastEditedAt);
+  }
+
+  async function syncDraftToServer(draft: AccountDraft): Promise<AccountDraft | null> {
+    if (me === null) return null;
+    const res = await putDraft(draft);
+    if (!res.ok) return null;
+    if (res.conflict) {
+      applyDraft(res.conflict);
+      announce('Loaded a newer draft from your account.');
+      return res.conflict;
+    }
+    setLastEditedAt(res.data.lastEditedAt);
+    return res.data;
+  }
+
+  // After sign-in: merge stashed browser draft, then load the account draft.
+  useEffect(() => {
+    if (me === null) {
+      draftHydrated.current = false;
+      return;
+    }
+    if (draftHydrated.current) return;
+    draftHydrated.current = true;
+    void (async () => {
+      const local = takeLocalDraft();
+      if (local !== null) await syncDraftToServer(local);
+      const remote = await getDraft();
+      if (!alive.current || !remote.ok) return;
+      if (remote.data.lastEditedAt > 0) applyDraft(remote.data);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me]);
+
   function chooseTarget(mode: TargetMode) {
     if (!idle) return;
     if (mode === 'own' && me === null) {
-      // Task 9 will persist the draft before leaving; for now keep the text in React state only.
+      const draft = { ...currentDraft(), targetMode: 'own' as const, lastEditedAt: Date.now() };
+      stashLocalDraft(draft);
       navigate('/sign-in');
       return;
     }
     setTargetMode(mode);
+    setLastEditedAt(Date.now());
     setPlanError(null);
   }
 
   async function startPlanning(value: string) {
     if (!idle || countCodePoints(value) < min || countCodePoints(value) > max) return;
     if (targetMode === 'own' && me === null) {
+      stashLocalDraft({ ...currentDraft(), lastEditedAt: Date.now() });
       navigate('/sign-in');
       return;
     }
@@ -105,6 +158,16 @@ export function NewTest() {
       });
       announce('Verify your site before drafting an own-site plan.');
       return;
+    }
+    const edited = Date.now();
+    setLastEditedAt(edited);
+    if (me !== null) {
+      await syncDraftToServer({
+        trafficEvent: value,
+        targetMode,
+        targetOrigin: targetMode === 'own' && verifiedOrigin !== null ? verifiedOrigin.origin : null,
+        lastEditedAt: edited,
+      });
     }
     setBusy('planning');
     setLastSubmitted(value);
@@ -201,7 +264,13 @@ export function NewTest() {
                 readOnly={!idle}
                 aria-describedby="traffic-event-hint traffic-event-count traffic-event-problem"
                 aria-invalid={n > 0 && !inRange}
-                onChange={(e) => setText(e.target.value)}
+                onChange={(e) => {
+                  setText(e.target.value);
+                  setLastEditedAt(Date.now());
+                }}
+                onBlur={() => {
+                  if (me !== null && text.trim() !== '') void syncDraftToServer(currentDraft());
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                     e.preventDefault();

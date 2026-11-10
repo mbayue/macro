@@ -314,3 +314,15 @@ export interface VerifyCheckResponse {
 export interface VerifyClearResponse {
   ok: true;
 }
+
+export interface AccountDraft {
+  trafficEvent: string;
+  targetMode: 'demo' | 'own';
+  targetOrigin: string | null;
+  lastEditedAt: number;
+}
+
+/** 409 body when a PUT loses to a newer stored draft. */
+export interface AccountDraftConflict {
+  draft: AccountDraft;
+}

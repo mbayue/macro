@@ -1,5 +1,7 @@
 /** Auth client helpers for /api/me, magic link, sign-out, verify, claim. */
 import type {
+  AccountDraft,
+  AccountDraftConflict,
   MagicLinkResponse,
   MeResponse,
   VerifyCheckResponse,
@@ -102,5 +104,63 @@ export async function postVerifyClear(): Promise<ApiResult<VerifyClearResponse>>
     return { ok: true, data: (body as VerifyClearResponse | null) ?? { ok: true } };
   } catch {
     return { ok: false, error: NETWORK_ERROR };
+  }
+}
+
+export async function getDraft(): Promise<ApiResult<AccountDraft>> {
+  try {
+    const res = await fetch('/api/draft', { credentials: 'same-origin' });
+    const body = await readJson(res);
+    if (!res.ok) return { ok: false, error: apiErrorFromBody(body) };
+    return { ok: true, data: body as AccountDraft };
+  } catch {
+    return { ok: false, error: NETWORK_ERROR };
+  }
+}
+
+/** PUT draft; on 409 returns ok with the winning server draft via `conflict`. */
+export async function putDraft(
+  draft: AccountDraft,
+): Promise<ApiResult<AccountDraft> & { conflict?: AccountDraft }> {
+  try {
+    const res = await fetch('/api/draft', {
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(draft),
+    });
+    const body = await readJson(res);
+    if (res.status === 409) {
+      const winner = (body as AccountDraftConflict | null)?.draft;
+      if (winner) return { ok: true, data: winner, conflict: winner };
+      return { ok: false, error: INTERNAL_ERROR };
+    }
+    if (!res.ok) return { ok: false, error: apiErrorFromBody(body) };
+    return { ok: true, data: body as AccountDraft };
+  } catch {
+    return { ok: false, error: NETWORK_ERROR };
+  }
+}
+
+const LOCAL_DRAFT_KEY = 'macro.accountDraft.v1';
+
+export function stashLocalDraft(draft: AccountDraft): void {
+  try {
+    sessionStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+export function takeLocalDraft(): AccountDraft | null {
+  try {
+    const raw = sessionStorage.getItem(LOCAL_DRAFT_KEY);
+    if (raw === null) return null;
+    sessionStorage.removeItem(LOCAL_DRAFT_KEY);
+    const parsed = JSON.parse(raw) as AccountDraft;
+    if (typeof parsed.trafficEvent !== 'string' || typeof parsed.lastEditedAt !== 'number') return null;
+    return parsed;
+  } catch {
+    return null;
   }
 }

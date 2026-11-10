@@ -14,8 +14,8 @@ export interface DnsProviderDetection {
   isCloudflare: boolean;
   apexHost: string;
   nameservers: string[];
-  cloudFlareDirectUrl?: string;
-  domainConnectUrl?: string;
+  cloudFlareDirectUrl?: string | undefined;
+  domainConnectUrl?: string | undefined;
 }
 
 const WELL_KNOWN_PATH = '/.well-known/macro-site-verification';

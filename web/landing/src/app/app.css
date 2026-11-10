@@ -462,6 +462,60 @@ a { text-underline-offset: 0.2em; }
   line-height: 1.4;
 }
 
+/* Cloudflare detection banner in VerifyPanel */
+.cf-banner {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.cf-banner__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cf-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: #f38020;
+}
+.cf-banner__desc {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.4;
+}
+.btn--cf {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  padding: 4px 10px;
+  background: #f38020;
+  color: #ffffff !important;
+  border: 0;
+  border-radius: calc(var(--radius) - 2px);
+  text-decoration: none !important;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 140ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn--cf:hover {
+    opacity: 0.88;
+  }
+}
+
 /* Verification records block in VerifyPanel (sidebar-friendly) */
 .verify-records {
   display: grid;

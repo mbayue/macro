@@ -7,6 +7,14 @@ import { postVerifyCheck, postVerifyClear, postVerifyStart } from '../lib/auth-a
 import { useApp } from '../context.tsx';
 import { AlertRegion, Busy, Panel } from './ui.tsx';
 
+function CloudflareIcon({ width = 14, height = 14 }: { width?: number; height?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={width} height={height} fill="currentColor" aria-hidden="true">
+      <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z" />
+    </svg>
+  );
+}
+
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
@@ -152,6 +160,26 @@ export function VerifyPanel({
         </form>
       ) : (
         <div className="stack">
+          {pending.isCloudflare ? (
+            <div className="cf-banner">
+              <div className="cf-banner__header">
+                <span className="cf-badge">
+                  <CloudflareIcon /> Cloudflare detected
+                </span>
+                <a
+                  href={pending.cloudFlareDirectUrl ?? 'https://dash.cloudflare.com'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn--cf"
+                >
+                  Open Cloudflare DNS ↗
+                </a>
+              </div>
+              <p className="cf-banner__desc">
+                Your domain uses Cloudflare DNS. Open your dashboard to add the TXT record, then check below.
+              </p>
+            </div>
+          ) : null}
           <div className="verify-records">
             <div className="verify-record">
               <span className="verify-record__label">DNS TXT name</span>

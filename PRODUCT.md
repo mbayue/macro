@@ -27,7 +27,7 @@ A session: describe the traffic, review and approve the plan, watch a run of a f
 - Today the live demo can only test one target: the demo shop at yue.macro.my.id. Testing your own site needs domain verification, which is not built yet (Phase 2). Copy must not imply it works today.
 - Every action that costs money or load (draft plan, approve, re-run, probe) requires Cloudflare Turnstile; there are per-IP and daily limits.
 - Strict CSP: no inline scripts, no style attributes. Untrusted text (user input, AI output) is rendered as text, never HTML.
-- The app is being rebuilt in React 19 + Vite, served at /app/ next to the landing site.
+- The planner app is React 19 + Vite at /app/, next to the landing site.
 - Confirmed: the app is the tool only (new test, live run, report with re-run and compare, probe, recent runs); the intro and the policy gate demo live on the landing page.
 - Confirmed: desktop first (people watch a run of several minutes), and every screen must work on a phone.
 
@@ -35,7 +35,7 @@ A session: describe the traffic, review and approve the plan, watch a run of a f
 
 - Name: Macro. Domain macro.my.id. Contact hello@macro.my.id.
 - Voice: plain, specific, measured; no hype, no buzzwords, no em dashes in copy.
-- The app must match the landing page (web/landing): its visual world is binding for this redesign (user instruction).
+- The app must match the landing page (web/landing): its visual world is binding.
 - Open source, MIT License, github.com/mbayue/macro. Free during early access; no paid plans shown.
 
 ## Evidence on Hand

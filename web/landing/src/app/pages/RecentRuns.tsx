@@ -4,9 +4,9 @@
  */
 import { useEffect, useState } from 'react';
 import type { RunStatus } from '../../../../../src/types.ts';
-import { getRun } from '../../../../api.ts';
-import { fmtUtc } from '../../../../dom.ts';
-import { forgetRun, loadRecentRuns, type RecentRun } from '../../../../recent-runs.ts';
+import { getRun } from '../lib/api.ts';
+import { fmtUtc } from '../lib/format.ts';
+import { forgetRun, loadRecentRuns, type RecentRun } from '../lib/recent-runs.ts';
 import { Badge, StatusBadge } from '../components/ui.tsx';
 import { probeHref, runHref } from '../router.ts';
 

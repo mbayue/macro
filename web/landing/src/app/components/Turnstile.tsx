@@ -5,7 +5,7 @@
  * and disposed when the screen goes away.
  */
 import { useCallback, useEffect, useRef } from 'react';
-import { disposeWidgetIn, getToken, resetWidget } from '../../../../turnstile.ts';
+import { disposeWidgetIn, getToken, resetWidget } from '../lib/turnstile.ts';
 import { useApp } from '../context.tsx';
 
 export function useTurnstile() {

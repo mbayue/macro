@@ -5,8 +5,8 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import type { EventView, RunSnapshot, RunView } from '../../../../../src/api-types.ts';
-import { type ApiError, getRun } from '../../../../api.ts';
-import { fmtUtc } from '../../../../dom.ts';
+import { type ApiError, getRun } from '../lib/api.ts';
+import { fmtUtc } from '../lib/format.ts';
 import {
   ACTION_EXPLANATIONS,
   effectiveProbeResult,
@@ -18,8 +18,8 @@ import {
   probeRows,
   resultWording,
   statusText,
-} from '../../../../probe-view.ts';
-import { rememberRun } from '../../../../recent-runs.ts';
+} from '../lib/probe-view.ts';
+import { rememberRun } from '../lib/recent-runs.ts';
 import { ApiErrorText, Badge, Busy, KeyValues, StatusBadge, TableWrap, type Tone } from '../components/ui.tsx';
 import { useApp } from '../context.tsx';
 

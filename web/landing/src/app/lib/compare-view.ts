@@ -1,7 +1,6 @@
 /**
  * Side-by-side Run comparison (task 11.4, requirements 13.3, 13.4, 13.5).
  *
- *   renderCompareView(root, comparison)    fills `root`
  *   parseComparison(payload)               validates GET /api/compare output
  *
  * The comparison is computed on the server (src/report/compare.ts). This view
@@ -20,10 +19,8 @@ import {
   type RunSummary,
   type StageComparison,
   type ValueComparison,
-  NOT_RUN,
-} from '../src/report/compare.ts';
-import type { RouteId } from '../src/types.ts';
-import { el, fmtUtc, scrollRegion } from './dom.ts';
+} from '../../../../../src/report/compare.ts';
+import type { RouteId } from '../../../../../src/types.ts';
 
 // ----------------------------------------------------------- parsing ----
 
@@ -167,115 +164,3 @@ export function headlineCompareRows(c: Extract<Comparison, { kind: 'ok' }>): Hea
   ];
 }
 
-// -------------------------------------------------------------- render ----
-
-function runHeading(role: 'Baseline' | 'Later', run: RunSummary): HTMLElement {
-  return el(
-    'div',
-    { class: 'compare__run stack stack--tight' },
-    el('h4', null, role === 'Baseline' ? 'Baseline (earlier Run)' : 'Later Run'),
-    el('p', { class: 'mono' }, run.runId),
-    el('p', { class: 'muted' }, `Started ${fmtUtc(run.startedAt)}`),
-  );
-}
-
-function valueCell(text: string): HTMLElement {
-  return el('td', { class: text === NOT_RUN ? 'num mono compare__notrun' : 'num mono' }, text);
-}
-
-function stageTable(stage: StageComparison): HTMLElement {
-  return scrollRegion(
-    `Stage ${stage.displayIndex} comparison`,
-    el(
-      'table',
-      { class: 'table table--compare' },
-      el('caption', null, `Stage ${stage.displayIndex} (${stage.vus} VUs)`),
-      el(
-        'thead',
-        null,
-        el(
-          'tr',
-          null,
-          el('th', { scope: 'col' }, 'Scope'),
-          el('th', { scope: 'col' }, 'Metric'),
-          el('th', { scope: 'col', class: 'num' }, 'Baseline'),
-          el('th', { scope: 'col', class: 'num' }, 'Later'),
-          el('th', { scope: 'col', class: 'num' }, 'Difference'),
-          el('th', { scope: 'col', class: 'num' }, 'Change'),
-        ),
-      ),
-      el(
-        'tbody',
-        null,
-        stageCompareRows(stage).map((row) =>
-          el(
-            'tr',
-            null,
-            el('th', { scope: 'row', class: 'mono' }, row.scope),
-            el('td', null, row.metric),
-            valueCell(row.value.baseline),
-            valueCell(row.value.later),
-            // null = no difference shown for a row that exists in one Run only.
-            el('td', { class: 'num mono' }, row.value.difference),
-            el('td', { class: 'num mono' }, row.value.percentChange),
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-/** Fill `root` with the comparison. `root` should be empty. */
-export function renderCompareView(root: HTMLElement, comparison: Comparison): void {
-  if (comparison.kind === 'different_plan') {
-    // 13.4: the message only. No Run values are drawn.
-    root.append(
-      el(
-        'div',
-        { class: 'panel panel--warn stack stack--tight', role: 'status' },
-        el('h3', null, 'These Runs cannot be compared'),
-        el('p', null, comparison.message),
-      ),
-    );
-    return;
-  }
-
-  const rows = headlineCompareRows(comparison);
-  root.append(
-    el(
-      'div',
-      { class: 'stack' },
-      el('h3', null, 'Comparison'),
-      el('div', { class: 'compare__runs' }, runHeading('Baseline', comparison.baseline), runHeading('Later', comparison.later)),
-      scrollRegion(
-        'Headline comparison',
-        el(
-          'table',
-          { class: 'table table--compare' },
-          el('caption', null, 'Headline values'),
-          el(
-            'thead',
-            null,
-            el(
-              'tr',
-              null,
-              el('th', { scope: 'col' }, 'Value'),
-              el('th', { scope: 'col' }, 'Baseline'),
-              el('th', { scope: 'col' }, 'Later'),
-            ),
-          ),
-          el(
-            'tbody',
-            null,
-            rows.map((r) =>
-              el('tr', null, el('th', { scope: 'row' }, r.label), el('td', { class: 'mono' }, r.baseline), el('td', { class: 'mono' }, r.later)),
-            ),
-          ),
-        ),
-      ),
-      comparison.stages.length === 0
-        ? el('p', { class: 'muted' }, 'Neither Run has Stage metrics to compare.')
-        : el('div', { class: 'stack' }, comparison.stages.map(stageTable)),
-    ),
-  );
-}

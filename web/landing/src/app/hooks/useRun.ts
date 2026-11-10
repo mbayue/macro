@@ -9,8 +9,8 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RunSnapshot } from '../../../../../src/api-types.ts';
-import { type ApiError, getRun, stopRun } from '../../../../api.ts';
-import { rememberRun } from '../../../../recent-runs.ts';
+import { type ApiError, getRun, stopRun } from '../lib/api.ts';
+import { rememberRun } from '../lib/recent-runs.ts';
 import {
   applyEvent,
   applyLocalStatus,
@@ -23,7 +23,7 @@ import {
   type RunModel,
   shouldPoll,
   statusWords,
-} from '../../../../run-view.ts';
+} from '../lib/run-view.ts';
 import { useApp } from '../context.tsx';
 
 const EVENT_TYPES = ['stage_start', 'stage_end', 'decision', 'status', 'containment', 'report'] as const;

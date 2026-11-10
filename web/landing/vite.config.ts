@@ -28,7 +28,7 @@ function devPrerender(): Plugin {
     },
     async transformIndexHtml(html, ctx) {
       if (!ctx.server) return html;
-      if (!html.includes('<!--app-->')) return html; // the app at /app-next/ is client-rendered
+      if (!html.includes('<!--app-->')) return html; // the planner app at /app/ is client-rendered
       const page = ctx.path === '/privacy.html' ? 'privacy' : ctx.path === '/terms.html' ? 'terms' : 'home';
       const mod = (await ctx.server.ssrLoadModule('/src/entry-server.tsx')) as { render(p: string): string };
       return html.replace('<!--app-->', mod.render(page));
@@ -52,7 +52,7 @@ export default defineConfig({
         index: fileURLToPath(new URL('./index.html', import.meta.url)),
         privacy: fileURLToPath(new URL('./privacy.html', import.meta.url)),
         terms: fileURLToPath(new URL('./terms.html', import.meta.url)),
-        'app-next': fileURLToPath(new URL('./app-next/index.html', import.meta.url)),
+        app: fileURLToPath(new URL('./app/index.html', import.meta.url)),
       },
     },
   },
@@ -61,8 +61,6 @@ export default defineConfig({
     proxy: {
       // MACRO_API points the dev server at another Macro API (e.g. production, read-only review).
       '/api': { target: process.env['MACRO_API'] ?? 'http://localhost:3100', changeOrigin: true },
-      // The old app at /app/ only; /app-next/ is served by this dev server.
-      '^/app(/|$)': 'http://localhost:3100',
     },
   },
 });

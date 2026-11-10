@@ -3,7 +3,7 @@
  * On every navigation after the first: scroll to the top, focus main, announce the title.
  */
 import { Component, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getConfig } from '../../../api.ts';
+import { getConfig } from './lib/api.ts';
 import type { ConfigResponse } from '../../../../src/api-types.ts';
 import { Shell } from './components/Shell.tsx';
 import { AppContext, type AppContextValue } from './context.tsx';

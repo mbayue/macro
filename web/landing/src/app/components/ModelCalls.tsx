@@ -1,5 +1,5 @@
 import type { ModelCallView } from '../../../../../src/api-types.ts';
-import { modelCallRows } from '../../../../report-view.ts';
+import { modelCallRows } from '../lib/report-view.ts';
 import { Badge, TableWrap, type Tone } from './ui.tsx';
 
 const NOT_REPORTED = 'not reported';

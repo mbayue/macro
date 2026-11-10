@@ -5,11 +5,11 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import type { CapacityReport, MetricsView, RouteRowView, StageView } from '../../../../../../src/report/build.ts';
-import { type ApiError, getCompare, getRunsForPlan, postRun, VERIFICATION_ERROR } from '../../../../../api.ts';
+import { type ApiError, getCompare, getRunsForPlan, postRun, VERIFICATION_ERROR } from '../../lib/api.ts';
 import type { Comparison } from '../../../../../../src/report/compare.ts';
-import { headlineCompareRows, parseComparison, stageCompareRows } from '../../../../../compare-view.ts';
-import { fmtUtc } from '../../../../../dom.ts';
-import { aiModel, canRerun, MAX_LISTED_RUNS, reportNotices, type RunListRow, runListRows } from '../../../../../report-view.ts';
+import { headlineCompareRows, parseComparison, stageCompareRows } from '../../lib/compare-view.ts';
+import { fmtUtc } from '../../lib/format.ts';
+import { aiModel, canRerun, MAX_LISTED_RUNS, reportNotices, type RunListRow, runListRows } from '../../lib/report-view.ts';
 import { useApp } from '../../context.tsx';
 import { runHref } from '../../router.ts';
 import { TurnstileBox, useTurnstile } from '../Turnstile.tsx';

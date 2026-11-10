@@ -1,7 +1,7 @@
 /** Small building blocks shared by every screen of the app. */
 import type { ReactNode } from 'react';
-import type { ApiError } from '../../../../api.ts';
-import { fmtUtc, parseErrorText } from '../../../../dom.ts';
+import type { ApiError } from '../lib/api.ts';
+import { fmtUtc, parseErrorText } from '../lib/format.ts';
 import type { PolicyViolationView } from '../../../../../src/api-types.ts';
 import type { RunStatus } from '../../../../../src/types.ts';
 import { runHref } from '../router.ts';

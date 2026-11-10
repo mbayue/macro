@@ -5,7 +5,6 @@
 Describe the traffic you expect in plain words ("a new banner drops tonight, 500 players open the store, 10% order"). An AI agent drafts a staged load test, fixed code checks it, you approve it, and k6 runs it inside a sandbox that can reach only the demo shop. You get a capacity report: safe capacity, breaking point, and the first route that slowed down.
 
 - Website: **https://macro.my.id** · live demo app: **https://macro.my.id/app/** (no sign-in, protected by Cloudflare Turnstile)
-- Built for lablab.ai **Vultr: Agent Rush**, Challenge 1 "Blast Radius Zero"
 
 **The model proposes, code decides.** The AI drafts the plan, advises whether to continue after each stage, and explains the result. The target, limits, k6 script, sandbox settings, stop rules and every number in the report come from fixed code.
 
@@ -129,7 +128,7 @@ bun run dev          # the API; serves web/dist
 bun run dev:landing  # optional: Vite dev server for the landing site with hot reload (port 5173)
 ```
 
-The landing site is React + Vite in `web/landing/`. Pages are prerendered at build time and hydrated in the browser, so they work under the strict CSP (no inline scripts or style attributes).
+The landing site and the planner app are React + Vite in `web/landing/`. Landing pages are prerendered at build time and hydrated in the browser; the app at `/app/` is client-rendered. Both work under the strict CSP (no inline scripts or style attributes).
 
 ### Waitlist
 

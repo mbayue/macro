@@ -1,6 +1,6 @@
 import { type FormEvent, useRef, useState } from 'react';
 import type { ApiErrorBody, ConfigResponse, WaitlistRequest } from '../../../../src/api-types.ts';
-import { getToken, resetWidget } from '../../../turnstile.ts';
+import { getToken, resetWidget } from '../app/lib/turnstile.ts';
 
 type State =
   | { kind: 'idle' }

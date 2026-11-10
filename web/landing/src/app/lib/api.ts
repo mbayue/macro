@@ -23,7 +23,7 @@ import type {
   RunSnapshot,
   StartResponse,
   StopResponse,
-} from '../src/api-types.ts';
+} from '../../../../../src/api-types.ts';
 
 export type ApiError = ApiErrorBody['error'];
 export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: ApiError };

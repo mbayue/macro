@@ -10,9 +10,9 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { PlanResponse } from '../../../../../src/api-types.ts';
 import type { TestPlan } from '../../../../../src/types.ts';
-import { type ApiError, type ApiResult, postApprove, postPlan, VERIFICATION_ERROR } from '../../../../api.ts';
-import { countCodePoints } from '../../../../describe.ts';
-import { parseErrorText } from '../../../../dom.ts';
+import { type ApiError, type ApiResult, postApprove, postPlan, VERIFICATION_ERROR } from '../lib/api.ts';
+import { countCodePoints } from '../lib/describe.ts';
+import { parseErrorText } from '../lib/format.ts';
 import { GateRules } from '../components/GateRules.tsx';
 import { ModelCalls } from '../components/ModelCalls.tsx';
 import { NextUp } from '../components/NextUp.tsx';

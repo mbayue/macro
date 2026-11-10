@@ -6,7 +6,7 @@
 import type { StageView } from '../../../../../../src/api-types.ts';
 import { fmtMs } from '../../../../../../src/run/format.ts';
 import type { TestPlan } from '../../../../../../src/types.ts';
-import { niceScale } from '../../../../../chart.ts';
+import { niceScale } from '../../lib/chart.ts';
 import { useWidth } from '../../hooks/useWidth.ts';
 
 const H = 300;

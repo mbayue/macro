@@ -6,8 +6,8 @@ import { useEffect, useRef } from 'react';
  */
 import type { StageView } from '../../../../../src/api-types.ts';
 import { fmtCount, fmtMs, fmtPct, fmtRps } from '../../../../../src/run/format.ts';
-import { currentStage, elapsedMs, formatElapsed, isTerminal, type RunModel } from '../../../../run-view.ts';
-import { headlineItems, reportNotices } from '../../../../report-view.ts';
+import { currentStage, elapsedMs, formatElapsed, isTerminal, type RunModel } from '../lib/run-view.ts';
+import { headlineItems, reportNotices } from '../lib/report-view.ts';
 import type { CapacityReport, StageView as ReportStageView } from '../../../../../src/report/build.ts';
 import { Feed } from '../components/run/Feed.tsx';
 import { AiSection, ReportMeta, ReportNotices, ReportStages, RunsPanel } from '../components/run/Report.tsx';

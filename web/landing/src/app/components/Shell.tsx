@@ -3,7 +3,7 @@
  * live region. The rail's recent list comes from this browser's storage only.
  */
 import { type ReactNode, useEffect, useId, useState } from 'react';
-import { loadRecentRuns, type RecentRun } from '../../../../recent-runs.ts';
+import { loadRecentRuns, type RecentRun } from '../lib/recent-runs.ts';
 import { ThemeToggle } from '../../components/Chrome.tsx';
 import { probeHref, type Route, runHref } from '../router.ts';
 

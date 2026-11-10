@@ -4,7 +4,7 @@
  *   /            landing site (React + Vite, web/landing), prerendered then hydrated
  *   /privacy     \ prerendered, plus a small script that highlights the section in view
  *   /terms       /
- *   /app/        the planner app (web/app.ts bundled by Bun, its shell copied from web/index.html)
+ *   /app/        the planner app (React + Vite, web/landing/app), client-rendered
  */
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -27,24 +27,10 @@ function fail(message: string): never {
 await rm(outDir, { recursive: true, force: true });
 await mkdir(outDir, { recursive: true });
 
-// ---- 1. the app at /app/ ----
-const result = await Bun.build({
-  entrypoints: [join(webDir, 'app.ts')],
-  outdir: outDir,
-  target: 'browser',
-  minify: true,
-  sourcemap: 'none',
-});
-if (!result.success) {
-  for (const log of result.logs) console.error(log);
-  fail('App build failed.');
-}
-await cp(join(webDir, 'index.html'), join(outDir, 'app', 'index.html'), { recursive: true });
-await cp(join(webDir, 'style.css'), join(outDir, 'style.css'));
+// Favicon is shared by the landing pages and the app.
 await cp(join(webDir, 'favicon.svg'), join(outDir, 'favicon.svg'));
-await cp(join(webDir, 'fonts'), join(outDir, 'fonts'), { recursive: true });
 
-// ---- 2. the landing site: client bundle, then a server bundle used only to prerender ----
+// ---- 1. landing site + app: client bundle, then a server bundle used only to prerender ----
 await viteBuild({ configFile: landingConfig, logLevel: 'warn' });
 await rm(ssrOut, { recursive: true, force: true });
 await viteBuild({
@@ -73,15 +59,17 @@ for (const [file, page] of [
   await writeFile(path, html.replace('<!--app-->', server.render(page)));
 }
 
-// ---- 3. sanity checks ----
-for (const name of ['index.html', 'privacy.html', 'terms.html', join('app', 'index.html'), join('app-next', 'index.html'), 'app.js', 'style.css']) {
+// ---- 2. sanity checks ----
+for (const name of ['index.html', 'privacy.html', 'terms.html', join('app', 'index.html'), 'favicon.svg']) {
   if (!(await Bun.file(join(outDir, name)).exists())) fail(`Web build is missing ${name}.`);
 }
-for (const name of ['index.html', 'privacy.html', 'terms.html', join('app-next', 'index.html')]) {
+if (await Bun.file(join(outDir, 'app-next', 'index.html')).exists()) {
+  fail('Web build still contains /app-next/; the React app must ship at /app/ only.');
+}
+for (const name of ['index.html', 'privacy.html', 'terms.html', join('app', 'index.html')]) {
   const html = await readFile(join(outDir, name), 'utf8');
   if (/\sstyle="/.test(html)) fail(`${name} contains a style attribute, which the CSP blocks.`);
   if (/<script(?![^>]*\ssrc=)[^>]*>/.test(html)) fail(`${name} contains an inline script, which the CSP blocks.`);
 }
 
-const bytes = result.outputs.reduce((sum, o) => sum + o.size, 0);
-console.log(`Built web/dist: app (${bytes} bytes of JS) and the prerendered landing site.`);
+console.log('Built web/dist: the planner app at /app/ and the prerendered landing site.');

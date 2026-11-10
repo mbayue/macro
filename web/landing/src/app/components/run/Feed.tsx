@@ -5,8 +5,8 @@
  */
 import type { DecisionView, StageView } from '../../../../../../src/api-types.ts';
 import { fmtMs, fmtPct } from '../../../../../../src/run/format.ts';
-import { containmentLabel, type ContainmentEntry, formatClock, isWarnContainment } from '../../../../../run-view.ts';
-import { AI_WITHHELD_NOTE } from '../../../../../report-view.ts';
+import { containmentLabel, type ContainmentEntry, formatClock, isWarnContainment } from '../../lib/run-view.ts';
+import { AI_WITHHELD_NOTE } from '../../lib/report-view.ts';
 import { Badge } from '../ui.tsx';
 
 type Item =

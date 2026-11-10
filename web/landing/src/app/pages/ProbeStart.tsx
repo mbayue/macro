@@ -1,7 +1,7 @@
 /** Start the containment probe (`#/probe`). Needs no plan; Turnstile like every action. */
 import { useEffect, useRef, useState } from 'react';
-import { type ApiError, postProbe, VERIFICATION_ERROR } from '../../../../api.ts';
-import { ACTION_EXPLANATIONS, PROBE_ACTIONS } from '../../../../probe-view.ts';
+import { type ApiError, postProbe, VERIFICATION_ERROR } from '../lib/api.ts';
+import { ACTION_EXPLANATIONS, PROBE_ACTIONS } from '../lib/probe-view.ts';
 import { TurnstileBox, useTurnstile } from '../components/Turnstile.tsx';
 import { AlertRegion, Busy, KeyValues } from '../components/ui.tsx';
 import { useApp } from '../context.tsx';

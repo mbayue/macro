@@ -16,7 +16,7 @@ COPY package.json bun.lock tsconfig.json ./
 RUN bun install --frozen-lockfile
 COPY scripts ./scripts
 COPY web ./web
-# web/*.ts imports a few pure modules from src/ (formatters, types), so the bundler needs it.
+# The app lib imports pure modules from src/ (formatters, types), so the bundler needs it.
 COPY src ./src
 RUN bun scripts/build-web.ts
 

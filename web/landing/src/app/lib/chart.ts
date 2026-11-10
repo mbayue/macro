@@ -8,13 +8,10 @@
  * rounded the way the report tables round them (src/run/format.ts), so the
  * chart and the table agree.
  *
- * All geometry is computed in `buildChartGeometry` (pure, no DOM) and turned
- * into SVG by `renderStageChart`. Colors and strokes come from CSS classes
- * (`.chart__*` in style.css); only geometry is set through attributes.
+ * All geometry is computed in `buildChartGeometry` (pure, no DOM).
  */
-import type { CapacityReport } from '../src/report/build.ts';
-import { fmtCount, fmtMs, fmtPct, roundHalfAway } from '../src/run/format.ts';
-import { svg } from './dom.ts';
+import type { CapacityReport } from '../../../../../src/report/build.ts';
+import { fmtCount, fmtMs, fmtPct, roundHalfAway } from '../../../../../src/run/format.ts';
 
 // ------------------------------------------------------------ input ----
 
@@ -190,75 +187,3 @@ export function chartDescription(input: ChartInput): string {
   );
 }
 
-// ----------------------------------------------------------- render ----
-
-export const CHART_TITLE_ID = 'report-chart-title';
-export const CHART_DESC_ID = 'report-chart-desc';
-
-/**
- * Build the chart. Returns `null` when no Stage has metrics (nothing to draw).
- * The SVG scales to its container through its viewBox (see `.chart` in style.css).
- */
-export function renderStageChart(report: CapacityReport): SVGSVGElement | null {
-  const input = chartInputFromReport(report);
-  if (input.stages.length === 0) return null;
-  const g = buildChartGeometry(input);
-  const { plot } = g;
-  const right = plot.x + plot.width;
-  const bottom = plot.y + plot.height;
-
-  const root = svg(
-    'svg',
-    {
-      class: 'chart',
-      viewBox: `0 0 ${g.width} ${g.height}`,
-      role: 'img',
-      'aria-labelledby': `${CHART_TITLE_ID} ${CHART_DESC_ID}`,
-      focusable: 'false',
-    },
-    svg('title', { id: CHART_TITLE_ID }, 'p95 latency and error rate per Stage'),
-    svg('desc', { id: CHART_DESC_ID }, chartDescription(input)),
-  );
-
-  // Grid and left-axis labels.
-  for (const t of g.leftTicks) {
-    root.append(
-      svg('line', { class: 'chart__grid', x1: plot.x, x2: right, y1: t.y, y2: t.y }),
-      svg('text', { class: 'chart__text', x: plot.x - 8, y: t.y + 4, 'text-anchor': 'end' }, t.label),
-    );
-  }
-  for (const t of g.rightTicks) {
-    root.append(svg('text', { class: 'chart__text', x: right + 8, y: t.y + 4, 'text-anchor': 'start' }, t.label));
-  }
-  root.append(
-    svg('line', { class: 'chart__axis', x1: plot.x, x2: right, y1: bottom, y2: bottom }),
-    svg('text', { class: 'chart__text chart__text--title', x: plot.x - 8, y: plot.y - 12, 'text-anchor': 'end' }, 'p95 (ms)'),
-    svg('text', { class: 'chart__text chart__text--title', x: right + 8, y: plot.y - 12, 'text-anchor': 'start' }, 'Errors (%)'),
-  );
-
-  // Error-rate bars first, so the line draws on top.
-  for (const b of g.bars) {
-    root.append(svg('rect', { class: 'chart__bar', x: b.x, y: b.y, width: b.width, height: b.height }));
-  }
-
-  // Limits.
-  root.append(
-    svg('line', { class: 'chart__limit chart__limit--p95', x1: plot.x, x2: right, y1: g.p95LimitY, y2: g.p95LimitY }),
-    svg('line', { class: 'chart__limit chart__limit--err', x1: plot.x, x2: right, y1: g.errorLimitY, y2: g.errorLimitY }),
-  );
-
-  // p95 line and points.
-  if (g.linePath !== '') root.append(svg('path', { class: 'chart__line', d: g.linePath }));
-  for (const p of g.points) {
-    root.append(svg('circle', { class: 'chart__point', cx: p.cx, cy: p.cy, r: 4 }));
-  }
-
-  // X labels: Stage position, then VU count.
-  for (const l of g.xLabels) {
-    root.append(
-      svg('text', { class: 'chart__text', x: l.x, y: bottom + 20, 'text-anchor': 'middle' }, l.stage),
-      svg('text', { class: 'chart__text', x: l.x, y: bottom + 36, 'text-anchor': 'middle' }, l.vus),
-    );
-  }
-  return root;
-}

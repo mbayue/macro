@@ -378,12 +378,88 @@ a { text-underline-offset: 0.2em; }
   display: grid;
   gap: 8px;
   font-size: var(--fs-sm);
-  padding-top: 4px;
+  padding-top: 6px;
   border: 0;
   margin: 0;
   min-inline-size: 0;
 }
-.compose__target legend { padding: 0; }
+.compose__target-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.target-segmented {
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  padding: 2px;
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  max-width: 280px;
+  box-sizing: border-box;
+}
+.target-segmented:focus-within {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.target-segmented__btn {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: 500 var(--fs-xs)/1 var(--text);
+  border-radius: calc(var(--radius) - 2px);
+  padding: 7px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 140ms ease, color 140ms ease;
+  position: relative;
+}
+.target-segmented__btn svg { flex: 0 0 auto; opacity: 0.8; }
+@media (hover: hover) and (pointer: fine) {
+  .target-segmented__btn:hover { color: var(--ink); }
+  .target-segmented__btn:hover svg { opacity: 1; }
+}
+.target-segmented__btn.is-active {
+  background: var(--bg);
+  color: var(--ink);
+}
+.target-segmented__btn.is-active svg { opacity: 1; }
+.target-segmented__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--good);
+  margin-left: 2px;
+  flex: 0 0 auto;
+}
+
+.target-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font-size: var(--fs-xs);
+  min-height: 1.5em;
+  padding-top: 2px;
+}
+.target-meta__notice {
+  color: var(--bad);
+}
+.target-meta__link {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.btn--inline-clear {
+  padding: 2px 8px;
+  font-size: var(--fs-xs);
+  height: auto;
+  line-height: 1.4;
+}
+
 .choice { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
 .choice input { margin: 0; }
 .compose__reason { font-size: var(--fs-sm); }

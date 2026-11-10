@@ -11,7 +11,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import type { PlanResponse } from '../../../../../src/api-types.ts';
 import type { TestPlan } from '../../../../../src/types.ts';
 import type { AccountDraft } from '../../../../../src/api-types.ts';
-import { getDraft, putDraft, stashLocalDraft, takeLocalDraft } from '../lib/auth-api.ts';
+import { getDraft, postVerifyClear, putDraft, stashLocalDraft, takeLocalDraft } from '../lib/auth-api.ts';
 import { type ApiError, type ApiResult, postApprove, postPlan, VERIFICATION_ERROR } from '../lib/api.ts';
 import { countCodePoints } from '../lib/describe.ts';
 import { parseErrorText } from '../lib/format.ts';
@@ -42,7 +42,7 @@ function planSize(plan: TestPlan): { maxVus: number; totalSec: number } {
 const reducedMotion = (): boolean => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export function NewTest() {
-  const { config, me, navigate, announce } = useApp();
+  const { config, me, refreshMe, navigate, announce } = useApp();
   const min = config.trafficEventMin;
   const max = config.trafficEventMax;
 
@@ -142,6 +142,15 @@ export function NewTest() {
     setTargetMode(mode);
     setLastEditedAt(Date.now());
     setPlanError(null);
+  }
+
+  async function clearVerifiedOrigin() {
+    if (!idle || me === null) return;
+    const res = await postVerifyClear();
+    if (res.ok) {
+      await refreshMe();
+      announce('Cleared verified origin.');
+    }
   }
 
   async function startPlanning(value: string) {
@@ -307,45 +316,82 @@ export function NewTest() {
                 </div>
               ) : null}
 
-              <fieldset className="compose__target" disabled={!idle}>
-                <legend className="muted">Target</legend>
-                <div className="row">
-                  <label className="choice">
+              <div className="compose__target" role="group" aria-labelledby="target-heading">
+                <div className="compose__target-header">
+                  <span id="target-heading" className="field__label">Target environment</span>
+                </div>
+                <div className="target-segmented" role="radiogroup" aria-labelledby="target-heading">
+                  <label className={`target-segmented__btn ${targetMode === 'demo' ? 'is-active' : ''}`}>
                     <input
                       type="radio"
                       name="target-mode"
+                      value="demo"
                       checked={targetMode === 'demo'}
                       onChange={() => chooseTarget('demo')}
+                      disabled={!idle}
+                      className="visually-hidden"
                     />
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                      <polyline points="9 22 9 12 15 12 15 22" />
+                    </svg>
                     <span>Demo shop</span>
                   </label>
-                  <label className="choice">
+                  <label className={`target-segmented__btn ${targetMode === 'own' ? 'is-active' : ''}`}>
                     <input
                       type="radio"
                       name="target-mode"
+                      value="own"
                       checked={targetMode === 'own'}
                       onChange={() => chooseTarget('own')}
+                      disabled={!idle}
+                      className="visually-hidden"
                     />
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="2" y1="12" x2="22" y2="12" />
+                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                    </svg>
                     <span>My site</span>
+                    {verifiedOrigin !== null ? <span className="target-segmented__dot" title="Verified origin" /> : null}
                   </label>
                 </div>
-                <p>
-                  <span className="code">{activeOrigin}</span>
-                </p>
-                {targetMode === 'demo' ? (
-                  <p className="muted">Public demo shop. Reports stay public.</p>
-                ) : verifiedOrigin !== null ? (
-                  <p className="muted">Own-site runs stay private to this account.</p>
-                ) : me === null ? (
-                  <p className="muted">Sign in to verify your site and run private own-site tests.</p>
-                ) : (
-                  <p className="muted">Verify your site below before drafting.</p>
-                )}
-              </fieldset>
 
-              {targetMode === 'own' && me !== null && verifiedOrigin === null ? (
-                <VerifyPanel initialHost="" />
-              ) : null}
+                <div className="target-meta">
+                  {targetMode === 'demo' ? (
+                    <>
+                      <span className="code">{config.webOrigin}</span>
+                      <span className="muted">Public demo shop. Reports stay public.</span>
+                    </>
+                  ) : verifiedOrigin !== null ? (
+                    <>
+                      <span className="code">{verifiedOrigin.origin}</span>
+                      <span className="badge badge--ok">Verified</span>
+                      <button
+                        type="button"
+                        className="btn btn--quiet btn--inline-clear"
+                        disabled={!idle}
+                        onClick={() => void clearVerifiedOrigin()}
+                      >
+                        Change
+                      </button>
+                    </>
+                  ) : me === null ? (
+                    <>
+                      <span className="muted">
+                        <a href="#/sign-in">Sign in</a> to verify your site and run private own-site tests.
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="target-meta__notice">Domain verification required before drafting.</span>
+                      <a href="#verify-panel" className="target-meta__link">
+                        See verification panel →
+                      </a>
+                    </>
+                  )}
+                </div>
+              </div>
 
               <div className="row">
                 <button type="submit" className="btn" disabled={!inRange || !idle || ownNeedsVerify}>
@@ -368,6 +414,8 @@ export function NewTest() {
                 ) : null}
                 {busy === 'planning' ? (
                   <Busy>Drafting a plan. This can take up to a minute.</Busy>
+                ) : ownNeedsVerify ? (
+                  <span className="muted compose__reason">Verify your site in the side panel before drafting.</span>
                 ) : idle && n === 0 ? (
                   <span className="muted compose__reason">Write at least {min} characters to draft.</span>
                 ) : null}
@@ -382,11 +430,14 @@ export function NewTest() {
 
           {review ? (
             <Review key={reviewSeq} res={review} stale={editing && changedSinceDraft} busy={busy} onEdit={editDescription} />
-          ) : busy === null ? (
+          ) : busy === null && !ownNeedsVerify ? (
             <NextUp />
           ) : null}
         </div>
-        <aside className="split__side" aria-label={approvable ? 'Approve the plan' : 'Policy gate rules'}>
+        <aside
+          className="split__side"
+          aria-label={approvable ? 'Approve the plan' : ownNeedsVerify && me !== null ? 'Verify your site' : 'Policy gate rules'}
+        >
           {approvable && review?.plan && review.planText !== null ? (
             <>
               <ApprovePanel
@@ -405,6 +456,13 @@ export function NewTest() {
                 startFromBar={startFromBar}
                 alive={alive}
               />
+              <GateRules folded />
+            </>
+          ) : ownNeedsVerify && me !== null ? (
+            <>
+              <div id="verify-panel">
+                <VerifyPanel initialHost="" />
+              </div>
               <GateRules folded />
             </>
           ) : (

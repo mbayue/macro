@@ -309,6 +309,9 @@ export interface VerifyStartResponse {
   txtName: string;
   txtValue: string;
   wellKnownUrl: string;
+  isCloudflare?: boolean;
+  cloudFlareDirectUrl?: string;
+  domainConnectUrl?: string;
 }
 
 export interface VerifyCheckResponse {

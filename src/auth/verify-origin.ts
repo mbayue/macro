@@ -8,6 +8,15 @@ export type NormalizeVerifyResult =
   | { ok: false; reason: string };
 
 export type ResolveTxt = (hostname: string) => Promise<string[][]>;
+export type ResolveNs = (hostname: string) => Promise<string[]>;
+
+export interface DnsProviderDetection {
+  isCloudflare: boolean;
+  apexHost: string;
+  nameservers: string[];
+  cloudFlareDirectUrl?: string;
+  domainConnectUrl?: string;
+}
 
 const WELL_KNOWN_PATH = '/.well-known/macro-site-verification';
 
@@ -98,4 +107,52 @@ export function generateVerifyToken(): string {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+export function isCloudflareNameserver(ns: string): boolean {
+  return /\.ns\.cloudflare\.com$/i.test(ns.trim());
+}
+
+/**
+ * Walk up labels from host to find authoritative nameservers and detect if hosted on Cloudflare.
+ */
+export async function detectDnsProvider(
+  host: string,
+  resolveNs?: ResolveNs,
+): Promise<DnsProviderDetection> {
+  const defaultResult: DnsProviderDetection = {
+    isCloudflare: false,
+    apexHost: host,
+    nameservers: [],
+  };
+
+  const nsResolver =
+    resolveNs ??
+    (async (hostname: string) => {
+      const dns = await import('node:dns/promises');
+      return dns.resolveNs(hostname);
+    });
+
+  const labels = host.toLowerCase().split('.').filter(Boolean);
+  if (labels.length === 0) return defaultResult;
+
+  for (let i = 0; i <= labels.length - 2; i++) {
+    const candidate = labels.slice(i).join('.');
+    try {
+      const nsList = await nsResolver(candidate);
+      if (Array.isArray(nsList) && nsList.length > 0) {
+        const isCloudflare = nsList.some(isCloudflareNameserver);
+        return {
+          isCloudflare,
+          apexHost: candidate,
+          nameservers: nsList,
+          cloudFlareDirectUrl: isCloudflare ? 'https://dash.cloudflare.com' : undefined,
+        };
+      }
+    } catch {
+      // Continue walking up labels
+    }
+  }
+
+  return defaultResult;
 }

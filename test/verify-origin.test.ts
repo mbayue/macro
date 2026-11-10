@@ -5,6 +5,7 @@ import type { ResendMailer } from '../src/auth/magic-link.ts';
 import {
   checkDnsTxt,
   checkWellKnown,
+  detectDnsProvider,
   normalizeVerifyHost,
 } from '../src/auth/verify-origin.ts';
 import { ContestedOriginError } from '../src/auth/types.ts';
@@ -95,6 +96,49 @@ describe('checkDnsTxt / checkWellKnown', () => {
   });
 });
 
+describe('detectDnsProvider', () => {
+  test('identifies Cloudflare nameservers on apex domain', async () => {
+    const res = await detectDnsProvider('example.com', async (host) => {
+      if (host === 'example.com') {
+        return ['ashley.ns.cloudflare.com', 'bob.ns.cloudflare.com'];
+      }
+      throw new Error('not found');
+    });
+    expect(res.isCloudflare).toBe(true);
+    expect(res.apexHost).toBe('example.com');
+    expect(res.cloudFlareDirectUrl).toBe('https://dash.cloudflare.com');
+  });
+
+  test('walks up subdomains to find Cloudflare apex nameservers', async () => {
+    const res = await detectDnsProvider('shop.sub.example.com', async (host) => {
+      if (host === 'shop.sub.example.com' || host === 'sub.example.com') {
+        return [];
+      }
+      if (host === 'example.com') {
+        return ['dina.ns.cloudflare.com', 'ed.ns.cloudflare.com'];
+      }
+      throw new Error('NXDOMAIN');
+    });
+    expect(res.isCloudflare).toBe(true);
+    expect(res.apexHost).toBe('example.com');
+  });
+
+  test('returns isCloudflare=false for other DNS providers', async () => {
+    const res = await detectDnsProvider('example.com', async () => {
+      return ['ns1.digitalocean.com', 'ns2.digitalocean.com'];
+    });
+    expect(res.isCloudflare).toBe(false);
+  });
+
+  test('gracefully returns isCloudflare=false on DNS errors or timeouts', async () => {
+    const res = await detectDnsProvider('error.com', async () => {
+      throw new Error('DNS timeout');
+    });
+    expect(res.isCloudflare).toBe(false);
+    expect(res.nameservers).toEqual([]);
+  });
+});
+
 describe('verify routes', () => {
   test('start → DNS check sets verified origin; clear returns to none; contested is 409', async () => {
     const store = new Store(':memory:');
@@ -129,6 +173,7 @@ describe('verify routes', () => {
       log: () => {},
       mailer: mailerA,
       resolveTxt: async () => [[pendingToken]],
+      resolveNs: async () => ['alex.ns.cloudflare.com', 'bob.ns.cloudflare.com'],
       fetchImpl: async () => new Response('no', { status: 404 }),
     });
 
@@ -153,6 +198,7 @@ describe('verify routes', () => {
     expect(startBody.wellKnownUrl).toBe(
       'https://shop.example.com/.well-known/macro-site-verification',
     );
+    expect((startBody as { isCloudflare?: boolean }).isCloudflare).toBe(true);
     pendingToken = startBody.token;
     expect(store.getVerifiedOrigin(store.findUserByEmail('a@example.com')!.id)).toBeNull();
 

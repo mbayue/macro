@@ -67,11 +67,13 @@ import { ContestedOriginError } from './auth/types.ts';
 import {
   checkDnsTxt,
   checkWellKnown,
+  detectDnsProvider,
   generateVerifyToken,
   normalizeVerifyHost,
   txtNameForHost,
   wellKnownUrlForOrigin,
   type FetchLike,
+  type ResolveNs,
   type ResolveTxt,
 } from './auth/verify-origin.ts';
 import type { Config } from './config.ts';
@@ -262,6 +264,8 @@ export interface AppDeps {
   githubFetch?: typeof fetch;
   /** Injectable DNS TXT resolver for origin verification (defaults to node:dns/promises). */
   resolveTxt?: ResolveTxt;
+  /** Injectable DNS NS resolver for origin detection (defaults to node:dns/promises). */
+  resolveNs?: ResolveNs;
   /** Injectable fetch for well-known origin checks (defaults to global fetch). */
   fetchImpl?: FetchLike;
 }
@@ -1499,11 +1503,15 @@ export function createApp(deps: AppDeps): App {
       logInternal('verify.start', err);
       return apiError(500, 'internal', MSG.internal);
     }
+    const detection = await detectDnsProvider(norm.host, deps.resolveNs);
     const body: VerifyStartResponse = {
       token,
       txtName: txtNameForHost(norm.host),
       txtValue: token,
       wellKnownUrl: wellKnownUrlForOrigin(norm.origin),
+      isCloudflare: detection.isCloudflare,
+      cloudFlareDirectUrl: detection.cloudFlareDirectUrl,
+      domainConnectUrl: detection.domainConnectUrl,
     };
     return json(200, body);
   };

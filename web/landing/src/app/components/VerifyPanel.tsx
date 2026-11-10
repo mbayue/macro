@@ -7,6 +7,39 @@ import { postVerifyCheck, postVerifyClear, postVerifyStart } from '../lib/auth-a
 import { useApp } from '../context.tsx';
 import { AlertRegion, Busy, Panel } from './ui.tsx';
 
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // ignore
+    }
+  };
+  return (
+    <button
+      type="button"
+      className="btn btn--quiet btn--copy"
+      onClick={() => void copy()}
+      title={copied ? 'Copied to clipboard' : 'Copy to clipboard'}
+      aria-label={copied ? 'Copied to clipboard' : 'Copy to clipboard'}
+    >
+      {copied ? (
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
 export function VerifyPanel({
   initialHost = '',
   onVerified,
@@ -119,32 +152,36 @@ export function VerifyPanel({
         </form>
       ) : (
         <div className="stack">
-          <dl className="kv">
-            <div>
-              <dt>DNS TXT name</dt>
-              <dd>
+          <div className="verify-records">
+            <div className="verify-record">
+              <span className="verify-record__label">DNS TXT name</span>
+              <div className="verify-record__box">
                 <code>{pending.txtName}</code>
-              </dd>
+                <CopyButton text={pending.txtName} />
+              </div>
             </div>
-            <div>
-              <dt>DNS TXT value</dt>
-              <dd>
+            <div className="verify-record">
+              <span className="verify-record__label">DNS TXT value</span>
+              <div className="verify-record__box">
                 <code>{pending.txtValue}</code>
-              </dd>
+                <CopyButton text={pending.txtValue} />
+              </div>
             </div>
-            <div>
-              <dt>Well-known URL</dt>
-              <dd>
+            <div className="verify-record">
+              <span className="verify-record__label">Well-known URL</span>
+              <div className="verify-record__box">
                 <code>{pending.wellKnownUrl}</code>
-              </dd>
+                <CopyButton text={pending.wellKnownUrl} />
+              </div>
             </div>
-            <div>
-              <dt>File body</dt>
-              <dd>
+            <div className="verify-record">
+              <span className="verify-record__label">File body</span>
+              <div className="verify-record__box">
                 <code>{pending.token}</code>
-              </dd>
+                <CopyButton text={pending.token} />
+              </div>
             </div>
-          </dl>
+          </div>
           <p className="actions">
             <button type="button" className="btn" disabled={busy !== null} onClick={() => void onCheck()}>
               {busy === 'check' ? <Busy>Checking</Busy> : 'I added the proof — check'}

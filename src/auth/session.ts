@@ -17,15 +17,17 @@ export function parseSessionId(cookieHeader: string | null): string | null {
   return null;
 }
 
-function cookieAttrs(extra: string): string {
-  return `${SESSION_COOKIE}=${extra}; Path=/; HttpOnly; Secure; SameSite=Lax`;
+function cookieAttrs(extra: string, secure: boolean): string {
+  const base = `${SESSION_COOKIE}=${extra}; Path=/; HttpOnly; SameSite=Lax`;
+  return secure ? `${base}; Secure` : base;
 }
 
-export function serializeSessionCookie(sessionId: string, expiresAt: number): string {
+/** `secure` defaults true (HTTPS). Pass false for local http:// PUBLIC_BASE_URL. */
+export function serializeSessionCookie(sessionId: string, expiresAt: number, secure = true): string {
   const expires = new Date(expiresAt).toUTCString();
-  return cookieAttrs(`${sessionId}; Expires=${expires}`);
+  return cookieAttrs(`${sessionId}; Expires=${expires}`, secure);
 }
 
-export function serializeClearSessionCookie(): string {
-  return cookieAttrs('; Max-Age=0');
+export function serializeClearSessionCookie(secure = true): string {
+  return cookieAttrs('; Max-Age=0', secure);
 }

@@ -28,6 +28,12 @@ describe('session cookie helpers', () => {
     expect(cookie).toContain('Expires=');
   });
 
+  test('serializeSessionCookie omits Secure when secure=false', () => {
+    const cookie = serializeSessionCookie('sid-1', 1_700_000_000_000, false);
+    expect(cookie).toContain('HttpOnly');
+    expect(cookie).not.toContain('Secure');
+  });
+
   test('serializeClearSessionCookie clears the session cookie', () => {
     const cookie = serializeClearSessionCookie();
     expect(cookie.startsWith('macro_session=;')).toBe(true);

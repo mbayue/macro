@@ -198,12 +198,14 @@ function parseCookieValue(cookieHeader: string | null, name: string): string | n
   return null;
 }
 
-function serializeOauthStateCookie(state: string): string {
-  return `${OAUTH_STATE_COOKIE}=${state}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${OAUTH_STATE_TTL_SEC}`;
+function serializeOauthStateCookie(state: string, secure: boolean): string {
+  const base = `${OAUTH_STATE_COOKIE}=${state}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${OAUTH_STATE_TTL_SEC}`;
+  return secure ? `${base}; Secure` : base;
 }
 
-function clearOauthStateCookie(): string {
-  return `${OAUTH_STATE_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
+function clearOauthStateCookie(secure: boolean): string {
+  const base = `${OAUTH_STATE_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+  return secure ? `${base}; Secure` : base;
 }
 
 // ---------------------------------------------------------------------- types
@@ -614,6 +616,9 @@ export function createApp(deps: AppDeps): App {
   const clock = deps.clock ?? defaultClock;
   const log = deps.log ?? ((line: string) => console.error(line));
   const webRoot = resolve(deps.webDist ?? join(import.meta.dir, '..', 'web', 'dist'));
+  // Secure cookies only when PUBLIC_BASE_URL is https (local http smoke needs Secure off).
+  const cookieSecure =
+    config.auth === undefined || new URL(config.auth.publicBaseUrl).protocol === 'https:';
   const sseCfg = {
     pollMs: deps.sse?.pollMs ?? SSE_POLL_MS,
     heartbeatMs: deps.sse?.heartbeatMs ?? SSE_HEARTBEAT_MS,
@@ -799,7 +804,7 @@ export function createApp(deps: AppDeps): App {
     return new Response(null, {
       status: 204,
       headers: {
-        'Set-Cookie': serializeClearSessionCookie(),
+        'Set-Cookie': serializeClearSessionCookie(cookieSecure),
         'cache-control': 'no-store',
       },
     });
@@ -1388,7 +1393,7 @@ export function createApp(deps: AppDeps): App {
       status: 302,
       headers: {
         Location: location,
-        'Set-Cookie': serializeOauthStateCookie(state),
+        'Set-Cookie': serializeOauthStateCookie(state, cookieSecure),
         'cache-control': 'no-store',
       },
     });
@@ -1402,12 +1407,12 @@ export function createApp(deps: AppDeps): App {
     const state = url.searchParams.get('state') ?? '';
     const code = url.searchParams.get('code') ?? '';
     if (expected === null || state === '' || state !== expected || code === '') {
-      return apiError(400, 'invalid_input', MSG.oauthFailed, {}, { 'Set-Cookie': clearOauthStateCookie() });
+      return apiError(400, 'invalid_input', MSG.oauthFailed, {}, { 'Set-Cookie': clearOauthStateCookie(cookieSecure) });
     }
     const ghFetch = deps.githubFetch ?? fetch;
     const token = await exchangeGithubCode(config.auth, code, ghFetch);
     if ('error' in token) {
-      return apiError(400, 'invalid_input', MSG.oauthFailed, {}, { 'Set-Cookie': clearOauthStateCookie() });
+      return apiError(400, 'invalid_input', MSG.oauthFailed, {}, { 'Set-Cookie': clearOauthStateCookie(cookieSecure) });
     }
     const identity = await fetchGithubIdentity(token.accessToken, ghFetch);
     if ('error' in identity) {
@@ -1416,12 +1421,12 @@ export function createApp(deps: AppDeps): App {
           status: 303,
           headers: {
             Location: '/app/#/sign-in?error=github_email',
-            'Set-Cookie': clearOauthStateCookie(),
+            'Set-Cookie': clearOauthStateCookie(cookieSecure),
             'cache-control': 'no-store',
           },
         });
       }
-      return apiError(400, 'invalid_input', MSG.oauthFailed, {}, { 'Set-Cookie': clearOauthStateCookie() });
+      return apiError(400, 'invalid_input', MSG.oauthFailed, {}, { 'Set-Cookie': clearOauthStateCookie(cookieSecure) });
     }
 
     const at = now();
@@ -1439,8 +1444,8 @@ export function createApp(deps: AppDeps): App {
       Location: '/app/#/',
       'cache-control': 'no-store',
     });
-    headers.append('Set-Cookie', clearOauthStateCookie());
-    headers.append('Set-Cookie', serializeSessionCookie(session.id, session.expiresAt));
+    headers.append('Set-Cookie', clearOauthStateCookie(cookieSecure));
+    headers.append('Set-Cookie', serializeSessionCookie(session.id, session.expiresAt, cookieSecure));
     return new Response(null, { status: 303, headers });
   };
 
@@ -1467,7 +1472,7 @@ export function createApp(deps: AppDeps): App {
       status: 303,
       headers: {
         Location: location,
-        'Set-Cookie': serializeSessionCookie(session.id, session.expiresAt),
+        'Set-Cookie': serializeSessionCookie(session.id, session.expiresAt, cookieSecure),
         'cache-control': 'no-store',
       },
     });

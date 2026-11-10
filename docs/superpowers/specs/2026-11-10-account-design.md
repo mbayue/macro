@@ -1,7 +1,7 @@
 # Account design — Macro
 
 Date: 2026-11-10  
-Status: draft for approval (design only; no implementation yet)
+Status: approved (design only; implementation plan separate)
 
 ## Intent
 

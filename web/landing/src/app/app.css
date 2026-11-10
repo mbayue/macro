@@ -223,7 +223,18 @@ a { text-underline-offset: 0.2em; }
 .counter { color: var(--muted); font-variant-numeric: tabular-nums; }
 .counter--bad, .compose__problem { color: var(--bad); }
 .examples { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: var(--fs-sm); }
-.compose__target { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; font-size: var(--fs-sm); padding-top: 4px; }
+.compose__target {
+  display: grid;
+  gap: 8px;
+  font-size: var(--fs-sm);
+  padding-top: 4px;
+  border: 0;
+  margin: 0;
+  min-inline-size: 0;
+}
+.compose__target legend { padding: 0; }
+.choice { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.choice input { margin: 0; }
 .compose__reason { font-size: var(--fs-sm); }
 .turnstile:empty { display: none; }
 .brief { gap: 10px; }

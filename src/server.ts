@@ -139,6 +139,7 @@ const MSG = {
   verifyPending: 'Start verification for a host before checking.',
   verifyFailed: 'Macro could not find the verification token on that host yet. Try again after the DNS or file is in place.',
   contestedOrigin: 'That site is already verified by another Macro account.',
+  verificationRequired: 'Verify your site before drafting or approving an own-site plan.',
   internal: 'Something went wrong on the server. Please try again.',
 } as const;
 
@@ -180,7 +181,11 @@ export interface RunStarter {
 }
 
 export type TurnstileVerifier = (token: string | undefined, ip: string) => Promise<{ ok: boolean }>;
-export type PlannerFn = (trafficEvent: string, draftId: string) => Promise<PlanOutcome>;
+export type PlannerFn = (
+  trafficEvent: string,
+  draftId: string,
+  target?: Config['target'],
+) => Promise<PlanOutcome>;
 
 /** The part of `Bun.Server` this module uses. */
 export interface ServerLike {
@@ -329,8 +334,20 @@ async function readJsonBody(req: Request): Promise<BodyRead> {
   }
 }
 
-const PlanBody = z.object({ trafficEvent: z.unknown().optional(), turnstileToken: z.unknown().optional() });
-const ApproveBody = z.object({ planText: z.string().min(1), turnstileToken: z.unknown().optional() });
+const TargetModeFields = {
+  targetMode: z.enum(['demo', 'own']).optional(),
+  targetOrigin: z.string().min(1).max(253).optional(),
+};
+const PlanBody = z.object({
+  trafficEvent: z.unknown().optional(),
+  turnstileToken: z.unknown().optional(),
+  ...TargetModeFields,
+});
+const ApproveBody = z.object({
+  planText: z.string().min(1),
+  turnstileToken: z.unknown().optional(),
+  ...TargetModeFields,
+});
 const RerunBody = z.object({ planHash: z.string(), turnstileToken: z.unknown().optional() });
 const ProbeBody = z.object({ turnstileToken: z.unknown().optional() });
 
@@ -570,7 +587,38 @@ export function createApp(deps: AppDeps): App {
   };
   const planner: PlannerFn =
     deps.planner ??
-    ((trafficEvent, draftId) => planTrafficEvent({ client: deps.client, target: config.target }, trafficEvent, draftId));
+    ((trafficEvent, draftId, target) =>
+      planTrafficEvent({ client: deps.client, target: target ?? config.target }, trafficEvent, draftId));
+
+  /** Demo allowlist, or the account's single verified origin for own-site. */
+  function resolvePlanTarget(
+    mode: 'demo' | 'own' | undefined,
+    targetOrigin: string | undefined,
+    user: UserRow | null,
+  ): { ok: true; target: Config['target'] } | { ok: false; res: Response } {
+    const m = mode ?? 'demo';
+    if (m === 'demo') return { ok: true, target: config.target };
+    if (user === null) return { ok: false, res: apiError(401, 'auth_required', MSG.authRequired) };
+    const verified = store.getVerifiedOrigin(user.id);
+    if (verified === null) {
+      return { ok: false, res: apiError(403, 'verification_required', MSG.verificationRequired) };
+    }
+    if (targetOrigin === undefined || targetOrigin.trim() === '') {
+      return { ok: false, res: apiError(400, 'invalid_input', MSG.invalid) };
+    }
+    const norm = normalizeVerifyHost(targetOrigin);
+    if (!norm.ok || norm.origin !== verified.origin) {
+      return { ok: false, res: apiError(400, 'invalid_input', MSG.invalid) };
+    }
+    return {
+      ok: true,
+      target: {
+        webOrigin: verified.origin,
+        apiOrigin: verified.origin,
+        allowlist: [verified.origin],
+      },
+    };
+  }
 
   const controllerFor = (kind: RunKind): RunStarter => (kind === 'probe' ? deps.probeController : deps.runController);
 
@@ -739,6 +787,9 @@ export function createApp(deps: AppDeps): App {
     if (authGate.denied !== null) return authGate.denied; // 9.8: does not count toward any limit
     const subject = authGate.subject;
 
+    const targetResolved = resolvePlanTarget(parsed.data.targetMode, parsed.data.targetOrigin, authGate.user);
+    if (!targetResolved.ok) return targetResolved.res;
+
     // 9.4: rolling per-IP (or per-account) planning limit; recorded with the check.
     const at = now();
     const limit = store.transaction(() => {
@@ -771,7 +822,7 @@ export function createApp(deps: AppDeps): App {
 
     let outcome: PlanOutcome;
     try {
-      outcome = await planner(trafficEvent, draftId);
+      outcome = await planner(trafficEvent, draftId, targetResolved.target);
     } catch (err) {
       logInternal('planner', err);
       return apiError(502, 'planning_failed', MSG.planningFailed);
@@ -825,12 +876,15 @@ export function createApp(deps: AppDeps): App {
     const authGate = await turnstileUnlessSignedIn(req, parsed.data.turnstileToken, ip);
     if (authGate.denied !== null) return authGate.denied;
 
+    const targetResolved = resolvePlanTarget(parsed.data.targetMode, parsed.data.targetOrigin, authGate.user);
+    if (!targetResolved.ok) return targetResolved.res;
+
     // 4.9, 5.6: parse and gate the exact text the user approved; reject without storing anything.
     const result = parsePlan(parsed.data.planText);
     if (!result.ok) {
       return apiError(422, 'plan_rejected', MSG.planRejected, { parseError: toParseErrorView(result.error) });
     }
-    const gate = evaluatePlan(result.plan, config.target.allowlist);
+    const gate = evaluatePlan(result.plan, targetResolved.target.allowlist);
     if (gate.status === 'rejected') {
       return apiError(422, 'plan_rejected', MSG.planRejected, {
         violations: gate.violations.map((v) => ({ rule: v.rule, path: v.path, message: v.message })),

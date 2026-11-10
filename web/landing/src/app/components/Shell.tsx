@@ -153,7 +153,7 @@ export function Shell({
       <main id="main" className="main" ref={mainRef} tabIndex={-1}>
         {children}
         <footer className="app-foot">
-          <p>This demo tests only the demo shop. Testing your own site needs domain verification, which is coming next.</p>
+          <p>Demo shop tests work signed out. Own-site tests need a signed-in account and a verified origin.</p>
         </footer>
       </main>
 

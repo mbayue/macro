@@ -19,9 +19,11 @@ import { NextUp } from '../components/NextUp.tsx';
 import { StageProfile } from '../components/StageProfile.tsx';
 import { TurnstileBox, useTurnstile } from '../components/Turnstile.tsx';
 import { AlertRegion, Badge, Busy, KeyValues, Panel, TableWrap, ViolationsTable } from '../components/ui.tsx';
+import { VerifyPanel } from '../components/VerifyPanel.tsx';
 import { useApp } from '../context.tsx';
 
 type Busy = 'planning' | 'approving' | null;
+type TargetMode = 'demo' | 'own';
 
 const fmt = (n: number): string => n.toLocaleString('en-US');
 
@@ -38,7 +40,7 @@ function planSize(plan: TestPlan): { maxVus: number; totalSec: number } {
 const reducedMotion = (): boolean => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export function NewTest() {
-  const { config, navigate, announce } = useApp();
+  const { config, me, navigate, announce } = useApp();
   const min = config.trafficEventMin;
   const max = config.trafficEventMax;
 
@@ -50,6 +52,7 @@ export function NewTest() {
   const [reviewSeq, setReviewSeq] = useState(0);
   const [editing, setEditing] = useState(false);
   const [panelInView, setPanelInView] = useState(true);
+  const [targetMode, setTargetMode] = useState<TargetMode>('demo');
   const textarea = useRef<HTMLTextAreaElement>(null);
   const focusComposer = useRef(false);
   const startFromBar = useRef<(() => void) | null>(null);
@@ -74,9 +77,35 @@ export function NewTest() {
   const showRetry = planError?.code === 'planning_failed' && !changedSinceDraft;
   const approvable = review !== null && isApprovable(review);
   const showComposer = review === null || editing;
+  const verifiedOrigin = me?.verifiedOrigin ?? null;
+  const ownNeedsVerify = targetMode === 'own' && (me === null || verifiedOrigin === null);
+  const activeOrigin = targetMode === 'own' && verifiedOrigin !== null ? verifiedOrigin.origin : config.webOrigin;
+
+  function chooseTarget(mode: TargetMode) {
+    if (!idle) return;
+    if (mode === 'own' && me === null) {
+      // Task 9 will persist the draft before leaving; for now keep the text in React state only.
+      navigate('/sign-in');
+      return;
+    }
+    setTargetMode(mode);
+    setPlanError(null);
+  }
 
   async function startPlanning(value: string) {
     if (!idle || countCodePoints(value) < min || countCodePoints(value) > max) return;
+    if (targetMode === 'own' && me === null) {
+      navigate('/sign-in');
+      return;
+    }
+    if (targetMode === 'own' && verifiedOrigin === null) {
+      setPlanError({
+        code: 'verification_required',
+        message: 'Verify your site before drafting an own-site plan.',
+      });
+      announce('Verify your site before drafting an own-site plan.');
+      return;
+    }
     setBusy('planning');
     setLastSubmitted(value);
     setPlanError(null);
@@ -85,7 +114,12 @@ export function NewTest() {
     let result: ApiResult<PlanResponse>;
     try {
       const token = await draftTurnstile.token();
-      result = await postPlan({ trafficEvent: value, turnstileToken: token });
+      result = await postPlan({
+        trafficEvent: value,
+        turnstileToken: token,
+        targetMode,
+        ...(targetMode === 'own' && verifiedOrigin !== null ? { targetOrigin: verifiedOrigin.origin } : {}),
+      });
     } catch {
       result = { ok: false, error: VERIFICATION_ERROR };
     } finally {
@@ -204,14 +238,48 @@ export function NewTest() {
                 </div>
               ) : null}
 
-              <div className="compose__target">
-                <span className="muted">Target</span>
-                <span className="code">{config.webOrigin}</span>
-                <span className="muted">Demo target. Testing your own site will need domain verification (coming soon).</span>
-              </div>
+              <fieldset className="compose__target" disabled={!idle}>
+                <legend className="muted">Target</legend>
+                <div className="row">
+                  <label className="choice">
+                    <input
+                      type="radio"
+                      name="target-mode"
+                      checked={targetMode === 'demo'}
+                      onChange={() => chooseTarget('demo')}
+                    />
+                    <span>Demo shop</span>
+                  </label>
+                  <label className="choice">
+                    <input
+                      type="radio"
+                      name="target-mode"
+                      checked={targetMode === 'own'}
+                      onChange={() => chooseTarget('own')}
+                    />
+                    <span>My site</span>
+                  </label>
+                </div>
+                <p>
+                  <span className="code">{activeOrigin}</span>
+                </p>
+                {targetMode === 'demo' ? (
+                  <p className="muted">Public demo shop. Reports stay public.</p>
+                ) : verifiedOrigin !== null ? (
+                  <p className="muted">Own-site runs stay private to this account.</p>
+                ) : me === null ? (
+                  <p className="muted">Sign in to verify your site and run private own-site tests.</p>
+                ) : (
+                  <p className="muted">Verify your site below before drafting.</p>
+                )}
+              </fieldset>
+
+              {targetMode === 'own' && me !== null && verifiedOrigin === null ? (
+                <VerifyPanel initialHost="" />
+              ) : null}
 
               <div className="row">
-                <button type="submit" className="btn" disabled={!inRange || !idle}>
+                <button type="submit" className="btn" disabled={!inRange || !idle || ownNeedsVerify}>
                   {review !== null ? 'Draft a new plan' : 'Draft a plan'}
                 </button>
                 {review !== null && editing ? (
@@ -238,7 +306,7 @@ export function NewTest() {
               <AlertRegion error={planError} />
             </form>
           ) : (
-            <Brief text={lastSubmitted ?? text} origin={config.webOrigin} disabled={!idle} onEdit={editDescription} />
+            <Brief text={lastSubmitted ?? text} origin={activeOrigin} disabled={!idle} onEdit={editDescription} />
           )}
           {/* Outside the form: the form folds away after a draft, and the widget must not lose its container. */}
           <TurnstileBox boxRef={draftTurnstile.box} />
@@ -256,6 +324,10 @@ export function NewTest() {
                 key={reviewSeq}
                 plan={review.plan}
                 planText={review.planText}
+                targetMode={targetMode}
+                {...(targetMode === 'own' && verifiedOrigin !== null
+                  ? { targetOrigin: verifiedOrigin.origin }
+                  : {})}
                 busy={busy}
                 setBusy={setBusy}
                 onCancel={cancelPlan}
@@ -514,6 +586,8 @@ function PlanDetails({ plan, rationale }: { plan: TestPlan; rationale: string | 
 function ApprovePanel({
   plan,
   planText,
+  targetMode,
+  targetOrigin,
   busy,
   setBusy,
   onCancel,
@@ -524,6 +598,8 @@ function ApprovePanel({
 }: {
   plan: TestPlan;
   planText: string;
+  targetMode: TargetMode;
+  targetOrigin?: string;
   busy: Busy;
   setBusy: (b: Busy) => void;
   onCancel: () => void;
@@ -548,7 +624,12 @@ function ApprovePanel({
     let result: Awaited<ReturnType<typeof postApprove>>;
     try {
       const token = await turnstile.token();
-      result = await postApprove({ planText, turnstileToken: token });
+      result = await postApprove({
+        planText,
+        turnstileToken: token,
+        targetMode,
+        ...(targetOrigin !== undefined ? { targetOrigin } : {}),
+      });
     } catch {
       result = { ok: false, error: VERIFICATION_ERROR };
     } finally {

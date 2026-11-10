@@ -102,6 +102,10 @@ export interface ModelCallView {
 export interface PlanRequest {
   trafficEvent: string;
   turnstileToken: string;
+  /** Demo shop (default) or the account's verified origin. */
+  targetMode?: 'demo' | 'own';
+  /** Required when `targetMode` is `own`; must match the verified origin. */
+  targetOrigin?: string;
 }
 
 export type GateView =
@@ -126,6 +130,8 @@ export interface PlanResponse {
 export interface ApproveRequest {
   planText: string;
   turnstileToken: string;
+  targetMode?: 'demo' | 'own';
+  targetOrigin?: string;
 }
 
 export interface RerunRequest {

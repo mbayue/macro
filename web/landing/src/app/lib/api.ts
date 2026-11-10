@@ -56,6 +56,8 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<ApiErrorCode>([
   'not_found',
   'auth_unavailable',
   'auth_required',
+  'verification_required',
+  'contested_origin',
   'internal',
 ]);
 

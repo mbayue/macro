@@ -17,6 +17,7 @@ import { RunController } from './run/controller.ts';
 import { ProbeController } from './run/probe.ts';
 import { DockerClient } from './sandbox/docker.ts';
 import { DockerStageExecutor, SandboxRefusedError, SandboxRunner } from './sandbox/runner.ts';
+import { resolveTxt } from 'node:dns/promises';
 import { createResendMailer } from './auth/magic-link.ts';
 import { verifyTurnstile } from './security/turnstile.ts';
 import { createApp } from './server.ts';
@@ -161,6 +162,8 @@ async function main(): Promise<void> {
     client,
     runController,
     probeController,
+    resolveTxt,
+    fetchImpl: fetch,
     ...(effective.auth !== undefined
       ? {
           mailer: createResendMailer({

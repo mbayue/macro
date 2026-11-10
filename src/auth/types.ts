@@ -23,6 +23,15 @@ export interface VerifiedOriginRow {
   token: string;
 }
 
+/** Pending own-site proof before DNS / well-known succeeds. */
+export interface PendingOriginVerificationRow {
+  userId: string;
+  origin: string;
+  host: string;
+  token: string;
+  createdAt: number;
+}
+
 /** Thrown when setVerifiedOrigin hits a host another account already holds. */
 export class ContestedOriginError extends Error {
   readonly code = 'contested_origin' as const;

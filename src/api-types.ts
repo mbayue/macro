@@ -35,6 +35,8 @@ export type ApiErrorCode =
   | 'not_found'
   | 'auth_unavailable' // auth env not configured on this server
   | 'auth_required' // signed-in action attempted while signed out
+  | 'verification_required' // own-site action needs a verified origin
+  | 'contested_origin' // another account already holds this verified host
   | 'internal';
 
 export interface PolicyViolationView {
@@ -286,4 +288,23 @@ export interface MeResponse {
     githubLogin: string | null;
   };
   verifiedOrigin: { origin: string; host: string } | null;
+}
+
+export interface VerifyStartRequest {
+  host: string;
+}
+
+export interface VerifyStartResponse {
+  token: string;
+  txtName: string;
+  txtValue: string;
+  wellKnownUrl: string;
+}
+
+export interface VerifyCheckResponse {
+  verifiedOrigin: { origin: string; host: string };
+}
+
+export interface VerifyClearResponse {
+  ok: true;
 }

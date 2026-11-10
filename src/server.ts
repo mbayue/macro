@@ -34,6 +34,9 @@ import type {
   StopResponse,
   MagicLinkResponse,
   MeResponse,
+  VerifyCheckResponse,
+  VerifyClearResponse,
+  VerifyStartResponse,
   WaitlistResponse,
 } from './api-types.ts';
 import { planTrafficEvent } from './agents/planner.ts';
@@ -57,6 +60,17 @@ import {
   SESSION_TTL_MS,
 } from './auth/session.ts';
 import type { SessionRow, UserRow } from './auth/types.ts';
+import { ContestedOriginError } from './auth/types.ts';
+import {
+  checkDnsTxt,
+  checkWellKnown,
+  generateVerifyToken,
+  normalizeVerifyHost,
+  txtNameForHost,
+  wellKnownUrlForOrigin,
+  type FetchLike,
+  type ResolveTxt,
+} from './auth/verify-origin.ts';
 import type { Config } from './config.ts';
 import { ROUTE_CATALOG } from './plan/catalog.ts';
 import { parsePlan } from './plan/parser.ts';
@@ -122,8 +136,15 @@ const MSG = {
   authRequired: 'Sign in to continue.',
   magicLinkInvalid: 'This sign-in link is invalid or has already been used.',
   oauthFailed: 'GitHub sign-in failed. Please try again.',
+  verifyPending: 'Start verification for a host before checking.',
+  verifyFailed: 'Macro could not find the verification token on that host yet. Try again after the DNS or file is in place.',
+  contestedOrigin: 'That site is already verified by another Macro account.',
   internal: 'Something went wrong on the server. Please try again.',
 } as const;
+
+const VerifyStartBody = z.object({
+  host: z.string().min(1).max(253),
+});
 
 const OAUTH_STATE_COOKIE = 'macro_oauth_state';
 const OAUTH_STATE_TTL_SEC = 600;
@@ -197,6 +218,10 @@ export interface AppDeps {
   mailer?: ResendMailer;
   /** Injectable fetch for GitHub OAuth (defaults to global fetch). */
   githubFetch?: typeof fetch;
+  /** Injectable DNS TXT resolver for origin verification (defaults to node:dns/promises). */
+  resolveTxt?: ResolveTxt;
+  /** Injectable fetch for well-known origin checks (defaults to global fetch). */
+  fetchImpl?: FetchLike;
 }
 
 export interface App {
@@ -1316,6 +1341,95 @@ export function createApp(deps: AppDeps): App {
     });
   };
 
+  const postVerifyStart: Handler = async ({ req }) => {
+    if (config.auth === undefined) {
+      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
+    }
+    const auth = requireSession(req);
+    if (auth instanceof Response) return auth;
+    const read = await readJsonBody(req);
+    if (!read.ok) return read.res;
+    const parsed = VerifyStartBody.safeParse(read.value);
+    if (!parsed.success) return apiError(400, 'invalid_input', MSG.invalid);
+    const norm = normalizeVerifyHost(parsed.data.host);
+    if (!norm.ok) return apiError(400, 'invalid_input', MSG.invalid);
+
+    const token = generateVerifyToken();
+    const at = now();
+    try {
+      store.setPendingOriginVerification(auth.user.id, norm.origin, norm.host, token, at);
+    } catch (err) {
+      logInternal('verify.start', err);
+      return apiError(500, 'internal', MSG.internal);
+    }
+    const body: VerifyStartResponse = {
+      token,
+      txtName: txtNameForHost(norm.host),
+      txtValue: token,
+      wellKnownUrl: wellKnownUrlForOrigin(norm.origin),
+    };
+    return json(200, body);
+  };
+
+  const postVerifyCheck: Handler = async ({ req }) => {
+    if (config.auth === undefined) {
+      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
+    }
+    const auth = requireSession(req);
+    if (auth instanceof Response) return auth;
+    const pending = store.getPendingOriginVerification(auth.user.id);
+    if (pending === null) return apiError(400, 'invalid_input', MSG.verifyPending);
+
+    const resolveTxt =
+      deps.resolveTxt ??
+      (async (hostname: string) => {
+        const dns = await import('node:dns/promises');
+        return dns.resolveTxt(hostname);
+      });
+    const fetchImpl = deps.fetchImpl ?? fetch;
+
+    const dnsOk = await checkDnsTxt(pending.host, pending.token, resolveTxt);
+    const wellKnownOk = dnsOk
+      ? false
+      : await checkWellKnown(pending.origin, pending.token, fetchImpl);
+    if (!dnsOk && !wellKnownOk) {
+      return apiError(400, 'invalid_input', MSG.verifyFailed);
+    }
+
+    const at = now();
+    try {
+      store.setVerifiedOrigin(auth.user.id, pending.origin, pending.host, pending.token, at);
+      store.clearPendingOriginVerification(auth.user.id);
+    } catch (err) {
+      if (err instanceof ContestedOriginError) {
+        return apiError(409, 'contested_origin', MSG.contestedOrigin);
+      }
+      logInternal('verify.check', err);
+      return apiError(500, 'internal', MSG.internal);
+    }
+    const body: VerifyCheckResponse = {
+      verifiedOrigin: { origin: pending.origin, host: pending.host },
+    };
+    return json(200, body);
+  };
+
+  const postVerifyClear: Handler = async ({ req }) => {
+    if (config.auth === undefined) {
+      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
+    }
+    const auth = requireSession(req);
+    if (auth instanceof Response) return auth;
+    try {
+      store.clearVerifiedOrigin(auth.user.id);
+      store.clearPendingOriginVerification(auth.user.id);
+    } catch (err) {
+      logInternal('verify.clear', err);
+      return apiError(500, 'internal', MSG.internal);
+    }
+    const body: VerifyClearResponse = { ok: true };
+    return json(200, body);
+  };
+
   // ------------------------------------------------------------------ routing
 
   const routes: RouteDef[] = [
@@ -1333,6 +1447,9 @@ export function createApp(deps: AppDeps): App {
     { method: 'GET', re: /^\/api\/auth\/github\/callback$/, name: 'github_callback', handler: getGithubCallback },
     { method: 'GET', re: /^\/api\/me$/, name: 'me', handler: getMe },
     { method: 'POST', re: /^\/api\/auth\/sign-out$/, name: 'sign_out', handler: postSignOut },
+    { method: 'POST', re: /^\/api\/verify\/start$/, name: 'verify_start', handler: postVerifyStart },
+    { method: 'POST', re: /^\/api\/verify\/check$/, name: 'verify_check', handler: postVerifyCheck },
+    { method: 'POST', re: /^\/api\/verify\/clear$/, name: 'verify_clear', handler: postVerifyClear },
     { method: 'POST', re: /^\/api\/runs\/([^/]+)\/stop$/, name: 'stop', handler: postStop },
     { method: 'GET', re: /^\/api\/runs\/([^/]+)\/events$/, name: 'events', handler: getEvents },
     { method: 'GET', re: /^\/api\/runs\/([^/]+)$/, name: 'run', handler: getRunSnapshot },

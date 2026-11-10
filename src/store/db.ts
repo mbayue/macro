@@ -5,7 +5,12 @@ import { Database } from 'bun:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { ContestedOriginError } from '../auth/types.ts';
-import type { SessionRow, UserRow, VerifiedOriginRow } from '../auth/types.ts';
+import type {
+  PendingOriginVerificationRow,
+  SessionRow,
+  UserRow,
+  VerifiedOriginRow,
+} from '../auth/types.ts';
 import type {
   DecisionSource,
   DecisionValue,
@@ -18,7 +23,12 @@ import type {
   StageVerdict,
 } from '../types.ts';
 
-export type { SessionRow, UserRow, VerifiedOriginRow } from '../auth/types.ts';
+export type {
+  PendingOriginVerificationRow,
+  SessionRow,
+  UserRow,
+  VerifiedOriginRow,
+} from '../auth/types.ts';
 export { ContestedOriginError } from '../auth/types.ts';
 
 export const LIMIT_ROW_TTL_MS = 24 * 3_600_000;
@@ -92,6 +102,13 @@ CREATE TABLE IF NOT EXISTS verified_origins (
   host TEXT NOT NULL UNIQUE,
   verified_at INTEGER NOT NULL,
   token TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS pending_origin_verifications (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  origin TEXT NOT NULL,
+  host TEXT NOT NULL,
+  token TEXT NOT NULL,
+  created_at INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS magic_link_tokens (
   token_hash TEXT PRIMARY KEY,
@@ -261,6 +278,13 @@ interface RawVerifiedOrigin {
   verified_at: number;
   token: string;
 }
+interface RawPendingOriginVerification {
+  user_id: string;
+  origin: string;
+  host: string;
+  token: string;
+  created_at: number;
+}
 
 const RUN_COLS =
   'id, kind, plan_hash, status, status_reason, runtime, started_at, ended_at, probe_result';
@@ -351,6 +375,16 @@ function toVerifiedOrigin(r: RawVerifiedOrigin): VerifiedOriginRow {
     host: r.host,
     verifiedAt: r.verified_at,
     token: r.token,
+  };
+}
+
+function toPendingOriginVerification(r: RawPendingOriginVerification): PendingOriginVerificationRow {
+  return {
+    userId: r.user_id,
+    origin: r.origin,
+    host: r.host,
+    token: r.token,
+    createdAt: r.created_at,
   };
 }
 
@@ -873,6 +907,39 @@ export class Store {
       )
       .get(host);
     return r ? toVerifiedOrigin(r) : null;
+  }
+
+  setPendingOriginVerification(
+    userId: string,
+    origin: string,
+    host: string,
+    token: string,
+    now: number,
+  ): void {
+    this.db
+      .prepare(
+        `INSERT INTO pending_origin_verifications (user_id, origin, host, token, created_at)
+         VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(user_id) DO UPDATE SET
+           origin = excluded.origin,
+           host = excluded.host,
+           token = excluded.token,
+           created_at = excluded.created_at`,
+      )
+      .run(userId, origin, host, token, now);
+  }
+
+  getPendingOriginVerification(userId: string): PendingOriginVerificationRow | null {
+    const r = this.db
+      .prepare<RawPendingOriginVerification, [string]>(
+        'SELECT user_id, origin, host, token, created_at FROM pending_origin_verifications WHERE user_id = ?',
+      )
+      .get(userId);
+    return r ? toPendingOriginVerification(r) : null;
+  }
+
+  clearPendingOriginVerification(userId: string): void {
+    this.db.prepare('DELETE FROM pending_origin_verifications WHERE user_id = ?').run(userId);
   }
 
   createMagicLinkToken(

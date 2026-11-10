@@ -5,7 +5,7 @@
 import { type ReactNode, useContext, useEffect, useId, useState } from 'react';
 import { postSignOut } from '../lib/auth-api.ts';
 import { loadRecentRuns, type RecentRun } from '../lib/recent-runs.ts';
-import { ThemeToggle } from '../../components/Chrome.tsx';
+import { ThemeSegmented } from '../../components/Chrome.tsx';
 import { AppContext } from '../context.tsx';
 import { probeHref, type Route, runHref } from '../router.ts';
 
@@ -150,20 +150,18 @@ export function Shell({
               </div>
             )}
           </div>
-          <div className="rail__meta">
-            <ul className="rail__links">
-              <li>
-                <a href="/">About</a>
-              </li>
-              <li>
-                <a href="/privacy">Privacy</a>
-              </li>
-              <li>
-                <a href="/terms">Terms</a>
-              </li>
-            </ul>
-            <ThemeToggle />
-          </div>
+          <ThemeSegmented />
+          <ul className="rail__links">
+            <li>
+              <a href="/">About</a>
+            </li>
+            <li>
+              <a href="/privacy">Privacy</a>
+            </li>
+            <li>
+              <a href="/terms">Terms</a>
+            </li>
+          </ul>
         </div>
       </nav>
 

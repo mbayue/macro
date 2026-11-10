@@ -39,6 +39,53 @@ export function ThemeToggle() {
   );
 }
 
+export function ThemeSegmented() {
+  const [theme, setCurrTheme] = useState<'dark' | 'light'>(() =>
+    typeof document !== 'undefined' && currentTheme() === 'light' ? 'light' : 'dark',
+  );
+  useEffect(() => {
+    setCurrTheme(currentTheme() === 'light' ? 'light' : 'dark');
+  }, []);
+
+  const choose = (next: 'dark' | 'light') => {
+    setTheme(next);
+    setCurrTheme(next);
+  };
+
+  return (
+    <div className="theme-segmented" role="group" aria-label="Theme">
+      <button
+        type="button"
+        className={theme === 'light' ? 'theme-segmented__btn is-active' : 'theme-segmented__btn'}
+        aria-pressed={theme === 'light'}
+        onClick={() => choose('light')}
+      >
+        <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" focusable="false">
+          <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="1.8" />
+          <path
+            d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+        </svg>
+        <span>Light</span>
+      </button>
+      <button
+        type="button"
+        className={theme === 'dark' ? 'theme-segmented__btn is-active' : 'theme-segmented__btn'}
+        aria-pressed={theme === 'dark'}
+        onClick={() => choose('dark')}
+      >
+        <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" focusable="false">
+          <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+        </svg>
+        <span>Dark</span>
+      </button>
+    </div>
+  );
+}
+
 export function Nav({ home }: { home: boolean }) {
   const anchor = (id: string) => (home ? `#${id}` : `/#${id}`);
   return (

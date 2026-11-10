@@ -53,10 +53,10 @@ a { text-underline-offset: 0.2em; }
 .rail__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rail__id { font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted); }
 .rail__foot { margin-top: auto; padding: 16px 6px 0; display: grid; gap: 10px; justify-items: start; }
-.rail__identity { display: grid; gap: 4px; padding: 0 4px; width: 100%; }
+.rail__identity { display: grid; gap: 6px; padding: 8px 10px; width: 100%; border-radius: var(--radius); background: var(--surface-2); box-sizing: border-box; }
 .rail__identity-name { margin: 0; font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rail__identity-site { margin: 0; font-size: var(--fs-xs); font-family: var(--mono); }
-.rail__signout { justify-self: start; padding-inline: 8px; font-size: var(--fs-xs); }
+.rail__signout { justify-self: start; min-height: 32px; padding: 0 10px; font-size: var(--fs-xs); }
 /* The theme button gets a resting tile, so it reads as a button on the rail. */
 .rail .theme-toggle { background: var(--surface-2); }
 @media (hover: hover) and (pointer: fine) { .rail .theme-toggle:hover { background: var(--bar); color: var(--bg); } }

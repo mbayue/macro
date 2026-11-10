@@ -96,6 +96,9 @@ export function Shell({
         <ul className="rail__list">
           {item('#/runs', 'Recent runs', route.view === 'runs')}
           {item('#/probe', 'Containment probe', route.view === 'probe-start' || route.view === 'probe')}
+          {me === null
+            ? item('#/sign-in', 'Sign in', route.view === 'sign-in')
+            : null}
         </ul>
 
         {recent.length > 0 ? (
@@ -118,23 +121,17 @@ export function Shell({
         ) : null}
 
         <div className="rail__foot">
-          <div className="rail__identity">
-            {me === null ? (
-              <a className="rail__link" href="#/sign-in">
-                Sign in
-              </a>
-            ) : (
-              <>
-                <p className="rail__identity-name">{me.user.githubLogin ?? me.user.email}</p>
-                <p className="rail__identity-site muted">
-                  {me.verifiedOrigin !== null ? me.verifiedOrigin.host : 'none'}
-                </p>
-                <button type="button" className="btn btn--ghost rail__signout" onClick={() => void onSignOut()}>
-                  Sign out
-                </button>
-              </>
-            )}
-          </div>
+          {me !== null ? (
+            <div className="rail__identity">
+              <p className="rail__identity-name">{me.user.githubLogin ?? me.user.email}</p>
+              <p className="rail__identity-site muted">
+                {me.verifiedOrigin !== null ? me.verifiedOrigin.host : 'No verified site'}
+              </p>
+              <button type="button" className="btn btn--quiet rail__signout" onClick={() => void onSignOut()}>
+                Sign out
+              </button>
+            </div>
+          ) : null}
           <ThemeToggle />
           <ul className="rail__links">
             <li>

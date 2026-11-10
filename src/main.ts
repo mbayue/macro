@@ -87,7 +87,7 @@ async function main(): Promise<void> {
   try {
     const swept = await runner.cleanupAll();
     if (swept.errors.length > 0) {
-      logError('startup_cleanup_incomplete');
+      logError('startup_cleanup_incomplete', swept.errors.join('; '));
       refuse(MSG_CLEANUP_FAILED);
     }
   } catch (e) {

@@ -93,6 +93,14 @@ CREATE TABLE IF NOT EXISTS verified_origins (
   verified_at INTEGER NOT NULL,
   token TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS magic_link_tokens (
+  token_hash TEXT PRIMARY KEY,
+  email TEXT NOT NULL,
+  user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL,
+  used_at INTEGER
+);
 `;
 
 // ---------------------------------------------------------------- public types
@@ -858,5 +866,42 @@ export class Store {
       )
       .get(host);
     return r ? toVerifiedOrigin(r) : null;
+  }
+
+  createMagicLinkToken(
+    userId: string | null,
+    email: string,
+    tokenHash: string,
+    now: number,
+    ttlMs: number,
+  ): void {
+    this.db
+      .prepare(
+        `INSERT INTO magic_link_tokens (token_hash, email, user_id, created_at, expires_at, used_at)
+         VALUES (?, ?, ?, ?, ?, NULL)`,
+      )
+      .run(tokenHash, normalizeEmail(email), userId, now, now + ttlMs);
+  }
+
+  consumeMagicLinkToken(
+    tokenHash: string,
+    now: number,
+  ): { email: string; userId: string | null } | null {
+    return this.transaction(() => {
+      const row = this.db
+        .prepare<{ email: string; user_id: string | null; expires_at: number; used_at: number | null }, [string]>(
+          'SELECT email, user_id, expires_at, used_at FROM magic_link_tokens WHERE token_hash = ?',
+        )
+        .get(tokenHash);
+      if (row === null) return null;
+      if (row.used_at !== null) return null;
+      if (row.expires_at < now) return null;
+      this.db.prepare('UPDATE magic_link_tokens SET used_at = ? WHERE token_hash = ?').run(now, tokenHash);
+      return { email: row.email, userId: row.user_id };
+    });
+  }
+
+  setUserGithubLogin(userId: string, login: string | null): void {
+    this.db.prepare('UPDATE users SET github_login = ? WHERE id = ?').run(login, userId);
   }
 }

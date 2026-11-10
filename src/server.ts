@@ -32,11 +32,19 @@ import type {
   RunView,
   StartResponse,
   StopResponse,
+  MagicLinkResponse,
   WaitlistResponse,
 } from './api-types.ts';
 import { planTrafficEvent } from './agents/planner.ts';
 import type { PlanOutcome } from './agents/planner.ts';
 import type { InferenceClient } from './agents/inference.ts';
+import {
+  generateMagicToken,
+  hashMagicToken,
+  MAGIC_LINK_TTL_MS,
+} from './auth/magic-link.ts';
+import type { ResendMailer } from './auth/magic-link.ts';
+import { serializeSessionCookie, SESSION_TTL_MS } from './auth/session.ts';
 import type { Config } from './config.ts';
 import { ROUTE_CATALOG } from './plan/catalog.ts';
 import { parsePlan } from './plan/parser.ts';
@@ -98,6 +106,8 @@ const MSG = {
   planRejected: 'The Test_Plan was rejected. Nothing was stored and no Run was started.',
   notFound: 'Not found.',
   methodNotAllowed: 'This endpoint does not accept that HTTP method.',
+  authUnavailable: 'Sign-in is not configured on this server.',
+  magicLinkInvalid: 'This sign-in link is invalid or has already been used.',
   internal: 'Something went wrong on the server. Please try again.',
 } as const;
 
@@ -145,6 +155,8 @@ export interface AppDeps {
   };
   /** Receives one JSON line per internal error. Defaults to `console.error`. */
   log?: (line: string) => void;
+  /** Optional Resend mailer for magic links. Required for magic-link routes when auth is configured. */
+  mailer?: ResendMailer;
 }
 
 export interface App {
@@ -269,6 +281,19 @@ export const GATE_DEMO_LIMIT = { max: 30, windowMs: 60_000 } as const;
 // ------------------------------------------------------------------- waitlist
 
 const WaitlistBody = z.object({ email: z.string().max(320), turnstileToken: z.unknown().optional() });
+const MagicLinkBody = z.object({
+  email: z.string().max(320),
+  returnTo: z.string().max(500).optional(),
+});
+
+/** Same-origin relative path for post-login redirect; rejects absolute URLs and protocol-relative. */
+function safeReturnTo(raw: string | null | undefined): string {
+  if (raw === null || raw === undefined || raw === '') return '/app/#/';
+  if (!raw.startsWith('/')) return '/app/#/';
+  if (raw.startsWith('//')) return '/app/#/';
+  if (raw.includes('\\') || raw.includes('\0')) return '/app/#/';
+  return raw;
+}
 
 /** At most this many waitlist sign-ups per client IP in any rolling hour (in memory only). */
 export const WAITLIST_LIMIT = { max: 5, windowMs: 3_600_000 } as const;
@@ -1053,6 +1078,74 @@ export function createApp(deps: AppDeps): App {
     return new Response(Bun.file(abs), { status: 200, headers });
   }
 
+  const postMagicLink: Handler = async ({ req }) => {
+    if (config.auth === undefined) {
+      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
+    }
+    const read = await readJsonBody(req);
+    if (!read.ok) return read.res;
+    const parsed = MagicLinkBody.safeParse(read.value);
+    if (!parsed.success) return apiError(400, 'invalid_input', MSG.invalid);
+    const email = normaliseEmail(parsed.data.email);
+    if (email === null) return apiError(400, 'invalid_input', MSG.email);
+
+    const body: MagicLinkResponse = { ok: true };
+    // Always the same success body; only send mail when configured and mailer present.
+    const mailer = deps.mailer;
+    if (mailer === undefined) {
+      logInternal('magic_link.mailer_missing', new Error('mailer not wired'));
+      return json(200, body);
+    }
+
+    const at = now();
+    const existing = store.findUserByEmail(email) ?? store.findUserByIdentity('email', email);
+    const token = generateMagicToken();
+    const tokenHash = hashMagicToken(token);
+    try {
+      store.createMagicLinkToken(existing?.id ?? null, email, tokenHash, at, MAGIC_LINK_TTL_MS);
+    } catch (err) {
+      logInternal('magic_link.store', err);
+      return apiError(500, 'internal', MSG.internal);
+    }
+
+    const returnTo = safeReturnTo(parsed.data.returnTo);
+    const url = new URL('/api/auth/magic-link/consume', config.auth.publicBaseUrl);
+    url.searchParams.set('token', token);
+    if (returnTo !== '/app/#/') url.searchParams.set('returnTo', returnTo);
+    const sent = await mailer.sendMagicLink({ to: email, url: url.toString() });
+    if (!sent.ok) logInternal('magic_link.send', new Error('send failed'));
+    return json(200, body);
+  };
+
+  const getMagicLinkConsume: Handler = async ({ url }) => {
+    if (config.auth === undefined) {
+      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
+    }
+    const token = url.searchParams.get('token') ?? '';
+    if (token === '') return apiError(400, 'invalid_input', MSG.magicLinkInvalid);
+    const at = now();
+    const consumed = store.consumeMagicLinkToken(hashMagicToken(token), at);
+    if (consumed === null) return apiError(400, 'invalid_input', MSG.magicLinkInvalid);
+
+    let user =
+      (consumed.userId !== null ? store.findUserByIdentity('email', consumed.email) : null) ??
+      store.findUserByEmail(consumed.email);
+    if (user === null) {
+      user = store.createUser(consumed.email, at);
+    }
+    store.linkIdentity(user.id, 'email', consumed.email);
+    const session = store.createSession(user.id, at, SESSION_TTL_MS);
+    const location = safeReturnTo(url.searchParams.get('returnTo'));
+    return new Response(null, {
+      status: 303,
+      headers: {
+        Location: location,
+        'Set-Cookie': serializeSessionCookie(session.id, session.expiresAt),
+        'cache-control': 'no-store',
+      },
+    });
+  };
+
   // ------------------------------------------------------------------ routing
 
   const routes: RouteDef[] = [
@@ -1064,6 +1157,8 @@ export function createApp(deps: AppDeps): App {
     { method: 'POST', re: /^\/api\/probe$/, name: 'probe', handler: postProbe },
     { method: 'POST', re: /^\/api\/gate-demo$/, name: 'gate_demo', handler: postGateDemo },
     { method: 'POST', re: /^\/api\/waitlist$/, name: 'waitlist', handler: postWaitlist },
+    { method: 'POST', re: /^\/api\/auth\/magic-link$/, name: 'magic_link', handler: postMagicLink },
+    { method: 'GET', re: /^\/api\/auth\/magic-link\/consume$/, name: 'magic_link_consume', handler: getMagicLinkConsume },
     { method: 'POST', re: /^\/api\/runs\/([^/]+)\/stop$/, name: 'stop', handler: postStop },
     { method: 'GET', re: /^\/api\/runs\/([^/]+)\/events$/, name: 'events', handler: getEvents },
     { method: 'GET', re: /^\/api\/runs\/([^/]+)$/, name: 'run', handler: getRunSnapshot },

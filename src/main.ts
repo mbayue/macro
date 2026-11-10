@@ -17,6 +17,7 @@ import { RunController } from './run/controller.ts';
 import { ProbeController } from './run/probe.ts';
 import { DockerClient } from './sandbox/docker.ts';
 import { DockerStageExecutor, SandboxRefusedError, SandboxRunner } from './sandbox/runner.ts';
+import { createResendMailer } from './auth/magic-link.ts';
 import { verifyTurnstile } from './security/turnstile.ts';
 import { createApp } from './server.ts';
 import { Store } from './store/db.ts';
@@ -160,6 +161,14 @@ async function main(): Promise<void> {
     client,
     runController,
     probeController,
+    ...(effective.auth !== undefined
+      ? {
+          mailer: createResendMailer({
+            apiKey: effective.auth.resendApiKey,
+            from: effective.auth.resendFrom,
+          }),
+        }
+      : {}),
   });
 
   const server = Bun.serve({

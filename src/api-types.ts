@@ -33,6 +33,8 @@ export type ApiErrorCode =
   | 'inference_not_configured' // no Vultr inference key (requirement 2.9)
   | 'planning_failed' // both model attempts failed (requirement 2.3)
   | 'not_found'
+  | 'auth_unavailable' // auth env not configured on this server
+  | 'auth_required' // signed-in action attempted while signed out
   | 'internal';
 
 export interface PolicyViolationView {
@@ -262,5 +264,17 @@ export interface WaitlistRequest {
  * endpoint never reveals who has signed up.
  */
 export interface WaitlistResponse {
+  ok: true;
+}
+
+// ---- Auth -----------------------------------------------------------------
+
+export interface MagicLinkRequest {
+  email: string;
+  /** Optional same-origin path to return to after consume (e.g. `/app/#/`). */
+  returnTo?: string;
+}
+
+export interface MagicLinkResponse {
   ok: true;
 }

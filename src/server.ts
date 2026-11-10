@@ -1022,8 +1022,11 @@ export function createApp(deps: AppDeps): App {
     // The app shell lives at /app/ (its views are hash routes, e.g. /app/#/run/<id>).
     if (rel === '/app' || rel === '/app/') rel = '/app/index.html';
     // Old preview URL from the React rebuild; keep shared links working.
+    // Relative Location: the origin request is HTTP behind Caddy, so an absolute
+    // URL built from req.url would send browsers to http://.
     if (rel === '/app-next' || rel === '/app-next/') {
-      return Response.redirect(new URL('/app/' + new URL(req.url).search, req.url), 301);
+      const search = new URL(req.url).search;
+      return new Response(null, { status: 301, headers: { location: `/app/${search}` } });
     }
     // Prerendered legal pages, served without the .html suffix.
     if (rel === '/privacy' || rel === '/terms') rel = `${rel}.html`;

@@ -36,8 +36,12 @@ export function SignIn() {
 
   return (
     <section className="page">
-      <h1 className="page__title">Sign in</h1>
-      <p className="lede">Sign in to verify your site and keep own-site runs private. The demo shop still works signed out.</p>
+      <header className="page__head">
+        <h1 className="page__title">Sign in</h1>
+        <p className="page__lead">
+          Sign in to verify your site and keep own-site runs private. The demo shop still works signed out.
+        </p>
+      </header>
 
       {githubEmailError ? (
         <AlertRegion>
@@ -47,7 +51,7 @@ export function SignIn() {
 
       <Panel title="GitHub">
         <p className="muted">Uses your GitHub account. Macro needs a verified email address.</p>
-        <p>
+        <p className="actions">
           <a className="btn" href={githubStartHref()}>
             Continue with GitHub
           </a>
@@ -69,23 +73,23 @@ export function SignIn() {
             />
           </label>
           {error ? (
-            <div className="alert" role="alert">
+            <AlertRegion>
               <p>{error}</p>
-            </div>
+            </AlertRegion>
           ) : null}
           {sent ? (
             <p className="muted" role="status">
               Check your email for a sign-in link.
             </p>
           ) : null}
-          <p className="actions">
+          <div className="actions">
             <button type="submit" className="btn" disabled={busy || email.trim() === ''}>
               {busy ? <Busy>Sending</Busy> : 'Send sign-in link'}
             </button>
-            <button type="button" className="btn btn--ghost" onClick={() => navigate('/')}>
+            <button type="button" className="btn btn--quiet" onClick={() => navigate('/')}>
               Back to new test
             </button>
-          </p>
+          </div>
         </form>
       </Panel>
     </section>

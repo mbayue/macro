@@ -52,11 +52,24 @@ a { text-underline-offset: 0.2em; }
 .shell .rail__heading { font-size: var(--fs-xs); color: var(--muted); padding: 0 10px; font-weight: 400; }
 .rail__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rail__id { font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted); }
-.rail__foot { margin-top: auto; padding: 16px 6px 0; display: grid; gap: 10px; justify-items: start; }
-.rail__identity { display: grid; gap: 6px; padding: 8px 10px; width: 100%; border-radius: var(--radius); background: var(--surface-2); box-sizing: border-box; }
+.rail__foot { margin-top: auto; padding: 16px 6px 0; display: grid; gap: 12px; justify-items: start; }
+.rail__identity { display: grid; gap: 2px; padding: 0 4px; width: 100%; box-sizing: border-box; }
 .rail__identity-name { margin: 0; font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rail__identity-site { margin: 0; font-size: var(--fs-xs); font-family: var(--mono); }
-.rail__signout { justify-self: start; min-height: 32px; padding: 0 10px; font-size: var(--fs-xs); }
+.rail__text-action {
+  justify-self: start;
+  margin: 4px 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: 400 var(--fs-xs)/1.4 var(--text);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) { .rail__text-action:hover { color: var(--ink); } }
+.rail__utils { padding: 0 4px; }
 /* The theme button gets a resting tile, so it reads as a button on the rail. */
 .rail .theme-toggle { background: var(--surface-2); }
 @media (hover: hover) and (pointer: fine) { .rail .theme-toggle:hover { background: var(--bar); color: var(--bg); } }

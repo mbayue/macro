@@ -124,15 +124,17 @@ export function Shell({
           {me !== null ? (
             <div className="rail__identity">
               <p className="rail__identity-name">{me.user.githubLogin ?? me.user.email}</p>
-              <p className="rail__identity-site muted">
-                {me.verifiedOrigin !== null ? me.verifiedOrigin.host : 'No verified site'}
-              </p>
-              <button type="button" className="btn btn--quiet rail__signout" onClick={() => void onSignOut()}>
+              {me.verifiedOrigin !== null ? (
+                <p className="rail__identity-site muted">{me.verifiedOrigin.host}</p>
+              ) : null}
+              <button type="button" className="rail__text-action" onClick={() => void onSignOut()}>
                 Sign out
               </button>
             </div>
           ) : null}
-          <ThemeToggle />
+          <div className="rail__utils">
+            <ThemeToggle />
+          </div>
           <ul className="rail__links">
             <li>
               <a href="/">About Macro</a>

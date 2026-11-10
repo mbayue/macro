@@ -34,11 +34,11 @@
 - Create: `deploy/domainconnect/macro.my.id.verify.json`
 - Test: `test/domain-connect-template.test.ts`
 
-- [ ] **Step 1.1**: Write the failing test for the Domain Connect template JSON structure in `test/domain-connect-template.test.ts` verifying required fields: `providerId`, `providerName`, `serviceId`, `serviceName`, `version`, `syncPubKeyDomain`, and `records` containing the `_macro-verify` TXT entry with `%token%`.
-- [ ] **Step 1.2**: Run `bun test test/domain-connect-template.test.ts` to confirm failure.
-- [ ] **Step 1.3**: Create `deploy/domainconnect/macro.my.id.verify.json` adhering to the official Domain Connect v2 specification.
-- [ ] **Step 1.4**: Run `bun test test/domain-connect-template.test.ts` and verify it passes.
-- [ ] **Step 1.5**: Commit locally: `git commit -m "feat(domainconnect): add official domain connect template for macro verification"`.
+- [x] **Step 1.1**: Write the failing test for the Domain Connect template JSON structure in `test/domain-connect-template.test.ts` verifying required fields: `providerId`, `providerName`, `serviceId`, `serviceName`, `version`, `syncPubKeyDomain`, and `records` containing the `_macro-verify` TXT entry with `%token%`.
+- [x] **Step 1.2**: Run `bun test test/domain-connect-template.test.ts` to confirm failure.
+- [x] **Step 1.3**: Create `deploy/domainconnect/macro.my.id.verify.json` adhering to the official Domain Connect v2 specification.
+- [x] **Step 1.4**: Run `bun test test/domain-connect-template.test.ts` and verify it passes.
+- [x] **Step 1.5**: Commit locally: `git commit -m "feat(domainconnect): add official domain connect template for macro verification"`.
 
 ---
 
@@ -49,16 +49,16 @@
 - Modify: `src/server.ts`
 - Test: `test/verify-origin.test.ts`
 
-- [ ] **Step 2.1**: Write failing tests in `test/verify-origin.test.ts` for `detectDnsProvider(host, resolveNs)`:
+- [x] **Step 2.1**: Write failing tests in `test/verify-origin.test.ts` for `detectDnsProvider(host, resolveNs)`:
   - Returns `{ isCloudflare: true }` when nameservers contain `*.ns.cloudflare.com`.
   - Returns `{ isCloudflare: false }` for generic nameservers (e.g. `ns1.digitalocean.com`).
   - Handles subdomains by walking up labels to find authoritative NS.
   - Recovers gracefully on DNS timeout/error by returning `{ isCloudflare: false }`.
-- [ ] **Step 2.2**: Run `bun test test/verify-origin.test.ts` to confirm test failures.
-- [ ] **Step 2.3**: Implement `getApexDomain(host: string): string` and `detectDnsProvider(host: string, resolveNs?: ResolveNs)` in `src/auth/verify-origin.ts`.
-- [ ] **Step 2.4**: Wire `detectDnsProvider` into `postVerifyStart` in `src/server.ts` and include `isCloudflare: boolean` and `cloudFlareDirectUrl?: string` in `VerifyStartResponse`.
-- [ ] **Step 2.5**: Run `bun test` to ensure all existing and new tests pass.
-- [ ] **Step 2.6**: Commit locally: `git commit -m "feat(verify): detect cloudflare dns host in verify start api"`.
+- [x] **Step 2.2**: Run `bun test test/verify-origin.test.ts` to confirm test failures.
+- [x] **Step 2.3**: Implement `getApexDomain(host: string): string` and `detectDnsProvider(host: string, resolveNs?: ResolveNs)` in `src/auth/verify-origin.ts`.
+- [x] **Step 2.4**: Wire `detectDnsProvider` into `postVerifyStart` in `src/server.ts` and include `isCloudflare: boolean` and `cloudFlareDirectUrl?: string` in `VerifyStartResponse`.
+- [x] **Step 2.5**: Run `bun test` to ensure all existing and new tests pass.
+- [x] **Step 2.6**: Commit locally: `git commit -m "feat(verify): detect cloudflare dns host in verify start api"`.
 
 ---
 
@@ -69,17 +69,17 @@
 - Modify: `web/landing/src/app/app.css`
 - Modify: `web/landing/src/app/lib/auth-api.ts`
 
-- [ ] **Step 3.1**: Update `VerifyStartResponse` type in `web/landing/src/app/lib/auth-api.ts` to include optional `isCloudflare?: boolean` and `cloudFlareDirectUrl?: string`.
-- [ ] **Step 3.2**: In `web/landing/src/app/components/VerifyPanel.tsx`:
+- [x] **Step 3.1**: Update `VerifyStartResponse` type in `web/landing/src/app/lib/auth-api.ts` to include optional `isCloudflare?: boolean` and `cloudFlareDirectUrl?: string`.
+- [x] **Step 3.2**: In `web/landing/src/app/components/VerifyPanel.tsx`:
   - When `isCloudflare` is true, render a top action section matching Resend's UX:
     - Branded Cloudflare badge / icon.
     - Title: "Domain host detected: Cloudflare".
     - `[☁️ Open Cloudflare DNS ↗]` quick action button opening the user's dashboard with 1 click.
     - Segmented toggle or clear separation for manual instructions with the 1-click copy boxes.
-- [ ] **Step 3.3**: Style `.cf-banner`, `.cf-btn`, and tabs in `web/landing/src/app/app.css` using theme variables (`--surface-2`, `--border`, `--ink`, `--accent`).
-- [ ] **Step 3.4**: Run `bun x tsc --noEmit` and `bun run build:web` to verify build integrity.
-- [ ] **Step 3.5**: Verify visually with headless CDP screenshot in light and dark mode.
-- [ ] **Step 3.6**: Commit locally: `git commit -m "feat(ui): add cloudflare auto-configure and detection banner to verify panel"`.
+- [x] **Step 3.3**: Style `.cf-banner`, `.cf-btn`, and tabs in `web/landing/src/app/app.css` using theme variables (`--surface-2`, `--border`, `--ink`, `--accent`).
+- [x] **Step 3.4**: Run `bun x tsc --noEmit` and `bun run build:web` to verify build integrity.
+- [x] **Step 3.5**: Verify visually with headless CDP screenshot in light and dark mode.
+- [x] **Step 3.6**: Commit locally: `git commit -m "feat(ui): add cloudflare auto-configure and detection banner to verify panel"`.
 
 ---
 
@@ -88,3 +88,5 @@
 **Files:**
 - Modify: `docs/superpowers/plans/2026-11-10-domain-connect-and-cloudflare-detection.md` (track checkboxes)
 - Create: artifact `domain-connect-and-cloudflare-detection.md` with visual before/after and Domain Connect setup instructions.
+
+- [x] **Step 4.1**: Create design artifact documenting the Domain Connect template and Cloudflare UI.

@@ -54,6 +54,8 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<ApiErrorCode>([
   'inference_not_configured',
   'planning_failed',
   'not_found',
+  'auth_unavailable',
+  'auth_required',
   'internal',
 ]);
 

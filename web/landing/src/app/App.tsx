@@ -4,7 +4,8 @@
  */
 import { Component, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getConfig } from './lib/api.ts';
-import type { ConfigResponse } from '../../../../src/api-types.ts';
+import { getMe } from './lib/auth-api.ts';
+import type { ConfigResponse, MeResponse } from '../../../../src/api-types.ts';
 import { Shell } from './components/Shell.tsx';
 import { AppContext, type AppContextValue } from './context.tsx';
 import { NewTest } from './pages/NewTest.tsx';
@@ -13,6 +14,7 @@ import { ProbePage } from './pages/Probe.tsx';
 import { ProbeStart } from './pages/ProbeStart.tsx';
 import { RecentRunsPage } from './pages/RecentRuns.tsx';
 import { RunPage } from './pages/Run.tsx';
+import { SignIn } from './pages/SignIn.tsx';
 import { parseRoute, type Route, routeTitle } from './router.ts';
 
 type Boot = { kind: 'loading' } | { kind: 'error' } | { kind: 'ready'; config: ConfigResponse };
@@ -51,15 +53,22 @@ export function App() {
   // Bumped when navigate() targets the current hash, so the screen remounts like a fresh visit.
   const [visit, setVisit] = useState(0);
   const [live, setLive] = useState('');
+  const [me, setMe] = useState<MeResponse | null>(null);
   const mainRef = useRef<HTMLElement>(null);
   const announceTimer = useRef<number | undefined>(undefined);
   const first = useRef(true);
+
+  const refreshMe = useCallback(async () => {
+    const res = await getMe();
+    if (res.ok) setMe(res.data);
+  }, []);
 
   const load = useCallback(async () => {
     setBoot({ kind: 'loading' });
     const res = await getConfig();
     setBoot(res.ok ? { kind: 'ready', config: res.data } : { kind: 'error' });
-  }, []);
+    if (res.ok) void refreshMe();
+  }, [refreshMe]);
 
   useEffect(() => {
     void load();
@@ -102,8 +111,8 @@ export function App() {
   }, [key, route, announce]);
 
   const ctx = useMemo<AppContextValue | null>(
-    () => (boot.kind === 'ready' ? { config: boot.config, navigate, announce } : null),
-    [boot, navigate, announce],
+    () => (boot.kind === 'ready' ? { config: boot.config, me, refreshMe, navigate, announce } : null),
+    [boot, me, refreshMe, navigate, announce],
   );
 
   let screen: ReactNode;
@@ -143,6 +152,9 @@ export function App() {
         break;
       case 'runs':
         screen = <RecentRunsPage key={key} />;
+        break;
+      case 'sign-in':
+        screen = <SignIn key={key} />;
         break;
       default:
         screen = <NotFound />;

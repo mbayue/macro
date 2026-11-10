@@ -2,9 +2,11 @@
  * App shell: skip link, side rail (top bar plus menu on phones), main region and the polite
  * live region. The rail's recent list comes from this browser's storage only.
  */
-import { type ReactNode, useEffect, useId, useState } from 'react';
+import { type ReactNode, useContext, useEffect, useId, useState } from 'react';
+import { postSignOut } from '../lib/auth-api.ts';
 import { loadRecentRuns, type RecentRun } from '../lib/recent-runs.ts';
 import { ThemeToggle } from '../../components/Chrome.tsx';
+import { AppContext } from '../context.tsx';
 import { probeHref, type Route, runHref } from '../router.ts';
 
 const RECENT_IN_RAIL = 4;
@@ -25,10 +27,21 @@ export function Shell({
   mainRef: React.RefObject<HTMLElement | null>;
   children: ReactNode;
 }) {
+  // Shell renders during boot before AppContext exists; identity is optional then.
+  const ctx = useContext(AppContext);
+  const me = ctx?.me ?? null;
   const [open, setOpen] = useState(false);
   const [recent, setRecent] = useState<RecentRun[]>([]);
   const railId = useId();
   const key = currentKey(route);
+
+  async function onSignOut() {
+    if (!ctx) return;
+    await postSignOut();
+    await ctx.refreshMe();
+    ctx.announce('Signed out.');
+    ctx.navigate('/');
+  }
 
   // Refresh the recent list and close the phone menu on every navigation.
   useEffect(() => {
@@ -105,6 +118,23 @@ export function Shell({
         ) : null}
 
         <div className="rail__foot">
+          <div className="rail__identity">
+            {me === null ? (
+              <a className="rail__link" href="#/sign-in">
+                Sign in
+              </a>
+            ) : (
+              <>
+                <p className="rail__identity-name">{me.user.githubLogin ?? me.user.email}</p>
+                <p className="rail__identity-site muted">
+                  {me.verifiedOrigin !== null ? me.verifiedOrigin.host : 'none'}
+                </p>
+                <button type="button" className="btn btn--ghost rail__signout" onClick={() => void onSignOut()}>
+                  Sign out
+                </button>
+              </>
+            )}
+          </div>
           <ThemeToggle />
           <ul className="rail__links">
             <li>

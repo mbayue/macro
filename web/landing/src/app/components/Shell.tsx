@@ -96,9 +96,6 @@ export function Shell({
         <ul className="rail__list">
           {item('#/runs', 'Recent runs', route.view === 'runs')}
           {item('#/probe', 'Containment probe', route.view === 'probe-start' || route.view === 'probe')}
-          {me === null
-            ? item('#/sign-in', 'Sign in', route.view === 'sign-in')
-            : null}
         </ul>
 
         {recent.length > 0 ? (
@@ -121,17 +118,27 @@ export function Shell({
         ) : null}
 
         <div className="rail__foot">
-          {me !== null ? (
-            <div className="rail__identity">
-              <p className="rail__identity-name">{me.user.githubLogin ?? me.user.email}</p>
-              {me.verifiedOrigin !== null ? (
-                <p className="rail__identity-site muted">{me.verifiedOrigin.host}</p>
-              ) : null}
-              <button type="button" className="rail__text-action" onClick={() => void onSignOut()}>
-                Sign out
-              </button>
-            </div>
-          ) : null}
+          <div className="rail__identity">
+            {me === null ? (
+              <a
+                className="rail__text-action"
+                href="#/sign-in"
+                aria-current={route.view === 'sign-in' ? 'page' : undefined}
+              >
+                Sign in
+              </a>
+            ) : (
+              <>
+                <p className="rail__identity-name">{me.user.githubLogin ?? me.user.email}</p>
+                {me.verifiedOrigin !== null ? (
+                  <p className="rail__identity-site muted">{me.verifiedOrigin.host}</p>
+                ) : null}
+                <button type="button" className="rail__text-action" onClick={() => void onSignOut()}>
+                  Sign out
+                </button>
+              </>
+            )}
+          </div>
           <div className="rail__utils">
             <ThemeToggle />
           </div>

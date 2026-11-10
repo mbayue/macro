@@ -58,17 +58,20 @@ a { text-underline-offset: 0.2em; }
 .rail__identity-site { margin: 0; font-size: var(--fs-xs); font-family: var(--mono); }
 .rail__text-action {
   justify-self: start;
-  margin: 4px 0 0;
+  margin: 0;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--muted);
-  font: 400 var(--fs-xs)/1.4 var(--text);
+  font: 400 var(--fs-sm)/1.4 var(--text);
   text-decoration: underline;
   text-underline-offset: 0.2em;
   cursor: pointer;
 }
+a.rail__text-action { display: inline-block; }
+.rail__identity .rail__text-action:not(:first-child) { margin-top: 4px; }
 @media (hover: hover) and (pointer: fine) { .rail__text-action:hover { color: var(--ink); } }
+.rail__text-action[aria-current="page"] { color: var(--ink); }
 .rail__utils { padding: 0 4px; }
 /* The theme button gets a resting tile, so it reads as a button on the rail. */
 .rail .theme-toggle { background: var(--surface-2); }

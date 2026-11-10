@@ -2,6 +2,7 @@
 import type {
   AccountDraft,
   AccountDraftConflict,
+  ClaimResponse,
   MagicLinkResponse,
   MeResponse,
   VerifyCheckResponse,
@@ -9,6 +10,7 @@ import type {
   VerifyStartResponse,
 } from '../../../../../src/api-types.ts';
 import { type ApiError, type ApiResult, INTERNAL_ERROR, NETWORK_ERROR } from './api.ts';
+import { loadRecentRuns } from './recent-runs.ts';
 
 async function readJson(res: Response): Promise<unknown> {
   try {
@@ -163,4 +165,27 @@ export function takeLocalDraft(): AccountDraft | null {
   } catch {
     return null;
   }
+}
+
+export async function postClaim(runIds: string[]): Promise<ApiResult<ClaimResponse>> {
+  try {
+    const res = await fetch('/api/auth/claim', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ runIds: runIds.slice(0, 10) }),
+    });
+    const body = await readJson(res);
+    if (!res.ok) return { ok: false, error: apiErrorFromBody(body) };
+    return { ok: true, data: body as ClaimResponse };
+  } catch {
+    return { ok: false, error: NETWORK_ERROR };
+  }
+}
+
+/** Claim browser-local recent demo runs for the signed-in account. */
+export async function claimRecentBrowserRuns(): Promise<void> {
+  const ids = loadRecentRuns().map((r) => r.id).slice(0, 10);
+  if (ids.length === 0) return;
+  await postClaim(ids);
 }

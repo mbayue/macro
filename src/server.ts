@@ -33,6 +33,7 @@ import type {
   StartResponse,
   StopResponse,
   AccountDraft,
+  ClaimResponse,
   MagicLinkResponse,
   MeResponse,
   VerifyCheckResponse,
@@ -87,7 +88,7 @@ import type { AdmissionResult } from './run/admission.ts';
 import { toStageViewPayload } from './run/controller.ts';
 import { PLANNING_LIMIT, rollingCheck } from './run/limits.ts';
 import { clientIp } from './security/client-ip.ts';
-import type { ModelCallRow, RunRow, StoredEvent, Store } from './store/db.ts';
+import type { ModelCallRow, RunRow, RunVisibility, StoredEvent, Store } from './store/db.ts';
 import type { RunKind, TestPlan } from './types.ts';
 
 // ------------------------------------------------------------------ constants
@@ -153,6 +154,10 @@ const AccountDraftBody = z.object({
   targetMode: z.enum(['demo', 'own']),
   targetOrigin: z.string().max(253).nullable(),
   lastEditedAt: z.number().int().nonnegative(),
+});
+
+const ClaimBody = z.object({
+  runIds: z.array(z.string().min(1).max(64)).max(10),
 });
 
 const EMPTY_DRAFT: AccountDraft = {
@@ -729,11 +734,26 @@ export function createApp(deps: AppDeps): App {
   }
 
   /** Admission, then the `running` status event, then the controller. */
-  function admitAndStart(kind: RunKind, planHash: string | undefined, subject: string): Response {
+  function admitAndStart(
+    kind: RunKind,
+    planHash: string | undefined,
+    subject: string,
+    ownership: { ownerUserId: string | null; visibility: RunVisibility } = {
+      ownerUserId: null,
+      visibility: 'public',
+    },
+  ): Response {
     const at = now();
     const admitted = admitStart(
       { store, config },
-      { kind, ...(planHash !== undefined ? { planHash } : {}), ip: subject, now: at },
+      {
+        kind,
+        ...(planHash !== undefined ? { planHash } : {}),
+        ip: subject,
+        now: at,
+        ownerUserId: ownership.ownerUserId,
+        visibility: ownership.visibility,
+      },
     );
     if (!admitted.ok) return admissionFailure(admitted, at);
     const runId = admitted.runId;
@@ -923,7 +943,11 @@ export function createApp(deps: AppDeps): App {
     const text = printPlan(result.plan);
     const hash = hashPlanText(text);
     store.storeApprovedPlan({ hash, text, approvedAt: now() });
-    return admitAndStart('run', hash, authGate.subject);
+    const ownSite = (parsed.data.targetMode ?? 'demo') === 'own';
+    return admitAndStart('run', hash, authGate.subject, {
+      ownerUserId: authGate.user?.id ?? null,
+      visibility: ownSite ? 'private' : 'public',
+    });
   };
 
   const postRuns: Handler = async ({ req, ip }) => {
@@ -934,7 +958,18 @@ export function createApp(deps: AppDeps): App {
 
     const authGate = await turnstileUnlessSignedIn(req, parsed.data.turnstileToken, ip);
     if (authGate.denied !== null) return authGate.denied;
-    return admitAndStart('run', parsed.data.planHash, authGate.subject);
+    // Reruns inherit privacy from prior runs of the same plan when any were private for this user.
+    let visibility: RunVisibility = 'public';
+    if (authGate.user !== null) {
+      const prior = store.listRunsForPlan(parsed.data.planHash, 5);
+      if (prior.some((r) => r.visibility === 'private' && r.ownerUserId === authGate.user!.id)) {
+        visibility = 'private';
+      }
+    }
+    return admitAndStart('run', parsed.data.planHash, authGate.subject, {
+      ownerUserId: authGate.user?.id ?? null,
+      visibility,
+    });
   };
 
   const postProbe: Handler = async ({ req, ip }) => {
@@ -945,7 +980,10 @@ export function createApp(deps: AppDeps): App {
 
     const authGate = await turnstileUnlessSignedIn(req, parsed.data.turnstileToken, ip);
     if (authGate.denied !== null) return authGate.denied;
-    return admitAndStart('probe', undefined, authGate.subject);
+    return admitAndStart('probe', undefined, authGate.subject, {
+      ownerUserId: authGate.user?.id ?? null,
+      visibility: 'public',
+    });
   };
 
   // Per-IP rolling limit for /api/gate-demo. Memory only; never touches the store.
@@ -1038,11 +1076,18 @@ export function createApp(deps: AppDeps): App {
 
   const notFound = (): Response => apiError(404, 'not_found', MSG.notFound);
 
+  /** Private runs are indistinguishable from missing unless the viewer owns them. */
+  function canViewRun(run: { visibility: RunVisibility; ownerUserId: string | null }, req: Request): boolean {
+    if (run.visibility !== 'private') return true;
+    const auth = resolveSession(req);
+    return auth !== null && auth.user.id === run.ownerUserId;
+  }
+
   const postStop: Handler = (c) => {
     const id = runIdParam(c);
     if (id === null) return notFound();
     const run = store.getRun(id);
-    if (run === null) return notFound();
+    if (run === null || !canViewRun(run, c.req)) return notFound();
     // 9.2: no Turnstile. Only a running Run needs the controller; a finished one just reports its status.
     if (run.status === 'running') controllerFor(run.kind).stop(id);
     const status = store.getRun(id)?.status ?? run.status;
@@ -1075,7 +1120,7 @@ export function createApp(deps: AppDeps): App {
     const id = runIdParam(c);
     if (id === null) return notFound();
     const run = store.getRun(id);
-    if (run === null) return notFound();
+    if (run === null || !canViewRun(run, c.req)) return notFound();
 
     const reportRow = store.getReport(id);
     let report: CapacityReport | null = null;
@@ -1105,27 +1150,30 @@ export function createApp(deps: AppDeps): App {
   const getRunsForPlan: Handler = (c) => {
     const hash = safeDecode(c.params[0] ?? '');
     if (hash === null || !isPlanHash(hash) || !store.hasApprovedPlan(hash)) return notFound();
-    const runs: RunListItem[] = store.listRunsForPlan(hash, 20).map((r) => {
-      const body = store.getReport(r.id)?.body;
-      return {
-        runId: r.id,
-        startedAt: r.startedAt,
-        status: r.status,
-        safeCapacity: headlineValue(body, 'safeCapacity'),
-        breakingPoint: headlineValue(body, 'breakingPoint'),
-      };
-    });
+    const runs: RunListItem[] = store
+      .listRunsForPlan(hash, 20)
+      .filter((r) => canViewRun(r, c.req))
+      .map((r) => {
+        const body = store.getReport(r.id)?.body;
+        return {
+          runId: r.id,
+          startedAt: r.startedAt,
+          status: r.status,
+          safeCapacity: headlineValue(body, 'safeCapacity'),
+          breakingPoint: headlineValue(body, 'breakingPoint'),
+        };
+      });
     const body: RunListResponse = { planHash: hash, runs };
     return json(200, body);
   };
 
-  const getCompare: Handler = ({ url }) => {
+  const getCompare: Handler = ({ req, url }) => {
     const a = url.searchParams.get('a');
     const b = url.searchParams.get('b');
     if (a === null || b === null || !ID_RE.test(a) || !ID_RE.test(b)) return apiError(400, 'invalid_input', MSG.invalid);
     const load = (id: string): CompareInput | null => {
       const run = store.getRun(id);
-      if (run === null || run.planHash === null) return null;
+      if (run === null || run.planHash === null || !canViewRun(run, req)) return null;
       const row = store.getReport(id);
       if (row === null || !isRecord(row.body)) return null;
       return { runId: id, planHash: run.planHash, startedAt: run.startedAt, report: row.body as unknown as CapacityReport };
@@ -1142,7 +1190,7 @@ export function createApp(deps: AppDeps): App {
     const id = safeDecode(params[0] ?? '');
     if (id === null || !ID_RE.test(id)) return notFound();
     const run = store.getRun(id);
-    if (run === null) return notFound();
+    if (run === null || !canViewRun(run, req)) return notFound();
     const controller = controllerFor(run.kind);
 
     server?.timeout(req, 0);
@@ -1551,6 +1599,26 @@ export function createApp(deps: AppDeps): App {
     }
   };
 
+  const postClaim: Handler = async ({ req }) => {
+    if (config.auth === undefined) {
+      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
+    }
+    const auth = requireSession(req);
+    if (auth instanceof Response) return auth;
+    const read = await readJsonBody(req);
+    if (!read.ok) return read.res;
+    const parsed = ClaimBody.safeParse(read.value);
+    if (!parsed.success) return apiError(400, 'invalid_input', MSG.invalid);
+    try {
+      const claimed = store.claimPublicRuns(auth.user.id, parsed.data.runIds);
+      const body: ClaimResponse = { claimed };
+      return json(200, body);
+    } catch (err) {
+      logInternal('auth.claim', err);
+      return apiError(500, 'internal', MSG.internal);
+    }
+  };
+
   // ------------------------------------------------------------------ routing
 
   const routes: RouteDef[] = [
@@ -1568,6 +1636,7 @@ export function createApp(deps: AppDeps): App {
     { method: 'GET', re: /^\/api\/auth\/github\/callback$/, name: 'github_callback', handler: getGithubCallback },
     { method: 'GET', re: /^\/api\/me$/, name: 'me', handler: getMe },
     { method: 'POST', re: /^\/api\/auth\/sign-out$/, name: 'sign_out', handler: postSignOut },
+    { method: 'POST', re: /^\/api\/auth\/claim$/, name: 'auth_claim', handler: postClaim },
     { method: 'POST', re: /^\/api\/verify\/start$/, name: 'verify_start', handler: postVerifyStart },
     { method: 'POST', re: /^\/api\/verify\/check$/, name: 'verify_check', handler: postVerifyCheck },
     { method: 'POST', re: /^\/api\/verify\/clear$/, name: 'verify_clear', handler: postVerifyClear },

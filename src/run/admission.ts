@@ -4,7 +4,7 @@
 // This module never starts a Sandbox.
 
 import type { Config } from '../config.ts';
-import type { Store } from '../store/db.ts';
+import type { RunVisibility, Store } from '../store/db.ts';
 import type { RunKind } from '../types.ts';
 import { DAILY_MAX, START_LIMIT, dailyCheck, rollingCheck, utcDayStart } from './limits.ts';
 
@@ -22,6 +22,8 @@ export interface StartRequest {
   ip: string;
   /** Epoch ms. */
   now: number;
+  ownerUserId?: string | null;
+  visibility?: RunVisibility;
 }
 
 export type AdmissionCode =
@@ -123,6 +125,8 @@ export function admitStart(deps: AdmissionDeps, req: StartRequest): AdmissionRes
       planHash,
       runtime: config.sandbox.runtime,
       startedAt: req.now,
+      ownerUserId: req.ownerUserId ?? null,
+      visibility: req.visibility ?? 'public',
     });
     store.recordClientStart(req.ip, req.now);
     return { ok: true, runId };

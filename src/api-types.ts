@@ -326,3 +326,12 @@ export interface AccountDraft {
 export interface AccountDraftConflict {
   draft: AccountDraft;
 }
+
+export interface ClaimRequest {
+  /** Browser-local recent run ids (max 10). */
+  runIds: string[];
+}
+
+export interface ClaimResponse {
+  claimed: string[];
+}

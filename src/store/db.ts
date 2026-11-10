@@ -49,7 +49,9 @@ CREATE TABLE IF NOT EXISTS runs (
   id TEXT PRIMARY KEY, kind TEXT NOT NULL CHECK (kind IN ('run','probe')),
   plan_hash TEXT REFERENCES plans(hash), status TEXT NOT NULL, status_reason TEXT,
   runtime TEXT NOT NULL, started_at INTEGER NOT NULL, ended_at INTEGER,
-  probe_result TEXT
+  probe_result TEXT,
+  owner_user_id TEXT,
+  visibility TEXT NOT NULL DEFAULT 'public' CHECK (visibility IN ('public','private'))
 );
 CREATE INDEX IF NOT EXISTS runs_plan ON runs(plan_hash, started_at DESC);
 CREATE INDEX IF NOT EXISTS runs_started ON runs(started_at);
@@ -143,6 +145,8 @@ export interface PlanRow {
   approvedAt: number;
 }
 
+export type RunVisibility = 'public' | 'private';
+
 export interface RunRow {
   id: string;
   kind: RunKind;
@@ -154,6 +158,8 @@ export interface RunRow {
   endedAt: number | null;
   /** Parsed JSON, probe runs only. */
   probeResult: unknown;
+  ownerUserId: string | null;
+  visibility: RunVisibility;
 }
 
 export interface NewRun {
@@ -162,6 +168,8 @@ export interface NewRun {
   planHash: string | null;
   runtime: SandboxRuntime;
   startedAt: number;
+  ownerUserId?: string | null;
+  visibility?: RunVisibility;
 }
 
 export interface StageRow {
@@ -247,6 +255,7 @@ interface RawPlan { hash: string; text: string; approved_at: number }
 interface RawRun {
   id: string; kind: RunKind; plan_hash: string | null; status: RunStatus; status_reason: string | null;
   runtime: SandboxRuntime; started_at: number; ended_at: number | null; probe_result: string | null;
+  owner_user_id: string | null; visibility: RunVisibility;
 }
 interface RawStage {
   run_id: string; idx: number; vus: number; duration_sec: number; status: StageStatus;
@@ -303,7 +312,7 @@ interface RawAccountDraft {
 }
 
 const RUN_COLS =
-  'id, kind, plan_hash, status, status_reason, runtime, started_at, ended_at, probe_result';
+  'id, kind, plan_hash, status, status_reason, runtime, started_at, ended_at, probe_result, owner_user_id, visibility';
 
 function parseJson(text: string | null): unknown {
   return text === null ? null : (JSON.parse(text) as unknown);
@@ -320,6 +329,8 @@ function toRun(r: RawRun): RunRow {
     startedAt: r.started_at,
     endedAt: r.ended_at,
     probeResult: parseJson(r.probe_result),
+    ownerUserId: r.owner_user_id,
+    visibility: r.visibility ?? 'public',
   };
 }
 
@@ -432,6 +443,21 @@ export class Store {
     this.db.exec('PRAGMA busy_timeout = 5000;');
     this.db.exec('PRAGMA foreign_keys = ON;');
     this.db.exec(SCHEMA);
+    this.migrateRunsOwnership();
+  }
+
+  /** Add ownership columns on DBs created before account privacy. */
+  private migrateRunsOwnership(): void {
+    const cols = this.db
+      .prepare<{ name: string }, []>('PRAGMA table_info(runs)')
+      .all()
+      .map((c) => c.name);
+    if (!cols.includes('owner_user_id')) {
+      this.db.exec('ALTER TABLE runs ADD COLUMN owner_user_id TEXT');
+    }
+    if (!cols.includes('visibility')) {
+      this.db.exec("ALTER TABLE runs ADD COLUMN visibility TEXT NOT NULL DEFAULT 'public'");
+    }
   }
 
   /** Opens `${dataDir}/macro.db`. */
@@ -498,10 +524,38 @@ export class Store {
   createRun(run: NewRun): void {
     this.db
       .prepare(
-        `INSERT INTO runs (id, kind, plan_hash, status, runtime, started_at)
-         VALUES (?, ?, ?, 'running', ?, ?)`,
+        `INSERT INTO runs (id, kind, plan_hash, status, runtime, started_at, owner_user_id, visibility)
+         VALUES (?, ?, ?, 'running', ?, ?, ?, ?)`,
       )
-      .run(run.id, run.kind, run.planHash, run.runtime, run.startedAt);
+      .run(
+        run.id,
+        run.kind,
+        run.planHash,
+        run.runtime,
+        run.startedAt,
+        run.ownerUserId ?? null,
+        run.visibility ?? 'public',
+      );
+  }
+
+  /**
+   * Claim public runs for a user. Skips missing / private / already-owned-by-claimant.
+   * Never flips visibility. Returns the ids that changed.
+   */
+  claimPublicRuns(userId: string, runIds: readonly string[]): string[] {
+    const claimed: string[] = [];
+    this.transaction(() => {
+      const update = this.db.prepare(
+        `UPDATE runs SET owner_user_id = ?
+         WHERE id = ? AND visibility = 'public'
+           AND (owner_user_id IS NULL OR owner_user_id != ?)`,
+      );
+      for (const id of runIds) {
+        const res = update.run(userId, id, userId);
+        if (res.changes > 0) claimed.push(id);
+      }
+    });
+    return claimed;
   }
 
   getRun(id: string): RunRow | null {

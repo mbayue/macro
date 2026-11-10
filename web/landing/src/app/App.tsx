@@ -4,7 +4,7 @@
  */
 import { Component, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getConfig } from './lib/api.ts';
-import { getMe } from './lib/auth-api.ts';
+import { claimRecentBrowserRuns, getMe } from './lib/auth-api.ts';
 import type { ConfigResponse, MeResponse } from '../../../../src/api-types.ts';
 import { Shell } from './components/Shell.tsx';
 import { AppContext, type AppContextValue } from './context.tsx';
@@ -57,10 +57,17 @@ export function App() {
   const mainRef = useRef<HTMLElement>(null);
   const announceTimer = useRef<number | undefined>(undefined);
   const first = useRef(true);
+  const claimedForUser = useRef<string | null>(null);
 
   const refreshMe = useCallback(async () => {
     const res = await getMe();
-    if (res.ok) setMe(res.data);
+    if (!res.ok) return;
+    setMe(res.data);
+    if (res.data !== null && claimedForUser.current !== res.data.user.id) {
+      claimedForUser.current = res.data.user.id;
+      void claimRecentBrowserRuns();
+    }
+    if (res.data === null) claimedForUser.current = null;
   }, []);
 
   const load = useCallback(async () => {

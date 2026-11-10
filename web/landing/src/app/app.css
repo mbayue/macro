@@ -52,37 +52,131 @@ a { text-underline-offset: 0.2em; }
 .shell .rail__heading { font-size: var(--fs-xs); color: var(--muted); padding: 0 10px; font-weight: 400; }
 .rail__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rail__id { font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted); }
-.rail__foot { margin-top: auto; padding: 16px 6px 0; display: grid; gap: 10px; justify-items: start; }
-.rail__identity { display: grid; gap: 2px; padding: 0 4px; max-width: 100%; min-width: 0; }
-.rail__identity-row { display: flex; align-items: baseline; gap: 8px; min-width: 0; max-width: 100%; }
-.rail__identity-name {
-  margin: 0;
+.rail__foot {
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--surface-2);
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.rail__identity { width: 100%; min-width: 0; box-sizing: border-box; }
+.rail__identity-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.rail__avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 500;
+  flex: 0 0 auto;
+}
+.rail__identity-meta {
   flex: 1 1 auto;
   min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+.rail__identity-name {
+  margin: 0;
   font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 1.25;
 }
-.rail__identity-site { margin: 0; font-size: var(--fs-xs); font-family: var(--mono); }
+.rail__identity-site {
+  margin: 0;
+  font-size: var(--fs-xs);
+  font-family: var(--mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
 .rail__identity-out {
   flex: 0 0 auto;
   margin: 0;
-  padding: 0;
+  padding: 3px 6px;
   border: 0;
+  border-radius: 4px;
   background: transparent;
   color: var(--muted);
-  font: 400 var(--fs-xs)/1.4 var(--text);
+  font: 400 var(--fs-xs)/1.2 var(--text);
   cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease, transform 140ms var(--ease);
 }
-@media (hover: hover) and (pointer: fine) { .rail__identity-out:hover { color: var(--ink); } }
-/* Content-width Sign in: rail__link is grid and would otherwise stretch to the foot width. */
-.rail__identity-link { width: max-content; max-width: 100%; }
-/* The theme button gets a resting tile, so it reads as a button on the rail. */
-.rail .theme-toggle { background: var(--surface-2); }
-@media (hover: hover) and (pointer: fine) { .rail .theme-toggle:hover { background: var(--bar); color: var(--bg); } }
-.rail__links { list-style: none; margin: 0; padding: 0 4px; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: var(--fs-xs); }
-.rail__links a { color: var(--muted); }
+@media (hover: hover) and (pointer: fine) {
+  .rail__identity-out:hover { background: var(--surface-2); color: var(--ink); }
+}
+.rail__identity-out:active { transform: scale(0.96); }
+
+/* Sign in uses rail__link styling, full width matching the navigation above */
+.rail__identity-link { width: 100%; box-sizing: border-box; }
+
+/* Meta footer row: legal links on left, compact theme toggle on right */
+.rail__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 10px 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.rail__links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  font-size: var(--fs-xs);
+}
+.rail__links a {
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .rail__links a:hover { color: var(--ink); }
+}
+
+/* Compact theme toggle aligned inside rail__meta */
+.rail .theme-toggle {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease, transform 140ms var(--ease);
+}
+.rail .theme-toggle svg { width: 15px; height: 15px; }
+@media (hover: hover) and (pointer: fine) {
+  .rail .theme-toggle:hover { background: var(--surface-2); color: var(--ink); }
+}
+.rail .theme-toggle:active { transform: scale(0.94); }
 
 /* Main is a column: the page, then the footer, pushed to the bottom of the screen when the page is short. */
 .main { min-width: 0; padding: 32px 40px 0; min-height: 100vh; display: flex; flex-direction: column; }

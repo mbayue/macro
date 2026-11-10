@@ -128,31 +128,42 @@ export function Shell({
                 Sign in
               </a>
             ) : (
-              <>
-                <div className="rail__identity-row">
-                  <p className="rail__identity-name">{me.user.githubLogin ?? me.user.email}</p>
-                  <button type="button" className="rail__identity-out" onClick={() => void onSignOut()}>
-                    Sign out
-                  </button>
+              <div className="rail__identity-row">
+                <div className="rail__avatar" aria-hidden="true">
+                  {(me.user.githubLogin ?? me.user.email ?? 'U').slice(0, 1).toUpperCase()}
                 </div>
-                <p className="rail__identity-site muted">
-                  {me.verifiedOrigin !== null ? me.verifiedOrigin.host : 'none'}
-                </p>
-              </>
+                <div className="rail__identity-meta">
+                  <p className="rail__identity-name">{me.user.githubLogin ?? me.user.email}</p>
+                  {me.verifiedOrigin !== null ? (
+                    <p className="rail__identity-site muted">{me.verifiedOrigin.host}</p>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  className="rail__identity-out"
+                  onClick={() => void onSignOut()}
+                  title="Sign out"
+                  aria-label="Sign out"
+                >
+                  Sign out
+                </button>
+              </div>
             )}
           </div>
-          <ThemeToggle />
-          <ul className="rail__links">
-            <li>
-              <a href="/">About Macro</a>
-            </li>
-            <li>
-              <a href="/privacy">Privacy</a>
-            </li>
-            <li>
-              <a href="/terms">Terms</a>
-            </li>
-          </ul>
+          <div className="rail__meta">
+            <ul className="rail__links">
+              <li>
+                <a href="/">About</a>
+              </li>
+              <li>
+                <a href="/privacy">Privacy</a>
+              </li>
+              <li>
+                <a href="/terms">Terms</a>
+              </li>
+            </ul>
+            <ThemeToggle />
+          </div>
         </div>
       </nav>
 

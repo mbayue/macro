@@ -79,7 +79,7 @@ a { text-underline-offset: 0.2em; }
   color: var(--ink);
   display: grid;
   place-items: center;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   flex: 0 0 auto;
 }

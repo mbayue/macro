@@ -48,6 +48,19 @@ export interface Config {
   readonly dataDir: string;
   /** Requirement 17 only. Key omitted when unset. */
   readonly vultrApiKey?: string;
+  /**
+   * Present only when every auth env var is set. Omitted means auth routes stay disabled
+   * (local demo without accounts still works).
+   */
+  readonly auth?: {
+    readonly sessionSecret: string;
+    readonly publicBaseUrl: string;
+    readonly resendApiKey: string;
+    readonly resendFrom: string;
+    readonly githubClientId: string;
+    readonly githubClientSecret: string;
+    readonly githubRedirectUri: string;
+  };
 }
 
 export interface ConfigError {
@@ -162,6 +175,43 @@ export function parseConfig(env: Env): ConfigResult {
 
   const vultrApiKey = read(env, 'VULTR_API_KEY');
 
+  // Auth: all-or-nothing. Any one set requires every auth setting.
+  const AUTH_KEYS = [
+    'SESSION_SECRET',
+    'PUBLIC_BASE_URL',
+    'RESEND_API_KEY',
+    'RESEND_FROM',
+    'GITHUB_CLIENT_ID',
+    'GITHUB_CLIENT_SECRET',
+    'GITHUB_REDIRECT_URI',
+  ] as const;
+  const authValues = Object.fromEntries(AUTH_KEYS.map((k) => [k, read(env, k)])) as Record<
+    (typeof AUTH_KEYS)[number],
+    string | undefined
+  >;
+  const authPresent = AUTH_KEYS.filter((k) => authValues[k] !== undefined);
+  const authMissing = AUTH_KEYS.filter((k) => authValues[k] === undefined);
+  let auth: Config['auth'] | undefined;
+  if (authPresent.length > 0 && authMissing.length > 0) {
+    for (const setting of authMissing) {
+      fail(setting, 'is required when any auth setting is set (all-or-nothing)');
+    }
+  } else if (authPresent.length === AUTH_KEYS.length) {
+    const publicBaseUrl = authValues.PUBLIC_BASE_URL as string;
+    if (!isHttpUrl(publicBaseUrl)) fail('PUBLIC_BASE_URL', 'must be an http(s) URL');
+    const githubRedirectUri = authValues.GITHUB_REDIRECT_URI as string;
+    if (!isHttpUrl(githubRedirectUri)) fail('GITHUB_REDIRECT_URI', 'must be an http(s) URL');
+    auth = {
+      sessionSecret: authValues.SESSION_SECRET as string,
+      publicBaseUrl,
+      resendApiKey: authValues.RESEND_API_KEY as string,
+      resendFrom: authValues.RESEND_FROM as string,
+      githubClientId: authValues.GITHUB_CLIENT_ID as string,
+      githubClientSecret: authValues.GITHUB_CLIENT_SECRET as string,
+      githubRedirectUri,
+    };
+  }
+
   if (
     errors.length > 0 ||
     apiKey === undefined ||
@@ -185,6 +235,7 @@ export function parseConfig(env: Env): ConfigResult {
     port,
     dataDir,
     ...(vultrApiKey !== undefined ? { vultrApiKey } : {}),
+    ...(auth !== undefined ? { auth } : {}),
   };
   return { ok: true, config: deepFreeze(config) };
 }
@@ -197,6 +248,16 @@ export function redactedConfig(config: Config): unknown {
     inference: { ...config.inference, apiKey: mark(config.inference.apiKey) },
     turnstile: { ...config.turnstile, secretKey: mark(config.turnstile.secretKey) },
     vultrApiKey: mark(config.vultrApiKey),
+    ...(config.auth !== undefined
+      ? {
+          auth: {
+            ...config.auth,
+            sessionSecret: mark(config.auth.sessionSecret),
+            resendApiKey: mark(config.auth.resendApiKey),
+            githubClientSecret: mark(config.auth.githubClientSecret),
+          },
+        }
+      : {}),
   };
 }
 

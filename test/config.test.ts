@@ -257,3 +257,56 @@ describe('other settings', () => {
     expect(unset).toContain('[unset]');
   });
 });
+
+const AUTH_ENV: Record<string, string> = {
+  SESSION_SECRET: 'session-secret-aaaa',
+  PUBLIC_BASE_URL: 'https://macro.my.id',
+  RESEND_API_KEY: 're_test_bbbb',
+  RESEND_FROM: 'Macro <hello@macro.my.id>',
+  GITHUB_CLIENT_ID: 'gh-client-cccc',
+  GITHUB_CLIENT_SECRET: 'gh-secret-dddd',
+  GITHUB_REDIRECT_URI: 'https://macro.my.id/api/auth/github/callback',
+};
+
+describe('optional auth block', () => {
+  test('no auth env omits config.auth', () => {
+    const c = ok(parseConfig(env()));
+    expect('auth' in c).toBe(false);
+  });
+
+  test('complete auth env freezes config.auth', () => {
+    const c = ok(parseConfig(env(AUTH_ENV)));
+    expect(c.auth).toEqual({
+      sessionSecret: 'session-secret-aaaa',
+      publicBaseUrl: 'https://macro.my.id',
+      resendApiKey: 're_test_bbbb',
+      resendFrom: 'Macro <hello@macro.my.id>',
+      githubClientId: 'gh-client-cccc',
+      githubClientSecret: 'gh-secret-dddd',
+      githubRedirectUri: 'https://macro.my.id/api/auth/github/callback',
+    });
+    expect(Object.isFrozen(c.auth)).toBe(true);
+  });
+
+  test('partial auth env fails config', () => {
+    const result = parseConfig(env({ SESSION_SECRET: 'only-one' }));
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    const settings = result.errors.map((e) => e.setting);
+    expect(settings).toContain('PUBLIC_BASE_URL');
+    expect(settings).toContain('RESEND_API_KEY');
+    expect(settings).toContain('RESEND_FROM');
+    expect(settings).toContain('GITHUB_CLIENT_ID');
+    expect(settings).toContain('GITHUB_CLIENT_SECRET');
+    expect(settings).toContain('GITHUB_REDIRECT_URI');
+  });
+
+  test('redactedConfig hides auth secrets', () => {
+    const c = ok(parseConfig(env(AUTH_ENV)));
+    const text = JSON.stringify(redactedConfig(c));
+    for (const secret of ['session-secret-aaaa', 're_test_bbbb', 'gh-secret-dddd']) {
+      expect(text).not.toContain(secret);
+    }
+  });
+});
+

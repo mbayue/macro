@@ -424,6 +424,8 @@ export const WAITLIST_LIMIT = { max: 5, windowMs: 3_600_000 } as const;
 /** At most this many magic-link emails per client IP, and per address, in any rolling hour. */
 export const MAGIC_LINK_IP_LIMIT = { max: 5, windowMs: 3_600_000 } as const;
 export const MAGIC_LINK_EMAIL_LIMIT = { max: 3, windowMs: 3_600_000 } as const;
+/** One send, then 60 seconds before the next, per connection and per address. */
+export const MAGIC_LINK_COOLDOWN = { max: 1, windowMs: 60_000 } as const;
 
 /** Longest address SMTP allows (RFC 5321 path limit). */
 const EMAIL_MAX = 254;
@@ -441,7 +443,7 @@ export function normaliseEmail(raw: string): string | null {
 /** A per-key rolling-window limiter kept in memory. */
 function rollingLimiter(limit: { max: number; windowMs: number }) {
   const hits = new Map<string, number[]>();
-  return (key: string, at: number): { ok: true } | { ok: false; retryAt: number } => {
+  return (key: string, at: number, record = true): { ok: true } | { ok: false; retryAt: number } => {
     const since = at - limit.windowMs;
     if (hits.size > 1000) {
       for (const [k, list] of hits) {
@@ -454,6 +456,7 @@ function rollingLimiter(limit: { max: number; windowMs: number }) {
       hits.set(key, recent);
       return { ok: false, retryAt: oldest + limit.windowMs };
     }
+    if (!record) return { ok: true };
     recent.push(at);
     hits.set(key, recent);
     return { ok: true };
@@ -1363,6 +1366,8 @@ export function createApp(deps: AppDeps): App {
 
   const magicLinkIpAllow = rollingLimiter(MAGIC_LINK_IP_LIMIT);
   const magicLinkEmailAllow = rollingLimiter(MAGIC_LINK_EMAIL_LIMIT);
+  const magicLinkIpCooldown = rollingLimiter(MAGIC_LINK_COOLDOWN);
+  const magicLinkEmailCooldown = rollingLimiter(MAGIC_LINK_COOLDOWN);
 
   const postMagicLink: Handler = async ({ req, ip }) => {
     if (config.auth === undefined) {
@@ -1376,7 +1381,27 @@ export function createApp(deps: AppDeps): App {
     if (email === null) return apiError(400, 'invalid_input', MSG.email);
 
     const at = now();
-    const ipAllowed = magicLinkIpAllow(ip, at);
+    const ipWait = magicLinkIpCooldown(ip, at, false);
+    if (!ipWait.ok) {
+      return apiError(
+        429,
+        'rate_limited',
+        'Wait a minute before sending another sign-in email.',
+        { retryAt: ipWait.retryAt },
+        retryAfter(ipWait.retryAt, at),
+      );
+    }
+    const emailWait = magicLinkEmailCooldown(email, at, false);
+    if (!emailWait.ok) {
+      return apiError(
+        429,
+        'rate_limited',
+        'Wait a minute before sending another sign-in email to that address.',
+        { retryAt: emailWait.retryAt },
+        retryAfter(emailWait.retryAt, at),
+      );
+    }
+    const ipAllowed = magicLinkIpAllow(ip, at, false);
     if (!ipAllowed.ok) {
       return apiError(
         429,
@@ -1386,7 +1411,7 @@ export function createApp(deps: AppDeps): App {
         retryAfter(ipAllowed.retryAt, at),
       );
     }
-    const emailAllowed = magicLinkEmailAllow(email, at);
+    const emailAllowed = magicLinkEmailAllow(email, at, false);
     if (!emailAllowed.ok) {
       return apiError(
         429,
@@ -1396,7 +1421,10 @@ export function createApp(deps: AppDeps): App {
         retryAfter(emailAllowed.retryAt, at),
       );
     }
-
+    magicLinkIpCooldown(ip, at);
+    magicLinkEmailCooldown(email, at);
+    magicLinkIpAllow(ip, at);
+    magicLinkEmailAllow(email, at);
     const body: MagicLinkResponse = { ok: true };
     const mailer = deps.mailer;
     if (mailer === undefined) {

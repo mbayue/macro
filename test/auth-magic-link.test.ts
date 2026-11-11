@@ -122,6 +122,25 @@ describe('POST /api/auth/magic-link', () => {
   });
 
 
+  test('a second send within a minute is refused', async () => {
+    const h = makeHarness(true);
+    const post = (email: string) =>
+      h.app.fetch(
+        new Request('http://macro.test/api/auth/magic-link', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ email }),
+        }),
+      );
+    expect((await post('a@example.com')).status).toBe(200);
+    const again = await post('b@example.com');
+    expect(again.status).toBe(429);
+    expect(h.sent).toHaveLength(1);
+    h.clock.now += 61_000;
+    expect((await post('b@example.com')).status).toBe(200);
+    expect(h.sent).toHaveLength(2);
+  });
+
   test('the fourth send to the same address is refused and no further mail is sent', async () => {
     const h = makeHarness(true);
     const post = (email: string) =>
@@ -133,9 +152,11 @@ describe('POST /api/auth/magic-link', () => {
         }),
       );
     for (let i = 0; i < 3; i++) {
+      if (i > 0) h.clock.now += 61_000;
       const res = await post('a@example.com');
       expect(res.status).toBe(200);
     }
+    h.clock.now += 61_000;
     const blocked = await post('a@example.com');
     expect(blocked.status).toBe(429);
     expect(h.sent).toHaveLength(3);
@@ -143,4 +164,4 @@ describe('POST /api/auth/magic-link', () => {
     expect(other.status).toBe(200);
     expect(h.sent).toHaveLength(4);
   });
-  });
+});

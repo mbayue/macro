@@ -1,7 +1,7 @@
 /**
  * Sign in (`#/sign-in`): GitHub OAuth or magic link email.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { githubStartHref, postMagicLink } from '../lib/auth-api.ts';
 import { AlertRegion, Busy, Panel } from '../components/ui.tsx';
 import { useApp } from '../context.tsx';
@@ -11,9 +11,15 @@ export function SignIn() {
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
+  const [wait, setWait] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const params = new URLSearchParams(window.location.hash.split('?')[1] ?? '');
+  useEffect(() => {
+    if (wait <= 0) return;
+    const id = window.setInterval(() => setWait((s) => (s <= 1 ? 0 : s - 1)), 1000);
+    return () => window.clearInterval(id);
+  }, [wait]);
+
   const githubEmailError = params.get('error') === 'github_email';
 
   if (me !== null) {
@@ -56,6 +62,7 @@ export function SignIn() {
       return;
     }
     setSent(true);
+    setWait(60);
     announce('Check your email for a sign-in link.');
     void refreshMe();
   }
@@ -109,8 +116,8 @@ export function SignIn() {
             </p>
           ) : null}
           <div className="actions">
-            <button type="submit" className="btn" disabled={busy || sent || email.trim() === ''}>
-              {busy ? <Busy>Sending</Busy> : 'Send sign-in link'}
+            <button type="submit" className="btn" disabled={busy || wait > 0 || email.trim() === ''}>
+              {busy ? <Busy>Sending</Busy> : wait > 0 ? `Wait ${wait}s` : 'Send sign-in link'}
             </button>
             <button type="button" className="btn btn--quiet" onClick={() => navigate('/')}>
               Back to new test

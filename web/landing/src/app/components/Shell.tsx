@@ -153,7 +153,7 @@ export function Shell({
           <ThemeSegmented />
           <ul className="rail__links">
             <li>
-              <a href="/">About</a>
+              <a href="/">About Macro</a>
             </li>
             <li>
               <a href="/privacy">Privacy</a>

@@ -223,12 +223,12 @@ a { text-underline-offset: 0.2em; }
 
 .rail__links {
   list-style: none;
-  margin: 0;
-  padding: 0 4px;
+  margin: 2px 0 0;
+  padding: 14px 6px 0;
+  border-top: 1px solid var(--surface-2);
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 4px 14px;
+  justify-content: space-between;
   font-size: var(--fs-xs);
 }
 .rail__links a {

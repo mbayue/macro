@@ -170,7 +170,7 @@ export function Shell({
         <footer className="app-foot">
           <p>
             {me?.verifiedOrigin
-              ? `You can load-test ${me.verifiedOrigin.host} (verified) or the public demo shop.`
+              ? `You can load-test ${typeof me.verifiedOrigin === 'string' ? me.verifiedOrigin : me.verifiedOrigin.host} (verified) or the public demo shop.`
               : 'Demo shop tests work signed out. Own-site tests need a signed-in account and a verified origin.'}
           </p>
         </footer>

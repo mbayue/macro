@@ -257,7 +257,7 @@ export function NewTest() {
                 void startPlanning(text.trim());
               }}
             >
-              <label htmlFor="traffic-event" className="compose__label">
+              <label id="traffic-event-label" htmlFor="traffic-event" className="compose__label">
                 Describe the traffic you expect
               </label>
               <p id="traffic-event-hint" className="muted">
@@ -271,6 +271,8 @@ export function NewTest() {
                 autoComplete="off"
                 value={text}
                 readOnly={!idle}
+                aria-label="Describe the traffic you expect"
+                aria-labelledby="traffic-event-label"
                 aria-describedby="traffic-event-hint traffic-event-count traffic-event-problem"
                 aria-invalid={n > 0 && !inRange}
                 onChange={(e) => {

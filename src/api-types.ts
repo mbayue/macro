@@ -32,6 +32,7 @@ export type ApiErrorCode =
   | 'runtime_unavailable' // SANDBOX_RUNTIME problem (requirement 6.13)
   | 'inference_not_configured' // no Vultr inference key (requirement 2.9)
   | 'planning_failed' // both model attempts failed (requirement 2.3)
+  | 'discover_failed' // own-site document could not be read; nothing sent to planner
   | 'not_found'
   | 'auth_unavailable' // auth env not configured on this server
   | 'auth_required' // signed-in action attempted while signed out
@@ -112,6 +113,13 @@ export type GateView =
   | { status: 'accepted' }
   | { status: 'rejected'; violations: PolicyViolationView[] };
 
+export interface PlanRouteView {
+  id: string;
+  path: string;
+  method: 'GET';
+  kind: 'document' | 'script' | 'style' | 'asset' | 'catalog';
+}
+
 export interface PlanResponse {
   draftId: string;
   /** null when parsing failed (then `parseError` is set). */
@@ -123,6 +131,7 @@ export interface PlanResponse {
   gate: GateView | null;
   parseError: ParseErrorView | null;
   modelCalls: ModelCallView[];
+  routes: PlanRouteView[];
 }
 
 // ---- POST /api/approve, /api/runs, /api/probe -----------------------------
@@ -132,6 +141,7 @@ export interface ApproveRequest {
   turnstileToken: string;
   targetMode?: 'demo' | 'own';
   targetOrigin?: string;
+  draftId?: string;
 }
 
 export interface RerunRequest {

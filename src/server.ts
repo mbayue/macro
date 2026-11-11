@@ -78,6 +78,8 @@ import {
 } from './auth/verify-origin.ts';
 import type { Config } from './config.ts';
 import { ROUTE_CATALOG } from './plan/catalog.ts';
+import { discoverOwnSite } from './plan/discover.ts';
+import type { DiscoveredRoute } from './plan/discover.ts';
 import { parsePlan } from './plan/parser.ts';
 import type { ParseError } from './plan/parser.ts';
 import { evaluatePlan } from './plan/policy.ts';
@@ -225,6 +227,7 @@ export type PlannerFn = (
   trafficEvent: string,
   draftId: string,
   target?: Config['target'],
+  discovered?: readonly DiscoveredRoute[],
 ) => Promise<PlanOutcome>;
 
 /** The part of `Bun.Server` this module uses. */
@@ -388,6 +391,7 @@ const PlanBody = z.object({
 const ApproveBody = z.object({
   planText: z.string().min(1),
   turnstileToken: z.unknown().optional(),
+  draftId: z.string().min(1).max(64).optional(),
   ...TargetModeFields,
 });
 const RerunBody = z.object({ planHash: z.string(), turnstileToken: z.unknown().optional() });
@@ -638,8 +642,12 @@ export function createApp(deps: AppDeps): App {
   };
   const planner: PlannerFn =
     deps.planner ??
-    ((trafficEvent, draftId, target) =>
-      planTrafficEvent({ client: deps.client, target: target ?? config.target }, trafficEvent, draftId));
+    ((trafficEvent, draftId, target, discovered) =>
+      planTrafficEvent(
+        { client: deps.client, target: target ?? config.target, discovered },
+        trafficEvent,
+        draftId,
+      ));
 
   /** Demo allowlist, or the account's single verified origin for own-site. */
   function resolvePlanTarget(
@@ -882,15 +890,31 @@ export function createApp(deps: AppDeps): App {
 
     if (!deps.client.configured) return apiError(503, 'inference_not_configured', MSG.inferenceNotConfigured);
 
+    const ownPlan = (parsed.data.targetMode ?? 'demo') === 'own';
+    let discovered: DiscoveredRoute[] | undefined;
+    if (ownPlan) {
+      const found = await discoverOwnSite(targetResolved.target.webOrigin, deps.fetchImpl ?? fetch);
+      if (!found.ok) {
+        logInternal('discover', new Error(found.reason));
+        return apiError(
+          422,
+          'discover_failed',
+          `Could not read ${targetResolved.target.webOrigin}/. Nothing was sent to the planner.`,
+        );
+      }
+      discovered = found.routes;
+    }
+
     // The planner may take up to four model attempts; do not let Bun's idle timeout cut the response.
     server?.timeout(req, 0);
 
     const draftId = crypto.randomUUID();
     store.createDraft({ id: draftId, trafficEvent, createdAt: at });
+    if (discovered !== undefined) store.setDraftDiscovery(draftId, targetResolved.target.webOrigin, discovered);
 
     let outcome: PlanOutcome;
     try {
-      outcome = await planner(trafficEvent, draftId, targetResolved.target);
+      outcome = await planner(trafficEvent, draftId, targetResolved.target, discovered);
     } catch (err) {
       logInternal('planner', err);
       return apiError(502, 'planning_failed', MSG.planningFailed);
@@ -912,6 +936,7 @@ export function createApp(deps: AppDeps): App {
         gate: null,
         parseError: toParseErrorView(outcome.parseError),
         modelCalls,
+        routes: discovered ?? [],
       };
       return json(200, body);
     }
@@ -931,6 +956,7 @@ export function createApp(deps: AppDeps): App {
       gate,
       parseError: null,
       modelCalls,
+      routes: discovered ?? [],
     };
     return json(200, body);
   };
@@ -952,7 +978,27 @@ export function createApp(deps: AppDeps): App {
     if (!result.ok) {
       return apiError(422, 'plan_rejected', MSG.planRejected, { parseError: toParseErrorView(result.error) });
     }
-    const gate = evaluatePlan(result.plan, targetResolved.target.allowlist);
+    const ownSite = (parsed.data.targetMode ?? 'demo') === 'own';
+    const routeMismatch = "This plan's routes do not match the routes read from the site.";
+    let ownRoutes: DiscoveredRoute[] | undefined;
+    if (ownSite) {
+      if (parsed.data.draftId === undefined) return apiError(400, 'invalid_input', MSG.invalid);
+      const draft = store.getDraft(parsed.data.draftId);
+      const verified = authGate.user === null ? null : store.getVerifiedOrigin(authGate.user.id);
+      const ids = new Set((draft?.routes ?? []).map((r) => r.id));
+      const routesMatch = result.plan.journey.every((step) => ids.has(step.route));
+      const originOk =
+        draft !== null &&
+        draft.origin !== null &&
+        draft.routes !== null &&
+        verified !== null &&
+        draft.origin === verified.origin &&
+        result.plan.target === draft.origin &&
+        result.plan.target === verified.origin;
+      if (!originOk || !routesMatch) return apiError(422, 'plan_rejected', routeMismatch);
+      ownRoutes = draft.routes ?? undefined;
+    }
+    const gate = evaluatePlan(result.plan, targetResolved.target.allowlist, ownRoutes);
     if (gate.status === 'rejected') {
       return apiError(422, 'plan_rejected', MSG.planRejected, {
         violations: gate.violations.map((v) => ({ rule: v.rule, path: v.path, message: v.message })),
@@ -962,7 +1008,10 @@ export function createApp(deps: AppDeps): App {
     const text = printPlan(result.plan);
     const hash = hashPlanText(text);
     store.storeApprovedPlan({ hash, text, approvedAt: now() });
-    const ownSite = (parsed.data.targetMode ?? 'demo') === 'own';
+    if (ownSite && ownRoutes !== undefined) {
+      const origin = result.plan.target;
+      store.storePlanTarget({ planHash: hash, webOrigin: origin, apiOrigin: origin, routes: ownRoutes });
+    }
     return admitAndStart('run', hash, authGate.subject, {
       ownerUserId: authGate.user?.id ?? null,
       visibility: ownSite ? 'private' : 'public',

@@ -120,4 +120,27 @@ describe('POST /api/auth/magic-link', () => {
       true,
     );
   });
-});
+
+
+  test('the fourth send to the same address is refused and no further mail is sent', async () => {
+    const h = makeHarness(true);
+    const post = (email: string) =>
+      h.app.fetch(
+        new Request('http://macro.test/api/auth/magic-link', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ email }),
+        }),
+      );
+    for (let i = 0; i < 3; i++) {
+      const res = await post('a@example.com');
+      expect(res.status).toBe(200);
+    }
+    const blocked = await post('a@example.com');
+    expect(blocked.status).toBe(429);
+    expect(h.sent).toHaveLength(3);
+    const other = await post('b@example.com');
+    expect(other.status).toBe(200);
+    expect(h.sent).toHaveLength(4);
+  });
+  });

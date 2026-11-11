@@ -421,6 +421,9 @@ function safeReturnTo(raw: string | null | undefined): string {
 
 /** At most this many waitlist sign-ups per client IP in any rolling hour (in memory only). */
 export const WAITLIST_LIMIT = { max: 5, windowMs: 3_600_000 } as const;
+/** At most this many magic-link emails per client IP, and per address, in any rolling hour. */
+export const MAGIC_LINK_IP_LIMIT = { max: 5, windowMs: 3_600_000 } as const;
+export const MAGIC_LINK_EMAIL_LIMIT = { max: 3, windowMs: 3_600_000 } as const;
 
 /** Longest address SMTP allows (RFC 5321 path limit). */
 const EMAIL_MAX = 254;
@@ -1358,7 +1361,10 @@ export function createApp(deps: AppDeps): App {
     return new Response(Bun.file(abs), { status: 200, headers });
   }
 
-  const postMagicLink: Handler = async ({ req }) => {
+  const magicLinkIpAllow = rollingLimiter(MAGIC_LINK_IP_LIMIT);
+  const magicLinkEmailAllow = rollingLimiter(MAGIC_LINK_EMAIL_LIMIT);
+
+  const postMagicLink: Handler = async ({ req, ip }) => {
     if (config.auth === undefined) {
       return apiError(503, 'auth_unavailable', MSG.authUnavailable);
     }
@@ -1369,15 +1375,36 @@ export function createApp(deps: AppDeps): App {
     const email = normaliseEmail(parsed.data.email);
     if (email === null) return apiError(400, 'invalid_input', MSG.email);
 
+    const at = now();
+    const ipAllowed = magicLinkIpAllow(ip, at);
+    if (!ipAllowed.ok) {
+      return apiError(
+        429,
+        'rate_limited',
+        'Too many sign-in emails from this connection. Try again later.',
+        { retryAt: ipAllowed.retryAt },
+        retryAfter(ipAllowed.retryAt, at),
+      );
+    }
+    const emailAllowed = magicLinkEmailAllow(email, at);
+    if (!emailAllowed.ok) {
+      return apiError(
+        429,
+        'rate_limited',
+        'Too many sign-in emails for that address. Try again later.',
+        { retryAt: emailAllowed.retryAt },
+        retryAfter(emailAllowed.retryAt, at),
+      );
+    }
+
     const body: MagicLinkResponse = { ok: true };
-    // Always the same success body; only send mail when configured and mailer present.
     const mailer = deps.mailer;
     if (mailer === undefined) {
       logInternal('magic_link.mailer_missing', new Error('mailer not wired'));
       return json(200, body);
     }
 
-    const at = now();
+
     const existing = store.findUserByEmail(email) ?? store.findUserByIdentity('email', email);
     const token = generateMagicToken();
     const tokenHash = hashMagicToken(token);

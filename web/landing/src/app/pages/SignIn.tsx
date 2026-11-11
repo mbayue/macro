@@ -109,7 +109,7 @@ export function SignIn() {
             </p>
           ) : null}
           <div className="actions">
-            <button type="submit" className="btn" disabled={busy || email.trim() === ''}>
+            <button type="submit" className="btn" disabled={busy || sent || email.trim() === ''}>
               {busy ? <Busy>Sending</Busy> : 'Send sign-in link'}
             </button>
             <button type="button" className="btn btn--quiet" onClick={() => navigate('/')}>

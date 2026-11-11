@@ -56,7 +56,10 @@ describe('run privacy and claim', () => {
       },
     };
     const config = authConfig();
-    const ownPlan = samplePlan({ target: OWN });
+    const ownPlan = samplePlan({
+      target: OWN,
+      journey: [{ route: 'r1', probability: 100, thinkMs: 500 }],
+    });
     const app = createApp({
       store,
       config,
@@ -73,6 +76,7 @@ describe('run privacy and claim', () => {
       now: () => NOW,
       log: () => {},
       mailer,
+      fetchImpl: (async () => new Response('<html></html>', { status: 200, headers: { 'content-type': 'text/html' } })) as unknown as typeof fetch,
     });
 
     const cookieA = await signIn(app, sent, 'a@example.com');
@@ -91,7 +95,7 @@ describe('run privacy and claim', () => {
         }),
       }),
     );
-    const planned = (await planRes.json()) as { planText: string };
+    const planned = (await planRes.json()) as { planText: string; draftId: string };
     const start = await app.fetch(
       new Request('http://macro.test/api/approve', {
         method: 'POST',
@@ -101,6 +105,7 @@ describe('run privacy and claim', () => {
           turnstileToken: 't',
           targetMode: 'own',
           targetOrigin: OWN,
+          draftId: planned.draftId,
         }),
       }),
     );

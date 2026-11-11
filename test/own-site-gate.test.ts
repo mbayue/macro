@@ -104,7 +104,10 @@ describe('own-site plan/approve gate', () => {
       },
     };
     const config = authConfig();
-    const ownPlan = samplePlan({ target: OWN });
+    const ownPlan = samplePlan({
+      target: OWN,
+      journey: [{ route: 'r1', probability: 100, thinkMs: 500 }],
+    });
     const app = createApp({
       store,
       config,
@@ -121,6 +124,7 @@ describe('own-site plan/approve gate', () => {
       now: () => NOW,
       log: () => {},
       mailer,
+      fetchImpl: (async () => new Response('<html></html>', { status: 200, headers: { 'content-type': 'text/html' } })) as unknown as typeof fetch,
     });
 
     const cookie = await signIn(app, sent);
@@ -168,6 +172,7 @@ describe('own-site plan/approve gate', () => {
           turnstileToken: 't',
           targetMode: 'own',
           targetOrigin: OWN,
+          draftId: planned.draftId,
         }),
       }),
     );
@@ -199,10 +204,15 @@ describe('own-site plan/approve gate', () => {
       now: () => NOW,
       log: () => {},
       mailer,
+      fetchImpl: (async () => new Response('<html></html>', { status: 200, headers: { 'content-type': 'text/html' } })) as unknown as typeof fetch,
     });
     const cookie = await signIn(app, sent);
     const user = store.findUserByEmail('a@example.com')!;
     store.setVerifiedOrigin(user.id, OWN, 'shop.example.com', 'tok', NOW);
+
+    store.createDraft({ id: 'draft-own-1', trafficEvent: EVENT, createdAt: NOW });
+    store.setDraftDiscovery('draft-own-1', OWN, [{ id: 'r1', kind: 'document', method: 'GET', path: '/' }]);
+    const draftId = 'draft-own-1';
 
     const other = samplePlan({ target: 'https://other.example.com' });
     const res = await app.fetch(
@@ -214,6 +224,7 @@ describe('own-site plan/approve gate', () => {
           turnstileToken: 't',
           targetMode: 'own',
           targetOrigin: OWN,
+          draftId,
         }),
       }),
     );

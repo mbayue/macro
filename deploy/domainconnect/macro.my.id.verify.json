@@ -6,15 +6,17 @@
   "version": 1,
   "logoUrl": "https://macro.my.id/favicon.svg",
   "description": "Authorize DNS TXT verification record for Macro traffic planning.",
+  "variableDescription": "token is the verification code issued by Macro to verify domain ownership.",
   "syncPubKeyDomain": "macro.my.id",
   "syncRedirectDomain": "macro.my.id",
   "syncBlock": false,
   "records": [
     {
       "type": "TXT",
-      "name": "_macro-verify",
+      "host": "_macro-verify",
       "data": "%token%",
-      "ttl": 300
+      "ttl": 300,
+      "txtConflictMatchingMode": "None"
     }
   ]
 }

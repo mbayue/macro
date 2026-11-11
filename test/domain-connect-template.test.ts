@@ -15,7 +15,8 @@ describe('Domain Connect Template', () => {
 
     const txtRecord = template.records.find((r: { type: string }) => r.type === 'TXT');
     expect(txtRecord).toBeDefined();
-    expect(txtRecord?.name).toBe('_macro-verify');
+    expect(txtRecord?.host).toBe('_macro-verify');
     expect(txtRecord?.data).toBe('%token%');
+    expect(txtRecord?.ttl).toBe(300);
   });
 });

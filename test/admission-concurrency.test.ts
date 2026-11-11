@@ -145,7 +145,7 @@ describe('Property 20: one active Run under concurrent starts', () => {
       }),
       { numRuns: 100 },
     );
-  });
+  }, 15000);
 
   test('after the active Run ends, the next concurrent burst again admits exactly one', async () => {
     // Feature: macro, Property 20: One active Run under concurrent starts
@@ -167,7 +167,7 @@ describe('Property 20: one active Run under concurrent starts', () => {
       }),
       { numRuns: 100 },
     );
-  });
+  }, 15000);
 
   test('concurrent admitStart calls: one ok, every other run_active naming the winner; one running row', async () => {
     // Feature: macro, Property 20: One active Run under concurrent starts

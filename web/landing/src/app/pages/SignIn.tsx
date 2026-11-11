@@ -20,6 +20,7 @@ export function SignIn() {
     return () => window.clearInterval(id);
   }, [wait]);
 
+  const params = new URLSearchParams(window.location.hash.split('?')[1] ?? '');
   const githubEmailError = params.get('error') === 'github_email';
 
   if (me !== null) {

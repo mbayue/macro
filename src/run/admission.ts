@@ -6,7 +6,9 @@
 import type { Config } from '../config.ts';
 import type { RunVisibility, Store } from '../store/db.ts';
 import type { RunKind } from '../types.ts';
+import { parsePlan } from '../plan/parser.ts';
 import { DAILY_MAX, START_LIMIT, dailyCheck, rollingCheck, utcDayStart } from './limits.ts';
+import { PROBE_TITLE, normalizeRunTitle } from './title.ts';
 
 export interface AdmissionDeps {
   store: Store;
@@ -57,6 +59,12 @@ export function formatUtc(ms: number): string {
 }
 
 export const NOT_APPROVED_MESSAGE = 'This Test_Plan is not approved. Approve the plan before starting a Run.';
+
+function planName(text: string | undefined): string | null {
+  if (text === undefined) return null;
+  const parsed = parsePlan(text);
+  return parsed.ok ? parsed.plan.name : null;
+}
 
 export function admitStart(deps: AdmissionDeps, req: StartRequest): AdmissionResult {
   const { store, config } = deps;
@@ -119,6 +127,10 @@ export function admitStart(deps: AdmissionDeps, req: StartRequest): AdmissionRes
     }
 
     const runId = newId();
+    const title =
+      req.kind === 'probe'
+        ? PROBE_TITLE
+        : normalizeRunTitle(planHash === null ? null : planName(store.getPlan(planHash)?.text));
     store.createRun({
       id: runId,
       kind: req.kind,
@@ -127,6 +139,7 @@ export function admitStart(deps: AdmissionDeps, req: StartRequest): AdmissionRes
       startedAt: req.now,
       ownerUserId: req.ownerUserId ?? null,
       visibility: req.visibility ?? 'public',
+      title,
     });
     store.recordClientStart(req.ip, req.now);
     return { ok: true, runId };

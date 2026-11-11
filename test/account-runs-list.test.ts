@@ -89,5 +89,6 @@ describe('GET /api/account/runs', () => {
     expect(list.status).toBe(200);
     const body = (await list.json()) as { runs: RunListItem[] };
     expect(body.runs.some((r) => r.runId === runId)).toBe(true);
+    expect(body.runs.find((r) => r.runId === runId)?.title).toBe('Sample plan');
   });
 });

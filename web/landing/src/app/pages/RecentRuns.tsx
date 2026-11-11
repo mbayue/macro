@@ -35,14 +35,14 @@ export function RecentRunsPage() {
           const res = await fetch('/api/account/runs', { credentials: 'same-origin', signal: abort.signal });
           if (res.ok) {
             const body = (await res.json()) as {
-              runs: { runId: string; startedAt: number; status: RunStatus }[];
+              runs: { runId: string; startedAt: number; status: RunStatus; title?: string }[];
             };
             setSource('account');
             setList(
               body.runs.map((r) => ({
                 id: r.runId,
                 kind: 'run' as const,
-                name: 'Load test',
+                name: r.title && r.title.trim() !== '' ? r.title : 'Load test',
                 startedAt: r.startedAt,
               })),
             );

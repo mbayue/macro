@@ -225,6 +225,8 @@ export interface RunListItem {
   /** null = "none" / "not reached" per requirement 13.2. */
   safeCapacity: number | null;
   breakingPoint: number | null;
+  /** Approved plan name, or a fixed probe/fallback title. */
+  title: string;
 }
 
 export interface RunListResponse {

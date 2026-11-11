@@ -51,7 +51,8 @@ CREATE TABLE IF NOT EXISTS runs (
   runtime TEXT NOT NULL, started_at INTEGER NOT NULL, ended_at INTEGER,
   probe_result TEXT,
   owner_user_id TEXT,
-  visibility TEXT NOT NULL DEFAULT 'public' CHECK (visibility IN ('public','private'))
+  visibility TEXT NOT NULL DEFAULT 'public' CHECK (visibility IN ('public','private')),
+  title TEXT
 );
 CREATE INDEX IF NOT EXISTS runs_plan ON runs(plan_hash, started_at DESC);
 CREATE INDEX IF NOT EXISTS runs_started ON runs(started_at);
@@ -160,6 +161,8 @@ export interface RunRow {
   probeResult: unknown;
   ownerUserId: string | null;
   visibility: RunVisibility;
+  /** Null on rows created before titles were stored. */
+  title: string | null;
 }
 
 export interface NewRun {
@@ -170,6 +173,7 @@ export interface NewRun {
   startedAt: number;
   ownerUserId?: string | null;
   visibility?: RunVisibility;
+  title?: string | null;
 }
 
 export interface StageRow {
@@ -255,7 +259,7 @@ interface RawPlan { hash: string; text: string; approved_at: number }
 interface RawRun {
   id: string; kind: RunKind; plan_hash: string | null; status: RunStatus; status_reason: string | null;
   runtime: SandboxRuntime; started_at: number; ended_at: number | null; probe_result: string | null;
-  owner_user_id: string | null; visibility: RunVisibility;
+  owner_user_id: string | null; visibility: RunVisibility; title: string | null;
 }
 interface RawStage {
   run_id: string; idx: number; vus: number; duration_sec: number; status: StageStatus;
@@ -312,7 +316,7 @@ interface RawAccountDraft {
 }
 
 const RUN_COLS =
-  'id, kind, plan_hash, status, status_reason, runtime, started_at, ended_at, probe_result, owner_user_id, visibility';
+  'id, kind, plan_hash, status, status_reason, runtime, started_at, ended_at, probe_result, owner_user_id, visibility, title';
 
 function parseJson(text: string | null): unknown {
   return text === null ? null : (JSON.parse(text) as unknown);
@@ -331,6 +335,7 @@ function toRun(r: RawRun): RunRow {
     probeResult: parseJson(r.probe_result),
     ownerUserId: r.owner_user_id,
     visibility: r.visibility ?? 'public',
+    title: r.title,
   };
 }
 
@@ -458,6 +463,9 @@ export class Store {
     if (!cols.includes('visibility')) {
       this.db.exec("ALTER TABLE runs ADD COLUMN visibility TEXT NOT NULL DEFAULT 'public'");
     }
+    if (!cols.includes('title')) {
+      this.db.exec('ALTER TABLE runs ADD COLUMN title TEXT');
+    }
   }
 
   /** Opens `${dataDir}/macro.db`. */
@@ -524,8 +532,8 @@ export class Store {
   createRun(run: NewRun): void {
     this.db
       .prepare(
-        `INSERT INTO runs (id, kind, plan_hash, status, runtime, started_at, owner_user_id, visibility)
-         VALUES (?, ?, ?, 'running', ?, ?, ?, ?)`,
+        `INSERT INTO runs (id, kind, plan_hash, status, runtime, started_at, owner_user_id, visibility, title)
+         VALUES (?, ?, ?, 'running', ?, ?, ?, ?, ?)`,
       )
       .run(
         run.id,
@@ -535,6 +543,7 @@ export class Store {
         run.startedAt,
         run.ownerUserId ?? null,
         run.visibility ?? 'public',
+        run.title ?? null,
       );
   }
 

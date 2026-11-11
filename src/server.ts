@@ -90,6 +90,7 @@ import { admitStart, formatUtc, isPlanHash } from './run/admission.ts';
 import type { AdmissionResult } from './run/admission.ts';
 import { toStageViewPayload } from './run/controller.ts';
 import { PLANNING_LIMIT, rollingCheck } from './run/limits.ts';
+import { LOAD_TEST_TITLE, PROBE_TITLE, normalizeRunTitle } from './run/title.ts';
 import { clientIp } from './security/client-ip.ts';
 import type { ModelCallRow, RunRow, RunVisibility, StoredEvent, Store } from './store/db.ts';
 import type { RunKind, TestPlan } from './types.ts';
@@ -1128,6 +1129,12 @@ export function createApp(deps: AppDeps): App {
     return parsed.ok ? parsed.plan : null;
   }
 
+  function runTitle(run: RunRow): string {
+    if (run.title !== null && run.title.trim() !== '') return run.title;
+    if (run.kind === 'probe') return PROBE_TITLE;
+    return normalizeRunTitle(planFromStore(run.planHash)?.name, LOAD_TEST_TITLE);
+  }
+
   const getRunSnapshot: Handler = (c) => {
     const id = runIdParam(c);
     if (id === null) return notFound();
@@ -1173,6 +1180,7 @@ export function createApp(deps: AppDeps): App {
           status: r.status,
           safeCapacity: headlineValue(body, 'safeCapacity'),
           breakingPoint: headlineValue(body, 'breakingPoint'),
+          title: runTitle(r),
         };
       });
     const body: RunListResponse = { planHash: hash, runs };
@@ -1686,6 +1694,7 @@ export function createApp(deps: AppDeps): App {
         status: r.status,
         safeCapacity: headlineValue(body, 'safeCapacity'),
         breakingPoint: headlineValue(body, 'breakingPoint'),
+        title: runTitle(r),
       };
     });
     const body: AccountRunsResponse = { runs };

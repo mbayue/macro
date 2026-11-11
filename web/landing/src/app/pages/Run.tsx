@@ -101,7 +101,7 @@ export function RunPage({ id }: { id: string }) {
         )
       ) : null}
 
-      {report ? <p className="verdict">{verdictLine(report)}</p> : null}
+      {report ? <p className="verdict">{verdictLine(report, model.routes)}</p> : null}
       {report ? <ReportTiles model={model} now={now} /> : <LiveTiles model={model} now={now} />}
       {report && (reason || reportNotices(report).length > 0) ? (
         <div className="report-notes">
@@ -117,7 +117,7 @@ export function RunPage({ id }: { id: string }) {
             <span className="muted">After each finished stage</span>
           </div>
           <TableWrap label="Chart of p95 latency per route">
-            <RouteChart stages={model.stages} plan={model.plan} limitMs={limit?.p95Ms ?? 1500} />
+            <RouteChart stages={model.stages} plan={model.plan} limitMs={limit?.p95Ms ?? 1500} routes={model.routes} />
           </TableWrap>
         </section>
         <Feed stages={model.stages} decisions={model.decisions} containment={model.containment} total={model.plan?.stages.length ?? null} />
@@ -198,7 +198,7 @@ function overWhat(s: ReportStageView, th: CapacityReport['thresholds']): string 
  * The report's answer in one sentence, built only from the headline values and stage rows
  * (never from AI text): how much load held, where it broke, and the first route to go over.
  */
-export function verdictLine(report: CapacityReport): string {
+export function verdictLine(report: CapacityReport, routes: readonly { id: string; path: string }[] = []): string {
   const { safeCapacity: safe, breakingPoint: brk, firstDegradedRoute: route } = report.headline;
   const th = report.thresholds;
   const measured = report.stages.filter((s) => s.overall !== null);
@@ -221,7 +221,9 @@ export function verdictLine(report: CapacityReport): string {
     const hit = measured.map((s) => ({ s, r: s.routes.find((r) => r.route === route && r.exceedsThresholds) })).find((x) => x.r);
     if (hit?.r) {
       const what = hit.r.raw.p95 > th.p95Ms ? `the ${fmtN(th.p95Ms)} ms p95 limit` : `the ${th.errorRatePct}% error limit`;
-      line += ` ${route} was the first route over ${what}, at ${fmtN(hit.s.vus)} VUs.`;
+      const path = routes.find((r) => r.id === route)?.path;
+      const label = path === undefined ? route : `${route} (${path})`;
+      line += ` ${label} was the first route over ${what}, at ${fmtN(hit.s.vus)} VUs.`;
     }
   }
   return line;

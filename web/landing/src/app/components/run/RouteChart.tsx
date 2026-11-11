@@ -19,7 +19,17 @@ interface Series {
   points: { stage: number; p95: number }[];
 }
 
-export function RouteChart({ stages, plan, limitMs }: { stages: readonly StageView[]; plan: TestPlan | null; limitMs: number }) {
+export function RouteChart({
+  stages,
+  plan,
+  limitMs,
+  routes = [],
+}: {
+  stages: readonly StageView[];
+  plan: TestPlan | null;
+  limitMs: number;
+  routes?: readonly { id: string; path: string }[];
+}) {
   const [box, measured] = useWidth<HTMLDivElement>(720);
   const W = Math.max(MIN_W, measured);
   const M = { top: 24, right: W < 520 ? 124 : 156, bottom: 44, left: W < 520 ? 44 : 56 };
@@ -122,7 +132,7 @@ export function RouteChart({ stages, plan, limitMs }: { stages: readonly StageVi
               {Math.abs(ly - l.at) > 2 ? <path className="route-chart__leader" d={`M${l.x + 5} ${l.at} L${l.x + 10} ${ly}`} /> : null}
               <line className="route-chart__swatch" x1={l.x + 12} x2={l.x + 30} y1={ly} y2={ly} strokeDasharray={dash} />
               <text className={l.lead ? 'route-chart__name is-lead' : 'route-chart__name'} x={l.x + 35} y={l.y}>
-                {l.route}
+                {routes.find((r) => r.id === l.route)?.path ?? l.route}
               </text>
             </g>
           );

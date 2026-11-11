@@ -412,6 +412,11 @@ export function NewTest() {
                     </>
                   )}
                 </div>
+                {targetMode === 'own' ? (
+                  <p className="muted">
+                    Macro reads / on your site, then the scripts that page links, and uses those files as the journey. It does not run the page.
+                  </p>
+                ) : null}
               </div>
 
               <div className="row">
@@ -469,6 +474,7 @@ export function NewTest() {
                 {...(targetMode === 'own' && verifiedOrigin !== null
                   ? { targetOrigin: verifiedOrigin.origin }
                   : {})}
+                draftId={review.draftId}
                 busy={busy}
                 setBusy={setBusy}
                 onCancel={cancelPlan}
@@ -584,7 +590,7 @@ function Review({ res, stale, busy, onEdit }: { res: PlanResponse; stale: boolea
               <p>This plan has no policy result, so it cannot be approved.</p>
             </div>
           ) : null}
-          <PlanDetails plan={plan} rationale={res.rationale} />
+          <PlanDetails plan={plan} rationale={res.rationale} routes={res.routes} />
         </>
       )}
       <ModelCalls calls={res.modelCalls} />
@@ -592,7 +598,15 @@ function Review({ res, stale, busy, onEdit }: { res: PlanResponse; stale: boolea
   );
 }
 
-function PlanDetails({ plan, rationale }: { plan: TestPlan; rationale: string | null }) {
+function PlanDetails({
+  plan,
+  rationale,
+  routes,
+}: {
+  plan: TestPlan;
+  rationale: string | null;
+  routes: PlanResponse['routes'];
+}) {
   const { config } = useApp();
   const catalog = new Map<string, (typeof config.catalog)[number]>(config.catalog.map((r) => [r.id, r]));
   const captionId = useId();
@@ -695,7 +709,8 @@ function PlanDetails({ plan, rationale }: { plan: TestPlan; rationale: string | 
           </thead>
           <tbody role="rowgroup">
             {plan.journey.map((step, i) => {
-              const route = catalog.get(step.route);
+              const route =
+                routes.length > 0 ? routes.find((r) => r.id === step.route) : catalog.get(step.route);
               return (
                 <tr key={`${step.route}-${i}`} role="row">
                   <th scope="row" role="rowheader" className="code">
@@ -736,6 +751,7 @@ function ApprovePanel({
   planText,
   targetMode,
   targetOrigin,
+  draftId,
   busy,
   setBusy,
   onCancel,
@@ -748,6 +764,7 @@ function ApprovePanel({
   planText: string;
   targetMode: TargetMode;
   targetOrigin?: string;
+  draftId: string;
   busy: Busy;
   setBusy: (b: Busy) => void;
   onCancel: () => void;
@@ -777,6 +794,7 @@ function ApprovePanel({
         turnstileToken: token,
         targetMode,
         ...(targetOrigin !== undefined ? { targetOrigin } : {}),
+        ...(targetMode === 'own' ? { draftId } : {}),
       });
     } catch {
       result = { ok: false, error: VERIFICATION_ERROR };

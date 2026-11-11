@@ -6,6 +6,7 @@ import type {
   DecisionView,
   EventView,
   ModelCallView,
+  PlanRouteView,
   RunSnapshot,
   RunView,
   StageView,
@@ -67,6 +68,7 @@ export interface RunModel {
   containment: ContainmentEntry[];
   report: CapacityReport | null;
   modelCalls: ModelCallView[];
+  routes: PlanRouteView[];
   /** Ids of every event already reflected in this model (snapshot events + applied events). */
   seen: Set<number>;
   /** Events applied from the stream that the last snapshot did not contain. */
@@ -205,6 +207,7 @@ export function modelFromSnapshot(snap: RunSnapshot): RunModel {
     containment,
     report: snap.report,
     modelCalls: snap.modelCalls,
+    routes: snap.routes,
     seen,
     extras: [],
   };

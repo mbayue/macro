@@ -7,7 +7,7 @@ import { AlertRegion, Busy, Panel } from '../components/ui.tsx';
 import { useApp } from '../context.tsx';
 
 export function SignIn() {
-  const { navigate, announce, refreshMe } = useApp();
+  const { me, navigate, announce, refreshMe } = useApp();
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
@@ -15,6 +15,32 @@ export function SignIn() {
 
   const params = new URLSearchParams(window.location.hash.split('?')[1] ?? '');
   const githubEmailError = params.get('error') === 'github_email';
+
+  if (me !== null) {
+    return (
+      <section className="page">
+        <header className="page__head">
+          <h1 className="page__title">Account</h1>
+          <p className="page__lead">
+            You are signed in as <strong>{me.user.githubLogin ?? me.user.email}</strong>.
+          </p>
+        </header>
+        <Panel title="Session active">
+          <p className="muted">
+            Your account can run private load tests against your verified origin.
+          </p>
+          <p className="actions">
+            <button type="button" className="btn" onClick={() => navigate('#/')}>
+              Back to new test
+            </button>
+            <a href="#/runs" className="btn btn--quiet">
+              View your runs
+            </a>
+          </p>
+        </Panel>
+      </section>
+    );
+  }
 
   async function onMagic(e: React.FormEvent) {
     e.preventDefault();

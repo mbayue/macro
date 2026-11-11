@@ -518,12 +518,19 @@ a { text-underline-offset: 0.2em; }
   text-decoration: none !important;
   cursor: pointer;
   white-space: nowrap;
-  transition: opacity 140ms ease;
+  transition: opacity 140ms ease, transform 100ms ease-out;
+}
+.btn--cf:active {
+  transform: scale(0.97);
 }
 @media (hover: hover) and (pointer: fine) {
   .btn--cf:hover {
     opacity: 0.88;
   }
+}
+
+#verify-panel {
+  scroll-margin-top: 72px;
 }
 
 /* Verification records block in VerifyPanel (sidebar-friendly) */
@@ -572,7 +579,10 @@ a { text-underline-offset: 0.2em; }
   display: grid;
   place-items: center;
   color: var(--muted);
-  transition: color 140ms ease, background-color 140ms ease;
+  transition: color 140ms ease, background-color 140ms ease, transform 100ms ease-out;
+}
+.btn--copy:active {
+  transform: scale(0.92);
 }
 @media (hover: hover) and (pointer: fine) {
   .btn--copy:hover {

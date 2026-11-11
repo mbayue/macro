@@ -13,7 +13,7 @@ const ID_PATTERN = /^[A-Za-z0-9._~-]{1,100}$/;
 
 export function parseRoute(hash: string): Route {
   const path = hash.replace(/^#/, '');
-  if (path === '' || path === '/') return { view: 'new' };
+  if (path === '' || path === '/' || path === 'verify-panel') return { view: 'new' };
   const bare = path.replace(/^\//, '').split('?')[0] ?? '';
   const [kind, rawId, ...rest] = bare.split('/');
   if (kind === 'sign-in' && (rawId === undefined || rawId === '') && rest.length === 0) return { view: 'sign-in' };

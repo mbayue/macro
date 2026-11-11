@@ -454,6 +454,16 @@ a { text-underline-offset: 0.2em; }
   color: var(--ink);
   text-decoration: underline;
   text-underline-offset: 0.2em;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) {
+  .target-meta__link:hover {
+    color: var(--accent);
+  }
 }
 .btn--inline-clear {
   padding: 2px 8px;

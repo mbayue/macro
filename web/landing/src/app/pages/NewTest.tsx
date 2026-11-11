@@ -385,9 +385,17 @@ export function NewTest() {
                   ) : (
                     <>
                       <span className="target-meta__notice">Domain verification required before drafting.</span>
-                      <a href="#verify-panel" className="target-meta__link">
+                      <button
+                        type="button"
+                        className="target-meta__link"
+                        onClick={() => {
+                          const panel = document.getElementById('verify-panel');
+                          panel?.scrollIntoView({ behavior: 'smooth' });
+                          panel?.querySelector<HTMLInputElement>('input[name="host"]')?.focus();
+                        }}
+                      >
                         See verification panel →
-                      </a>
+                      </button>
                     </>
                   )}
                 </div>

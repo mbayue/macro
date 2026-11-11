@@ -1,6 +1,6 @@
 # Account + Own-Site Verification Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Add personal accounts (GitHub + Resend magic link), one verified origin per account, and gate own-site load tests while keeping the demo shop usable signed out.
 
@@ -101,7 +101,7 @@ Builder defaults pinned by this plan (spec left them open):
   - `Store.getVerifiedOrigin(userId: string): VerifiedOriginRow | null`
   - `Store.findVerifiedOriginByHost(host: string): VerifiedOriginRow | null`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 test('createSession + touchSession slides expiresAt', () => {
@@ -122,21 +122,21 @@ test('setVerifiedOrigin refuses host owned by another user', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `bun test test/auth-store.test.ts`
 Expected: FAIL (methods missing)
 
-- [ ] **Step 3: Implement schema + methods in `src/store/db.ts` and types in `src/auth/types.ts`**
+- [x] **Step 3: Implement schema + methods in `src/store/db.ts` and types in `src/auth/types.ts`**
 
 Add tables: `users`, `auth_identities`, `sessions`, `verified_origins` (UNIQUE on `host`). Normalize emails to lowercase trim on write. Session ids: `crypto.randomUUID()` or 32+ random bytes hex.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `bun test test/auth-store.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/store/db.ts src/auth/types.ts test/auth-store.test.ts
@@ -162,19 +162,19 @@ git commit -m "feat(auth): add user session and verified-origin store"
   - `serializeClearSessionCookie(): string`
   - `Config.auth?: { sessionSecret: string; publicBaseUrl: string; resendApiKey: string; resendFrom: string; githubClientId: string; githubClientSecret: string; githubRedirectUri: string }` — present only when all auth env vars are set; otherwise `auth` omitted and auth routes stay disabled
 
-- [ ] **Step 1: Write failing tests for cookie round-trip and config all-or-nothing auth**
+- [x] **Step 1: Write failing tests for cookie round-trip and config all-or-nothing auth**
 
 Assert `parseSessionId` reads `macro_session`; `serializeSessionCookie` includes `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`. Assert partial auth env fails config; complete auth env freezes `config.auth`.
 
-- [ ] **Step 2: Run tests — expect FAIL**
+- [x] **Step 2: Run tests — expect FAIL**
 
 Run: `bun test test/session-cookie.test.ts test/config.test.ts`
 
-- [ ] **Step 3: Implement `src/auth/session.ts` and extend `parseConfig`**
+- [x] **Step 3: Implement `src/auth/session.ts` and extend `parseConfig`**
 
-- [ ] **Step 4: Run tests — expect PASS**
+- [x] **Step 4: Run tests — expect PASS**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/auth/session.ts src/config.ts test/session-cookie.test.ts test/config.test.ts
@@ -200,7 +200,7 @@ git commit -m "feat(auth): session cookie helpers and auth config"
     - `POST /api/auth/magic-link` body `{ email: string }` → always `{ ok: true }` (no email enumeration); sends link when auth configured
     - `GET /api/auth/magic-link/consume?token=` → creates/merges user by email, creates session, Set-Cookie, redirect `303` to `/app/#/` (or safe relative `returnTo` if provided and same-origin path)
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 ```ts
 test('consume creates session cookie and cannot be reused', async () => {
@@ -214,17 +214,17 @@ test('consume creates session cookie and cannot be reused', async () => {
 
 Also: invalid email → 400; auth unset → 503 fixed message.
 
-- [ ] **Step 2: Run — expect FAIL**
+- [x] **Step 2: Run — expect FAIL**
 
 Run: `bun test test/auth-magic-link.test.ts`
 
-- [ ] **Step 3: Implement mailer + routes; inject mailer on `AppDeps`**
+- [x] **Step 3: Implement mailer + routes; inject mailer on `AppDeps`**
 
 TTL 15 minutes. Create user on first consume if needed; `linkIdentity(..., 'email', email)`.
 
-- [ ] **Step 4: Run — expect PASS**
+- [x] **Step 4: Run — expect PASS**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/auth/magic-link.ts src/store/db.ts src/server.ts src/api-types.ts src/main.ts test/auth-magic-link.test.ts
@@ -248,19 +248,19 @@ git commit -m "feat(auth): Resend magic link sign-in"
   - `GET /api/auth/github/start` → 302 to GitHub with state stored in short-lived httpOnly cookie or server table
   - `GET /api/auth/github/callback?code&state` → on success merge by email / link github identity / Set-Cookie session / redirect `/app/#/`; on `no_email` redirect `/app/#/sign-in?error=github_email`
 
-- [ ] **Step 1: Write failing tests** with injectable fetch: success path sets session; `no_email` creates no user; bad state rejected.
+- [x] **Step 1: Write failing tests** with injectable fetch: success path sets session; `no_email` creates no user; bad state rejected.
 
-- [ ] **Step 2: Run — expect FAIL**
+- [x] **Step 2: Run — expect FAIL**
 
 Run: `bun test test/auth-github.test.ts`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Same-email merge: if GitHub email matches existing user, link `github` identity to that user; if GitHub subject already linked, sign that user in.
 
-- [ ] **Step 4: Run — expect PASS**
+- [x] **Step 4: Run — expect PASS**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/auth/github.ts src/server.ts src/main.ts src/api-types.ts test/auth-github.test.ts
@@ -284,7 +284,7 @@ git commit -m "feat(auth): GitHub OAuth sign-in with email required"
   - For `/api/plan`, `/api/approve`, `/api/runs`, `/api/probe`: if valid session, skip Turnstile; rate-limit using subject `user:<id>` via store helpers that accept a `subject: string` instead of only IP (keep IP path for signed-out)
   - Sliding: every successful session resolution calls `touchSession`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 ```ts
 test('signed-in plan skips Turnstile and records planning under user subject', async () => {
@@ -295,17 +295,17 @@ test('signed-out plan still requires Turnstile', async () => { /* turnstileOk=fa
 test('sign-out clears cookie and /api/me becomes 401', async () => { /* ... */ });
 ```
 
-- [ ] **Step 2: Run — expect FAIL**
+- [x] **Step 2: Run — expect FAIL**
 
 Run: `bun test test/auth-session-gate.test.ts`
 
-- [ ] **Step 3: Implement gate + limit subject keys**
+- [x] **Step 3: Implement gate + limit subject keys**
 
 Keep existing IP tables working: either add `subject TEXT` column (migrate) or store `user:<id>` in the existing `ip` column for signed-in traffic (document that choice in code comment). Prefer renaming conceptually to `subject` via new columns `planning_requests.subject` / `client_starts.subject` with migration copy — if migration risk is high in this codebase's `CREATE IF NOT EXISTS` style, storing `user:<id>` in `ip` is acceptable for v1.
 
-- [ ] **Step 4: Run — expect PASS**
+- [x] **Step 4: Run — expect PASS**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/server.ts src/api-types.ts src/store/db.ts test/auth-session-gate.test.ts
@@ -325,18 +325,18 @@ git commit -m "feat(auth): me endpoint, sign-out, Turnstile skip, account caps"
 - Consumes: `GET /api/me`, `POST /api/auth/magic-link`, `GET /api/auth/github/start`, `POST /api/auth/sign-out`
 - Produces: route `{ view: 'sign-in' }` for `#/sign-in`; context `me: MeResponse | null` + `refreshMe()`; Shell foot shows Sign in or email/github + verified host/`none` + Sign out
 
-- [ ] **Step 1: Add router + SignIn page wiring (fail typecheck if Me types missing — already added)**
+- [x] **Step 1: Add router + SignIn page wiring (fail typecheck if Me types missing — already added)**
 
-- [ ] **Step 2: Implement SignIn (GitHub button → `/api/auth/github/start`; email form → magic link; copy: "Check your email for a sign-in link.") and Shell identity**
+- [x] **Step 2: Implement SignIn (GitHub button → `/api/auth/github/start`; email form → magic link; copy: "Check your email for a sign-in link.") and Shell identity**
 
 Sign out: call API, `refreshMe()`, `navigate('/')`.
 
-- [ ] **Step 3: Typecheck**
+- [x] **Step 3: Typecheck**
 
 Run: `bun x tsc --noEmit`
 Expected: PASS
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add web/landing/src/app/pages/SignIn.tsx web/landing/src/app/lib/auth-api.ts web/landing/src/app/router.ts web/landing/src/app/App.tsx web/landing/src/app/context.tsx web/landing/src/app/components/Shell.tsx web/landing/src/app/app.css
@@ -361,17 +361,17 @@ git commit -m "feat(app): sign-in page and rail identity slot"
   - `POST /api/verify/check` auth required → tries DNS then well-known; on success `setVerifiedOrigin`; on contested host → 409 fixed message
   - `POST /api/verify/clear` auth required → `clearVerifiedOrigin`
 
-- [ ] **Step 1: Write failing tests** for normalize, DNS success, well-known success, contested 409, clear to none.
+- [x] **Step 1: Write failing tests** for normalize, DNS success, well-known success, contested 409, clear to none.
 
-- [ ] **Step 2: Run — expect FAIL**
+- [x] **Step 2: Run — expect FAIL**
 
 Run: `bun test test/verify-origin.test.ts`
 
-- [ ] **Step 3: Implement pure checks + routes; inject `resolveTxt` and `fetchImpl` on `AppDeps`**
+- [x] **Step 3: Implement pure checks + routes; inject `resolveTxt` and `fetchImpl` on `AppDeps`**
 
-- [ ] **Step 4: Run — expect PASS**
+- [x] **Step 4: Run — expect PASS**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/auth/verify-origin.ts src/server.ts src/api-types.ts src/main.ts src/store/db.ts web/landing/src/app/components/VerifyPanel.tsx test/verify-origin.test.ts
@@ -397,19 +397,19 @@ git commit -m "feat(auth): DNS and well-known origin verification"
   - Signed-in `own` without verify → `403` code `verification_required`
   - Probe ignores own-site (unchanged demo)
 
-- [ ] **Step 1: Write failing tests** covering auth_required, verification_required, demo still works signed-out, own accepted only for verified origin, approve rejects plan targeting some other host
+- [x] **Step 1: Write failing tests** covering auth_required, verification_required, demo still works signed-out, own accepted only for verified origin, approve rejects plan targeting some other host
 
-- [ ] **Step 2: Run — expect FAIL**
+- [x] **Step 2: Run — expect FAIL**
 
 Run: `bun test test/own-site-gate.test.ts`
 
-- [ ] **Step 3: Implement server gates; pass selected allowlist into `evaluatePlan` and planner deps for that request; update NewTest UI with Demo/My site control and VerifyPanel interrupt before Draft/Approve**
+- [x] **Step 3: Implement server gates; pass selected allowlist into `evaluatePlan` and planner deps for that request; update NewTest UI with Demo/My site control and VerifyPanel interrupt before Draft/Approve**
 
 Signed-out My site → `navigate('/sign-in')` after stashing draft locally (Task 9 finishes persistence).
 
-- [ ] **Step 4: Run — expect PASS** + `bun x tsc --noEmit`
+- [x] **Step 4: Run — expect PASS** + `bun x tsc --noEmit`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/server.ts src/api-types.ts src/agents/planner.ts web/landing/src/app/pages/NewTest.tsx web/landing/src/app/lib/api.ts test/own-site-gate.test.ts
@@ -431,17 +431,17 @@ git commit -m "feat: gate own-site plan and approve on verified origin"
   - `PUT /api/draft` auth body draft → stores; on conflict with older `lastEditedAt` than stored, return stored winner with 409 `{ draft }` **or** accept client only when `client.lastEditedAt >= server.lastEditedAt` — **pin: server keeps the newer `lastEditedAt`; if equal, request body wins**
   - Sign-in returnTo restores New test with server draft after consume/callback
 
-- [ ] **Step 1: Write failing tests** for newer-wins and GET after PUT
+- [x] **Step 1: Write failing tests** for newer-wins and GET after PUT
 
-- [ ] **Step 2: Run — expect FAIL**
+- [x] **Step 2: Run — expect FAIL**
 
 Run: `bun test test/account-draft.test.ts`
 
-- [ ] **Step 3: Implement store table `account_drafts` + routes + client sync on sign-in and while signed in (debounce optional; at least on blur/Draft click / before navigate to sign-in)**
+- [x] **Step 3: Implement store table `account_drafts` + routes + client sync on sign-in and while signed in (debounce optional; at least on blur/Draft click / before navigate to sign-in)**
 
-- [ ] **Step 4: Run — expect PASS**
+- [x] **Step 4: Run — expect PASS**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/store/db.ts src/server.ts src/api-types.ts web/landing/src/app/pages/NewTest.tsx web/landing/src/app/pages/SignIn.tsx web/landing/src/app/lib/auth-api.ts test/account-draft.test.ts
@@ -464,19 +464,19 @@ git commit -m "feat: persist account drafts with newer-last-edited wins"
   - `POST /api/auth/claim` auth body `{ runIds: string[] }` (max 10) → for each public demo run with null/other owner, set `owner_user_id` to claimant; never flip visibility to private
   - Client: after sign-in, call claim with `loadRecentRuns().map(r => r.id)`
 
-- [ ] **Step 1: Write failing tests** for private 404, owner can read, claim keeps public, stop still works for owner
+- [x] **Step 1: Write failing tests** for private 404, owner can read, claim keeps public, stop still works for owner
 
-- [ ] **Step 2: Run — expect FAIL**
+- [x] **Step 2: Run — expect FAIL**
 
 Run: `bun test test/run-privacy.test.ts`
 
-- [ ] **Step 3: Implement migration + gates + claim**
+- [x] **Step 3: Implement migration + gates + claim**
 
 Live sandbox on sign-out: no change to controller stop behavior (already only Stop endpoint).
 
-- [ ] **Step 4: Run — expect PASS**
+- [x] **Step 4: Run — expect PASS**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/store/db.ts src/server.ts src/api-types.ts web/landing/src/app/lib/recent-runs.ts web/landing/src/app/App.tsx web/landing/src/app/lib/auth-api.ts test/run-privacy.test.ts
@@ -498,19 +498,19 @@ git commit -m "feat: private own-site runs and claim demo runs on sign-in"
   - Shell rail heading: signed-in `"Your runs"`; signed-out keep `"In this browser"`
   - Footer copy when signed in with verified origin: say they can test that host; otherwise keep honest demo-only / verification coming language without claiming unpaid features
 
-- [ ] **Step 1: Write failing API test for account runs list**
+- [x] **Step 1: Write failing API test for account runs list**
 
-- [ ] **Step 2: Run — expect FAIL**
+- [x] **Step 2: Run — expect FAIL**
 
 Run: `bun test test/account-runs-list.test.ts`
 
-- [ ] **Step 3: Implement + UI + PRODUCT.md Phase 2 note that accounts/verification are the next build (or in progress once this ships)**
+- [x] **Step 3: Implement + UI + PRODUCT.md Phase 2 note that accounts/verification are the next build (or in progress once this ships)**
 
-- [ ] **Step 4: Run tests + `bun x tsc --noEmit` + `bun test` (full suite) + `bun run build:web`
+- [x] **Step 4: Run tests + `bun x tsc --noEmit` + `bun test` (full suite) + `bun run build:web`
 
 Expected: all PASS / build OK
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/server.ts src/api-types.ts web/landing/src/app/pages/RecentRuns.tsx web/landing/src/app/components/Shell.tsx PRODUCT.md test/account-runs-list.test.ts
@@ -525,9 +525,9 @@ git commit -m "feat: account run list and honest own-site footer copy"
 - Modify: `README.md`
 - Optional: `.env.example` if present (do not create secrets)
 
-- [ ] **Step 1: Document auth env vars and the Demo vs My site flow without claiming production OAuth is configured**
+- [x] **Step 1: Document auth env vars and the Demo vs My site flow without claiming production OAuth is configured**
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add README.md

@@ -7,6 +7,7 @@ import {
   MAX_SUGGESTION_CHARS,
   NOTE_UNAVAILABLE,
   NOTE_WITHHELD,
+  REPORTER_SYSTEM_PROMPT,
   reportToPromptText,
   templateExplanation,
   writeReport,
@@ -199,5 +200,85 @@ describe('Report_Writer examples', () => {
 
   test('the template explanation itself passes the guard for any report', () => {
     expect(guardText(templateExplanation(REPORT), ALLOWED)).toEqual({ ok: true });
+  });
+});
+
+const OWN_ROUTES = [
+  { id: 'r1', method: 'GET', path: '/', kind: 'document' },
+  { id: 'r2', method: 'GET', path: '/assets/index-DvJJu3n8.js', kind: 'script' },
+  { id: 'r3', method: 'GET', path: '/assets/app.12345.css', kind: 'style' },
+];
+
+const OWN_REPORT: CapacityReport = buildReport(
+  reportInputOf(
+    [
+      {
+        index: 0,
+        vus: 25,
+        durationSec: 30,
+        status: 'done',
+        metrics: stageMetricsOf(metricsOf(827, 0), { r2: metricsOf(827), r3: metricsOf(270) }),
+      },
+    ],
+    { routeOrder: ['r1', 'r2', 'r3'] },
+  ),
+);
+
+describe('Report_Writer route legend', () => {
+  test('discovered routes replace the demo catalog', () => {
+    const text = reportToPromptText(OWN_REPORT, OWN_ROUTES);
+    expect(text).toContain('r2: GET /assets/index-DvJJu3n8.js (script)');
+    expect(text).toContain('r3: GET /assets/app.12345.css (style)');
+    expect(text).not.toContain('catalog_list');
+    expect(text).not.toContain('/api/v1/products');
+  });
+
+  test('an empty discovered list does not fall back to the demo catalog', () => {
+    const text = reportToPromptText(OWN_REPORT, []);
+    expect(text).not.toContain('/api/v1/products');
+    expect(text).not.toContain('store_home');
+  });
+
+  test('no discovered list still lists the demo catalog', () => {
+    const text = reportToPromptText(REPORT);
+    expect(text).toContain('catalog_list: GET /api/v1/products (api)');
+  });
+
+  test('the system prompt names the site under test, not a shop', () => {
+    expect(REPORTER_SYSTEM_PROMPT).not.toContain('shop');
+    expect(REPORTER_SYSTEM_PROMPT).toContain('path listed');
+  });
+
+  test('a number that appears only in a supplied path stays in the explanation', async () => {
+    let user = '';
+    const store = new Store(':memory:');
+    const fetchImpl = asFetch(async (_input, init) => {
+      const raw = typeof init.body === 'string' ? init.body : '';
+      const body = JSON.parse(raw) as { messages?: { role?: string; content?: string }[] };
+      user = body.messages?.find((m) => m.role === 'user')?.content ?? '';
+      return chatResponse([
+        toolCallOf('write_report', {
+          explanation: 'The slow file is /assets/app.12345.css.',
+          suggestions: ['Cache /assets/app.12345.css.'],
+        }),
+      ]);
+    });
+    const client = new InferenceClient({ config: testConfig().inference, fetchImpl, store });
+    const out = await writeReport({ client }, OWN_REPORT, { runId: 'r', routes: OWN_ROUTES });
+    expect(user).toContain('r3: GET /assets/app.12345.css (style)');
+    expect(user).not.toContain('/api/v1/products');
+    expect(out).toMatchObject({
+      status: 'ok',
+      explanation: 'The slow file is /assets/app.12345.css.',
+      suggestions: ['Cache /assets/app.12345.css.'],
+    });
+  });
+
+  test('the same path number is withheld when no routes were supplied', async () => {
+    const out = await writeWith({
+      explanation: 'The slow file is /assets/app.12345.css.',
+      suggestions: [],
+    });
+    expect(out.status).toBe('withheld');
   });
 });

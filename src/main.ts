@@ -132,7 +132,13 @@ async function main(): Promise<void> {
     try {
       const row = store.getReport(runId);
       if (row === null) return;
-      const ai = await writeReport({ client }, row.body as CapacityReport, { runId });
+      const run = store.getRun(runId);
+      const target = run?.planHash == null ? null : store.getPlanTarget(run.planHash);
+      const ai = await writeReport(
+        { client },
+        row.body as CapacityReport,
+        target === null ? { runId } : { runId, routes: target.routes },
+      );
       store.setReportAi(runId, ai, ai.status === 'unavailable' ? 'unavailable' : 'ready');
       store.appendEvent({ type: 'report', runId, payload: { ready: true, ai: true }, ts: Date.now() });
     } catch (e) {

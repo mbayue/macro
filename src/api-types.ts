@@ -224,6 +224,8 @@ export interface RunSnapshot {
   /** null until the Run has ended and the report is built. */
   report: CapacityReport | null;
   modelCalls: ModelCallView[];
+  /** Discovered own-site routes, or `[]` when the run has no plan target. */
+  routes: PlanRouteView[];
 }
 
 // ---- GET /api/plans/:hash/runs --------------------------------------------

@@ -4,6 +4,7 @@ import { REASON_INTERNAL, REASON_TIMED_OUT, RunController } from '../src/run/con
 import type { RunExecutor, SetTimerFn, SuperviseFn } from '../src/run/controller.ts';
 import { fallbackReason } from '../src/run/decide.ts';
 import { planHash, printPlan } from '../src/plan/printer.ts';
+import { buildProxyCreateBody } from '../src/sandbox/runner.ts';
 import type { StageRunResult, StageSpec } from '../src/sandbox/runner.ts';
 import { Store } from '../src/store/db.ts';
 import type { RunStatus, TestPlan } from '../src/types.ts';
@@ -74,6 +75,7 @@ function setup(options: SetupOptions = {}) {
   const calls: StageSpec[] = [];
   const signals: AbortSignal[] = [];
   const opened: string[] = [];
+  const openedHosts: (readonly string[] | undefined)[] = [];
   const closed: string[] = [];
   const ended: { runId: string; status: RunStatus }[] = [];
   const logs: string[] = [];
@@ -84,8 +86,9 @@ function setup(options: SetupOptions = {}) {
       signals.push(signal);
       return (options.run ?? (() => done()))(spec, signal, calls.length);
     },
-    async openRun(runId) {
+    async openRun(runId, allowHosts) {
       opened.push(runId);
+      openedHosts.push(allowHosts);
       if (options.openRun) await options.openRun();
     },
     async closeRun(runId) {
@@ -118,7 +121,7 @@ function setup(options: SetupOptions = {}) {
 
   const eventTypes = (): string[] => store.readEventsAfter(RUN_ID, 0).map((e) => e.type);
   const status = (): RunStatus | undefined => store.getRun(RUN_ID)?.status;
-  return { store, controller, timers, calls, signals, opened, closed, ended, logs, eventTypes, status };
+  return { store, controller, timers, calls, signals, opened, openedHosts, closed, ended, logs, eventTypes, status };
 }
 
 async function runToEnd(h: ReturnType<typeof setup>): Promise<void> {
@@ -662,5 +665,86 @@ describe('lifecycle', () => {
     await controller.whenDone(RUN_ID);
     expect(store.getRun(RUN_ID)?.status).toBe('completed');
     expect(logs.join('\n')).toContain('hook failed');
+  });
+});
+
+describe('own-site execution target', () => {
+  const OWN = 'https://sketch.my.id';
+  const ownPlan: TestPlan = {
+    name: 'sketch browse',
+    target: OWN,
+    stages: [{ vus: 10, durationSec: 60 }],
+    journey: [{ route: 'r4', probability: 10, thinkMs: 800 }],
+    stopThresholds: { p95Ms: 1500, errorRatePct: 2 },
+  };
+
+  test('a stored plan target is passed to the script and the proxy host list', async () => {
+    const h = setup({ noSeed: true, supervise: decideContinue });
+    const text = printPlan(ownPlan);
+    const hash = planHash(text);
+    h.store.storeApprovedPlan({ hash, text, approvedAt: 1 });
+    h.store.storePlanTarget({
+      planHash: hash,
+      webOrigin: OWN,
+      apiOrigin: OWN,
+      routes: [{ id: 'r4', kind: 'asset', method: 'GET', path: '/assets/a.webp' }],
+    });
+    const user = h.store.createUser('a@example.com', 1);
+    h.store.setVerifiedOrigin(user.id, OWN, 'sketch.my.id', 'tok', 1);
+    h.store.createRun({
+      id: RUN_ID,
+      kind: 'run',
+      planHash: hash,
+      runtime: 'runsc',
+      startedAt: 1,
+      ownerUserId: user.id,
+      visibility: 'private',
+    });
+    await runToEnd(h);
+    expect(h.status()).toBe('completed');
+    expect(h.openedHosts).toEqual([['sketch.my.id']]);
+    const script = h.calls[0]?.script ?? '';
+    expect(script).toContain('https://sketch.my.id');
+    expect(script).toContain('/assets/a.webp');
+    expect(script).not.toContain('yue.macro.my.id');
+  });
+
+  test('a changed verified origin fails the run before the network opens', async () => {
+    const h = setup({ noSeed: true });
+    const text = printPlan(ownPlan);
+    const hash = planHash(text);
+    h.store.storeApprovedPlan({ hash, text, approvedAt: 1 });
+    h.store.storePlanTarget({
+      planHash: hash,
+      webOrigin: OWN,
+      apiOrigin: OWN,
+      routes: [{ id: 'r4', kind: 'asset', method: 'GET', path: '/assets/a.webp' }],
+    });
+    h.store.createRun({ id: RUN_ID, kind: 'run', planHash: hash, runtime: 'runsc', startedAt: 1, visibility: 'private' });
+    await runToEnd(h);
+    expect(h.status()).toBe('failed');
+    expect(h.store.getRun(RUN_ID)?.statusReason).toContain('The verified origin changed before the run started.');
+    expect(h.opened).toEqual([]);
+  });
+
+  test('a run with no plan target keeps the configured origins and does not pass allowHosts', async () => {
+    const h = setup({ supervise: decideContinue });
+    await runToEnd(h);
+    expect(h.status()).toBe('completed');
+    expect(h.openedHosts).toEqual([undefined]);
+    expect(h.calls[0]?.script).toContain('yue.macro.my.id');
+  });
+
+  test('proxy allow-list is the caller host list', () => {
+    const body = buildProxyCreateBody({
+      runId: RUN_ID,
+      networkName: 'macro-run',
+      proxyDir: '/data/proxy',
+      allowHosts: ['sketch.my.id'],
+      blockIps: ['10.0.0.1'],
+    });
+    const env = (body.Env ?? []).join('\n');
+    expect(env).toContain('ALLOW_HOSTS=sketch.my.id');
+    expect(env).not.toContain('yue.macro.my.id');
   });
 });

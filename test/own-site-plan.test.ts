@@ -130,7 +130,7 @@ describe('own-site plan approve', () => {
       now: () => NOW,
       log: () => {},
       mailer,
-      fetchImpl: (async () => new Response('no', { status: 302 })) as typeof fetch,
+      fetchImpl: (async () => new Response('no', { status: 302 })) as unknown as typeof fetch,
     });
     const cookie = await signIn(app, sent);
     const user = store.findUserByEmail('a@example.com')!;
@@ -164,7 +164,7 @@ describe('own-site plan approve', () => {
       }
       return jsResponse('"/assets/a.webp"');
     }) as typeof fetch;
-    let plannerDiscovered: readonly unknown[] | undefined;
+    let plannerDiscovered: readonly DiscoveredRoute[] | undefined;
     const app = createApp({
       store,
       config: authConfig(),
@@ -173,7 +173,7 @@ describe('own-site plan approve', () => {
       planner: (async (_event: string, _draftId: string, _t?: unknown, discovered?: readonly DiscoveredRoute[]) => {
         plannerDiscovered = discovered;
         const plan = ownSitePlan(OWN);
-        const gate = evaluatePlan(plan, [OWN], discovered as { id: string; method: 'GET' | 'POST'; path: string }[]);
+        const gate = discovered === undefined ? evaluatePlan(plan, [OWN]) : evaluatePlan(plan, [OWN], [...discovered]);
         if (gate.status !== 'accepted') throw new Error('fixture plan must gate clean');
         return {
           ok: true,
@@ -205,7 +205,7 @@ describe('own-site plan approve', () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as PlanResponse;
     expect(body.plan?.target).toBe(OWN);
-    expect(body.routes).toEqual(plannerDiscovered);
+    expect(body.routes).toEqual([...(plannerDiscovered ?? [])]);
     expect(body.plan?.journey.map((s) => s.route).every((id) => (body.routes as { id: string }[]).some((r) => r.id === id))).toBe(true);
     expect(seen).toContain(`${OWN}/`);
   });
@@ -237,7 +237,7 @@ describe('own-site plan approve', () => {
       fetchImpl: (async () => {
         fetched += 1;
         return new Response('no', { status: 500 });
-      }) as typeof fetch,
+      }) as unknown as typeof fetch,
     });
     const res = await app.fetch(
       new Request('http://macro.test/api/plan', {
@@ -282,7 +282,7 @@ describe('own-site approve', () => {
       verifyTurnstile: () => Promise.resolve({ ok: true }),
       client: new InferenceClient({ config: authConfig().inference, store, fetchImpl: asFetch(() => Promise.reject(new Error('no'))) }),
       planner: (async (_event: string, _draftId: string, _t?: unknown, discovered?: readonly DiscoveredRoute[]) => {
-        const gate = evaluatePlan(plan, [OWN], discovered as { id: string; method: 'GET' | 'POST'; path: string }[]);
+        const gate = discovered === undefined ? evaluatePlan(plan, [OWN]) : evaluatePlan(plan, [OWN], [...discovered]);
         if (gate.status !== 'accepted') throw new Error('fixture plan must gate clean');
         return {
           ok: true,
@@ -372,11 +372,12 @@ describe('own-site approve', () => {
     expect(res.status).toBe(200);
     const started = (await res.json()) as { runId: string };
     expect(started.runId).toBeTruthy();
-    expect(store.getPlanTarget(planHash)).toEqual({
+    const stored = store.getPlanTarget(planHash);
+    expect(stored).toEqual({
       planHash,
       webOrigin: OWN,
       apiOrigin: OWN,
-      routes: store.getPlanTarget(planHash)?.routes,
+      routes: stored?.routes ?? [],
     });
     expect(store.getPlanTarget(planHash)?.webOrigin).toBe(OWN);
     expect(store.getPlanTarget(planHash)?.apiOrigin).toBe(OWN);

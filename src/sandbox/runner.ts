@@ -506,7 +506,7 @@ export class SandboxRunner {
 
   // ----- Run network -------------------------------------------------------
 
-  async openRunNetwork(runId: string): Promise<RunNet> {
+  async openRunNetwork(runId: string, allowHosts?: readonly string[]): Promise<RunNet> {
     validateRunId(runId);
     if (this.runs.has(runId)) throw new RunNetworkError(`Run network for ${runId} is already open`);
     await this.assertRuntimeUsable();
@@ -532,7 +532,7 @@ export class SandboxRunner {
         runId,
         networkName,
         proxyDir,
-        allowHosts: allowHostsFromConfig(this.config),
+        allowHosts: allowHosts ?? allowHostsFromConfig(this.config),
         blockIps: [this.config.macroVmIp],
       });
       proxyId = (await this.docker.containerCreate(proxyContainerName(runId), body)).Id;
@@ -944,10 +944,10 @@ export class DockerStageExecutor implements StageExecutor {
 
   constructor(private readonly runner: SandboxRunner) {}
 
-  openRun(runId: string): Promise<RunNet> {
+  openRun(runId: string, allowHosts?: readonly string[]): Promise<RunNet> {
     let p = this.nets.get(runId);
     if (p === undefined) {
-      p = this.runner.openRunNetwork(runId);
+      p = this.runner.openRunNetwork(runId, allowHosts);
       this.nets.set(runId, p);
       p.catch(() => this.nets.delete(runId));
     }

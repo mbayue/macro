@@ -66,6 +66,8 @@ export interface ReportInput {
   stages: readonly ReportStageRow[];
   decisions: readonly ReportDecision[];
   events: readonly ReportEvent[];
+  /** Own-site route id order. Omitted means Route_Catalog order. */
+  routeOrder?: readonly string[];
 }
 
 // --------------------------------------------------------------- output ----
@@ -171,10 +173,11 @@ export function buildReport(run: ReportInput): CapacityReport {
     const verdict: StageVerdict | null = m === undefined ? null : (s.verdict ?? stageVerdict(m.overall, t));
     const routes: RouteRowView[] = [];
     if (m !== undefined) {
-      for (const entry of ROUTE_CATALOG) {
-        const rm = m.routes[entry.id];
+      const order = run.routeOrder ?? ROUTE_CATALOG.map((entry) => entry.id);
+      for (const id of order) {
+        const rm = m.routes[id];
         if (rm === undefined) continue;
-        routes.push({ route: entry.id, ...metricsView(rm), exceedsThresholds: exceedsThresholds(rm, t) });
+        routes.push({ route: id, ...metricsView(rm), exceedsThresholds: exceedsThresholds(rm, t) });
       }
     }
     return {
@@ -199,7 +202,7 @@ export function buildReport(run: ReportInput): CapacityReport {
 
   const safe = safeCapacity(measured);
   const breaking = breakingPoint(measured);
-  const degraded = firstDegradedRoute(measured, t);
+  const degraded = firstDegradedRoute(measured, t, run.routeOrder);
 
   const first = measured[0];
   const hasMetrics = first !== undefined;

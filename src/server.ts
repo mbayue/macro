@@ -644,7 +644,9 @@ export function createApp(deps: AppDeps): App {
     deps.planner ??
     ((trafficEvent, draftId, target, discovered) =>
       planTrafficEvent(
-        { client: deps.client, target: target ?? config.target, discovered },
+        discovered === undefined
+          ? { client: deps.client, target: target ?? config.target }
+          : { client: deps.client, target: target ?? config.target, discovered },
         trafficEvent,
         draftId,
       ));
@@ -1209,6 +1211,7 @@ export function createApp(deps: AppDeps): App {
       reason: d.reason,
       reasonWithheld: d.reasonWithheld,
     }));
+    const storedTarget = run.planHash === null ? null : store.getPlanTarget(run.planHash);
     const snapshot: RunSnapshot = {
       run: toRunView(run),
       plan: planFromStore(run.planHash),
@@ -1217,6 +1220,10 @@ export function createApp(deps: AppDeps): App {
       events: allEvents(id),
       report,
       modelCalls: store.listModelCallsForRun(id).map(toModelCallView),
+      routes:
+        storedTarget === null
+          ? []
+          : storedTarget.routes.map((r) => ({ id: r.id, path: r.path, method: r.method, kind: r.kind })),
     };
     return json(200, snapshot);
   };

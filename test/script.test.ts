@@ -377,3 +377,22 @@ describe('Property 9: Stage scripts contain only approved values', () => {
     expect(parseCfg(generateStageScript(BASE_INPUT))).toMatchObject({ orderBody: null });
   });
 });
+
+test('own-site routes are embedded and the shop catalog is not', () => {
+  const script = generateStageScript({
+    runId: 'run-0001-abcd',
+    stageIndex: 0,
+    vus: 10,
+    durationSec: 60,
+    journey: [{ route: 'r4', probability: 10, thinkMs: 800 }],
+    origins: { web: 'https://sketch.my.id', api: 'https://sketch.my.id' },
+    productIds: ['uma-1'],
+    orderProductId: 'uma-1',
+    routes: [{ id: 'r4', role: 'web', method: 'GET', path: '/assets/a.webp' }],
+  });
+  expect(script).toContain('/assets/a.webp');
+  expect(script).toContain('https://sketch.my.id');
+  expect(script).not.toContain('yue.macro.my.id');
+  expect(script).not.toContain('{productId}');
+  expect(script).not.toContain('order_create');
+});

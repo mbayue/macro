@@ -28,6 +28,7 @@ import { buildReport } from '../report/build.ts';
 import type { CapacityReport, ReportDecision, ReportEvent, ReportInput, ReportStageRow } from '../report/build.ts';
 import { allowedNumbers, guardText } from '../report/number-guard.ts';
 import type { StageExecutor } from '../sandbox/runner.ts';
+import type { DiscoveredRoute } from '../plan/discover.ts';
 import type { RunRow, StageRow, Store } from '../store/db.ts';
 import type { ContainmentType, DecisionSource, DecisionValue, RunStatus, StageResult, TestPlan } from '../types.ts';
 import { applyDecision } from './decide.ts';
@@ -47,7 +48,7 @@ export const REASON_INTERNAL = 'The Run stopped because of an internal error.';
 
 /** Executor seam: `StageExecutor` plus the optional Run-network lifecycle (DockerStageExecutor has both). */
 export type RunExecutor = StageExecutor & {
-  openRun?(runId: string): Promise<unknown>;
+  openRun?(runId: string, allowHosts?: readonly string[]): Promise<unknown>;
   closeRun?(runId: string): Promise<unknown>;
 };
 
@@ -194,7 +195,10 @@ function loadApprovedPlan(
   store: Store,
   config: Config,
   planHashValue: string | null,
-): { ok: true; plan: TestPlan } | { ok: false; reason: string } {
+  run: RunRow,
+):
+  | { ok: true; plan: TestPlan; webOrigin: string; apiOrigin: string; routes: DiscoveredRoute[] | null }
+  | { ok: false; reason: string } {
   if (planHashValue === null) return { ok: false, reason: 'The Run has no approved plan.' };
   const row = store.getPlan(planHashValue);
   if (row === null) return { ok: false, reason: 'The approved plan was not found in the store.' };
@@ -203,12 +207,37 @@ function loadApprovedPlan(
   }
   const parsed = parsePlan(row.text);
   if (!parsed.ok) return { ok: false, reason: `The stored plan no longer parses: ${clip(parsed.error.reason)}` };
-  const gate = evaluatePlan(parsed.plan, config.target.allowlist);
+  const stored = store.getPlanTarget(planHashValue);
+  if (stored === null) {
+    const gate = evaluatePlan(parsed.plan, config.target.allowlist);
+    if (gate.status === 'rejected') {
+      const summary = gate.violations.map((v) => `[${v.rule}] ${v.path}: ${v.message}`).join('; ');
+      return { ok: false, reason: `The plan no longer passes the Policy_Gate: ${clip(summary)}` };
+    }
+    return {
+      ok: true,
+      plan: parsed.plan,
+      webOrigin: config.target.webOrigin,
+      apiOrigin: config.target.apiOrigin,
+      routes: null,
+    };
+  }
+  const verified = run.ownerUserId === null ? null : store.getVerifiedOrigin(run.ownerUserId);
+  if (verified === null || verified.origin !== stored.webOrigin) {
+    return { ok: false, reason: 'The verified origin changed before the run started.' };
+  }
+  const gate = evaluatePlan(parsed.plan, [stored.webOrigin], stored.routes);
   if (gate.status === 'rejected') {
     const summary = gate.violations.map((v) => `[${v.rule}] ${v.path}: ${v.message}`).join('; ');
     return { ok: false, reason: `The plan no longer passes the Policy_Gate: ${clip(summary)}` };
   }
-  return { ok: true, plan: parsed.plan };
+  return {
+    ok: true,
+    plan: parsed.plan,
+    webOrigin: stored.webOrigin,
+    apiOrigin: stored.apiOrigin,
+    routes: stored.routes,
+  };
 }
 
 // --------------------------------------------------------------- controller
@@ -361,7 +390,13 @@ export class RunController {
     }
   }
 
-  private reportInput(run: RunRow, plan: TestPlan, status: RunStatus, withEvents: boolean): ReportInput {
+  private reportInput(
+    run: RunRow,
+    plan: TestPlan,
+    status: RunStatus,
+    withEvents: boolean,
+    routeOrder: readonly string[] | null,
+  ): ReportInput {
     return {
       runId: run.id,
       planHash: run.planHash ?? '',
@@ -371,16 +406,19 @@ export class RunController {
       stages: stagesForReport(this.store.getStages(run.id)),
       decisions: decisionsForReport(this.store, run.id),
       events: withEvents ? containmentReportEvents(this.store, run.id) : [],
+      ...(routeOrder === null ? {} : { routeOrder }),
     };
   }
 
   private writeReport(run: RunRow): void {
-    const loaded = loadApprovedPlan(this.store, this.config, run.planHash);
+    const loaded = loadApprovedPlan(this.store, this.config, run.planHash, run);
     if (!loaded.ok) {
       this.log(`no report for ${run.id}: ${loaded.reason}`);
       return;
     }
-    const report = buildReport(this.reportInput(run, loaded.plan, run.status, true));
+    const report = buildReport(
+      this.reportInput(run, loaded.plan, run.status, true, loaded.routes?.map((r) => r.id) ?? null),
+    );
     this.store.saveReport({ runId: run.id, body: report, aiStatus: 'pending' });
     this.store.appendEvent({ type: 'report', runId: run.id, payload: { ready: true }, ts: this.now() });
   }
@@ -390,17 +428,22 @@ export class RunController {
     if (run === null || run.status !== 'running') return;
 
     // (1) Re-check at start: hash, parse, Policy_Gate. No Sandbox on failure.
-    const loaded = loadApprovedPlan(this.store, this.config, run.planHash);
+    const loaded = loadApprovedPlan(this.store, this.config, run.planHash, run);
     if (!loaded.ok) {
       this.finish(runId, 'failed', loaded.reason);
       return;
     }
     const plan = loaded.plan;
+    const scriptRoutes =
+      loaded.routes === null
+        ? undefined
+        : loaded.routes.map((r) => ({ id: r.id, role: 'web' as const, method: r.method, path: r.path }));
 
     // (2) Run network.
     state.openAttempted = true;
     try {
-      await this.executor.openRun?.(runId);
+      const hosts = scriptRoutes === undefined ? undefined : [new URL(loaded.webOrigin).hostname];
+      await this.executor.openRun?.(runId, hosts);
     } catch (e) {
       this.finish(runId, 'failed', `The Sandbox network could not be created: ${clip(errText(e))}`);
       return;
@@ -428,9 +471,10 @@ export class RunController {
           vus: stage.vus,
           durationSec: stage.durationSec,
           journey: plan.journey,
-          origins: { web: this.config.target.webOrigin, api: this.config.target.apiOrigin },
+          origins: { web: loaded.webOrigin, api: loaded.apiOrigin },
           productIds: PRODUCT_IDS,
           orderProductId: ORDER_PRODUCT_ID,
+          ...(scriptRoutes === undefined ? {} : { routes: scriptRoutes }),
         });
       } catch (e) {
         const reason = `The k6 script could not be generated: ${clip(errText(e))}`;
@@ -467,7 +511,7 @@ export class RunController {
         this.finish(runId, 'failed', `Stage ${displayIndex} failed: ${reason}`);
         return;
       }
-      const read = readSummary(result.summaryJson);
+      const read = readSummary(result.summaryJson, loaded.routes?.map((r) => r.id));
       if (!read.ok) {
         failStage(read.reason);
         this.finish(runId, 'failed', `Stage ${displayIndex} failed: ${read.reason}`);
@@ -585,7 +629,7 @@ export class RunController {
    * report over the Stages so far, plus every planned Stage (the reason may name the next Stage's VUs).
    */
   private guardAgentReason(run: RunRow, plan: TestPlan, reason: string): { ok: boolean } {
-    const partial: CapacityReport = buildReport(this.reportInput(run, plan, 'running', false));
+    const partial: CapacityReport = buildReport(this.reportInput(run, plan, 'running', false, null));
     const allowed = allowedNumbers(partial);
     for (const [i, s] of plan.stages.entries()) {
       allowed.add(i);

@@ -16,6 +16,13 @@ import type { RouteId, TestPlan } from '../types.ts';
 /** Where the generated script writes the k6 end-of-test summary inside the Sandbox. */
 export const K6_SUMMARY_PATH = '/out/summary.json';
 
+export interface StageScriptRoute {
+  id: string;
+  role: 'web' | 'api';
+  method: 'GET' | 'POST';
+  path: string;
+}
+
 export interface StageScriptInput {
   runId: string;
   stageIndex: number;
@@ -25,6 +32,8 @@ export interface StageScriptInput {
   origins: { web: string; api: string };
   productIds: readonly string[];
   orderProductId: string;
+  /** When set, these rows replace Route_Catalog for this script. */
+  routes?: readonly StageScriptRoute[];
 }
 
 /** Shape of the `CFG` constant in the generated script. */
@@ -37,9 +46,9 @@ export interface StageScriptCfg {
   productIds: string[];
   /** Catalog entries for the routes used by the journey, keyed by route ID. */
   routes: Partial<
-    Record<RouteId, { id: RouteId; role: 'web' | 'api'; method: 'GET' | 'POST'; path: string; body?: 'order' }>
+    Record<string, { id: string; role: 'web' | 'api'; method: 'GET' | 'POST'; path: string; body?: 'order' }>
   >;
-  journey: { route: RouteId; probability: number; thinkMs: number }[];
+  journey: { route: string; probability: number; thinkMs: number }[];
   /** Body for `order_create`; null when the journey has no `order_create` step. */
   orderBody: OrderBody | null;
 }
@@ -62,7 +71,7 @@ const inputSchema = z.strictObject({
   journey: z
     .array(
       z.strictObject({
-        route: z.custom<RouteId>((v) => isRouteId(v), 'is not a Route_Catalog route ID'),
+        route: z.string().min(1).max(32),
         probability: z.int().min(1).max(100),
         thinkMs: z.int().min(0).max(10_000),
       }),
@@ -72,6 +81,33 @@ const inputSchema = z.strictObject({
   origins: z.strictObject({ web: originSchema, api: originSchema }),
   productIds: z.array(slugSchema).min(1).max(100),
   orderProductId: slugSchema,
+  routes: z
+    .array(
+      z.strictObject({
+        id: z.string().min(1).max(16),
+        role: z.enum(['web', 'api']),
+        method: z.enum(['GET', 'POST']),
+        path: z.string().min(1).max(200),
+      }),
+    )
+    .min(1)
+    .max(32)
+    .optional(),
+}).superRefine((val, ctx) => {
+  if (val.routes === undefined) {
+    val.journey.forEach((step, i) => {
+      if (!isRouteId(step.route)) {
+        ctx.addIssue({ code: 'custom', path: ['journey', i, 'route'], message: 'is not a Route_Catalog route ID' });
+      }
+    });
+    return;
+  }
+  const ids = new Set(val.routes.map((r) => r.id));
+  val.journey.forEach((step, i) => {
+    if (!ids.has(step.route)) {
+      ctx.addIssue({ code: 'custom', path: ['journey', i, 'route'], message: 'is not a discovered route ID' });
+    }
+  });
 });
 
 /**
@@ -105,17 +141,24 @@ export function buildStageScriptCfg(input: StageScriptInput): StageScriptCfg {
   }
   const v = parsed.data;
 
-  const used = new Set<RouteId>(v.journey.map((s) => s.route));
+  const used = new Set<string>(v.journey.map((s) => s.route));
   const routes: StageScriptCfg['routes'] = {};
-  for (const entry of ROUTE_CATALOG) {
-    if (!used.has(entry.id)) continue;
-    routes[entry.id] = {
-      id: entry.id,
-      role: entry.role,
-      method: entry.method,
-      path: entry.path,
-      ...(entry.body !== undefined ? { body: entry.body } : {}),
-    };
+  if (v.routes !== undefined) {
+    for (const entry of v.routes) {
+      if (!used.has(entry.id)) continue;
+      routes[entry.id] = { id: entry.id, role: entry.role, method: entry.method, path: entry.path };
+    }
+  } else {
+    for (const entry of ROUTE_CATALOG) {
+      if (!used.has(entry.id)) continue;
+      routes[entry.id] = {
+        id: entry.id,
+        role: entry.role,
+        method: entry.method,
+        path: entry.path,
+        ...(entry.body !== undefined ? { body: entry.body } : {}),
+      };
+    }
   }
 
   return {
@@ -140,7 +183,11 @@ import { Counter } from 'k6/metrics';
 
 `;
 
-const TEMPLATE_BODY = `
+function templateBody(substituteProduct: boolean): string {
+  const pathLine = substituteProduct
+    ? "  const path = entry.path.replace('{productId}', pick(CFG.productIds));"
+    : '  const path = entry.path;';
+  return `
 
 const macro429 = new Counter('macro_429');
 const EXPECTED = http.expectedStatuses({ min: 200, max: 399 });
@@ -175,7 +222,7 @@ function pick(list) {
 function send(routeId) {
   const entry = CFG.routes[routeId];
   const origin = entry.role === 'api' ? CFG.origins.api : CFG.origins.web;
-  const path = entry.path.replace('{productId}', pick(CFG.productIds));
+${pathLine}
   const params = {
     timeout: '10s',
     tags: { route: routeId },
@@ -203,9 +250,13 @@ export function handleSummary(data) {
   return { '${K6_SUMMARY_PATH}': JSON.stringify(data) };
 }
 `;
+}
 
 /** Generate the k6 script for one Stage. Throws `Error` if any input value is invalid. */
 export function generateStageScript(input: StageScriptInput): string {
   const cfg = buildStageScriptCfg(input);
-  return `${TEMPLATE_HEAD}const CFG = ${toJsLiteral(cfg)};${TEMPLATE_BODY}`;
+  const substituteProduct =
+    input.routes === undefined ||
+    Object.values(cfg.routes).some((entry) => entry?.path.includes('{productId}') === true);
+  return `${TEMPLATE_HEAD}const CFG = ${toJsLiteral(cfg)};${templateBody(substituteProduct)}`;
 }

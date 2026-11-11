@@ -149,9 +149,10 @@ export function ProbePage({ id }: { id: string }) {
       <div className="split">
         <div className="split__main">
           {state.kind === 'loading' ? (
-            <p className="muted" role="status">
-              Loading the probe.
-            </p>
+            <div className="panel skeleton-pulse" role="status" aria-busy="true" aria-label="Loading probe…">
+              <div className="skeleton-line skeleton-line--heading" />
+              <div className="skeleton-block skeleton-block--area" />
+            </div>
           ) : state.kind === 'fatal' ? (
             <>
               <div className="alert" role="alert">

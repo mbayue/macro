@@ -47,6 +47,53 @@ export function Busy({ children }: { children: ReactNode }) {
   );
 }
 
+/** Anticipatory structural page skeleton displayed while loading. */
+export function PageSkeleton({
+  title = 'Loading…',
+  showSplit = true,
+}: {
+  title?: string;
+  showSplit?: boolean;
+}) {
+  return (
+    <section className="page page--skeleton" role="status" aria-busy="true" aria-label={title}>
+      <header className="page__head skeleton-pulse">
+        <div className="skeleton-line skeleton-line--title" />
+        <div className="skeleton-line skeleton-line--lead" />
+      </header>
+      {showSplit ? (
+        <div className="split">
+          <div className="split__main">
+            <div className="panel skeleton-pulse">
+              <div className="skeleton-line skeleton-line--heading" />
+              <div className="skeleton-block skeleton-block--area" />
+              <div className="skeleton-row">
+                <div className="skeleton-pill" />
+                <div className="skeleton-pill" />
+                <div className="skeleton-pill" />
+              </div>
+            </div>
+          </div>
+          <div className="split__side">
+            <div className="panel skeleton-pulse">
+              <div className="skeleton-line skeleton-line--heading" />
+              <div className="skeleton-line skeleton-line--w80" />
+              <div className="skeleton-line skeleton-line--w60" />
+              <div className="skeleton-line skeleton-line--w90" />
+              <div className="skeleton-line skeleton-line--w40" />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="panel skeleton-pulse">
+          <div className="skeleton-line skeleton-line--heading" />
+          <div className="skeleton-block skeleton-block--area" />
+        </div>
+      )}
+    </section>
+  );
+}
+
 /** Horizontal scroll region for wide tables, reachable by keyboard. */
 export function TableWrap({ label, children }: { label: string; children: ReactNode }) {
   return (

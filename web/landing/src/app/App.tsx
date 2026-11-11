@@ -7,6 +7,7 @@ import { getConfig } from './lib/api.ts';
 import { claimRecentBrowserRuns, getMe } from './lib/auth-api.ts';
 import type { ConfigResponse, MeResponse } from '../../../../src/api-types.ts';
 import { Shell } from './components/Shell.tsx';
+import { PageSkeleton } from './components/ui.tsx';
 import { AppContext, type AppContextValue } from './context.tsx';
 import { NewTest } from './pages/NewTest.tsx';
 import { NotFound } from './pages/NotFound.tsx';
@@ -124,11 +125,7 @@ export function App() {
 
   let screen: ReactNode;
   if (boot.kind === 'loading') {
-    screen = (
-      <p className="muted" role="status">
-        Loading
-      </p>
-    );
+    screen = <PageSkeleton title="Loading Macro workspace…" />;
   } else if (boot.kind === 'error' || !ctx) {
     screen = (
       <section className="page">

@@ -12,9 +12,9 @@ export type Route =
 const ID_PATTERN = /^[A-Za-z0-9._~-]{1,100}$/;
 
 export function parseRoute(hash: string): Route {
-  const path = hash.replace(/^#/, '');
-  if (path === '' || path === '/' || path === 'verify-panel') return { view: 'new' };
-  const bare = path.replace(/^\//, '').split('?')[0] ?? '';
+  const path = hash.replace(/^#[/]?/, '');
+  const bare = path.split('?')[0]?.replace(/\/$/, '') ?? '';
+  if (bare === '' || bare === 'verify-panel') return { view: 'new' };
   const [kind, rawId, ...rest] = bare.split('/');
   if (kind === 'sign-in' && (rawId === undefined || rawId === '') && rest.length === 0) return { view: 'sign-in' };
   if (kind === 'runs' && (rawId === undefined || rawId === '') && rest.length === 0) return { view: 'runs' };

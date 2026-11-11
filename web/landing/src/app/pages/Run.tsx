@@ -14,18 +14,14 @@ import { AiSection, ReportMeta, ReportNotices, ReportStages, RunsPanel } from '.
 import { RouteChart } from '../components/run/RouteChart.tsx';
 import { ModelCalls } from '../components/ModelCalls.tsx';
 import { type ProfileStage, StageProfile } from '../components/StageProfile.tsx';
-import { AlertRegion, ApiErrorText, Badge, DASH, KeyValues, StatusBadge, TableWrap } from '../components/ui.tsx';
+import { AlertRegion, ApiErrorText, Badge, DASH, KeyValues, PageSkeleton, StatusBadge, TableWrap } from '../components/ui.tsx';
 import { useRun } from '../hooks/useRun.ts';
 
 export function RunPage({ id }: { id: string }) {
   const { state, stop, stopPending, stopError, retry } = useRun(id);
 
   if (state.kind === 'loading') {
-    return (
-      <p className="muted" role="status">
-        Loading the run
-      </p>
-    );
+    return <PageSkeleton title="Loading run…" />;
   }
   if (state.kind === 'error') {
     return (

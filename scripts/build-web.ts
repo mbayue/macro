@@ -27,8 +27,11 @@ function fail(message: string): never {
 await rm(outDir, { recursive: true, force: true });
 await mkdir(outDir, { recursive: true });
 
-// Favicon is shared by the landing pages and the app.
+// Favicon and touch icons are shared by the landing pages and the app.
 await cp(join(webDir, 'favicon.svg'), join(outDir, 'favicon.svg'));
+if (await Bun.file(join(webDir, 'apple-touch-icon.png')).exists()) {
+  await cp(join(webDir, 'apple-touch-icon.png'), join(outDir, 'apple-touch-icon.png'));
+}
 
 // ---- 1. landing site + app: client bundle, then a server bundle used only to prerender ----
 await viteBuild({ configFile: landingConfig, logLevel: 'warn' });

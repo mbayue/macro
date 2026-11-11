@@ -791,6 +791,7 @@ export function createApp(deps: AppDeps): App {
     const auth = requireSession(req);
     if (auth instanceof Response) return auth;
     const verified = store.getVerifiedOrigin(auth.user.id);
+    const pending = store.getPendingOriginVerification(auth.user.id);
     const body: MeResponse = {
       user: {
         id: auth.user.id,
@@ -798,6 +799,7 @@ export function createApp(deps: AppDeps): App {
         githubLogin: auth.user.githubLogin,
       },
       verifiedOrigin: verified === null ? null : { origin: verified.origin, host: verified.host },
+      pendingVerification: pending === null ? null : { origin: pending.origin, host: pending.host },
     };
     return json(200, body);
   };
@@ -1516,6 +1518,43 @@ export function createApp(deps: AppDeps): App {
     return json(200, body);
   };
 
+  const getVerifyPending: Handler = async ({ req }) => {
+    if (config.auth === undefined) {
+      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
+    }
+    const auth = requireSession(req);
+    if (auth instanceof Response) return auth;
+    const pending = store.getPendingOriginVerification(auth.user.id);
+    if (pending === null) return apiError(404, 'not_found', MSG.notFound);
+    const detection = await detectDnsProvider(pending.host, deps.resolveNs);
+    const body: VerifyStartResponse = {
+      token: pending.token,
+      txtName: txtNameForHost(pending.host),
+      txtValue: pending.token,
+      wellKnownUrl: wellKnownUrlForOrigin(pending.origin),
+      isCloudflare: detection.isCloudflare,
+      cloudFlareDirectUrl: detection.cloudFlareDirectUrl,
+      domainConnectUrl: detection.domainConnectUrl,
+    };
+    return json(200, body);
+  };
+
+  const postVerifyCancel: Handler = async ({ req }) => {
+    if (config.auth === undefined) {
+      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
+    }
+    const auth = requireSession(req);
+    if (auth instanceof Response) return auth;
+    try {
+      store.clearPendingOriginVerification(auth.user.id);
+    } catch (err) {
+      logInternal('verify.cancel', err);
+      return apiError(500, 'internal', MSG.internal);
+    }
+    const body: VerifyClearResponse = { ok: true };
+    return json(200, body);
+  };
+
   const postVerifyCheck: Handler = async ({ req }) => {
     if (config.auth === undefined) {
       return apiError(503, 'auth_unavailable', MSG.authUnavailable);
@@ -1672,6 +1711,8 @@ export function createApp(deps: AppDeps): App {
     { method: 'POST', re: /^\/api\/auth\/sign-out$/, name: 'sign_out', handler: postSignOut },
     { method: 'POST', re: /^\/api\/auth\/claim$/, name: 'auth_claim', handler: postClaim },
     { method: 'POST', re: /^\/api\/verify\/start$/, name: 'verify_start', handler: postVerifyStart },
+    { method: 'GET', re: /^\/api\/verify\/pending$/, name: 'verify_pending', handler: getVerifyPending },
+    { method: 'POST', re: /^\/api\/verify\/cancel$/, name: 'verify_cancel', handler: postVerifyCancel },
     { method: 'POST', re: /^\/api\/verify\/check$/, name: 'verify_check', handler: postVerifyCheck },
     { method: 'POST', re: /^\/api\/verify\/clear$/, name: 'verify_clear', handler: postVerifyClear },
     { method: 'GET', re: /^\/api\/draft$/, name: 'draft_get', handler: getDraft },

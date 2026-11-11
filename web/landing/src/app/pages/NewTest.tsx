@@ -84,6 +84,10 @@ export function NewTest() {
   const verifiedOrigin = me?.verifiedOrigin ?? null;
   const ownNeedsVerify = targetMode === 'own' && (me === null || verifiedOrigin === null);
   const activeOrigin = targetMode === 'own' && verifiedOrigin !== null ? verifiedOrigin.origin : config.webOrigin;
+  const pendingHost = me?.pendingVerification?.host ?? null;
+  const openedVerify =
+    window.location.hash.replace(/^#\/?/, '').split('?')[0]?.replace(/\/$/, '') === 'verify-panel';
+  const showVerify = me !== null && (openedVerify || ownNeedsVerify || pendingHost !== null);
 
   function currentDraft(): AccountDraft {
     return {
@@ -131,6 +135,13 @@ export function NewTest() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me]);
 
+
+  useEffect(() => {
+    if (!openedVerify) return;
+    setTargetMode('own');
+    const panel = document.getElementById('verify-panel');
+    panel?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' });
+  }, [openedVerify, pendingHost]);
   function chooseTarget(mode: TargetMode) {
     if (!idle) return;
     if (mode === 'own' && me === null) {
@@ -446,9 +457,9 @@ export function NewTest() {
         </div>
         <aside
           className="split__side"
-          aria-label={approvable ? 'Approve the plan' : ownNeedsVerify && me !== null ? 'Verify your site' : 'Policy gate rules'}
+          aria-label={approvable && !openedVerify ? 'Approve the plan' : showVerify ? 'Verify your site' : 'Policy gate rules'}
         >
-          {approvable && review?.plan && review.planText !== null ? (
+          {approvable && review?.plan && review.planText !== null && !openedVerify ? (
             <>
               <ApprovePanel
                 key={reviewSeq}
@@ -468,7 +479,7 @@ export function NewTest() {
               />
               <GateRules folded />
             </>
-          ) : ownNeedsVerify && me !== null ? (
+          ) : showVerify ? (
             <>
               <div id="verify-panel">
                 <VerifyPanel initialHost="" />

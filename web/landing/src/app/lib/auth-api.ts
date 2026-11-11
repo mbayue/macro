@@ -109,6 +109,29 @@ export async function postVerifyClear(): Promise<ApiResult<VerifyClearResponse>>
   }
 }
 
+export async function getVerifyPending(): Promise<ApiResult<VerifyStartResponse | null>> {
+  try {
+    const res = await fetch('/api/verify/pending', { credentials: 'same-origin' });
+    if (res.status === 404 || res.status === 401) return { ok: true, data: null };
+    const body = await readJson(res);
+    if (!res.ok) return { ok: false, error: apiErrorFromBody(body) };
+    return { ok: true, data: body as VerifyStartResponse };
+  } catch {
+    return { ok: false, error: NETWORK_ERROR };
+  }
+}
+
+export async function postVerifyCancel(): Promise<ApiResult<VerifyClearResponse>> {
+  try {
+    const res = await fetch('/api/verify/cancel', { method: 'POST', credentials: 'same-origin' });
+    const body = await readJson(res);
+    if (!res.ok) return { ok: false, error: apiErrorFromBody(body) };
+    return { ok: true, data: (body as VerifyClearResponse | null) ?? { ok: true } };
+  } catch {
+    return { ok: false, error: NETWORK_ERROR };
+  }
+}
+
 export async function getDraft(): Promise<ApiResult<AccountDraft>> {
   try {
     const res = await fetch('/api/draft', { credentials: 'same-origin' });

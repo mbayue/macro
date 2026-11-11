@@ -98,6 +98,12 @@ export function Shell({
           {item('#/probe', 'Containment probe', route.view === 'probe-start' || route.view === 'probe')}
         </ul>
 
+        {me?.pendingVerification ? (
+          <a className="rail__link" href="#/verify-panel">
+            Finish verifying {me.pendingVerification.host}
+          </a>
+        ) : null}
+
         {recent.length > 0 ? (
           <div className="rail__recent">
             <h2 className="rail__heading">{me !== null ? 'Your runs' : 'In this browser'}</h2>

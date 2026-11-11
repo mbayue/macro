@@ -322,3 +322,67 @@ describe('verify routes', () => {
     ).toThrow(ContestedOriginError);
   });
 });
+
+describe('pending verification restore', () => {
+  test('GET /api/me and /api/verify/pending return the same token; cancel drops it', async () => {
+    const store = new Store(':memory:');
+    const sent: { to: string; url: string }[] = [];
+    const mailer: ResendMailer = {
+      sendMagicLink: async (input) => {
+        sent.push(input);
+        return { ok: true };
+      },
+    };
+    const config = authConfig();
+    const app = createApp({
+      store,
+      config,
+      verifyTurnstile: () => Promise.resolve({ ok: true }),
+      client: new InferenceClient({
+        config: config.inference,
+        store,
+        fetchImpl: asFetch(() => Promise.reject(new Error('no'))),
+      }),
+      runController: fakeController(),
+      probeController: fakeController(),
+      now: () => NOW,
+      log: () => {},
+      mailer,
+      resolveNs: async () => ['alex.ns.cloudflare.com'],
+    });
+    const cookie = await signIn(app, sent);
+    const start = await app.fetch(
+      new Request('http://macro.test/api/verify/start', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', cookie },
+        body: JSON.stringify({ host: 'shop.example.com' }),
+      }),
+    );
+    expect(start.status).toBe(200);
+    const started = (await start.json()) as { token: string; txtName: string; isCloudflare?: boolean };
+    const me = await app.fetch(new Request('http://macro.test/api/me', { headers: { cookie } }));
+    expect(me.status).toBe(200);
+    const meBody = (await me.json()) as {
+      pendingVerification: { host: string; origin: string } | null;
+    };
+    expect(meBody.pendingVerification).toEqual({
+      host: 'shop.example.com',
+      origin: 'https://shop.example.com',
+    });
+    const pending = await app.fetch(new Request('http://macro.test/api/verify/pending', { headers: { cookie } }));
+    expect(pending.status).toBe(200);
+    const pendingBody = (await pending.json()) as { token: string; txtName: string; isCloudflare?: boolean };
+    expect(pendingBody.token).toBe(started.token);
+    expect(pendingBody.txtName).toBe('_macro-verify.shop.example.com');
+    expect(pendingBody.isCloudflare).toBe(true);
+    const cancel = await app.fetch(
+      new Request('http://macro.test/api/verify/cancel', { method: 'POST', headers: { cookie } }),
+    );
+    expect(cancel.status).toBe(200);
+    const gone = await app.fetch(new Request('http://macro.test/api/verify/pending', { headers: { cookie } }));
+    expect(gone.status).toBe(404);
+    const meAfter = await app.fetch(new Request('http://macro.test/api/me', { headers: { cookie } }));
+    const meAfterBody = (await meAfter.json()) as { pendingVerification: { host: string } | null };
+    expect(meAfterBody.pendingVerification).toBeNull();
+  });
+});

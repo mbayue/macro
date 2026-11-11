@@ -1,9 +1,9 @@
 /**
  * Inline own-site verification: start a token, show DNS + well-known instructions, check, or clear.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { VerifyStartResponse } from '../../../../../src/api-types.ts';
-import { postVerifyCheck, postVerifyClear, postVerifyStart } from '../lib/auth-api.ts';
+import { getVerifyPending, postVerifyCancel, postVerifyCheck, postVerifyClear, postVerifyStart } from '../lib/auth-api.ts';
 import { useApp } from '../context.tsx';
 import { AlertRegion, Busy, Panel } from './ui.tsx';
 
@@ -60,8 +60,24 @@ export function VerifyPanel({
   const { me, refreshMe, announce } = useApp();
   const [host, setHost] = useState(initialHost);
   const [pending, setPending] = useState<VerifyStartResponse | null>(null);
-  const [busy, setBusy] = useState<'start' | 'check' | 'clear' | null>(null);
+  const [busy, setBusy] = useState<'start' | 'check' | 'clear' | 'cancel' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const restoreGen = useRef(0);
+
+  useEffect(() => {
+    if (me?.pendingVerification == null) return;
+    const gen = ++restoreGen.current;
+    let cancelled = false;
+    void (async () => {
+      const res = await getVerifyPending();
+      if (cancelled || gen !== restoreGen.current) return;
+      if (!res.ok || res.data === null) return;
+      setPending((current) => current ?? res.data);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [me?.user.id, me?.pendingVerification?.host, me?.pendingVerification?.origin]);
 
   const verified = me?.verifiedOrigin ?? null;
 
@@ -78,6 +94,7 @@ export function VerifyPanel({
       return;
     }
     setPending(res.data);
+    await refreshMe();
     announce('Verification token ready. Add the DNS record or well-known file, then check.');
   }
 
@@ -96,6 +113,24 @@ export function VerifyPanel({
     await refreshMe();
     onVerified?.(res.data.verifiedOrigin);
     announce(`Verified ${res.data.verifiedOrigin.host}.`);
+  }
+
+  async function onStartOver() {
+    if (busy) return;
+    restoreGen.current += 1;
+    setBusy('cancel');
+    setError(null);
+    const res = await postVerifyCancel();
+    setBusy(null);
+    if (!res.ok) {
+      setError(res.error.message);
+      announce(res.error.message);
+      return;
+    }
+    setPending(null);
+    setHost('');
+    await refreshMe();
+    announce('Verification reset. The previous token will no longer work.');
   }
 
   async function onClear() {
@@ -214,16 +249,8 @@ export function VerifyPanel({
             <button type="button" className="btn" disabled={busy !== null} onClick={() => void onCheck()}>
               {busy === 'check' ? <Busy>Checking</Busy> : 'I added the proof — check'}
             </button>
-            <button
-              type="button"
-              className="btn btn--ghost"
-              disabled={busy !== null}
-              onClick={() => {
-                setPending(null);
-                setError(null);
-              }}
-            >
-              Start over
+            <button type="button" className="btn btn--ghost" disabled={busy !== null} onClick={() => void onStartOver()}>
+              {busy === 'cancel' ? <Busy>Resetting</Busy> : 'Start over'}
             </button>
           </p>
         </div>

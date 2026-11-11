@@ -298,6 +298,8 @@ export interface MeResponse {
     githubLogin: string | null;
   };
   verifiedOrigin: { origin: string; host: string } | null;
+  /** In-progress proof. Survives navigation. Null once checked or cancelled. */
+  pendingVerification: { origin: string; host: string } | null;
 }
 
 export interface VerifyStartRequest {

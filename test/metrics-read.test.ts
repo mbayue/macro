@@ -45,6 +45,7 @@ describe('Property 11: Metrics_Reader recovers generated summary values', () => 
         expect(got.ok).toBe(true);
         if (!got.ok) return;
         for (const m of [got.metrics.overall, ...Object.values(got.metrics.routes)]) {
+          if (m === undefined) continue;
           for (const v of Object.values(m)) {
             expect(Number.isFinite(v)).toBe(true);
             expect(v).toBeGreaterThanOrEqual(0);
@@ -69,7 +70,10 @@ describe('Property 11: Metrics_Reader recovers generated summary values', () => 
         expect(got.ok).toBe(true);
         if (!got.ok) return;
         expect(got.metrics.overall.http429).toBe(0);
-        for (const m of Object.values(got.metrics.routes)) expect(m.http429).toBe(0);
+        for (const m of Object.values(got.metrics.routes)) {
+          if (m === undefined) continue;
+          expect(m.http429).toBe(0);
+        }
       }),
       { numRuns: 200 },
     );

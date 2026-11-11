@@ -4,7 +4,7 @@
  */
 
 import { ROUTE_CATALOG } from '../plan/catalog.ts';
-import type { Metrics, RouteId, StageMetrics, StageVerdict } from '../types.ts';
+import type { Metrics, StageMetrics, StageVerdict } from '../types.ts';
 import { roundHalfAway } from './format.ts';
 
 export interface StopThresholds {
@@ -62,16 +62,18 @@ export function breakingPoint(stages: readonly VerdictStage[]): number | undefin
 export function firstDegradedRoute(
   stages: readonly MetricsStage[],
   t: StopThresholds,
-): RouteId | undefined {
+  routeOrder?: readonly string[],
+): string | undefined {
+  const order = routeOrder ?? ROUTE_CATALOG.map((entry) => entry.id);
   for (const stage of stages) {
-    let best: RouteId | undefined;
+    let best: string | undefined;
     let bestP95 = -Infinity;
-    for (const entry of ROUTE_CATALOG) {
-      const m = stage.metrics.routes[entry.id];
+    for (const id of order) {
+      const m = stage.metrics.routes[id];
       if (m === undefined || !exceedsThresholds(m, t)) continue;
       const p95 = roundHalfAway(m.p95, 0);
       if (p95 > bestP95) {
-        best = entry.id;
+        best = id;
         bestP95 = p95;
       }
     }

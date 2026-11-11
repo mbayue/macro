@@ -103,13 +103,22 @@ function checkTarget(plan: TestPlan, allowlist: readonly string[], out: Violatio
 // Rules 4.3 - 4.6
 // ---------------------------------------------------------------------------
 
-function checkRoutes(plan: TestPlan, out: Violation[]): void {
+function checkRoutes(
+  plan: TestPlan,
+  out: Violation[],
+  routes: readonly { id: string }[] | undefined,
+): void {
+  const allowed = routes === undefined ? null : new Set(routes.map((r) => r.id));
   plan.journey.forEach((step, i) => {
-    if (!isRouteId(step.route)) {
+    const known = allowed === null ? isRouteId(step.route) : allowed.has(step.route);
+    if (!known) {
       out.push({
         rule: '4.3',
         path: `journey[${i}].route`,
-        message: `route ${JSON.stringify(step.route)} is not in the Route_Catalog`,
+        message:
+          allowed === null
+            ? `route ${JSON.stringify(step.route)} is not in the Route_Catalog`
+            : `route ${JSON.stringify(step.route)} is not in the discovered routes`,
       });
     }
   });
@@ -249,10 +258,14 @@ export function comparePaths(a: string, b: string): number {
  * Evaluate every policy rule and return all violations. `allowlist` is
  * `Config.target.allowlist`.
  */
-export function evaluatePlan(plan: TestPlan, allowlist: readonly string[]): GateResult {
+export function evaluatePlan(
+  plan: TestPlan,
+  allowlist: readonly string[],
+  routes?: readonly { id: string; method: 'GET' | 'POST'; path: string }[],
+): GateResult {
   const violations: Violation[] = [];
   checkTarget(plan, allowlist, violations);
-  checkRoutes(plan, violations);
+  checkRoutes(plan, violations, routes);
   checkStages(plan, violations);
   checkJourney(plan, violations);
   checkThresholds(plan, violations);

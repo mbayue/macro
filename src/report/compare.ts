@@ -7,7 +7,6 @@
 
 import { ROUTE_CATALOG } from '../plan/catalog.ts';
 import { fmtMs, fmtPct, fmtRps, roundHalfAway } from '../run/format.ts';
-import type { RouteId } from '../types.ts';
 import type { CapacityReport, MetricsView, StageView } from './build.ts';
 
 export const HEADLINE_NONE = 'none';
@@ -27,7 +26,7 @@ export function displayBreakingPoint(v: number | null): string {
 }
 
 /** First_Degraded_Route display: "none" when no route exceeded a threshold. */
-export function displayFirstDegradedRoute(v: RouteId | null): string {
+export function displayFirstDegradedRoute(v: string | null): string {
   return v === null ? HEADLINE_NONE : v;
 }
 
@@ -45,7 +44,7 @@ export interface RunSummary {
   startedAt: number;
   safeCapacity: number | null;
   breakingPoint: number | null;
-  firstDegradedRoute: RouteId | null;
+  firstDegradedRoute: string | null;
   /** `"none"` when null. */
   safeCapacityDisplay: string;
   /** `"not reached"` when null. */
@@ -78,7 +77,7 @@ export interface MetricsComparison {
 }
 
 export interface RouteComparison extends MetricsComparison {
-  route: RouteId;
+  route: string;
 }
 
 export interface StageComparison {
@@ -182,7 +181,7 @@ function byIndex(report: CapacityReport): Map<number, StageView> {
   return map;
 }
 
-function routeView(stage: StageView | undefined, route: RouteId): MetricsView | undefined {
+function routeView(stage: StageView | undefined, route: string): MetricsView | undefined {
   return stage?.routes.find((r) => r.route === route);
 }
 

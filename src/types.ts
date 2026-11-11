@@ -46,7 +46,7 @@ export interface Metrics {
 
 export interface StageMetrics {
   overall: Metrics;
-  routes: Partial<Record<RouteId, Metrics>>;
+  routes: Partial<Record<string, Metrics>>;
 }
 
 export type StageStatus = 'running' | 'done' | 'error';

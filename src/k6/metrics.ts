@@ -8,7 +8,7 @@
 
 import { z } from 'zod';
 import { ROUTE_CATALOG } from '../plan/catalog.ts';
-import type { Metrics, RouteId, StageMetrics } from '../types.ts';
+import type { Metrics, StageMetrics } from '../types.ts';
 
 export type ReadSummaryResult = { ok: true; metrics: StageMetrics } | { ok: false; reason: string };
 
@@ -114,7 +114,7 @@ function block(
 }
 
 /** Extract Stage_Metrics from the k6 summary JSON text. Never throws. */
-export function readSummary(summaryJson: string): ReadSummaryResult {
+export function readSummary(summaryJson: string, routeIds?: readonly string[]): ReadSummaryResult {
   try {
     let raw: unknown;
     try {
@@ -136,10 +136,11 @@ export function readSummary(summaryJson: string): ReadSummaryResult {
     const overall = block(metrics, '', durationSec, true);
     if (overall === undefined) return { ok: false, reason: 'summary has no http_reqs metric' };
 
-    const routes: Partial<Record<RouteId, Metrics>> = {};
-    for (const entry of ROUTE_CATALOG) {
-      const m = block(metrics, `{route:${entry.id}}`, durationSec, false);
-      if (m !== undefined) routes[entry.id] = m;
+    const routes: Partial<Record<string, Metrics>> = {};
+    const ids = routeIds ?? ROUTE_CATALOG.map((entry) => entry.id);
+    for (const id of ids) {
+      const m = block(metrics, `{route:${id}}`, durationSec, false);
+      if (m !== undefined) routes[id] = m;
     }
     return { ok: true, metrics: { overall, routes } };
   } catch (e) {

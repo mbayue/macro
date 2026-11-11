@@ -314,7 +314,7 @@ describe('Property 14: verdict and capacity values match a reference', () => {
         const once = firstDegradedRoute(sm.map((metrics) => ({ metrics })), thresholds);
         const twice = firstDegradedRoute(sm.map((metrics) => ({ metrics })), thresholds);
         expect(twice).toBe(once);
-        if (once !== undefined) expect(ROUTE_IDS).toContain(once);
+        if (once !== undefined) expect(ROUTE_IDS as readonly string[]).toContain(once);
       }),
       { numRuns: 100 },
     );

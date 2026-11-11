@@ -185,3 +185,31 @@ describe('Policy_Gate against a reference model', () => {
     );
   });
 });
+
+describe('discovered routes', () => {
+  const base: TestPlan = {
+    name: 'own',
+    target: 'https://sketch.my.id',
+    stages: [{ vus: 10, durationSec: 60 }],
+    journey: [{ route: 'r2', probability: 50, thinkMs: 500 }],
+    stopThresholds: { p95Ms: 1000, errorRatePct: 2 },
+  };
+  const routes = [{ id: 'r2', method: 'GET' as const, path: '/assets/a.webp' }];
+  test('r2 is rejected against the catalog and accepted against the discovered set; r9 is rejected', () => {
+    const without = evaluatePlan(base, ['https://sketch.my.id']);
+    expect(without.status).toBe('rejected');
+    if (without.status === 'rejected') {
+      expect(without.violations.some((v) => v.rule === '4.3' && v.message === 'route "r2" is not in the Route_Catalog')).toBe(true);
+    }
+    expect(evaluatePlan(base, ['https://sketch.my.id'], routes).status).toBe('accepted');
+    const bad = evaluatePlan(
+      { ...base, journey: [{ route: 'r9', probability: 50, thinkMs: 500 }] },
+      ['https://sketch.my.id'],
+      routes,
+    );
+    expect(bad.status).toBe('rejected');
+    if (bad.status === 'rejected') {
+      expect(bad.violations.some((v) => v.rule === '4.3' && v.message === 'route "r9" is not in the discovered routes')).toBe(true);
+    }
+  });
+});

@@ -259,6 +259,7 @@ describe('Property 12: Metrics_Reader rejects incomplete summaries', () => {
         if (result === undefined) throw new Error('unreachable');
         if (result.ok) {
           for (const m of [result.metrics.overall, ...Object.values(result.metrics.routes)]) {
+            if (m === undefined) continue;
             for (const v of Object.values(m)) {
               expect(Number.isFinite(v)).toBe(true);
               expect(v).toBeGreaterThanOrEqual(0);

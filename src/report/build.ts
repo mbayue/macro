@@ -19,7 +19,6 @@ import type {
   DecisionSource,
   DecisionValue,
   Metrics,
-  RouteId,
   RunStatus,
   SandboxRuntime,
   StageMetrics,
@@ -87,7 +86,7 @@ export interface MetricsView {
 }
 
 export interface RouteRowView extends MetricsView {
-  route: RouteId;
+  route: string;
   /** True when the rounded p95 or error rate exceeds a Stop_Thresholds value. */
   exceedsThresholds: boolean;
 }
@@ -126,7 +125,7 @@ export interface CapacityReport {
     status: RunStatus;
     safeCapacity: number | null;
     breakingPoint: number | null;
-    firstDegradedRoute: RouteId | null;
+    firstDegradedRoute: string | null;
   };
 
   /** 10.12: no Stage produced metrics. */

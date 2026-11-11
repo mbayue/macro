@@ -12,6 +12,7 @@ import type {
   UserRow,
   VerifiedOriginRow,
 } from '../auth/types.ts';
+import type { DiscoveredRoute } from '../plan/discover.ts';
 import type {
   DecisionSource,
   DecisionValue,
@@ -36,15 +37,45 @@ export { ContestedOriginError } from '../auth/types.ts';
 export const LIMIT_ROW_TTL_MS = 24 * 3_600_000;
 export const PURGE_INTERVAL_MS = 3_600_000;
 
+function parseDiscoveredRoutes(raw: string | null): DiscoveredRoute[] | null {
+  if (raw === null || raw === '') return null;
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(value)) return null;
+  const out: DiscoveredRoute[] = [];
+  for (const item of value) {
+    if (typeof item !== 'object' || item === null) return null;
+    if (!('id' in item) || !('kind' in item) || !('path' in item) || !('method' in item)) return null;
+    const { id, kind, path, method } = item;
+    if (typeof id !== 'string' || typeof path !== 'string' || method !== 'GET') return null;
+    if (kind !== 'document' && kind !== 'script' && kind !== 'style' && kind !== 'asset') return null;
+    out.push({ id, kind, method: 'GET', path });
+  }
+  return out;
+}
+
 export type AgentName = 'planner' | 'supervisor' | 'reporter';
 export type ModelOutcome = 'success' | 'error' | 'timeout';
 /** State of the AI section of a stored report. */
 export type ReportAiStatus = 'pending' | 'ready' | 'unavailable';
 
 const SCHEMA = `
-CREATE TABLE IF NOT EXISTS drafts (id TEXT PRIMARY KEY, traffic_event TEXT NOT NULL, created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS drafts (
+  id TEXT PRIMARY KEY, traffic_event TEXT NOT NULL, created_at INTEGER NOT NULL,
+  origin TEXT, routes_json TEXT
+);
 CREATE TABLE IF NOT EXISTS waitlist (email TEXT PRIMARY KEY, created_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS plans (hash TEXT PRIMARY KEY, text TEXT NOT NULL, approved_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS plan_targets (
+  plan_hash TEXT PRIMARY KEY REFERENCES plans(hash),
+  web_origin TEXT NOT NULL,
+  api_origin TEXT NOT NULL,
+  routes_json TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS runs (
   id TEXT PRIMARY KEY, kind TEXT NOT NULL CHECK (kind IN ('run','probe')),
   plan_hash TEXT REFERENCES plans(hash), status TEXT NOT NULL, status_reason TEXT,
@@ -138,6 +169,15 @@ export interface DraftRow {
   id: string;
   trafficEvent: string;
   createdAt: number;
+  origin: string | null;
+  routes: DiscoveredRoute[] | null;
+}
+
+export interface PlanTargetRow {
+  planHash: string;
+  webOrigin: string;
+  apiOrigin: string;
+  routes: DiscoveredRoute[];
 }
 
 export interface PlanRow {
@@ -254,7 +294,13 @@ export interface ModelCallRow {
 
 // ------------------------------------------------------------------ raw rows
 
-interface RawDraft { id: string; traffic_event: string; created_at: number }
+interface RawDraft {
+  id: string;
+  traffic_event: string;
+  created_at: number;
+  origin: string | null;
+  routes_json: string | null;
+}
 interface RawPlan { hash: string; text: string; approved_at: number }
 interface RawRun {
   id: string; kind: RunKind; plan_hash: string | null; status: RunStatus; status_reason: string | null;
@@ -449,6 +495,7 @@ export class Store {
     this.db.exec('PRAGMA foreign_keys = ON;');
     this.db.exec(SCHEMA);
     this.migrateRunsOwnership();
+    this.migrateDraftDiscovery();
   }
 
   /** Add ownership columns on DBs created before account privacy. */
@@ -466,6 +513,16 @@ export class Store {
     if (!cols.includes('title')) {
       this.db.exec('ALTER TABLE runs ADD COLUMN title TEXT');
     }
+  }
+
+  /** Add discovery columns on drafts created before own-site journeys. */
+  private migrateDraftDiscovery(): void {
+    const cols = this.db
+      .prepare<{ name: string }, []>('PRAGMA table_info(drafts)')
+      .all()
+      .map((c) => c.name);
+    if (!cols.includes('origin')) this.db.exec('ALTER TABLE drafts ADD COLUMN origin TEXT');
+    if (!cols.includes('routes_json')) this.db.exec('ALTER TABLE drafts ADD COLUMN routes_json TEXT');
   }
 
   /** Opens `${dataDir}/macro.db`. */
@@ -495,9 +552,44 @@ export class Store {
 
   getDraft(id: string): DraftRow | null {
     const r = this.db
-      .prepare<RawDraft, [string]>('SELECT id, traffic_event, created_at FROM drafts WHERE id = ?')
+      .prepare<RawDraft, [string]>(
+        'SELECT id, traffic_event, created_at, origin, routes_json FROM drafts WHERE id = ?',
+      )
       .get(id);
-    return r ? { id: r.id, trafficEvent: r.traffic_event, createdAt: r.created_at } : null;
+    if (r === null) return null;
+    return {
+      id: r.id,
+      trafficEvent: r.traffic_event,
+      createdAt: r.created_at,
+      origin: r.origin,
+      routes: parseDiscoveredRoutes(r.routes_json),
+    };
+  }
+
+  setDraftDiscovery(id: string, origin: string, routes: readonly DiscoveredRoute[]): void {
+    this.db
+      .prepare('UPDATE drafts SET origin = ?, routes_json = ? WHERE id = ?')
+      .run(origin, JSON.stringify(routes), id);
+  }
+
+  storePlanTarget(row: PlanTargetRow): void {
+    this.db
+      .prepare(
+        'INSERT OR IGNORE INTO plan_targets (plan_hash, web_origin, api_origin, routes_json) VALUES (?, ?, ?, ?)',
+      )
+      .run(row.planHash, row.webOrigin, row.apiOrigin, JSON.stringify(row.routes));
+  }
+
+  getPlanTarget(planHash: string): PlanTargetRow | null {
+    const r = this.db
+      .prepare<{ plan_hash: string; web_origin: string; api_origin: string; routes_json: string }, [string]>(
+        'SELECT plan_hash, web_origin, api_origin, routes_json FROM plan_targets WHERE plan_hash = ?',
+      )
+      .get(planHash);
+    if (r === undefined || r === null) return null;
+    const routes = parseDiscoveredRoutes(r.routes_json);
+    if (routes === null) return null;
+    return { planHash: r.plan_hash, webOrigin: r.web_origin, apiOrigin: r.api_origin, routes };
   }
 
   // ------------------------------------------------------------------- plans

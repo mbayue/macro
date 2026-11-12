@@ -13,6 +13,8 @@ import type { TestPlan } from '../../../../../src/types.ts';
 import type { AccountDraft } from '../../../../../src/api-types.ts';
 import { getDraft, postVerifyClear, putDraft, stashLocalDraft, takeLocalDraft } from '../lib/auth-api.ts';
 import { type ApiError, type ApiResult, postApprove, postPlan, VERIFICATION_ERROR } from '../lib/api.ts';
+import { isActionPath } from '../../../../../src/plan/discover.ts';
+import { journeyGroups, journeyLabel } from '../../../../../src/plan/journey-edit.ts';
 import { countCodePoints } from '../lib/describe.ts';
 import { parseErrorText } from '../lib/format.ts';
 import { GateRules } from '../components/GateRules.tsx';
@@ -80,6 +82,7 @@ export function NewTest() {
   const changedSinceDraft = lastSubmitted !== null && text.trim() !== lastSubmitted;
   const showRetry = planError?.code === 'planning_failed' && !changedSinceDraft;
   const approvable = review !== null && isApprovable(review);
+  const [checksDiffer, setChecksDiffer] = useState(false);
   const showComposer = review === null || editing;
   const verifiedOrigin = me?.verifiedOrigin ?? null;
   const ownNeedsVerify = targetMode === 'own' && (me === null || verifiedOrigin === null);
@@ -164,7 +167,7 @@ export function NewTest() {
     }
   }
 
-  async function startPlanning(value: string) {
+  async function startPlanning(value: string, routeIds?: string[]) {
     if (!idle || countCodePoints(value) < min || countCodePoints(value) > max) return;
     if (targetMode === 'own' && me === null) {
       stashLocalDraft({ ...currentDraft(), lastEditedAt: Date.now() });
@@ -192,7 +195,10 @@ export function NewTest() {
     setBusy('planning');
     setLastSubmitted(value);
     setPlanError(null);
-    setReview(null);
+    if (routeIds === undefined) {
+      setReview(null);
+      setChecksDiffer(false);
+    }
     announce('Drafting a plan.');
     let result: ApiResult<PlanResponse>;
     try {
@@ -202,6 +208,7 @@ export function NewTest() {
         turnstileToken: token,
         targetMode,
         ...(targetMode === 'own' && verifiedOrigin !== null ? { targetOrigin: verifiedOrigin.origin } : {}),
+        ...(routeIds !== undefined ? { routeIds } : {}),
       });
     } catch {
       result = { ok: false, error: VERIFICATION_ERROR };
@@ -455,7 +462,15 @@ export function NewTest() {
           <TurnstileBox boxRef={draftTurnstile.box} />
 
           {review ? (
-            <Review key={reviewSeq} res={review} stale={editing && changedSinceDraft} busy={busy} onEdit={editDescription} />
+            <Review
+              key={reviewSeq}
+              res={review}
+              stale={editing && changedSinceDraft}
+              busy={busy}
+              onEdit={editDescription}
+              onRevise={(ids) => lastSubmitted !== null && void startPlanning(lastSubmitted, ids)}
+              onChecksDiffer={setChecksDiffer}
+            />
           ) : busy === null && !ownNeedsVerify ? (
             <NextUp />
           ) : null}
@@ -482,6 +497,7 @@ export function NewTest() {
                 onInView={setPanelInView}
                 startFromBar={startFromBar}
                 alive={alive}
+                checksDiffer={checksDiffer}
               />
               <GateRules folded />
             </>
@@ -499,7 +515,7 @@ export function NewTest() {
       </div>
 
       {approvable && review?.plan ? (
-        <ApproveBar plan={review.plan} hidden={panelInView} disabled={!idle} onApprove={() => startFromBar.current?.()} />
+        <ApproveBar plan={review.plan} hidden={panelInView} disabled={!idle || checksDiffer} onApprove={() => startFromBar.current?.()} />
       ) : null}
     </div>
   );
@@ -525,7 +541,21 @@ function Brief({ text, origin, disabled, onEdit }: { text: string; origin: strin
   );
 }
 
-function Review({ res, stale, busy, onEdit }: { res: PlanResponse; stale: boolean; busy: Busy; onEdit: () => void }) {
+function Review({
+  res,
+  stale,
+  busy,
+  onEdit,
+  onRevise,
+  onChecksDiffer,
+}: {
+  res: PlanResponse;
+  stale: boolean;
+  busy: Busy;
+  onEdit: () => void;
+  onRevise: (routeIds: string[]) => void;
+  onChecksDiffer: (differ: boolean) => void;
+}) {
   const { announce } = useApp();
   const heading = useRef<HTMLHeadingElement>(null);
   const plan = res.plan;
@@ -591,6 +621,9 @@ function Review({ res, stale, busy, onEdit }: { res: PlanResponse; stale: boolea
             </div>
           ) : null}
           <PlanDetails plan={plan} rationale={res.rationale} routes={res.routes} />
+          {res.routes.some((row) => row.kind !== 'catalog') ? (
+            <JourneyChecks routes={res.routes} disabled={busy !== null} onRevise={onRevise} onChecksDiffer={onChecksDiffer} />
+          ) : null}
         </>
       )}
       <ModelCalls calls={res.modelCalls} />
@@ -746,6 +779,93 @@ function PlanDetails({
   );
 }
 
+function JourneyChecks({
+  routes,
+  disabled,
+  onRevise,
+  onChecksDiffer,
+}: {
+  routes: PlanResponse['routes'];
+  disabled: boolean;
+  onRevise: (routeIds: string[]) => void;
+  onChecksDiffer: (differ: boolean) => void;
+}) {
+  const groups = journeyGroups(routes.map((row) => ({ ...row, defaultOn: row.defaultOn === true })));
+  const [checked, setChecked] = useState<ReadonlySet<string>>(
+    () => new Set(routes.filter((row) => row.defaultOn === true).map((row) => row.id)),
+  );
+  const baseline = routes
+    .filter((row) => row.defaultOn === true)
+    .map((row) => row.id)
+    .sort()
+    .join('\n');
+  const current = [...checked].sort().join('\n');
+  const differ = current !== baseline;
+  useEffect(() => {
+    onChecksDiffer(differ);
+  }, [differ, onChecksDiffer]);
+
+  function rowView(row: { id: string; path: string; kind: string }, locked: boolean) {
+    const on = locked || checked.has(row.id);
+    return (
+      <tr key={row.id}>
+        <td>
+          <input
+            type="checkbox"
+            checked={on}
+            disabled={locked || disabled}
+            aria-label={row.path}
+            onChange={() => {
+              setChecked((prev) => {
+                const next = new Set(prev);
+                if (next.has(row.id)) next.delete(row.id);
+                else next.add(row.id);
+                return next;
+              });
+            }}
+          />
+        </td>
+        <td className="code">{row.path}</td>
+        <td>
+          {journeyLabel({ ...row, defaultOn: checked.has(row.id) })}
+          {row.kind === 'page' && isActionPath(row.path) ? ' A repeated visit would hit this link.' : ''}
+        </td>
+      </tr>
+    );
+  }
+
+  const sections = [
+    ['Always in the test', groups.locked, true],
+    ['On, and you can turn them off', groups.on, false],
+    ['Found, and left off until you turn one on', groups.off, false],
+  ] as const;
+
+  return (
+    <section className="panel" aria-label="Journey">
+      {sections.map(([title, rows, locked]) =>
+        rows.length === 0 ? null : (
+          <div key={title}>
+            <h3 className="h-small">{title}</h3>
+            <table>
+              <tbody>{rows.map((row) => rowView(row, locked))}</tbody>
+            </table>
+          </div>
+        ),
+      )}
+      {groups.overflow ? <p>Some pages were left off because a plan holds 32 routes.</p> : null}
+      {differ ? <p>Revise the plan to use these checks.</p> : null}
+      <button
+        type="button"
+        className="btn btn--line"
+        disabled={disabled}
+        onClick={() => onRevise(['r1', ...routes.filter((row) => row.path !== '/' && checked.has(row.id)).map((row) => row.id)])}
+      >
+        Revise the plan
+      </button>
+    </section>
+  );
+}
+
 function ApprovePanel({
   plan,
   planText,
@@ -759,6 +879,7 @@ function ApprovePanel({
   onInView,
   startFromBar,
   alive,
+  checksDiffer,
 }: {
   plan: TestPlan;
   planText: string;
@@ -772,6 +893,7 @@ function ApprovePanel({
   onInView: (inView: boolean) => void;
   startFromBar: React.RefObject<(() => void) | null>;
   alive: React.RefObject<boolean>;
+  checksDiffer: boolean;
 }) {
   const { announce } = useApp();
   const turnstile = useTurnstile();
@@ -782,7 +904,7 @@ function ApprovePanel({
   const idle = busy === null;
 
   async function approve() {
-    if (!idle) return;
+    if (!idle || checksDiffer) return;
     setBusy('approving');
     setError(null);
     announce('Starting the run.');
@@ -854,7 +976,7 @@ function ApprovePanel({
       />
       <TurnstileBox boxRef={turnstile.box} />
       <div className="row">
-        <button type="button" className="btn btn--ink" disabled={!idle} onClick={() => void approve()}>
+        <button type="button" className="btn btn--ink" disabled={!idle || checksDiffer} onClick={() => void approve()}>
           Approve and run
         </button>
         <button type="button" className="btn btn--line" disabled={!idle} onClick={onCancel}>
@@ -862,6 +984,7 @@ function ApprovePanel({
         </button>
         {busy === 'approving' ? <Busy>Starting the run.</Busy> : null}
       </div>
+      {checksDiffer ? <p>Revise the plan to use these checks.</p> : null}
       <AlertRegion error={error} />
     </section>
   );

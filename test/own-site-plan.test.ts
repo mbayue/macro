@@ -356,7 +356,7 @@ describe('own-site plan approve', () => {
       now: () => NOW,
       log: () => {},
       mailer,
-      fetchImpl: (async () => htmlResponse('<a href="/about">a</a>')) as typeof fetch,
+      fetchImpl: (async () => htmlResponse('<a href="/about">a</a>')) as unknown as typeof fetch,
     });
     const cookie = await signIn(app, sent);
     const user = store.findUserByEmail('a@example.com')!;

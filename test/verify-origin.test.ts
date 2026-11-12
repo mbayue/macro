@@ -137,6 +137,81 @@ describe('detectDnsProvider', () => {
     expect(res.isCloudflare).toBe(false);
     expect(res.nameservers).toEqual([]);
   });
+
+  test('detects Domain Connect provider and generates apply URL for subdomain', async () => {
+    const mockNs = async (host: string) => {
+      if (host === 'example.com') {
+        return ['ns1.godaddy.com', 'ns2.godaddy.com'];
+      }
+      return [];
+    };
+    const mockTxt = async (host: string) => {
+      if (host === '_domainconnect.example.com') {
+        return [['domainconnect.godaddy.com']];
+      }
+      throw new Error('ENOTFOUND');
+    };
+    const mockFetch: typeof fetch = async (input) => {
+      return new Response(
+        JSON.stringify({
+          providerId: 'godaddy.com',
+          providerName: 'GoDaddy',
+          urlSyncUX: 'https://dcc.godaddy.com/manage/dns/connect',
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    };
+
+    const res = await detectDnsProvider('shop.example.com', mockNs, {
+      resolveTxt: mockTxt,
+      fetchFn: mockFetch,
+      verifyToken: 'tok-sub-123',
+    });
+
+    expect(res.domainConnectProviderName).toBe('GoDaddy');
+    expect(res.domainConnectUrl).toBeDefined();
+    const parsed = new URL(res.domainConnectUrl!);
+    expect(parsed.origin).toBe('https://dcc.godaddy.com');
+    expect(parsed.pathname).toBe(
+      '/manage/dns/connect/v2/domainTemplates/providers/macro.my.id/services/verify/apply',
+    );
+    expect(parsed.searchParams.get('domain')).toBe('example.com');
+    expect(parsed.searchParams.get('host')).toBe('shop');
+    expect(parsed.searchParams.get('token')).toBe('tok-sub-123');
+  });
+
+  test('detects Domain Connect for apex domain and omits host param', async () => {
+    const mockNs = async () => ['ns1.ionos.com'];
+    const mockTxt = async (host: string) => {
+      if (host === '_domainconnect.mybrand.org') {
+        return [['domainconnect.ionos.com']];
+      }
+      throw new Error('ENOTFOUND');
+    };
+    const mockFetch: typeof fetch = async () => {
+      return new Response(
+        JSON.stringify({
+          providerId: 'ionos.com',
+          providerName: 'IONOS',
+          urlSyncUX: 'https://domainconnect.ionos.com/connect',
+        }),
+        { status: 200 },
+      );
+    };
+
+    const res = await detectDnsProvider('mybrand.org', mockNs, {
+      resolveTxt: mockTxt,
+      fetchFn: mockFetch,
+      verifyToken: 'tok-apex-789',
+    });
+
+    expect(res.domainConnectProviderName).toBe('IONOS');
+    expect(res.domainConnectUrl).toBeDefined();
+    const parsed = new URL(res.domainConnectUrl!);
+    expect(parsed.searchParams.get('domain')).toBe('mybrand.org');
+    expect(parsed.searchParams.has('host')).toBe(false);
+    expect(parsed.searchParams.get('token')).toBe('tok-apex-789');
+  });
 });
 
 describe('verify routes', () => {

@@ -61,6 +61,10 @@ export interface Config {
     readonly githubClientSecret: string;
     readonly githubRedirectUri: string;
   };
+  readonly domainConnect?: {
+    readonly keyId: string;
+    readonly privateKey: string;
+  };
 }
 
 export interface ConfigError {
@@ -222,6 +226,13 @@ export function parseConfig(env: Env): ConfigResult {
     return { ok: false, errors };
   }
 
+  const domainConnectPrivateKey = read(env, 'DOMAIN_CONNECT_PRIVATE_KEY');
+  const domainConnectKeyId = read(env, 'DOMAIN_CONNECT_KEY_ID') ?? 'p1';
+  const domainConnect =
+    domainConnectPrivateKey !== undefined
+      ? { keyId: domainConnectKeyId, privateKey: domainConnectPrivateKey }
+      : undefined;
+
   const config: Config = {
     inference: { apiKey, baseUrl, model, fallbackModel },
     turnstile: { secretKey: turnstileSecret, siteKey: turnstileSite },
@@ -236,6 +247,7 @@ export function parseConfig(env: Env): ConfigResult {
     dataDir,
     ...(vultrApiKey !== undefined ? { vultrApiKey } : {}),
     ...(auth !== undefined ? { auth } : {}),
+    ...(domainConnect !== undefined ? { domainConnect } : {}),
   };
   return { ok: true, config: deepFreeze(config) };
 }
@@ -255,6 +267,14 @@ export function redactedConfig(config: Config): unknown {
             sessionSecret: mark(config.auth.sessionSecret),
             resendApiKey: mark(config.auth.resendApiKey),
             githubClientSecret: mark(config.auth.githubClientSecret),
+          },
+        }
+      : {}),
+    ...(config.domainConnect !== undefined
+      ? {
+          domainConnect: {
+            keyId: config.domainConnect.keyId,
+            privateKey: mark(config.domainConnect.privateKey),
           },
         }
       : {}),

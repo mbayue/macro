@@ -328,6 +328,7 @@ export interface VerifyStartResponse {
   isCloudflare?: boolean | undefined;
   cloudFlareDirectUrl?: string | undefined;
   domainConnectUrl?: string | undefined;
+  domainConnectProviderName?: string | undefined;
 }
 
 export interface VerifyCheckResponse {

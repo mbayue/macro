@@ -268,6 +268,8 @@ export interface AppDeps {
   githubFetch?: typeof fetch;
   /** Injectable DNS TXT resolver for origin verification (defaults to node:dns/promises). */
   resolveTxt?: ResolveTxt;
+  /** Injectable DNS CNAME resolver for Domain Connect discovery (defaults to node:dns/promises). */
+  resolveCname?: (hostname: string) => Promise<string[]>;
   /** Injectable DNS NS resolver for origin detection (defaults to node:dns/promises). */
   resolveNs?: ResolveNs;
   /** Injectable fetch for well-known origin checks (defaults to global fetch). */
@@ -1624,7 +1626,15 @@ export function createApp(deps: AppDeps): App {
       logInternal('verify.start', err);
       return apiError(500, 'internal', MSG.internal);
     }
-    const detection = await detectDnsProvider(norm.host, deps.resolveNs);
+    const detection = await detectDnsProvider(norm.host, deps.resolveNs, {
+      resolveTxt: deps.resolveTxt,
+      resolveCname: deps.resolveCname,
+      fetchFn: deps.fetchImpl as typeof fetch | undefined,
+      verifyToken: token,
+      redirectUri: config.auth ? `${config.auth.publicBaseUrl}/app/#/verify?domainConnect=done` : undefined,
+      privateKeyPem: config.domainConnect?.privateKey,
+      keyId: config.domainConnect?.keyId,
+    });
     const body: VerifyStartResponse = {
       token,
       txtName: txtNameForHost(norm.host),
@@ -1633,6 +1643,7 @@ export function createApp(deps: AppDeps): App {
       isCloudflare: detection.isCloudflare,
       cloudFlareDirectUrl: detection.cloudFlareDirectUrl,
       domainConnectUrl: detection.domainConnectUrl,
+      domainConnectProviderName: detection.domainConnectProviderName,
     };
     return json(200, body);
   };
@@ -1645,7 +1656,15 @@ export function createApp(deps: AppDeps): App {
     if (auth instanceof Response) return auth;
     const pending = store.getPendingOriginVerification(auth.user.id);
     if (pending === null) return apiError(404, 'not_found', MSG.notFound);
-    const detection = await detectDnsProvider(pending.host, deps.resolveNs);
+    const detection = await detectDnsProvider(pending.host, deps.resolveNs, {
+      resolveTxt: deps.resolveTxt,
+      resolveCname: deps.resolveCname,
+      fetchFn: deps.fetchImpl as typeof fetch | undefined,
+      verifyToken: pending.token,
+      redirectUri: config.auth ? `${config.auth.publicBaseUrl}/app/#/verify?domainConnect=done` : undefined,
+      privateKeyPem: config.domainConnect?.privateKey,
+      keyId: config.domainConnect?.keyId,
+    });
     const body: VerifyStartResponse = {
       token: pending.token,
       txtName: txtNameForHost(pending.host),
@@ -1654,6 +1673,7 @@ export function createApp(deps: AppDeps): App {
       isCloudflare: detection.isCloudflare,
       cloudFlareDirectUrl: detection.cloudFlareDirectUrl,
       domainConnectUrl: detection.domainConnectUrl,
+      domainConnectProviderName: detection.domainConnectProviderName,
     };
     return json(200, body);
   };

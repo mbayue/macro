@@ -2,6 +2,11 @@
  * Own-site origin verification: normalize host input, DNS TXT, and .well-known checks.
  */
 import { isDenylistedHost, parseOrigin } from '../plan/policy.ts';
+import {
+  buildDomainConnectApplyUrl,
+  discoverDomainConnectApi,
+  fetchDomainConnectSettings,
+} from './domain-connect.ts';
 
 export type NormalizeVerifyResult =
   | { ok: true; host: string; origin: string }
@@ -16,6 +21,7 @@ export interface DnsProviderDetection {
   nameservers: string[];
   cloudFlareDirectUrl?: string | undefined;
   domainConnectUrl?: string | undefined;
+  domainConnectProviderName?: string | undefined;
 }
 
 const WELL_KNOWN_PATH = '/.well-known/macro-site-verification';
@@ -113,19 +119,36 @@ export function isCloudflareNameserver(ns: string): boolean {
   return /\.ns\.cloudflare\.com$/i.test(ns.trim());
 }
 
+export interface DetectDnsOptions {
+  resolveTxt?: (hostname: string) => Promise<string[][]>;
+  resolveCname?: (hostname: string) => Promise<string[]>;
+  fetchFn?: typeof fetch;
+  verifyToken?: string;
+  redirectUri?: string;
+  state?: string;
+  privateKeyPem?: string;
+  keyId?: string;
+}
+
+export function computeSubdomainPrefix(fullHost: string, apexHost: string): string {
+  const full = fullHost.toLowerCase().trim();
+  const apex = apexHost.toLowerCase().trim();
+  if (full === apex) return '';
+  if (full.endsWith(`.${apex}`)) {
+    return full.slice(0, -(apex.length + 1));
+  }
+  return '';
+}
+
 /**
- * Walk up labels from host to find authoritative nameservers and detect if hosted on Cloudflare.
+ * Walk up labels from host to find authoritative nameservers, detect if hosted on Cloudflare,
+ * and discover Domain Connect template settings if available.
  */
 export async function detectDnsProvider(
   host: string,
   resolveNs?: ResolveNs,
+  opts?: DetectDnsOptions,
 ): Promise<DnsProviderDetection> {
-  const defaultResult: DnsProviderDetection = {
-    isCloudflare: false,
-    apexHost: host,
-    nameservers: [],
-  };
-
   const nsResolver =
     resolveNs ??
     (async (hostname: string) => {
@@ -134,25 +157,69 @@ export async function detectDnsProvider(
     });
 
   const labels = host.toLowerCase().split('.').filter(Boolean);
-  if (labels.length === 0) return defaultResult;
+  let apexHost = host;
+  let nameservers: string[] = [];
+  let isCloudflare = false;
 
-  for (let i = 0; i <= labels.length - 2; i++) {
-    const candidate = labels.slice(i).join('.');
-    try {
-      const nsList = await nsResolver(candidate);
-      if (Array.isArray(nsList) && nsList.length > 0) {
-        const isCloudflare = nsList.some(isCloudflareNameserver);
-        return {
-          isCloudflare,
-          apexHost: candidate,
-          nameservers: nsList,
-          cloudFlareDirectUrl: isCloudflare ? 'https://dash.cloudflare.com' : undefined,
-        };
+  if (labels.length > 0) {
+    for (let i = 0; i <= labels.length - 2; i++) {
+      const candidate = labels.slice(i).join('.');
+      try {
+        const nsList = await nsResolver(candidate);
+        if (Array.isArray(nsList) && nsList.length > 0) {
+          apexHost = candidate;
+          nameservers = nsList;
+          isCloudflare = nsList.some(isCloudflareNameserver);
+          break;
+        }
+      } catch {
+        // Continue walking up labels
       }
-    } catch {
-      // Continue walking up labels
     }
   }
 
-  return defaultResult;
+  let domainConnectUrl: string | undefined;
+  let domainConnectProviderName: string | undefined;
+
+  try {
+    const dcApiHost = await discoverDomainConnectApi(
+      apexHost,
+      opts?.resolveTxt,
+      opts?.resolveCname,
+    );
+    if (dcApiHost) {
+      const settings = await fetchDomainConnectSettings(
+        dcApiHost,
+        apexHost,
+        opts?.fetchFn,
+      );
+      if (settings && settings.urlSyncUX) {
+        domainConnectProviderName = settings.providerName;
+        if (opts?.verifyToken) {
+          const hostPrefix = computeSubdomainPrefix(host, apexHost);
+          domainConnectUrl = buildDomainConnectApplyUrl({
+            syncUxUrl: settings.urlSyncUX,
+            domain: apexHost,
+            host: hostPrefix,
+            token: opts.verifyToken,
+            redirectUri: opts.redirectUri,
+            state: opts.state,
+            privateKeyPem: opts.privateKeyPem,
+            keyId: opts.keyId,
+          });
+        }
+      }
+    }
+  } catch {
+    // Gracefully ignore Domain Connect errors
+  }
+
+  return {
+    isCloudflare,
+    apexHost,
+    nameservers,
+    cloudFlareDirectUrl: isCloudflare ? 'https://dash.cloudflare.com' : undefined,
+    domainConnectUrl,
+    domainConnectProviderName,
+  };
 }

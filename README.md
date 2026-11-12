@@ -135,7 +135,7 @@ YUE is a separate, pre-existing project and isn't in this repo. [`deploy/yue-dem
 
 ```bash
 bun install
-bun test             # 508 tests, no Docker needed
+bun test             # 518 tests, no Docker needed
 bun run check        # tsc --noEmit
 bun run build:web    # the app at /app/ and the prerendered landing site at /, /privacy, /terms
 bun run dev          # the API; serves web/dist

@@ -75,7 +75,7 @@ export interface DomainConnectSettings {
 
 export type ResolveTxt = (hostname: string) => Promise<string[][]>;
 export type ResolveCname = (hostname: string) => Promise<string[]>;
-export type FetchFn = typeof fetch;
+export type FetchFn = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
 /**
  * Discover the Domain Connect API hostname for a given apex domain.

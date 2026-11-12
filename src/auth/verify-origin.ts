@@ -6,6 +6,7 @@ import {
   buildDomainConnectApplyUrl,
   discoverDomainConnectApi,
   fetchDomainConnectSettings,
+  type FetchFn,
 } from './domain-connect.ts';
 
 export type NormalizeVerifyResult =
@@ -120,14 +121,14 @@ export function isCloudflareNameserver(ns: string): boolean {
 }
 
 export interface DetectDnsOptions {
-  resolveTxt?: (hostname: string) => Promise<string[][]>;
-  resolveCname?: (hostname: string) => Promise<string[]>;
-  fetchFn?: typeof fetch;
-  verifyToken?: string;
-  redirectUri?: string;
-  state?: string;
-  privateKeyPem?: string;
-  keyId?: string;
+  resolveTxt?: ((hostname: string) => Promise<string[][]>) | undefined;
+  resolveCname?: ((hostname: string) => Promise<string[]>) | undefined;
+  fetchFn?: FetchFn | undefined;
+  verifyToken?: string | undefined;
+  redirectUri?: string | undefined;
+  state?: string | undefined;
+  privateKeyPem?: string | undefined;
+  keyId?: string | undefined;
 }
 
 export function computeSubdomainPrefix(fullHost: string, apexHost: string): string {

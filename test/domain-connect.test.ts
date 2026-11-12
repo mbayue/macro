@@ -4,6 +4,7 @@ import {
   buildDomainConnectApplyUrl,
   discoverDomainConnectApi,
   fetchDomainConnectSettings,
+  type FetchFn,
   signDomainConnectQuery,
 } from '../src/auth/domain-connect.ts';
 
@@ -58,8 +59,11 @@ describe('Domain Connect Signer & URL Builder', () => {
     expect(parsed.searchParams.has('sig')).toBe(true);
 
     // Reconstruct the signed portion of the query string and verify it
-    const signedQuery = url.split('?')[1].split('&sig=')[0];
-    const sig = decodeURIComponent(parsed.searchParams.get('sig')!);
+    const rawQuery = url.split('?')[1] ?? '';
+    const signedQuery = rawQuery.split('&sig=')[0] ?? '';
+    const rawSig = parsed.searchParams.get('sig');
+    expect(rawSig).not.toBeNull();
+    const sig = decodeURIComponent(rawSig!);
     const verifier = crypto.createVerify('RSA-SHA256');
     verifier.update(signedQuery);
     verifier.end();
@@ -128,7 +132,7 @@ describe('Domain Connect Signer & URL Builder', () => {
     });
 
     test('fetchDomainConnectSettings fetches and parses settings from /v2/<domain>/settings', async () => {
-      const mockFetch: typeof fetch = async (input, init) => {
+      const mockFetch: FetchFn = async (input) => {
         const url = String(input);
         expect(url).toBe('https://domainconnect.godaddy.com/v2/example.com/settings');
         return new Response(
@@ -154,7 +158,7 @@ describe('Domain Connect Signer & URL Builder', () => {
     });
 
     test('fetchDomainConnectSettings returns null on non-200 or invalid payload', async () => {
-      const mockFetch404: typeof fetch = async () => new Response('Not Found', { status: 404 });
+      const mockFetch404: FetchFn = async () => new Response('Not Found', { status: 404 });
       const res = await fetchDomainConnectSettings('api.example.com', 'example.com', mockFetch404);
       expect(res).toBeNull();
     });

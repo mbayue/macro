@@ -52,27 +52,27 @@
   export function signDomainConnectQuery(queryString: string, privateKeyPem: string): string;
   ```
 
-- [ ] **Step 1: Write the failing tests in `test/domain-connect.test.ts`**
+- [x] **Step 1: Write the failing tests in `test/domain-connect.test.ts`**
   - Verify query string generation with parameters in standard order: `domain`, `host`, `token`, `redirect_uri`, `state`.
   - Verify RSA-SHA256 signature calculation using a generated test RSA key pair.
   - Verify signature verification using the corresponding public key.
   - Verify omission of `host` when host is empty.
   - Verify behavior when no private key is provided.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   - Run: `bun test test/domain-connect.test.ts`
   - Expected: FAIL (`Cannot find module '../src/auth/domain-connect.ts'`)
 
-- [ ] **Step 3: Implement `src/auth/domain-connect.ts`**
+- [x] **Step 3: Implement `src/auth/domain-connect.ts`**
   - Implement `signDomainConnectQuery(queryString, privateKeyPem)` using `crypto.createSign('RSA-SHA256')`.
   - Implement `buildDomainConnectApplyUrl(opts)` constructing the path:
     `{syncUxUrl}/v2/domainTemplates/providers/macro.my.id/services/verify/apply?{query}&sig={sig}&key={keyId}`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   - Run: `bun test test/domain-connect.test.ts`
   - Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   - Run: `git add src/auth/domain-connect.ts test/domain-connect.test.ts && git commit -m "feat(domainconnect): implement domain connect query signer and apply url builder"`
 
 ---
@@ -110,26 +110,26 @@
   ): Promise<DomainConnectSettings | null>;
   ```
 
-- [ ] **Step 1: Write failing tests in `test/domain-connect.test.ts`**
+- [x] **Step 1: Write failing tests in `test/domain-connect.test.ts`**
   - Test TXT lookup for `_domainconnect.<domain>` returning API host (e.g. `domainconnect.godaddy.com`).
   - Test CNAME fallback lookup for `_domainconnect.<domain>`.
   - Test handling of `ENOTFOUND` or DNS timeout returning `null`.
   - Test `fetchDomainConnectSettings` fetching `https://{apiHost}/v2/{apexDomain}/settings` and parsing JSON response.
   - Test HTTP 404/500/timeout handling returning `null`.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   - Run: `bun test test/domain-connect.test.ts`
   - Expected: FAIL (`discoverDomainConnectApi is not a function`)
 
-- [ ] **Step 3: Implement discovery and settings fetch in `src/auth/domain-connect.ts`**
+- [x] **Step 3: Implement discovery and settings fetch in `src/auth/domain-connect.ts`**
   - Implement `discoverDomainConnectApi`: query TXT `_domainconnect.${apexDomain}` with a 1500 ms timeout; fallback to CNAME.
   - Implement `fetchDomainConnectSettings`: `fetch(`https://${apiHost}/v2/${apexDomain}/settings`, { signal: AbortSignal.timeout(1500) })`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   - Run: `bun test test/domain-connect.test.ts`
   - Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   - Run: `git add src/auth/domain-connect.ts test/domain-connect.test.ts && git commit -m "feat(domainconnect): add dns discovery and settings fetcher"`
 
 ---
@@ -153,27 +153,27 @@
     domainConnectProviderName?: string | undefined;
     ```
 
-- [ ] **Step 1: Write failing tests in `test/verify-origin.test.ts`**
+- [x] **Step 1: Write failing tests in `test/verify-origin.test.ts`**
   - Test `detectDnsProvider` returns `domainConnectUrl` and `domainConnectProviderName` when `_domainconnect` record is present.
   - Test subdomain verification passes `domain` as apex and `host` as subdomain.
   - Test apex domain verification passes empty `host`.
   - Test that failure in Domain Connect discovery does not fail verification start.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   - Run: `bun test test/verify-origin.test.ts`
   - Expected: FAIL
 
-- [ ] **Step 3: Update `src/config.ts`, `src/auth/verify-origin.ts`, and `src/server.ts`**
+- [x] **Step 3: Update `src/config.ts`, `src/auth/verify-origin.ts`, and `src/server.ts`**
   - Add optional `DOMAIN_CONNECT_KEY_ID` (default `p1`) and `DOMAIN_CONNECT_PRIVATE_KEY` to config.
   - In `detectDnsProvider`: after checking nameservers, attempt `discoverDomainConnectApi(apexHost)`.
   - If discovered, fetch settings and call `buildDomainConnectApplyUrl(...)`.
   - Pass `domainConnectUrl` and `domainConnectProviderName` in `VerifyStartResponse`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   - Run: `bun test test/verify-origin.test.ts`
   - Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   - Run: `git add src/config.ts src/api-types.ts src/auth/verify-origin.ts src/server.ts test/verify-origin.test.ts && git commit -m "feat(verify): wire domain connect detection into verify start api"`
 
 ---
@@ -185,10 +185,10 @@
 - Modify: `web/landing/src/app/components/VerifyPanel.tsx`
 - Modify: `web/landing/src/app/app.css`
 
-- [ ] **Step 1: Update API types in `web/landing/src/app/lib/auth-api.ts`**
+- [x] **Step 1: Update API types in `web/landing/src/app/lib/auth-api.ts`**
   - Add `domainConnectUrl?: string` and `domainConnectProviderName?: string` to `VerifyStartResponse`.
 
-- [ ] **Step 2: Update `VerifyPanel.tsx`**
+- [x] **Step 2: Update `VerifyPanel.tsx`**
   - When `pending.domainConnectUrl` is present:
     - Display an auto-configuration banner:
       - Title: `⚡ 1-Click DNS Configuration available`
@@ -197,14 +197,14 @@
       - Toggle for manual records: `[Show manual records]` / `[Hide manual records]`.
   - When returning from redirect (e.g. hash parameter or storage), auto-trigger `onCheck()`.
 
-- [ ] **Step 3: Update `web/landing/src/app/app.css`**
+- [x] **Step 3: Update `web/landing/src/app/app.css`**
   - Add styling for `.dc-banner`, `.dc-banner__header`, `.dc-badge`, and `.btn--dc` matching the "Test Bench" design tokens (flat, crisp 1.5px borders, Evergreen & Spring Green palette).
 
-- [ ] **Step 4: Typecheck and build verification**
+- [x] **Step 4: Typecheck and build verification**
   - Run: `bun x tsc --noEmit && bun run build:web`
   - Expected: Clean compilation, exit code 0.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   - Run: `git add web/landing/src/app/lib/auth-api.ts web/landing/src/app/components/VerifyPanel.tsx web/landing/src/app/app.css && git commit -m "feat(ui): add domain connect 1-click configure banner to verify panel"`
 
 ---
@@ -215,13 +215,13 @@
 - Modify: `README.md`
 - Test: full suite `bun test`
 
-- [ ] **Step 1: Run full test suite and type check**
+- [x] **Step 1: Run full test suite and type check**
   - Run: `bun test`
   - Run: `bun x tsc --noEmit`
   - Expected: All tests pass, 0 type errors.
 
-- [ ] **Step 2: Update `README.md` with final test count and Domain Connect details**
+- [x] **Step 2: Update `README.md` with final test count and Domain Connect details**
   - Document Domain Connect auto-configuration in the Accounts and Verification section.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
   - Run: `git add README.md && git commit -m "docs: finalize domain connect implementation and test count"`

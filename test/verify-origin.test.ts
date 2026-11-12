@@ -8,6 +8,7 @@ import {
   detectDnsProvider,
   normalizeVerifyHost,
 } from '../src/auth/verify-origin.ts';
+import type { FetchFn } from '../src/auth/domain-connect.ts';
 import { ContestedOriginError } from '../src/auth/types.ts';
 import { createApp } from '../src/server.ts';
 import type { App, RunStarter } from '../src/server.ts';
@@ -151,7 +152,7 @@ describe('detectDnsProvider', () => {
       }
       throw new Error('ENOTFOUND');
     };
-    const mockFetch: typeof fetch = async (input) => {
+    const mockFetch: FetchFn = async (input) => {
       return new Response(
         JSON.stringify({
           providerId: 'godaddy.com',
@@ -188,7 +189,7 @@ describe('detectDnsProvider', () => {
       }
       throw new Error('ENOTFOUND');
     };
-    const mockFetch: typeof fetch = async () => {
+    const mockFetch: FetchFn = async () => {
       return new Response(
         JSON.stringify({
           providerId: 'ionos.com',

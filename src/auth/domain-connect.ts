@@ -23,10 +23,13 @@ export interface BuildApplyUrlOptions {
  * Returns base64-encoded signature.
  */
 export function signDomainConnectQuery(queryString: string, privateKeyPem: string): string {
+  const normalizedKey = privateKeyPem.includes('\n')
+    ? privateKeyPem
+    : privateKeyPem.replace(/\\n/g, '\n');
   const signer = crypto.createSign('RSA-SHA256');
   signer.update(queryString);
   signer.end();
-  return signer.sign(privateKeyPem, 'base64');
+  return signer.sign(normalizedKey, 'base64');
 }
 
 /**

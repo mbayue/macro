@@ -37,7 +37,7 @@ flowchart LR
 
 A run, step by step:
 
-1. **Plan.** The Planner turns your description into a staged plan. Your text is passed to the model as untrusted data.
+1. **Plan.** The Planner turns your description into a staged plan. For the demo shop, it targets the allowlisted store catalog; for verified own-site origins, it plans journeys across routes discovered directly from the site. Your text is passed to the model as untrusted data.
 2. **Gate.** A deterministic policy gate checks the plan: exact target match, known routes only, 1 to 6 stages, at most 500 VUs per stage, at most 600 s in total. A rejected plan has no approve button.
 3. **Approve.** The approved plan is stored under its SHA-256 hash. The run executes exactly that text, and re-checks the hash and the gate before starting.
 4. **Run.** Each stage renders k6 from a fixed template and runs it in a fresh sandbox. Your text never reaches the script.
@@ -117,7 +117,7 @@ When auth is configured:
 
 1. Open `/app/#/sign-in` (GitHub OAuth or Resend magic link). GitHub must provide a verified email or Macro refuses the sign-in.
 2. On **New test**, choose **Demo shop** (public, works signed out) or **My site** (requires sign-in and a verified origin).
-3. Verify one HTTPS host with either a DNS TXT record at `_macro-verify.<host>` or a file at `/.well-known/macro-site-verification` containing the issued token, then check from the inline panel.
+3. Verify one HTTPS host. Macro detects nameservers (Cloudflare quick link or the official upstream [Domain Connect template](https://github.com/Domain-Connect/Templates/blob/master/macro.my.id.verify.json)), or manual verification via a DNS TXT record at `_macro-verify.<host>` or a file at `/.well-known/macro-site-verification` containing the issued token. Once verified, Macro automatically discovers client routes from the site's document and scripts to constrain journey planning.
 4. Own-site runs are private to the account; demo runs stay public and can be claimed onto the account from browser recent-runs after sign-in.
 
 Local smoke (auth configured): sign in → verify a throwaway host you control → draft Demo and My site plans → confirm a private own-site report 404s when signed out → sign out lands on New test.
@@ -135,7 +135,7 @@ YUE is a separate, pre-existing project and isn't in this repo. [`deploy/yue-dem
 
 ```bash
 bun install
-bun test             # 476 tests, no Docker needed
+bun test             # 508 tests, no Docker needed
 bun run check        # tsc --noEmit
 bun run build:web    # the app at /app/ and the prerendered landing site at /, /privacy, /terms
 bun run dev          # the API; serves web/dist
@@ -155,7 +155,7 @@ docker exec macro-api bun src/admin/waitlist.ts remove <email>  # deletion reque
 
 ## Limits
 
-- **Targets are gated.** Signed-out clients only hit the demo allowlist. Signed-in clients may add one verified HTTPS origin (DNS TXT or `/.well-known/`). Contested hosts stay with the first verifier until clear or replace.
+- **Targets are gated.** Signed-out clients only hit the demo allowlist. Signed-in clients may add one verified HTTPS origin (DNS TXT, Domain Connect, or `/.well-known/`). Contested hosts stay with the first verifier until clear or replace.
 - **One load generator** in Singapore with 1 CPU per sandbox. At high VU counts, the generator itself can become the limit.
 - **"First degraded route" is an observation, not a root cause.**
 - **Quotas:** one active run at a time, rolling planning and start limits (per IP when signed out, per account when signed in), a daily start cap, and a 15-minute cap per run.
@@ -163,7 +163,7 @@ docker exec macro-api bun src/admin/waitlist.ts remove <email>  # deletion reque
 
 ## Testing
 
-`bun test` runs the unit and property suite ([fast-check](https://fast-check.dev)). They cover the plan parser, the policy gate against an independent reference model, script generation, the proxy decision, sandbox lifecycle with a fake Docker, metrics and verdicts, agent fallbacks, the number check and run comparison, plus account auth, verification, drafts, and run privacy. Sandbox behaviour on a real VM is checked by the live probe.
+`bun test` runs the unit and property suite ([fast-check](https://fast-check.dev)). They cover the plan parser, the policy gate against an independent reference model, script generation, the proxy decision, sandbox lifecycle with a fake Docker, metrics and verdicts, agent fallbacks, the number check and run comparison, plus account auth, verification (DNS TXT, well-known, Domain Connect template), route discovery, drafts, and run privacy. Sandbox behaviour on a real VM is checked by the live probe.
 
 ## License
 

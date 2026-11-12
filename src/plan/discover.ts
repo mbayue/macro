@@ -1,6 +1,6 @@
 /**
  * Own-site route discovery. Reads the verified origin's `/`, its script and
- * stylesheet URLs, and static paths quoted in those scripts. Never follows
+ * stylesheet URLs, homepage links, and static paths quoted in those scripts. Never follows
  * redirects, never requests another origin, never executes script text.
  */
 
@@ -11,15 +11,28 @@ export const DISCOVER_DOC_MAX_BYTES = 262144;
 export const DISCOVER_SCRIPT_MAX_BYTES = 524288;
 export const DISCOVER_MAX_SCRIPTS = 4;
 export const DISCOVER_MAX_ROUTES = 32;
+export const DISCOVER_LIST_MAX = 128;
 export const DISCOVER_PATH_MAX = 200;
+export const ACTION_SEGMENTS = ['logout', 'log-out', 'signout', 'sign-out', 'unsubscribe'] as const;
 
-export type DiscoveredKind = 'document' | 'script' | 'style' | 'asset';
+export type DiscoveredKind = 'document' | 'script' | 'style' | 'asset' | 'page';
 
 export interface DiscoveredRoute {
   id: string;
   kind: DiscoveredKind;
   method: 'GET';
   path: string;
+  defaultOn: boolean;
+}
+
+export function isActionPath(path: string): boolean {
+  const segment = path.split('/').pop() ?? '';
+  const lower = segment.toLowerCase();
+  return (ACTION_SEGMENTS as readonly string[]).includes(lower);
+}
+
+export function selectedRoutes(routes: readonly DiscoveredRoute[]): DiscoveredRoute[] {
+  return routes.filter((r) => r.defaultOn);
 }
 
 const ASSET_SUFFIX = /\.(?:js|css|webp|png|jpg|jpeg|svg|woff2)$/i;
@@ -63,11 +76,13 @@ function attr(tag: string, name: string): string | null {
   return m?.[1] ?? m?.[2] ?? m?.[3] ?? null;
 }
 
-export function extractDocumentRefs(html: string, origin: string): { scripts: string[]; styles: string[] } {
+export function extractDocumentRefs(html: string, origin: string): { scripts: string[]; styles: string[]; pages: string[] } {
   const scripts: string[] = [];
   const styles: string[] = [];
+  const pages: string[] = [];
   const seenS = new Set<string>();
   const seenC = new Set<string>();
+  const seenP = new Set<string>();
   for (const m of html.matchAll(/<script\b[^>]*>/gi)) {
     const src = attr(m[0], 'src');
     if (src === null) continue;
@@ -86,7 +101,23 @@ export function extractDocumentRefs(html: string, origin: string): { scripts: st
     seenC.add(path);
     styles.push(path);
   }
-  return { scripts, styles };
+  for (const m of html.matchAll(/<a\b[^>]*>/gi)) {
+    const href = attr(m[0], 'href');
+    if (href === null) continue;
+    const path = pathFromUrl(href, origin);
+    if (path === null || seenP.has(path)) continue;
+    seenP.add(path);
+    pages.push(path);
+  }
+  return { scripts, styles, pages };
+}
+
+function anchorKind(path: string): DiscoveredKind {
+  if (isActionPath(path)) return 'page';
+  if (/\.js$/i.test(path)) return 'script';
+  if (/\.css$/i.test(path)) return 'style';
+  if (/\.(?:webp|png|jpg|jpeg|svg|woff2)$/i.test(path)) return 'asset';
+  return 'page';
 }
 
 export function extractAssetPaths(source: string): string[] {
@@ -186,11 +217,23 @@ export async function discoverOwnSite(
     for (const asset of extractAssetPaths(text.text)) assets.add(asset);
   }
 
-  const scripts = [...fetchedScripts].sort();
-  const styles = [...refs.styles].sort();
+  const pageList: string[] = [];
+  const extraScripts: string[] = [];
+  const extraStyles: string[] = [];
+  for (const path of refs.pages) {
+    const kind = anchorKind(path);
+    if (kind === 'page') pageList.push(path);
+    else if (kind === 'script') extraScripts.push(path);
+    else if (kind === 'style') extraStyles.push(path);
+    else assets.add(path);
+  }
+
+  const scripts = [...new Set([...fetchedScripts, ...extraScripts])].sort();
+  const styles = [...new Set([...refs.styles, ...extraStyles])].sort();
   const assetList = [...assets].sort();
 
   const rows: { kind: DiscoveredKind; path: string }[] = [{ kind: 'document', path: '/' }];
+  for (const path of pageList) rows.push({ kind: 'page', path });
   for (const path of scripts) rows.push({ kind: 'script', path });
   for (const path of styles) rows.push({ kind: 'style', path });
   for (const path of assetList) rows.push({ kind: 'asset', path });
@@ -202,18 +245,36 @@ export async function discoverOwnSite(
     seen.add(row.path);
     kept.push(row);
   }
-  const trimmed = kept.slice(0, DISCOVER_MAX_ROUTES);
-  // Spec: drop assets from the end, then styles, then scripts. Never drop `/`.
-  // slice(0, 32) already drops the tail, which is assets then styles then scripts
-  // because that is the append order. `/` is first.
+  const trimmed = trimDiscoveryList(kept);
 
-  return {
-    ok: true,
-    routes: trimmed.map((row, i) => ({
-      id: `r${i + 1}`,
-      kind: row.kind,
-      method: 'GET' as const,
-      path: row.path,
-    })),
-  };
+  let onCount = 0;
+  const routes: DiscoveredRoute[] = trimmed.map((row, i) => {
+    let defaultOn = row.kind === 'document' || row.kind === 'script' || row.kind === 'style'
+      || (row.kind === 'page' && !isActionPath(row.path));
+    if (defaultOn) {
+      onCount += 1;
+      if (onCount > DISCOVER_MAX_ROUTES) defaultOn = false;
+    }
+    return { id: `r${i + 1}`, kind: row.kind, method: 'GET' as const, path: row.path, defaultOn };
+  });
+
+  return { ok: true, routes };
+}
+
+function trimDiscoveryList(rows: { kind: DiscoveredKind; path: string }[]): { kind: DiscoveredKind; path: string }[] {
+  const kept = [...rows];
+  const dropOrder: DiscoveredKind[] = ['asset', 'style', 'script', 'page'];
+  while (kept.length > DISCOVER_LIST_MAX) {
+    let dropped = false;
+    for (const kind of dropOrder) {
+      const idx = kept.findLastIndex((row) => row.kind === kind);
+      if (idx > 0) {
+        kept.splice(idx, 1);
+        dropped = true;
+        break;
+      }
+    }
+    if (!dropped) break;
+  }
+  return kept;
 }

@@ -117,7 +117,7 @@ export interface PlanRouteView {
   id: string;
   path: string;
   method: 'GET';
-  kind: 'document' | 'script' | 'style' | 'asset' | 'catalog';
+  kind: 'document' | 'script' | 'style' | 'asset' | 'page' | 'catalog';
 }
 
 export interface PlanResponse {

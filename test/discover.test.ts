@@ -6,6 +6,7 @@ import {
   discoverOwnSite,
   extractAssetPaths,
   extractDocumentRefs,
+  selectedRoutes,
 } from '../src/plan/discover.ts';
 
 const ORIGIN = 'https://sketch.my.id';
@@ -58,10 +59,10 @@ describe('discoverOwnSite', () => {
     expect(result).toEqual({
       ok: true,
       routes: [
-        { id: 'r1', kind: 'document', method: 'GET', path: '/' },
-        { id: 'r2', kind: 'script', method: 'GET', path: '/assets/app.js' },
-        { id: 'r3', kind: 'style', method: 'GET', path: '/assets/app.css' },
-        { id: 'r4', kind: 'asset', method: 'GET', path: '/assets/a.webp' },
+        { id: 'r1', kind: 'document', method: 'GET', path: '/', defaultOn: true },
+        { id: 'r2', kind: 'script', method: 'GET', path: '/assets/app.js', defaultOn: true },
+        { id: 'r3', kind: 'style', method: 'GET', path: '/assets/app.css', defaultOn: true },
+        { id: 'r4', kind: 'asset', method: 'GET', path: '/assets/a.webp', defaultOn: false },
       ],
     });
     expect(seen).toEqual([`${ORIGIN}/`, `${ORIGIN}/assets/app.js`]);
@@ -117,7 +118,7 @@ describe('discoverOwnSite', () => {
     }
   });
 
-  test('33 asset literals keep the document and drop the last asset with no id gaps', async () => {
+  test('33 asset literals stay in the list and start off', async () => {
     const literals = Array.from({ length: 33 }, (_, i) => `"/assets/p${String(i).padStart(2, '0')}.webp"`).join(' ');
     const fetchImpl: FetchLike = async (input) => {
       if (input.endsWith('/')) return htmlResponse('<script src="/assets/app.js"></script>');
@@ -126,10 +127,88 @@ describe('discoverOwnSite', () => {
     const result = await discoverOwnSite(ORIGIN, fetchImpl);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.routes).toHaveLength(32);
-    expect(result.routes[0]).toEqual({ id: 'r1', kind: 'document', method: 'GET', path: '/' });
+    expect(result.routes[0]).toMatchObject({ id: 'r1', kind: 'document', method: 'GET', path: '/', defaultOn: true });
     expect(result.routes.map((r) => r.id)).toEqual(result.routes.map((_, i) => `r${i + 1}`));
-    expect(result.routes.some((r) => r.path === '/assets/p32.webp')).toBe(false);
-    expect(result.routes.some((r) => r.path === '/assets/p00.webp')).toBe(true);
+    expect(result.routes).toHaveLength(35);
+    expect(result.routes.some((r) => r.path === '/assets/p32.webp')).toBe(true);
+    expect(result.routes.filter((r) => r.defaultOn)).toHaveLength(2);
+  });
+
+  test('homepage anchors become pages in document order and start on', async () => {
+    const fetchImpl: FetchLike = async () =>
+      htmlResponse('<a href="/about">A</a><a href="/product">P</a>');
+    const result = await discoverOwnSite(ORIGIN, fetchImpl);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.routes.slice(0, 3)).toEqual([
+      { id: 'r1', kind: 'document', method: 'GET', path: '/', defaultOn: true },
+      { id: 'r2', kind: 'page', method: 'GET', path: '/about', defaultOn: true },
+      { id: 'r3', kind: 'page', method: 'GET', path: '/product', defaultOn: true },
+    ]);
+  });
+
+  test('only the five action names start off; cart and account stay on', async () => {
+    const html = [
+      '<a href="/account/logout">out</a>',
+      '<a href="/Cart/Log-Out">out</a>',
+      '<a href="/cart">cart</a>',
+      '<a href="/account">me</a>',
+    ].join('');
+    const fetchImpl: FetchLike = async () => htmlResponse(html);
+    const result = await discoverOwnSite(ORIGIN, fetchImpl);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const byPath = new Map(result.routes.map((r) => [r.path, r]));
+    expect(byPath.get('/account/logout')).toMatchObject({ kind: 'page', defaultOn: false });
+    expect(byPath.get('/Cart/Log-Out')).toMatchObject({ kind: 'page', defaultOn: false });
+    expect(byPath.get('/cart')).toMatchObject({ kind: 'page', defaultOn: true });
+    expect(byPath.get('/account')).toMatchObject({ kind: 'page', defaultOn: true });
+  });
+
+  test('a script anchor starts on and an image anchor starts off', async () => {
+    const fetchImpl: FetchLike = async () =>
+      htmlResponse('<a href="/assets/app.js">js</a><a href="/logo.webp">img</a>');
+    const result = await discoverOwnSite(ORIGIN, fetchImpl);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const byPath = new Map(result.routes.map((r) => [r.path, r]));
+    expect(byPath.get('/assets/app.js')).toMatchObject({ kind: 'script', defaultOn: true });
+    expect(byPath.get('/logo.webp')).toMatchObject({ kind: 'asset', defaultOn: false });
+  });
+
+  test('drops other origins, query strings, and buttons', async () => {
+    const html = '<a href="https://other.example/x">x</a><a href="/out?x=1">q</a><button>Go</button>';
+    const fetchImpl: FetchLike = async () => htmlResponse(html);
+    const result = await discoverOwnSite(ORIGIN, fetchImpl);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.routes).toEqual([
+      { id: 'r1', kind: 'document', method: 'GET', path: '/', defaultOn: true },
+      { id: 'r2', kind: 'page', method: 'GET', path: '/out', defaultOn: true },
+    ]);
+  });
+
+  test('40 default-on pages keep all rows and turn the extras off', async () => {
+    const links = Array.from({ length: 40 }, (_, i) => `<a href="/p${String(i).padStart(2, '0')}">p</a>`).join('');
+    const fetchImpl: FetchLike = async () => htmlResponse(links);
+    const result = await discoverOwnSite(ORIGIN, fetchImpl);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.routes).toHaveLength(41);
+    expect(result.routes.filter((r) => r.defaultOn)).toHaveLength(32);
+    expect(result.routes[0]).toMatchObject({ id: 'r1', path: '/', defaultOn: true });
+    expect(selectedRoutes(result.routes)).toHaveLength(32);
+  });
+
+  test('200 image anchors keep 128 rows and drop assets from the end', async () => {
+    const links = Array.from({ length: 200 }, (_, i) => `<a href="/i${String(i).padStart(3, '0')}.webp">i</a>`).join('');
+    const fetchImpl: FetchLike = async () => htmlResponse(links);
+    const result = await discoverOwnSite(ORIGIN, fetchImpl);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.routes).toHaveLength(128);
+    expect(result.routes[0]).toMatchObject({ path: '/' });
+    expect(result.routes.some((r) => r.path === '/i199.webp')).toBe(false);
+    expect(result.routes.some((r) => r.path === '/i000.webp')).toBe(true);
   });
 });

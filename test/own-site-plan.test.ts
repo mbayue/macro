@@ -17,8 +17,8 @@ const OWN = 'https://sketch.my.id';
 const EVENT = 'A new gallery opens tonight with five hundred visitors browsing the lineart archive.';
 
 const DISCOVERED: DiscoveredRoute[] = [
-  { id: 'r1', kind: 'document', method: 'GET', path: '/' },
-  { id: 'r4', kind: 'asset', method: 'GET', path: '/assets/a.webp' },
+  { id: 'r1', kind: 'document', method: 'GET', path: '/', defaultOn: true },
+  { id: 'r4', kind: 'asset', method: 'GET', path: '/assets/a.webp', defaultOn: false },
 ];
 
 function htmlResponse(body: string, status = 200, contentType = 'text/html; charset=utf-8'): Response {

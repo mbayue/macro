@@ -211,7 +211,7 @@ describe('own-site plan/approve gate', () => {
     store.setVerifiedOrigin(user.id, OWN, 'shop.example.com', 'tok', NOW);
 
     store.createDraft({ id: 'draft-own-1', trafficEvent: EVENT, createdAt: NOW });
-    store.setDraftDiscovery('draft-own-1', OWN, [{ id: 'r1', kind: 'document', method: 'GET', path: '/' }]);
+    store.setDraftDiscovery('draft-own-1', OWN, [{ id: 'r1', kind: 'document', method: 'GET', path: '/', defaultOn: true }]);
     const draftId = 'draft-own-1';
 
     const other = samplePlan({ target: 'https://other.example.com' });

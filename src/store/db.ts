@@ -52,8 +52,10 @@ function parseDiscoveredRoutes(raw: string | null): DiscoveredRoute[] | null {
     if (!('id' in item) || !('kind' in item) || !('path' in item) || !('method' in item)) return null;
     const { id, kind, path, method } = item;
     if (typeof id !== 'string' || typeof path !== 'string' || method !== 'GET') return null;
-    if (kind !== 'document' && kind !== 'script' && kind !== 'style' && kind !== 'asset') return null;
-    out.push({ id, kind, method: 'GET', path });
+    if (kind !== 'document' && kind !== 'script' && kind !== 'style' && kind !== 'asset' && kind !== 'page') return null;
+    const storedOn = 'defaultOn' in item ? item.defaultOn : kind !== 'asset';
+    if (typeof storedOn !== 'boolean') return null;
+    out.push({ id, kind, method: 'GET', path, defaultOn: storedOn });
   }
   return out;
 }

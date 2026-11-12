@@ -687,7 +687,7 @@ describe('own-site execution target', () => {
       planHash: hash,
       webOrigin: OWN,
       apiOrigin: OWN,
-      routes: [{ id: 'r4', kind: 'asset', method: 'GET', path: '/assets/a.webp' }],
+      routes: [{ id: 'r4', kind: 'asset', method: 'GET', path: '/assets/a.webp', defaultOn: false }],
     });
     const user = h.store.createUser('a@example.com', 1);
     h.store.setVerifiedOrigin(user.id, OWN, 'sketch.my.id', 'tok', 1);
@@ -718,7 +718,7 @@ describe('own-site execution target', () => {
       planHash: hash,
       webOrigin: OWN,
       apiOrigin: OWN,
-      routes: [{ id: 'r4', kind: 'asset', method: 'GET', path: '/assets/a.webp' }],
+      routes: [{ id: 'r4', kind: 'asset', method: 'GET', path: '/assets/a.webp', defaultOn: false }],
     });
     h.store.createRun({ id: RUN_ID, kind: 'run', planHash: hash, runtime: 'runsc', startedAt: 1, visibility: 'private' });
     await runToEnd(h);

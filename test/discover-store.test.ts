@@ -7,8 +7,8 @@ import { Store } from '../src/store/db.ts';
 import type { DiscoveredRoute } from '../src/plan/discover.ts';
 
 const ROUTES: DiscoveredRoute[] = [
-  { id: 'r1', kind: 'document', method: 'GET', path: '/' },
-  { id: 'r2', kind: 'script', method: 'GET', path: '/assets/app.js' },
+  { id: 'r1', kind: 'document', method: 'GET', path: '/', defaultOn: true },
+  { id: 'r2', kind: 'script', method: 'GET', path: '/assets/app.js', defaultOn: true },
 ];
 
 describe('discover store', () => {
@@ -40,7 +40,7 @@ describe('discover store', () => {
       planHash: 'h1',
       webOrigin: 'https://other.example',
       apiOrigin: 'https://other.example',
-      routes: [{ id: 'r1', kind: 'document', method: 'GET', path: '/' }],
+      routes: [{ id: 'r1', kind: 'document', method: 'GET', path: '/', defaultOn: true }],
     });
     expect(store.getPlanTarget('h1')?.webOrigin).toBe('https://sketch.my.id');
   });

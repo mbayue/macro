@@ -2,6 +2,8 @@ import { describe, expect, test } from 'bun:test';
 import crypto from 'node:crypto';
 import {
   buildDomainConnectApplyUrl,
+  discoverDomainConnectApi,
+  fetchDomainConnectSettings,
   signDomainConnectQuery,
 } from '../src/auth/domain-connect.ts';
 
@@ -79,5 +81,82 @@ describe('Domain Connect Signer & URL Builder', () => {
     // Unsigned when no privateKeyPem provided
     expect(parsed.searchParams.has('sig')).toBe(false);
     expect(parsed.searchParams.has('key')).toBe(false);
+  });
+
+  describe('Discovery & Settings Resolver', () => {
+    test('discoverDomainConnectApi discovers host via TXT record', async () => {
+      const mockResolveTxt = async (hostname: string) => {
+        if (hostname === '_domainconnect.example.com') {
+          return [['domainconnect.godaddy.com']];
+        }
+        throw new Error('ENOTFOUND');
+      };
+
+      const host = await discoverDomainConnectApi('example.com', mockResolveTxt);
+      expect(host).toBe('domainconnect.godaddy.com');
+    });
+
+    test('discoverDomainConnectApi falls back to CNAME record when TXT is absent', async () => {
+      const mockResolveTxt = async () => {
+        throw new Error('ENODATA');
+      };
+      const mockResolveCname = async (hostname: string) => {
+        if (hostname === '_domainconnect.example.com') {
+          return ['_domainconnect.gd.domaincontrol.com.'];
+        }
+        throw new Error('ENOTFOUND');
+      };
+
+      const host = await discoverDomainConnectApi(
+        'example.com',
+        mockResolveTxt,
+        mockResolveCname,
+      );
+      expect(host).toBe('_domainconnect.gd.domaincontrol.com');
+    });
+
+    test('discoverDomainConnectApi returns null on DNS failure or ENOTFOUND', async () => {
+      const failingTxt = async () => {
+        throw new Error('ENOTFOUND');
+      };
+      const failingCname = async () => {
+        throw new Error('ENOTFOUND');
+      };
+
+      const host = await discoverDomainConnectApi('nodc.com', failingTxt, failingCname);
+      expect(host).toBeNull();
+    });
+
+    test('fetchDomainConnectSettings fetches and parses settings from /v2/<domain>/settings', async () => {
+      const mockFetch: typeof fetch = async (input, init) => {
+        const url = String(input);
+        expect(url).toBe('https://domainconnect.godaddy.com/v2/example.com/settings');
+        return new Response(
+          JSON.stringify({
+            providerId: 'godaddy.com',
+            providerName: 'GoDaddy',
+            urlSyncUX: 'https://dcc.godaddy.com/manage/dns/connect',
+            urlAPI: 'https://api.domainconnect.godaddy.com/v2',
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        );
+      };
+
+      const settings = await fetchDomainConnectSettings(
+        'domainconnect.godaddy.com',
+        'example.com',
+        mockFetch,
+      );
+      expect(settings).not.toBeNull();
+      expect(settings?.providerId).toBe('godaddy.com');
+      expect(settings?.providerName).toBe('GoDaddy');
+      expect(settings?.urlSyncUX).toBe('https://dcc.godaddy.com/manage/dns/connect');
+    });
+
+    test('fetchDomainConnectSettings returns null on non-200 or invalid payload', async () => {
+      const mockFetch404: typeof fetch = async () => new Response('Not Found', { status: 404 });
+      const res = await fetchDomainConnectSettings('api.example.com', 'example.com', mockFetch404);
+      expect(res).toBeNull();
+    });
   });
 });

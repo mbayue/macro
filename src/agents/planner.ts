@@ -112,7 +112,7 @@ export function plannerSystemPrompt(target: Config['target'], discovered?: reado
       'Sizing advice:',
       '- The load generator is a single 1-vCPU machine, so keep Stages moderate. A good ladder climbs gradually, for example 25, 50, 100, 200 VUs with 60 seconds each. Do not jump straight to the peak. Rarely go above 300 VUs.',
       '- Match the shape of the described traffic: a flash sale or launch needs a steeper climb and a higher peak than a quiet weekday.',
-      '- Include the document, each script, and each style. For routes whose kind is asset, use at most two steps and a probability from 5 to 20.',
+      '- Use only the routes in the table. Include the document and each page, script, and style in that table.',
       '- Unless the user says otherwise, use stopThresholds of p95Ms 1500 and errorRatePct 2.',
       '- Give the plan a short name (under 60 characters) with no markup.',
     ].join('\n');

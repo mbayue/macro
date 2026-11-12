@@ -67,10 +67,7 @@ function ownSitePlan(target: string): TestPlan {
     name: 'sketch browse',
     target,
     stages: [{ vus: 10, durationSec: 60 }],
-    journey: [
-      { route: 'r1', probability: 100, thinkMs: 500 },
-      { route: 'r4', probability: 10, thinkMs: 800 },
-    ],
+    journey: [{ route: 'r1', probability: 100, thinkMs: 500 }],
     stopThresholds: { p95Ms: 1500, errorRatePct: 2 },
   };
 }
@@ -83,8 +80,9 @@ describe('own-site planner prompt', () => {
     );
     expect(prompt).toContain('/assets/a.webp');
     expect(prompt).toContain(
-      'Include the document, each script, and each style. For routes whose kind is asset, use at most two steps and a probability from 5 to 20.',
+      'Use only the routes in the table. Include the document and each page, script, and style in that table.',
     );
+    expect(prompt).not.toContain('at most two steps');
     expect(prompt).not.toContain('order_create');
     expect(prompt).not.toContain('this shop');
   });
@@ -172,7 +170,15 @@ describe('own-site plan approve', () => {
       client: new InferenceClient({ config: authConfig().inference, store, fetchImpl: asFetch(() => Promise.reject(new Error('no'))) }),
       planner: (async (_event: string, _draftId: string, _t?: unknown, discovered?: readonly DiscoveredRoute[]) => {
         plannerDiscovered = discovered;
-        const plan = ownSitePlan(OWN);
+        const rows = discovered ?? [];
+        const plan = {
+          ...ownSitePlan(OWN),
+          journey: (rows.length > 0 ? rows : [{ id: 'r1' }]).slice(0, 8).map((r) => ({
+            route: r.id,
+            probability: 100,
+            thinkMs: 500,
+          })),
+        };
         const gate = discovered === undefined ? evaluatePlan(plan, [OWN]) : evaluatePlan(plan, [OWN], [...discovered]);
         if (gate.status !== 'accepted') throw new Error('fixture plan must gate clean');
         return {
@@ -205,7 +211,10 @@ describe('own-site plan approve', () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as PlanResponse;
     expect(body.plan?.target).toBe(OWN);
-    expect(body.routes).toEqual([...(plannerDiscovered ?? [])]);
+    expect(plannerDiscovered?.some((r) => r.path === '/assets/a.webp')).toBe(false);
+    expect(body.routes.some((r) => r.path === '/assets/a.webp' && r.defaultOn === false)).toBe(true);
+    const draft = store.getDraft(body.draftId);
+    expect(draft?.selectedIds).toEqual((plannerDiscovered ?? []).map((r) => r.id));
     expect(body.plan?.journey.map((s) => s.route).every((id) => (body.routes as { id: string }[]).some((r) => r.id === id))).toBe(true);
     expect(seen).toContain(`${OWN}/`);
   });
@@ -250,6 +259,155 @@ describe('own-site plan approve', () => {
     const body = (await res.json()) as PlanResponse;
     expect(body.routes).toEqual([]);
     expect(fetched).toBe(0);
+  });
+
+  test('routeIds plans only those routes and does not fetch again', async () => {
+    const store = new Store(':memory:');
+    const sent: { to: string; url: string }[] = [];
+    const seen: string[] = [];
+    let plannerIds: string[] = [];
+    const mailer: ResendMailer = {
+      sendMagicLink: async (input) => {
+        sent.push(input);
+        return { ok: true };
+      },
+    };
+    const app = createApp({
+      store,
+      config: authConfig(),
+      verifyTurnstile: () => Promise.resolve({ ok: true }),
+      client: new InferenceClient({ config: authConfig().inference, store, fetchImpl: asFetch(() => Promise.reject(new Error('no'))) }),
+      planner: (async (_e: string, _d: string, _t?: unknown, discovered?: readonly DiscoveredRoute[]) => {
+        plannerIds = (discovered ?? []).map((r) => r.id);
+        const plan = ownSitePlan(OWN);
+        return {
+          ok: true,
+          plan,
+          planText: printPlan(plan),
+          planHash: planHash(printPlan(plan)),
+          rationale: 'home only',
+          gate: evaluatePlan(plan, [OWN], [...(discovered ?? [])]),
+          parseError: null,
+        };
+      }) as never,
+      runController: fakeController(),
+      probeController: fakeController(),
+      now: () => NOW,
+      log: () => {},
+      mailer,
+      fetchImpl: (async (input: string) => {
+        seen.push(input);
+        if (input === `${OWN}/`) return htmlResponse('<a href="/about">a</a>');
+        return new Response('no', { status: 404 });
+      }) as typeof fetch,
+    });
+    const cookie = await signIn(app, sent);
+    const user = store.findUserByEmail('a@example.com')!;
+    store.setVerifiedOrigin(user.id, OWN, 'sketch.my.id', 'tok', NOW);
+    const first = await app.fetch(
+      new Request('http://macro.test/api/plan', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', cookie },
+        body: JSON.stringify({ trafficEvent: EVENT, turnstileToken: 't', targetMode: 'own', targetOrigin: OWN }),
+      }),
+    );
+    expect(first.status).toBe(200);
+    const fetchesAfterFirst = seen.length;
+    const second = await app.fetch(
+      new Request('http://macro.test/api/plan', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', cookie },
+        body: JSON.stringify({
+          trafficEvent: EVENT,
+          turnstileToken: 't',
+          targetMode: 'own',
+          targetOrigin: OWN,
+          routeIds: ['r1'],
+        }),
+      }),
+    );
+    expect(second.status).toBe(200);
+    expect(plannerIds).toEqual(['r1']);
+    expect(seen.length).toBe(fetchesAfterFirst);
+  });
+
+  test('bad routeIds is 400 and the planner is not called', async () => {
+    const store = new Store(':memory:');
+    const sent: { to: string; url: string }[] = [];
+    let plannerCalls = 0;
+    const mailer: ResendMailer = {
+      sendMagicLink: async (input) => {
+        sent.push(input);
+        return { ok: true };
+      },
+    };
+    const app = createApp({
+      store,
+      config: authConfig(),
+      verifyTurnstile: () => Promise.resolve({ ok: true }),
+      client: new InferenceClient({ config: authConfig().inference, store, fetchImpl: asFetch(() => Promise.reject(new Error('no'))) }),
+      planner: (async () => {
+        plannerCalls += 1;
+        const plan = ownSitePlan(OWN);
+        return { ok: true, plan, planText: printPlan(plan), planHash: planHash(printPlan(plan)), rationale: 'x', gate: { status: 'accepted' as const }, parseError: null };
+      }) as never,
+      runController: fakeController(),
+      probeController: fakeController(),
+      now: () => NOW,
+      log: () => {},
+      mailer,
+      fetchImpl: (async () => htmlResponse('<a href="/about">a</a>')) as typeof fetch,
+    });
+    const cookie = await signIn(app, sent);
+    const user = store.findUserByEmail('a@example.com')!;
+    store.setVerifiedOrigin(user.id, OWN, 'sketch.my.id', 'tok', NOW);
+    await app.fetch(
+      new Request('http://macro.test/api/plan', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', cookie },
+        body: JSON.stringify({ trafficEvent: EVENT, turnstileToken: 't', targetMode: 'own', targetOrigin: OWN }),
+      }),
+    );
+    plannerCalls = 0;
+    for (const routeIds of [[], ['r2'], ['r1', 'r1'], ['nope']]) {
+      const res = await app.fetch(
+        new Request('http://macro.test/api/plan', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', cookie },
+          body: JSON.stringify({ trafficEvent: EVENT, turnstileToken: 't', targetMode: 'own', targetOrigin: OWN, routeIds }),
+        }),
+      );
+      expect(res.status).toBe(400);
+      expect(((await res.json()) as ApiErrorBody).error.message).toBe('Those routes do not match the pages read from the site.');
+    }
+    expect(plannerCalls).toBe(0);
+  });
+
+  test('a demo plan ignores routeIds', async () => {
+    const store = new Store(':memory:');
+    const app = createApp({
+      store,
+      config: authConfig(),
+      verifyTurnstile: () => Promise.resolve({ ok: true }),
+      client: new InferenceClient({ config: authConfig().inference, store, fetchImpl: asFetch(() => Promise.reject(new Error('no'))) }),
+      planner: (async () => {
+        const plan = ownSitePlan('https://yue.macro.my.id');
+        return { ok: true, plan, planText: printPlan(plan), planHash: planHash(printPlan(plan)), rationale: 'demo', gate: { status: 'accepted' as const }, parseError: null };
+      }) as never,
+      runController: fakeController(),
+      probeController: fakeController(),
+      now: () => NOW,
+      log: () => {},
+      fetchImpl: (async () => new Response('no', { status: 500 })) as unknown as typeof fetch,
+    });
+    const res = await app.fetch(
+      new Request('http://macro.test/api/plan', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ trafficEvent: EVENT, turnstileToken: 't', targetMode: 'demo', routeIds: ['r1'] }),
+      }),
+    );
+    expect(res.status).toBe(200);
   });
 });
 

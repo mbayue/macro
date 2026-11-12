@@ -37,6 +37,18 @@ export { ContestedOriginError } from '../auth/types.ts';
 export const LIMIT_ROW_TTL_MS = 24 * 3_600_000;
 export const PURGE_INTERVAL_MS = 3_600_000;
 
+function parseSelectedIds(raw: string | null): string[] | null {
+  if (raw === null || raw === '') return null;
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(value) || !value.every((id) => typeof id === 'string')) return null;
+  return value;
+}
+
 function parseDiscoveredRoutes(raw: string | null): DiscoveredRoute[] | null {
   if (raw === null || raw === '') return null;
   let value: unknown;
@@ -68,7 +80,7 @@ export type ReportAiStatus = 'pending' | 'ready' | 'unavailable';
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS drafts (
   id TEXT PRIMARY KEY, traffic_event TEXT NOT NULL, created_at INTEGER NOT NULL,
-  origin TEXT, routes_json TEXT
+  origin TEXT, routes_json TEXT, selected_ids_json TEXT
 );
 CREATE TABLE IF NOT EXISTS waitlist (email TEXT PRIMARY KEY, created_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS plans (hash TEXT PRIMARY KEY, text TEXT NOT NULL, approved_at INTEGER NOT NULL);
@@ -173,6 +185,7 @@ export interface DraftRow {
   createdAt: number;
   origin: string | null;
   routes: DiscoveredRoute[] | null;
+  selectedIds: string[] | null;
 }
 
 export interface PlanTargetRow {
@@ -302,6 +315,7 @@ interface RawDraft {
   created_at: number;
   origin: string | null;
   routes_json: string | null;
+  selected_ids_json: string | null;
 }
 interface RawPlan { hash: string; text: string; approved_at: number }
 interface RawRun {
@@ -525,6 +539,7 @@ export class Store {
       .map((c) => c.name);
     if (!cols.includes('origin')) this.db.exec('ALTER TABLE drafts ADD COLUMN origin TEXT');
     if (!cols.includes('routes_json')) this.db.exec('ALTER TABLE drafts ADD COLUMN routes_json TEXT');
+    if (!cols.includes('selected_ids_json')) this.db.exec('ALTER TABLE drafts ADD COLUMN selected_ids_json TEXT');
   }
 
   /** Opens `${dataDir}/macro.db`. */
@@ -555,23 +570,35 @@ export class Store {
   getDraft(id: string): DraftRow | null {
     const r = this.db
       .prepare<RawDraft, [string]>(
-        'SELECT id, traffic_event, created_at, origin, routes_json FROM drafts WHERE id = ?',
+        'SELECT id, traffic_event, created_at, origin, routes_json, selected_ids_json FROM drafts WHERE id = ?',
       )
       .get(id);
     if (r === null) return null;
+    const routes = parseDiscoveredRoutes(r.routes_json);
     return {
       id: r.id,
       trafficEvent: r.traffic_event,
       createdAt: r.created_at,
       origin: r.origin,
-      routes: parseDiscoveredRoutes(r.routes_json),
+      routes,
+      selectedIds: parseSelectedIds(r.selected_ids_json) ?? routes?.filter((row) => row.defaultOn).map((row) => row.id) ?? null,
     };
   }
 
-  setDraftDiscovery(id: string, origin: string, routes: readonly DiscoveredRoute[]): void {
+  latestDiscovery(origin: string): DraftRow | null {
+    const r = this.db
+      .prepare<{ id: string }, [string]>(
+        'SELECT id FROM drafts WHERE origin = ? AND routes_json IS NOT NULL ORDER BY created_at DESC LIMIT 1',
+      )
+      .get(origin);
+    return r === null ? null : this.getDraft(r.id);
+  }
+
+  setDraftDiscovery(id: string, origin: string, routes: readonly DiscoveredRoute[], selectedIds?: readonly string[]): void {
+    const ids = selectedIds ?? routes.filter((row) => row.defaultOn).map((row) => row.id);
     this.db
-      .prepare('UPDATE drafts SET origin = ?, routes_json = ? WHERE id = ?')
-      .run(origin, JSON.stringify(routes), id);
+      .prepare('UPDATE drafts SET origin = ?, routes_json = ?, selected_ids_json = ? WHERE id = ?')
+      .run(origin, JSON.stringify(routes), JSON.stringify(ids), id);
   }
 
   storePlanTarget(row: PlanTargetRow): void {

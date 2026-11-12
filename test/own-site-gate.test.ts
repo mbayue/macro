@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { InferenceClient } from '../src/agents/inference.ts';
 import type { ApiErrorBody, PlanResponse, StartResponse } from '../src/api-types.ts';
 import type { ResendMailer } from '../src/auth/magic-link.ts';
-import { printPlan } from '../src/plan/printer.ts';
+import { planHash, printPlan } from '../src/plan/printer.ts';
 import { createApp } from '../src/server.ts';
 import type { App, RunStarter } from '../src/server.ts';
 import { Store } from '../src/store/db.ts';
@@ -230,5 +230,62 @@ describe('own-site plan/approve gate', () => {
     );
     expect(res.status).toBe(422);
     expect(((await res.json()) as ApiErrorBody).error.code).toBe('plan_rejected');
+  });
+
+  test('approve keeps only the checked routes and rejects a row that was left off', async () => {
+    const store = new Store(':memory:');
+    const sent: { to: string; url: string }[] = [];
+    const mailer: ResendMailer = {
+      sendMagicLink: async (input) => {
+        sent.push(input);
+        return { ok: true };
+      },
+    };
+    const app = createApp({
+      store,
+      config: authConfig(),
+      verifyTurnstile: () => Promise.resolve({ ok: true }),
+      client: new InferenceClient({ config: authConfig().inference, store, fetchImpl: asFetch(() => Promise.reject(new Error('no'))) }),
+      runController: fakeController(),
+      probeController: fakeController(),
+      now: () => NOW,
+      log: () => {},
+      mailer,
+      fetchImpl: (async () => new Response('no', { status: 500 })) as unknown as typeof fetch,
+    });
+    const cookie = await signIn(app, sent);
+    const user = store.findUserByEmail('a@example.com')!;
+    store.setVerifiedOrigin(user.id, OWN, 'shop.example.com', 'tok', NOW);
+    store.createDraft({ id: 'draft-checked', trafficEvent: EVENT, createdAt: NOW });
+    const home = { id: 'r1', kind: 'document' as const, method: 'GET' as const, path: '/', defaultOn: true };
+    const logo = { id: 'r2', kind: 'asset' as const, method: 'GET' as const, path: '/logo.webp', defaultOn: false };
+    store.setDraftDiscovery('draft-checked', OWN, [home, logo], ['r1']);
+    const good = samplePlan({ target: OWN, journey: [{ route: 'r1', probability: 100, thinkMs: 500 }] });
+    const ok = await app.fetch(
+      new Request('http://macro.test/api/approve', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', cookie },
+        body: JSON.stringify({ planText: printPlan(good), turnstileToken: 't', targetMode: 'own', targetOrigin: OWN, draftId: 'draft-checked' }),
+      }),
+    );
+    expect(ok.status).toBe(200);
+    expect(store.getPlanTarget(planHash(printPlan(good)))?.routes).toEqual([home]);
+    const bad = samplePlan({
+      target: OWN,
+      journey: [
+        { route: 'r1', probability: 100, thinkMs: 500 },
+        { route: 'r2', probability: 10, thinkMs: 500 },
+      ],
+    });
+    const rejected = await app.fetch(
+      new Request('http://macro.test/api/approve', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', cookie },
+        body: JSON.stringify({ planText: printPlan(bad), turnstileToken: 't', targetMode: 'own', targetOrigin: OWN, draftId: 'draft-checked' }),
+      }),
+    );
+    expect(rejected.status).toBe(422);
+    expect(((await rejected.json()) as ApiErrorBody).error.message).toBe("This plan's routes do not match the routes read from the site.");
+    expect(store.getPlan(planHash(printPlan(bad)))).toBeNull();
   });
 });

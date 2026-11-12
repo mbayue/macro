@@ -107,6 +107,8 @@ export interface PlanRequest {
   targetMode?: 'demo' | 'own';
   /** Required when `targetMode` is `own`; must match the verified origin. */
   targetOrigin?: string;
+  /** Own-site replan. Ids from the previous discovery. Demo ignores this. */
+  routeIds?: string[];
 }
 
 export type GateView =
@@ -118,6 +120,7 @@ export interface PlanRouteView {
   path: string;
   method: 'GET';
   kind: 'document' | 'script' | 'style' | 'asset' | 'page' | 'catalog';
+  defaultOn?: boolean;
 }
 
 export interface PlanResponse {

@@ -261,6 +261,85 @@ a { text-underline-offset: 0.2em; }
 .routes li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; padding: 7px 0; border-bottom: 1px solid var(--surface-2); }
 .routes__path { color: var(--muted); }
 .routes li:last-child { border-bottom: 0; padding-bottom: 0; }
+
+/* Journey checks: the row is the control. Checked rows take a surface step; the box is ink, not spring,
+   because the approve panel is already the one live green thing. */
+.panel.journey-picks { gap: 22px; }
+.journey-picks__group,
+.journey-picks__kinds,
+.journey-picks__kind { display: grid; gap: 8px; }
+.journey-picks__kinds { gap: 16px; }
+.journey-picks__head,
+.journey-picks__revise {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+.journey-picks__head h3,
+.journey-picks__count { margin: 0; font: 400 var(--fs-sm)/1.4 var(--text); color: var(--muted); }
+.journey-picks__kind-head { display: grid; gap: 2px; }
+.journey-picks__kind-head h4 { margin: 0; font: 500 var(--fs-sm)/1.3 var(--text); color: var(--ink); }
+.journey-picks__dir { margin: 0; color: var(--muted); font-size: var(--fs-xs); overflow-wrap: anywhere; }
+.journey-picks__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.journey-picks__revise { align-items: center; }
+.journey-picks__revise p { flex: 1 1 16rem; margin: 0; }
+.pick {
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  column-gap: 12px;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--surface-2);
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+.pick:has(.pick__aside) { grid-template-columns: 18px minmax(0, 1fr) auto; }
+.pick.is-on,
+.pick--locked { background: var(--surface-2); box-shadow: none; }
+.pick--locked { cursor: default; }
+.pick:has(input:disabled) { cursor: not-allowed; }
+.pick input:focus-visible { outline: none; }
+.pick:has(input:focus-visible) { outline: 3px solid var(--accent-text); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) {
+  .pick:not(.pick--locked):not(:has(input:disabled)):hover { background: var(--surface-2); }
+}
+.pick__box {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1.5px var(--bar);
+  display: grid;
+  place-items: center;
+}
+.pick.is-on .pick__box,
+.pick--locked .pick__box { background: var(--ink); box-shadow: none; }
+.pick__box::after {
+  content: "";
+  width: 12px;
+  height: 12px;
+  background: var(--bg);
+  opacity: 0;
+  -webkit-mask: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='%23000' d='M2.2 6.2 4.8 8.8 10.1 3.4 8.9 2.2 4.8 6.4 3.4 5z'/%3E%3C/svg%3E");
+  mask: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='%23000' d='M2.2 6.2 4.8 8.8 10.1 3.4 8.9 2.2 4.8 6.4 3.4 5z'/%3E%3C/svg%3E");
+}
+.pick.is-on .pick__box::after,
+.pick--locked .pick__box::after { opacity: 1; }
+.pick__body { display: grid; gap: 1px; min-width: 0; }
+.pick__name { color: var(--ink); }
+.pick__dir,
+.pick__note,
+.pick__aside { color: var(--muted); font-size: var(--fs-xs); }
+.pick__dir,
+.pick__note { overflow-wrap: anywhere; }
+.pick__aside { font: 400 var(--fs-xs)/1.3 var(--text); white-space: nowrap; }
+
 .page__head { display: grid; gap: 8px; }
 .shell .page__title { font: 300 var(--fs-title)/1.1 var(--display); letter-spacing: -0.02em; text-wrap: balance; }
 .page__lead { color: var(--muted); max-width: 64ch; }
@@ -996,4 +1075,5 @@ a { text-underline-offset: 0.2em; }
   .approve-bar:not([hidden]) { animation: none; }
   .chip-btn, .btn { transition-property: background-color, color, border-color; }
   .chip-btn:active, .btn:active { transform: none; }
+  .pick { transition: none; }
 }

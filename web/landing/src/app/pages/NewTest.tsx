@@ -14,7 +14,7 @@ import type { AccountDraft } from '../../../../../src/api-types.ts';
 import { getDraft, postVerifyClear, putDraft, stashLocalDraft, takeLocalDraft } from '../lib/auth-api.ts';
 import { type ApiError, type ApiResult, postApprove, postPlan, VERIFICATION_ERROR } from '../lib/api.ts';
 import { isActionPath } from '../../../../../src/plan/discover.ts';
-import { journeyGroups, journeyLabel } from '../../../../../src/plan/journey-edit.ts';
+import { journeyGroups, journeyLabel, type JourneyRow } from '../../../../../src/plan/journey-edit.ts';
 import { countCodePoints } from '../lib/describe.ts';
 import { parseErrorText } from '../lib/format.ts';
 import { GateRules } from '../components/GateRules.tsx';
@@ -779,6 +779,88 @@ function PlanDetails({
   );
 }
 
+function pathFace(path: string): { name: string; dir: string | null } {
+  const slash = path.lastIndexOf('/');
+  if (slash <= 0) return { name: path, dir: null };
+  const name = path.slice(slash + 1);
+  if (name.length === 0) return { name: path, dir: null };
+  return { name, dir: path.slice(0, slash + 1) };
+}
+
+const KIND_RANK = ['Page', 'Script', 'Stylesheet', 'Font', 'Image'];
+
+function kindHeading(label: string, count: number): string {
+  if (count === 1) return label;
+  if (label === 'Page') return 'Pages';
+  if (label === 'Stylesheet') return 'Stylesheets';
+  return `${label}s`;
+}
+
+function kindGroups(rows: readonly JourneyRow[]): { label: string; rows: JourneyRow[] }[] {
+  const buckets = new Map<string, JourneyRow[]>();
+  for (const row of rows) {
+    const label = journeyLabel(row);
+    const list = buckets.get(label);
+    if (list) list.push(row);
+    else buckets.set(label, [row]);
+  }
+  return [...buckets.keys()]
+    .sort((a, b) => {
+      const ia = KIND_RANK.indexOf(a);
+      const ib = KIND_RANK.indexOf(b);
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    })
+    .map((label) => ({ label, rows: buckets.get(label) ?? [] }));
+}
+
+function sharedDir(rows: readonly JourneyRow[]): string | null {
+  const dirs = rows.map((row) => pathFace(row.path).dir);
+  const first = dirs[0];
+  if (first == null || dirs.some((dir) => dir !== first)) return null;
+  return first;
+}
+
+function JourneyPick({
+  row,
+  on,
+  locked,
+  disabled,
+  showKind,
+  showDir,
+  onToggle,
+}: {
+  row: JourneyRow;
+  on: boolean;
+  locked: boolean;
+  disabled: boolean;
+  showKind: boolean;
+  showDir: boolean;
+  onToggle: () => void;
+}) {
+  const face = pathFace(row.path);
+  const action = row.kind === 'page' && isActionPath(row.path);
+  const aside = locked ? 'Required' : showKind ? journeyLabel(row) : null;
+  const body = (
+    <>
+      <span className="pick__box" aria-hidden="true" />
+      <span className="pick__body">
+        <span className="pick__name code">{face.name}</span>
+        {showDir && face.dir !== null ? <span className="pick__dir code">{face.dir}</span> : null}
+        {!showDir && face.dir !== null ? <span className="visually-hidden">{face.dir}</span> : null}
+        {action ? <span className="pick__note">A repeated visit would hit this link.</span> : null}
+      </span>
+      {aside !== null ? <span className="pick__aside">{aside}</span> : null}
+    </>
+  );
+  if (locked) return <div className="pick pick--locked">{body}</div>;
+  return (
+    <label className={on ? 'pick is-on' : 'pick'}>
+      <input className="visually-hidden" type="checkbox" checked={on} disabled={disabled} onChange={onToggle} />
+      {body}
+    </label>
+  );
+}
+
 function JourneyChecks({
   routes,
   disabled,
@@ -805,33 +887,13 @@ function JourneyChecks({
     onChecksDiffer(differ);
   }, [differ, onChecksDiffer]);
 
-  function rowView(row: { id: string; path: string; kind: string }, locked: boolean) {
-    const on = locked || checked.has(row.id);
-    return (
-      <tr key={row.id}>
-        <td>
-          <input
-            type="checkbox"
-            checked={on}
-            disabled={locked || disabled}
-            aria-label={row.path}
-            onChange={() => {
-              setChecked((prev) => {
-                const next = new Set(prev);
-                if (next.has(row.id)) next.delete(row.id);
-                else next.add(row.id);
-                return next;
-              });
-            }}
-          />
-        </td>
-        <td className="code">{row.path}</td>
-        <td>
-          {journeyLabel({ ...row, defaultOn: checked.has(row.id) })}
-          {row.kind === 'page' && isActionPath(row.path) ? ' A repeated visit would hit this link.' : ''}
-        </td>
-      </tr>
-    );
+  function toggle(id: string) {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   const sections = [
@@ -841,27 +903,69 @@ function JourneyChecks({
   ] as const;
 
   return (
-    <section className="panel" aria-label="Journey">
-      {sections.map(([title, rows, locked]) =>
-        rows.length === 0 ? null : (
-          <div key={title}>
-            <h3 className="h-small">{title}</h3>
-            <table>
-              <tbody>{rows.map((row) => rowView(row, locked))}</tbody>
-            </table>
+    <section className="panel journey-picks" aria-label="Journey">
+      {sections.map(([title, rows, locked]) => {
+        if (rows.length === 0) return null;
+        const kinds = kindGroups(rows);
+        const grouped = kinds.length > 1 || rows.length > 1;
+        return (
+          <div className="journey-picks__group" key={title}>
+            <div className="journey-picks__head">
+              <h3>{title}</h3>
+              <span className="journey-picks__count num">
+                {rows.length}
+                <span className="visually-hidden"> routes</span>
+              </span>
+            </div>
+            <div className="journey-picks__kinds">
+              {kinds.map((group) => {
+                const dir = grouped ? sharedDir(group.rows) : null;
+                const list = (
+                  <ul className="journey-picks__list">
+                    {group.rows.map((row) => (
+                      <li key={row.id}>
+                        <JourneyPick
+                          row={row}
+                          on={locked || checked.has(row.id)}
+                          locked={locked}
+                          disabled={disabled}
+                          showKind={!grouped}
+                          showDir={dir === null}
+                          onToggle={() => toggle(row.id)}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                );
+                if (!grouped) return <div key={group.label}>{list}</div>;
+                return (
+                  <div className="journey-picks__kind" key={group.label}>
+                    <div className="journey-picks__kind-head">
+                      <h4>{kindHeading(group.label, group.rows.length)}</h4>
+                      {dir !== null ? <p className="code journey-picks__dir">{dir}</p> : null}
+                    </div>
+                    {list}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        ),
-      )}
+        );
+      })}
       {groups.overflow ? <p>Some pages were left off because a plan holds 32 routes.</p> : null}
-      {differ ? <p>Revise the plan to use these checks.</p> : null}
-      <button
-        type="button"
-        className="btn btn--line"
-        disabled={disabled}
-        onClick={() => onRevise(['r1', ...routes.filter((row) => row.path !== '/' && checked.has(row.id)).map((row) => row.id)])}
-      >
-        Revise the plan
-      </button>
+      {differ ? (
+        <div className="journey-picks__revise">
+          <p aria-live="polite">Revise the plan to use these checks.</p>
+          <button
+            type="button"
+            className="btn btn--quiet"
+            disabled={disabled}
+            onClick={() => onRevise(['r1', ...routes.filter((row) => row.path !== '/' && checked.has(row.id)).map((row) => row.id)])}
+          >
+            Revise the plan
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -607,7 +607,8 @@ a { text-underline-offset: 0.2em; }
 }
 
 /* Cloudflare detection banner in VerifyPanel */
-.cf-banner {
+.cf-banner,
+.dc-banner {
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -617,7 +618,8 @@ a { text-underline-offset: 0.2em; }
   min-width: 0;
   box-sizing: border-box;
 }
-.cf-banner__header {
+.cf-banner__header,
+.dc-banner__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -632,7 +634,19 @@ a { text-underline-offset: 0.2em; }
   font-weight: 600;
   color: #f38020;
 }
-.cf-banner__desc {
+.dc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--accent-contrast, #00843d);
+}
+:root[data-theme='dark'] .dc-badge {
+  color: var(--accent);
+}
+.cf-banner__desc,
+.dc-banner__desc {
   font-size: var(--fs-xs);
   color: var(--muted);
   margin: 0;
@@ -654,13 +668,45 @@ a { text-underline-offset: 0.2em; }
   white-space: nowrap;
   transition: opacity 140ms ease, transform 100ms ease-out;
 }
-.btn--cf:active {
+.btn--dc {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  padding: 5px 12px;
+  background: var(--accent);
+  color: var(--accent-ink, #001e2b) !important;
+  border: 0;
+  border-radius: calc(var(--radius) - 2px);
+  text-decoration: none !important;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 140ms ease, transform 100ms ease-out;
+}
+.btn--cf:active,
+.btn--dc:active {
   transform: scale(0.97);
 }
 @media (hover: hover) and (pointer: fine) {
-  .btn--cf:hover {
+  .btn--cf:hover,
+  .btn--dc:hover {
     opacity: 0.88;
   }
+}
+.verify-manual-toggle {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  padding: 4px 0;
+  cursor: pointer;
+  background: none;
+  border: none;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.verify-manual-toggle:hover {
+  color: var(--ink);
 }
 
 #verify-panel {

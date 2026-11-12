@@ -15,6 +15,14 @@ function CloudflareIcon({ width = 14, height = 14 }: { width?: number; height?: 
   );
 }
 
+function DomainConnectIcon({ width = 14, height = 14 }: { width?: number; height?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={width} height={height} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+    </svg>
+  );
+}
+
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
@@ -60,9 +68,20 @@ export function VerifyPanel({
   const { me, refreshMe, announce } = useApp();
   const [host, setHost] = useState(initialHost);
   const [pending, setPending] = useState<VerifyStartResponse | null>(null);
+  const [showManual, setShowManual] = useState(false);
   const [busy, setBusy] = useState<'start' | 'check' | 'clear' | 'cancel' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const restoreGen = useRef(0);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const hash = window.location.hash;
+    if (hash.includes('domainConnect=done')) {
+      const cleanHash = hash.replace(/[?&]domainConnect=done/, '');
+      window.history.replaceState(null, '', window.location.pathname + cleanHash);
+      void onCheck();
+    }
+  }, [pending?.token]);
 
   useEffect(() => {
     if (me?.pendingVerification == null) return;
@@ -195,7 +214,29 @@ export function VerifyPanel({
         </form>
       ) : (
         <div className="stack">
-          {pending.isCloudflare ? (
+          {pending.domainConnectUrl ? (
+            <div className="dc-banner">
+              <div className="dc-banner__header">
+                <span className="dc-badge">
+                  <DomainConnectIcon />{' '}
+                  {pending.domainConnectProviderName
+                    ? `${pending.domainConnectProviderName} detected`
+                    : 'Domain Connect ready'}
+                </span>
+                <a
+                  href={pending.domainConnectUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn--dc"
+                >
+                  ⚡ Auto-configure DNS ↗
+                </a>
+              </div>
+              <p className="dc-banner__desc">
+                Your DNS provider supports Domain Connect. Authorize Macro to provision the verification TXT record automatically in one click.
+              </p>
+            </div>
+          ) : pending.isCloudflare ? (
             <div className="cf-banner">
               <div className="cf-banner__header">
                 <span className="cf-badge">
@@ -215,36 +256,51 @@ export function VerifyPanel({
               </p>
             </div>
           ) : null}
-          <div className="verify-records">
-            <div className="verify-record">
-              <span className="verify-record__label">DNS TXT name</span>
-              <div className="verify-record__box">
-                <code>{pending.txtName}</code>
-                <CopyButton text={pending.txtName} />
+
+          {pending.domainConnectUrl ? (
+            <p style={{ margin: '4px 0 0 0' }}>
+              <button
+                type="button"
+                className="verify-manual-toggle"
+                onClick={() => setShowManual((v) => !v)}
+              >
+                {showManual ? 'Hide manual DNS records' : 'Or configure DNS records manually'}
+              </button>
+            </p>
+          ) : null}
+
+          {showManual || !pending.domainConnectUrl ? (
+            <div className="verify-records">
+              <div className="verify-record">
+                <span className="verify-record__label">DNS TXT name</span>
+                <div className="verify-record__box">
+                  <code>{pending.txtName}</code>
+                  <CopyButton text={pending.txtName} />
+                </div>
+              </div>
+              <div className="verify-record">
+                <span className="verify-record__label">DNS TXT value</span>
+                <div className="verify-record__box">
+                  <code>{pending.txtValue}</code>
+                  <CopyButton text={pending.txtValue} />
+                </div>
+              </div>
+              <div className="verify-record">
+                <span className="verify-record__label">Well-known URL</span>
+                <div className="verify-record__box">
+                  <code>{pending.wellKnownUrl}</code>
+                  <CopyButton text={pending.wellKnownUrl} />
+                </div>
+              </div>
+              <div className="verify-record">
+                <span className="verify-record__label">File body</span>
+                <div className="verify-record__box">
+                  <code>{pending.token}</code>
+                  <CopyButton text={pending.token} />
+                </div>
               </div>
             </div>
-            <div className="verify-record">
-              <span className="verify-record__label">DNS TXT value</span>
-              <div className="verify-record__box">
-                <code>{pending.txtValue}</code>
-                <CopyButton text={pending.txtValue} />
-              </div>
-            </div>
-            <div className="verify-record">
-              <span className="verify-record__label">Well-known URL</span>
-              <div className="verify-record__box">
-                <code>{pending.wellKnownUrl}</code>
-                <CopyButton text={pending.wellKnownUrl} />
-              </div>
-            </div>
-            <div className="verify-record">
-              <span className="verify-record__label">File body</span>
-              <div className="verify-record__box">
-                <code>{pending.token}</code>
-                <CopyButton text={pending.token} />
-              </div>
-            </div>
-          </div>
+          ) : null}
           <p className="actions">
             <button type="button" className="btn" disabled={busy !== null} onClick={() => void onCheck()}>
               {busy === 'check' ? <Busy>Checking</Busy> : 'I added the proof — check'}

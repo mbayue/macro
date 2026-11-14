@@ -1123,4 +1123,31 @@ a { text-underline-offset: 0.2em; }
   .report, .panel { break-inside: auto; }
   .tile, tr, td, th { break-inside: avoid; }
   .table th, .table td { border: 1px solid var(--surface-2); }
+
+  /* Tables are sized for a scrolling screen; on paper they must fit the page
+   * width instead of clipping their right-hand columns (the Stages table lost
+   * p99 and Verdict in the first print). */
+  .table-wrap { overflow: visible; }
+  .table,
+  .table--stages,
+  .table--routes,
+  .table--runs,
+  .table--calls {
+    table-layout: auto;
+    min-width: 0;
+    width: 100%;
+    font-size: 9pt;
+  }
+  .table th,
+  .table td {
+    padding: 4px 6px;
+  }
+  .table th:first-child,
+  .table td:first-child { padding-left: 0; }
+  .table th:last-child,
+  .table td:last-child { padding-right: 0; }
+  .table thead th { white-space: normal; }
+  .table .num,
+  .table .idx,
+  .table .code { white-space: normal; overflow-wrap: anywhere; }
 }

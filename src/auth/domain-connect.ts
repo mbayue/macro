@@ -4,6 +4,7 @@
  */
 import crypto from 'node:crypto';
 import { isIP } from 'node:net';
+import { isPublicHost, type LookupAllFn } from '../security/public-host.ts';
 
 const DNS_HOSTNAME_RE =
   /^[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?(?:\.[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?)+$/i;
@@ -180,9 +181,13 @@ export async function fetchDomainConnectSettings(
   apiHost: string,
   apexDomain: string,
   fetchFn?: FetchFn,
+  lookupFn?: LookupAllFn,
 ): Promise<DomainConnectSettings | null> {
   const host = apiHost.trim().replace(/[./]+$/, '');
   if (!isSafeDomainConnectHost(host)) return null;
+  if (fetchFn === undefined || fetchFn === fetch || lookupFn !== undefined) {
+    if (!(await isPublicHost(host, lookupFn))) return null;
+  }
   const customFetch = fetchFn ?? fetch;
   const url = `https://${host}/v2/${encodeURIComponent(apexDomain)}/settings`;
 

@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 import { isBlockedIp } from '../proxy/ip.ts';
 import { InferenceClient } from '../src/agents/inference.ts';
+import { fetchDomainConnectSettings } from '../src/auth/domain-connect.ts';
 import type { ResendMailer } from '../src/auth/magic-link.ts';
 import { checkWellKnown } from '../src/auth/verify-origin.ts';
+import { discoverOwnSite } from '../src/plan/discover.ts';
 import { isDenylistedHost } from '../src/plan/policy.ts';
 import { createApp } from '../src/server.ts';
 import type { RunStarter } from '../src/server.ts';
@@ -178,5 +180,32 @@ describe('security fixes regression', () => {
 
     await reader.cancel();
     store.close();
+  });
+
+  test('fetchDomainConnectSettings and discoverOwnSite block hosts resolving to private or metadata IPs', async () => {
+    let dcFetched = false;
+    const dcRes = await fetchDomainConnectSettings(
+      'dc.attacker.example',
+      'example.com',
+      async () => {
+        dcFetched = true;
+        return new Response('{}', { status: 200 });
+      },
+      async () => [{ address: '169.254.169.254' }],
+    );
+    expect(dcRes).toBeNull();
+    expect(dcFetched).toBe(false);
+
+    let discoverFetched = false;
+    const discRes = await discoverOwnSite(
+      'https://rebind.attacker.example',
+      async () => {
+        discoverFetched = true;
+        return new Response('<html></html>', { status: 200 });
+      },
+      async () => [{ address: '93.184.216.34' }, { address: '10.0.0.5' }],
+    );
+    expect(discRes).toEqual({ ok: false, reason: 'document_unreachable' });
+    expect(discoverFetched).toBe(false);
   });
 });

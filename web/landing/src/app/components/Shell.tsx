@@ -41,6 +41,8 @@ export function Shell({
 
   useEffect(() => {
     if (!open) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setOpen(false);
@@ -48,7 +50,10 @@ export function Shell({
       }
     };
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
   }, [open]);
 
   async function onSignOut() {
@@ -156,7 +161,7 @@ export function Shell({
         <a className="wordmark rail__brand" href="#/">
           Macro
         </a>
-        <a className={route.view === 'new' ? 'btn rail__new is-current' : 'btn rail__new'} href="#/" aria-current={route.view === 'new' ? 'page' : undefined}>
+        <a className={route.view === 'new' ? 'btn btn--quiet rail__new is-current' : 'btn btn--quiet rail__new'} href="#/" aria-current={route.view === 'new' ? 'page' : undefined}>
           New test
         </a>
         <ul className="rail__list">

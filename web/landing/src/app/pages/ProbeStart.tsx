@@ -70,7 +70,7 @@ export function ProbeStart() {
                 [
                   'Network',
                   <span>
-                    Only <span className="code">{config.webOrigin.replace(/^https:\/\//, '')}:443</span> through the egress proxy
+                    Only <span className="code">{config.webOrigin.replace(/^https:\/\//, '')}:443</span> (egress proxy)
                   </span>,
                 ],
                 ['Load sent', 'None'],

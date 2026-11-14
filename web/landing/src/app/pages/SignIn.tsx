@@ -109,13 +109,14 @@ export function SignIn() {
       </Panel>
 
       <Panel title="Email link">
-        <form onSubmit={onMagic} className="stack">
+        <form onSubmit={onMagic} className="stack stack--narrow">
           <label className="field">
             <span className="field__label">Email</span>
             <input
               type="email"
               name="email"
               autoComplete="email"
+              placeholder="you@company.com"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}

@@ -10,7 +10,7 @@ import { currentStage, elapsedMs, formatElapsed, isTerminal, type RunModel } fro
 import { headlineItems, reportNotices } from '../lib/report-view.ts';
 import type { CapacityReport, StageView as ReportStageView } from '../../../../../src/report/build.ts';
 import { Feed } from '../components/run/Feed.tsx';
-import { AiSection, ReportMeta, ReportNotices, ReportStages, RunsPanel } from '../components/run/Report.tsx';
+import { AiSection, ReportExport, ReportMeta, ReportNotices, ReportStages, RunsPanel } from '../components/run/Report.tsx';
 import { RouteChart } from '../components/run/RouteChart.tsx';
 import { ModelCalls } from '../components/ModelCalls.tsx';
 import { type ProfileStage, StageProfile } from '../components/StageProfile.tsx';
@@ -131,6 +131,7 @@ export function RunPage({ id }: { id: string }) {
             <h2 id="report-heading">Capacity report</h2>
             <ReportMeta report={report} />
           </div>
+          <ReportExport report={report} />
           <ReportStages report={report} />
           <AiSection report={report} />
           <ModelCalls calls={model.modelCalls} />

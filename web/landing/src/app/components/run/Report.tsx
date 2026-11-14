@@ -5,9 +5,11 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import type { CapacityReport, MetricsView, RouteRowView, StageView } from '../../../../../../src/report/build.ts';
+import { reportCsvFilename, reportToCsv } from '../../../../../../src/report/export.ts';
 import { type ApiError, getCompare, getRunsForPlan, postRun, VERIFICATION_ERROR } from '../../lib/api.ts';
 import type { Comparison } from '../../../../../../src/report/compare.ts';
 import { headlineCompareRows, parseComparison, stageCompareRows } from '../../lib/compare-view.ts';
+import { downloadText } from '../../lib/export.ts';
 import { fmtUtc } from '../../lib/format.ts';
 import { aiModel, canRerun, MAX_LISTED_RUNS, reportNotices, type RunListRow, runListRows } from '../../lib/report-view.ts';
 import { useApp } from '../../context.tsx';
@@ -208,6 +210,49 @@ export function AiSection({ report }: { report: CapacityReport }) {
   );
 }
 
+/**
+ * The two quiet export buttons above the report: the measured CSV file and the
+ * browser's own print dialog (save as PDF). Print opens every closed route
+ * disclosure and afterprint restores exactly who was closed.
+ */
+export function ReportExport({ report }: { report: CapacityReport }) {
+  const { announce } = useApp();
+
+  useEffect(() => {
+    let wereClosed: HTMLDetailsElement[] = [];
+    const before = (): void => {
+      wereClosed = Array.from(document.querySelectorAll<HTMLDetailsElement>('.report details:not([open])'));
+      for (const d of wereClosed) d.open = true;
+    };
+    const after = (): void => {
+      for (const d of wereClosed) d.open = false;
+      wereClosed = [];
+    };
+    window.addEventListener('beforeprint', before);
+    window.addEventListener('afterprint', after);
+    return () => {
+      window.removeEventListener('beforeprint', before);
+      window.removeEventListener('afterprint', after);
+    };
+  }, []);
+
+  const downloadCsv = (): void => {
+    downloadText(reportCsvFilename(report.runId), reportToCsv(report), 'text/csv;charset=utf-8');
+    announce('Report exported.');
+  };
+
+  return (
+    <div className="row report__export">
+      <button type="button" className="btn btn--quiet" onClick={downloadCsv}>
+        Download CSV
+      </button>
+      <button type="button" className="btn btn--quiet" onClick={() => window.print()}>
+        Print / save as PDF
+      </button>
+    </div>
+  );
+}
+
 export function ReportMeta({ report }: { report: CapacityReport }) {
   const items: [string, React.ReactNode][] = [
     ['Target', <span className="code">{report.target}</span>],
@@ -232,7 +277,7 @@ export function ReportMeta({ report }: { report: CapacityReport }) {
     </dl>
   );
 }
-/** Re-run the same approved plan, list its runs, compare two of them. */
+/** Re-run the same approved plan, list its runs, compare two of them. The class scopes the print rules. */
 export function RunsPanel({ report }: { report: CapacityReport }) {
   const { navigate, announce } = useApp();
   const turnstile = useTurnstile();
@@ -308,7 +353,7 @@ export function RunsPanel({ report }: { report: CapacityReport }) {
   const toggle = (id: string, on: boolean) => setPicked((p) => (on ? [...p, id].slice(0, 2) : p.filter((x) => x !== id)));
 
   return (
-    <Panel title="Run again and compare" id="report-runs-heading">
+    <Panel title="Run again and compare" id="report-runs-heading" className="panel--runs">
       {canRerun(report.headline.status) ? (
         <div className="stack-tight">
           <p>Start a new run of this same approved plan. The plan is not changed.</p>

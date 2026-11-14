@@ -1077,3 +1077,50 @@ a { text-underline-offset: 0.2em; }
   .chip-btn:active, .btn:active { transform: none; }
   .pick { transition: none; }
 }
+
+/* ---- Print: the report is the deliverable; the browser makes the PDF. ----
+ * Only the run page in its report state is a print target (see ReportExport,
+ * which also opens closed disclosures around the print). Everything the user
+ * cannot click on paper goes away, and the palette is light either theme. */
+@media print {
+  :root,
+  :root[data-theme="dark"] {
+    color-scheme: light;
+    --bg: #fdfff5;
+    --surface: #f1f5eb;
+    --surface-2: #e4e8e0;
+    --ink: #001e2b;
+    --muted: #404f54;
+    --accent-text: #00684a;
+    --bar-accent: #00684a;
+    --bar-accent-ink: #ffffff;
+    --ok: #00684a;
+    --bad: #b3261e;
+    --placeholder: #616c6d;
+    --thumb-edge: #001e2b;
+  }
+
+  .topbar,
+  .rail,
+  .skip-link,
+  .app-foot,
+  .run-head,
+  .report__export,
+  .board,
+  .report .btn {
+    display: none !important;
+  }
+
+  /* The runs panel prints only when it holds an open comparison. */
+  .panel--runs:not(:has(.compare)) { display: none; }
+  .panel--runs > .panel__head { display: none; }
+  .panel--runs > :not(.compare, [aria-live]) { display: none; }
+  .panel--runs [aria-live] > :not(.compare) { display: none; }
+
+  a[href]::after { content: none; }
+
+  .page { max-width: none; padding: 0; }
+  .report, .panel { break-inside: auto; }
+  .tile, tr, td, th { break-inside: avoid; }
+  .table th, .table td { border: 1px solid var(--surface-2); }
+}

@@ -163,7 +163,7 @@ docker exec macro-api bun src/admin/waitlist.ts remove <email>  # deletion reque
 - **One load generator** in Singapore with 1 CPU per sandbox. At high VU counts, the generator itself can become the limit.
 - **"First degraded route" is an observation, not a root cause.**
 - **Quotas:** one active run at a time, rolling planning and start limits (per IP when signed out, per account when signed in), a daily start cap, and a 15-minute cap per run.
-- **Not built:** regional runs from other Vultr regions, report export, multi-seat orgs, and own-site containment probes.
+- **Not built:** regional runs from other Vultr regions, multi-seat orgs, and own-site containment probes.
 
 ## Testing
 

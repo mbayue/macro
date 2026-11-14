@@ -2,8 +2,9 @@
 import { renderToString } from 'react-dom/server';
 import { Privacy, Terms } from './pages/Legal.tsx';
 import { Home } from './pages/Home.tsx';
+import { NotFoundPage } from './pages/NotFound.tsx';
 
-export type PageName = 'home' | 'privacy' | 'terms';
+export type PageName = 'home' | 'privacy' | 'terms' | 'not-found';
 
 export function render(page: PageName): string {
   switch (page) {
@@ -13,5 +14,7 @@ export function render(page: PageName): string {
       return renderToString(<Privacy />);
     case 'terms':
       return renderToString(<Terms />);
+    case 'not-found':
+      return renderToString(<NotFoundPage />);
   }
 }

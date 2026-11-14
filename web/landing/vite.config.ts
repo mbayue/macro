@@ -29,7 +29,14 @@ function devPrerender(): Plugin {
     async transformIndexHtml(html, ctx) {
       if (!ctx.server) return html;
       if (!html.includes('<!--app-->')) return html; // the planner app at /app/ is client-rendered
-      const page = ctx.path === '/privacy.html' ? 'privacy' : ctx.path === '/terms.html' ? 'terms' : 'home';
+      const page =
+        ctx.path === '/privacy.html'
+          ? 'privacy'
+          : ctx.path === '/terms.html'
+            ? 'terms'
+            : ctx.path === '/404.html'
+              ? 'not-found'
+              : 'home';
       const mod = (await ctx.server.ssrLoadModule('/src/entry-server.tsx')) as { render(p: string): string };
       return html.replace('<!--app-->', mod.render(page));
     },
@@ -52,6 +59,7 @@ export default defineConfig({
         index: fileURLToPath(new URL('./index.html', import.meta.url)),
         privacy: fileURLToPath(new URL('./privacy.html', import.meta.url)),
         terms: fileURLToPath(new URL('./terms.html', import.meta.url)),
+        notFound: fileURLToPath(new URL('./404.html', import.meta.url)),
         app: fileURLToPath(new URL('./app/index.html', import.meta.url)),
       },
     },

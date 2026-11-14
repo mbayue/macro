@@ -48,13 +48,14 @@ await viteBuild({
   },
 });
 const server = (await import(pathToFileURL(join(ssrOut, 'entry-server.mjs')).href)) as {
-  render(page: 'home' | 'privacy' | 'terms'): string;
+  render(page: 'home' | 'privacy' | 'terms' | 'not-found'): string;
 };
 
 for (const [file, page] of [
   ['index.html', 'home'],
   ['privacy.html', 'privacy'],
   ['terms.html', 'terms'],
+  ['404.html', 'not-found'],
 ] as const) {
   const path = join(outDir, file);
   const html = await readFile(path, 'utf8');
@@ -63,13 +64,13 @@ for (const [file, page] of [
 }
 
 // ---- 2. sanity checks ----
-for (const name of ['index.html', 'privacy.html', 'terms.html', join('app', 'index.html'), 'favicon.svg']) {
+for (const name of ['index.html', 'privacy.html', 'terms.html', '404.html', join('app', 'index.html'), 'favicon.svg']) {
   if (!(await Bun.file(join(outDir, name)).exists())) fail(`Web build is missing ${name}.`);
 }
 if (await Bun.file(join(outDir, 'app-next', 'index.html')).exists()) {
   fail('Web build still contains /app-next/; the React app must ship at /app/ only.');
 }
-for (const name of ['index.html', 'privacy.html', 'terms.html', join('app', 'index.html')]) {
+for (const name of ['index.html', 'privacy.html', 'terms.html', '404.html', join('app', 'index.html')]) {
   const html = await readFile(join(outDir, name), 'utf8');
   if (/\sstyle="/.test(html)) fail(`${name} contains a style attribute, which the CSP blocks.`);
   if (/<script(?![^>]*\ssrc=)[^>]*>/.test(html)) fail(`${name} contains an inline script, which the CSP blocks.`);

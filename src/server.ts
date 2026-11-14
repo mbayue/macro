@@ -1592,8 +1592,27 @@ export function createApp(deps: AppDeps): App {
   // ------------------------------------------------------------ static files
 
   async function serveStatic(req: Request, pathname: string): Promise<Response> {
-    const missing = (): Response =>
-      new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+    const missing = async (): Promise<Response> => {
+      if (req.method === 'GET' || req.method === 'HEAD') {
+        const notFoundPath = join(webRoot, '404.html');
+        try {
+          const st = await stat(notFoundPath);
+          if (st.isFile()) {
+            const headers = {
+              'content-type': 'text/html; charset=utf-8',
+              'cache-control': 'no-cache',
+              'content-length': String(st.size),
+            };
+            return req.method === 'HEAD'
+              ? new Response(null, { status: 404, headers })
+              : new Response(Bun.file(notFoundPath), { status: 404, headers });
+          }
+        } catch {
+          // Fall back to plain text when webDist has no 404.html (e.g. minimal test fixtures).
+        }
+      }
+      return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+    };
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       return new Response('Method not allowed', {
         status: 405,
@@ -1601,7 +1620,7 @@ export function createApp(deps: AppDeps): App {
       });
     }
     let rel = safeDecode(pathname);
-    if (rel === null || rel.includes('\0') || rel.includes('\\') || !rel.startsWith('/')) return missing();
+    if (rel === null || rel.includes('\0') || rel.includes('\\') || !rel.startsWith('/')) return await missing();
     if (rel === '/') rel = '/index.html';
     // The app shell lives at /app/ (its views are hash routes, e.g. /app/#/run/<id>).
     if (rel === '/app' || rel === '/app/') rel = '/app/index.html';
@@ -1614,17 +1633,17 @@ export function createApp(deps: AppDeps): App {
     }
     // Prerendered legal pages, served without the .html suffix.
     if (rel === '/privacy' || rel === '/terms') rel = `${rel}.html`;
-    if (rel.split('/').some((seg) => seg.startsWith('.'))) return missing(); // no dotfiles, no "..", no "."
+    if (rel.split('/').some((seg) => seg.startsWith('.'))) return await missing(); // no dotfiles, no "..", no "."
     const abs = resolve(webRoot, `.${rel}`);
-    if (abs !== webRoot && !abs.startsWith(webRoot + sep)) return missing();
+    if (abs !== webRoot && !abs.startsWith(webRoot + sep)) return await missing();
 
     let size: number;
     try {
       const st = await stat(abs);
-      if (!st.isFile()) return missing();
+      if (!st.isFile()) return await missing();
       size = st.size;
     } catch {
-      return missing();
+      return await missing();
     }
 
     const ext = extname(abs).toLowerCase();

@@ -12,7 +12,7 @@ Describe the traffic you expect in plain words ("a new banner drops tonight, 500
 
 | Vultr product | Used for |
 | --- | --- |
-| **Cloud Compute** `macro` (Singapore, 1 vCPU / 2 GB) | Macro API and web UI (Bun), Caddy, the egress proxy, and one gVisor sandbox per load-test stage. |
+| **Cloud Compute** `macro` (Singapore, 1 vCPU / 2 GB) | Macro API and web UI (Bun), Caddy, the least-privilege Docker socket proxy, the egress proxy, and one gVisor sandbox per load-test stage. |
 | **Cloud Compute** `yue-demo` (Singapore, 1 vCPU / 2 GB) | The only allowed target: a demo copy of the YUE web shop (web, API, Postgres, Redis) at `yue.macro.my.id`. |
 | **Serverless Inference** | All three agents: Planner, Supervisor and Report Writer. Each call forces a single tool (`propose_plan`, `decide_next_stage`, `write_report`). Model `minimax-m3.1-flash`, with one fallback attempt on `mimo-v2.6-flash`. Every call is shown in the UI with model, latency and tokens. |
 | **Firewall** | Inbound 80/443 on `macro` accepts only Cloudflare IP ranges, so the origin can't be reached directly and the client IP header can't be spoofed. Script: [`deploy/macro/vultr-firewall.sh`](deploy/macro/vultr-firewall.sh). |
@@ -25,7 +25,9 @@ flowchart LR
   CF --> CD[Caddy]
   subgraph M["Vultr VM: macro"]
     CD --> API["Macro API (Bun)<br/>planner, policy gate, run controller"]
-    API -->|Docker| SBX["k6 sandbox (gVisor)<br/>internal network only"]
+    API -->|least-privilege<br/>Docker API| SP[Socket proxy]
+    SP --> DCK[dockerd]
+    DCK --> SBX["k6 sandbox (gVisor)<br/>internal network only"]
     SBX -->|"CONNECT host:443"| PX[Egress proxy]
   end
   API -.->|forced tool calls| VI[Vultr Serverless Inference]
@@ -50,6 +52,7 @@ A run, step by step:
 | --- | --- |
 | Process isolation | k6 runs under gVisor (`runsc`) as a non-root user, with a read-only root filesystem, all capabilities dropped and `no-new-privileges`. The sandbox gets no Docker socket. |
 | Network | The sandbox sits on a per-run Docker network with no route out. Its only exit is an egress proxy that allows HTTPS `CONNECT` to the exact allowlisted host on port 443. The proxy refuses IP literals, private, link-local and metadata addresses (`169.254.169.254`), and the Macro VM itself. |
+| Docker access | `macro-api` holds no Docker socket. It talks to Docker through a socket proxy ([`deploy/macro/docker-compose.yml`](deploy/macro/docker-compose.yml)) that forwards only the container/network/image-inspect endpoints Macro uses, and answers 403 for everything else: exec, build, image pull, volumes, secrets, swarm. |
 | Secret hygiene | The sandbox environment holds only the proxy address. API keys live in the `macro-api` container only. |
 | Resource limits | 1 GiB memory with no swap, 1 CPU, 256 processes. A sandbox that runs past the stage time plus 30 s is killed. |
 | Lifecycle | Every sandbox is force-removed after it exits, and "Sandbox removed" is logged only after Docker confirms it is gone. When a run ends, its network and proxy are removed too. Leftovers are swept at startup. |
@@ -57,7 +60,7 @@ A run, step by step:
 
 Main code: [`src/sandbox/runner.ts`](src/sandbox/runner.ts), [`proxy/ip.ts`](proxy/ip.ts), [`src/plan/policy.ts`](src/plan/policy.ts), [`src/k6/script.ts`](src/k6/script.ts), [`src/report/number-guard.ts`](src/report/number-guard.ts).
 
-One trust boundary to know about: `macro-api` mounts the Docker socket, so it is root-equivalent on the VM. That is why no request can choose an image, mount, network or command. Those all come from constants.
+One trust boundary to know about: only the `socket-proxy` container mounts the Docker socket, and it forwards a fixed allowlist of Docker API endpoints to `macro-api` over the Compose network. No request can choose an image, mount, network or command — those all come from code constants, and the API cannot reach the endpoints that would let it do otherwise. The real-container test suite (`bun run test:vm`) runs the whole sandbox loop through this proxy, so a missing endpoint fails CI before a deploy does.
 
 ## See it contained
 
@@ -135,11 +138,12 @@ YUE is a separate, pre-existing project and isn't in this repo. [`deploy/yue-dem
 
 ```bash
 bun install
-bun test             # 518 tests, no Docker needed
+bun test             # 539 tests, no Docker needed (the real-container suite skips)
 bun run check        # tsc --noEmit
 bun run build:web    # the app at /app/ and the prerendered landing site at /, /privacy, /terms
 bun run dev          # the API; serves web/dist
 bun run dev:landing  # optional: Vite dev server for the landing site with hot reload (port 5173)
+bun run test:vm      # real-Docker containment tests; needs Docker (see Testing)
 ```
 
 The landing site and the planner app are React + Vite in `web/landing/`. Landing pages are prerendered at build time and hydrated in the browser; the app at `/app/` is client-rendered. Both work under the strict CSP (no inline scripts or style attributes).
@@ -163,7 +167,9 @@ docker exec macro-api bun src/admin/waitlist.ts remove <email>  # deletion reque
 
 ## Testing
 
-`bun test` runs the unit and property suite ([fast-check](https://fast-check.dev)). They cover the plan parser, the policy gate against an independent reference model, script generation, the proxy decision, sandbox lifecycle with a fake Docker, metrics and verdicts, agent fallbacks, the number check and run comparison, plus account auth, verification (DNS TXT, well-known, Domain Connect template), route discovery, drafts, and run privacy. Sandbox behaviour on a real VM is checked by the live probe.
+`bun test` runs the unit and property suite ([fast-check](https://fast-check.dev)). They cover the plan parser, the policy gate against an independent reference model, script generation, the proxy decision, sandbox lifecycle with a fake Docker, metrics and verdicts, agent fallbacks, the number check and run comparison, plus account auth, verification (DNS TXT, well-known, Domain Connect template), route discovery, drafts, run privacy, and the security headers on every response.
+
+`bun run test:vm` runs the real-container suite (`test/vm/`) against a real Docker daemon: a k6 stage writes its summary, egress to a non-allowlisted host and to `169.254.169.254` is denied and logged by the real proxy, an over-1-GiB allocation is OOM-killed, a sandbox past its time cap is killed, the startup sweep removes everything labelled `macro=1`, and the production containment probe runs end to end. The suite is opt-in (`MACRO_VM_TEST=1`), pulls the pinned k6 image and builds the proxy image on first use, and refuses to start when `macro=1` resources already exist, so it can never sweep a live deployment. gVisor is used when registered; otherwise the suite runs on `runc`. One host difference is reported rather than assumed: Linux VMs (production, CI) enforce the 1 GiB memory cap eagerly, so the probe passes all five actions there; Docker Desktop/WSL2 lets a bounded allocation finish, and the suite says so instead of claiming containment. GitHub Actions runs both suites on push ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
 
 ## License
 

@@ -7,8 +7,8 @@
   "scripts": {
     "start": "bun src/main.ts",
     "dev": "bun --watch src/main.ts",
-    "test": "bun test --path-ignore-patterns test/vm/**",
-    "test:vm": "echo \"VM integration tests are wired in task 4.13\" && exit 1",
+    "test": "bun test",
+    "test:vm": "MACRO_VM_TEST=1 bun test test/vm/",
     "build:web": "bun run scripts/build-web.ts",
     "dev:landing": "vite --config web/landing/vite.config.ts",
     "check": "tsc --noEmit"

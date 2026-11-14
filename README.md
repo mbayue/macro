@@ -148,6 +148,18 @@ bun run test:vm      # real-Docker containment tests; needs Docker (see Testing)
 
 The landing site and the planner app are React + Vite in `web/landing/`. Landing pages are prerendered at build time and hydrated in the browser; the app at `/app/` is client-rendered. Both work under the strict CSP (no inline scripts or style attributes).
 
+### Local development on Windows
+
+Bun cannot open Docker Desktop's named pipe with its `unix` fetch option, so point `DOCKER_HOST` at it with the `pipe://` scheme, and give `DATA_DIR` an **absolute** path — Docker bind mounts of a relative path fail:
+
+```bash
+set DOCKER_HOST=pipe://\\.\pipe\docker_engine
+set DATA_DIR=C:\absolute\path\to\macro\data
+bun run dev
+```
+
+With both set, runs work locally on `runc`; `bun run test:vm` uses the same pipe on its own. The `test:vm` suite skips whenever these are unset.
+
 ### Waitlist
 
 `POST /api/waitlist` stores an email (normalised, once) after a Turnstile check, with at most 5 sign-ups per IP per hour. The row keeps the email, the sign-up time, and, after an invite, the invite and first-join times. On the VM:

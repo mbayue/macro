@@ -173,13 +173,15 @@ export function resultWording(c: ProbeClassification, stored = true): ProbeVerdi
 }
 
 export function isProbeEnded(status: RunStatus): boolean {
-  return status !== 'running';
+  return status !== 'running' && status !== 'queued';
 }
 
 /** One-line description of the probe's status. */
 export function statusText(run: Pick<RunView, 'status' | 'statusReason'>): string {
   let text: string;
   switch (run.status) {
+    case 'queued':
+      return 'The probe is queued and will start automatically when the active run finishes.';
     case 'running':
       return 'The probe is running.';
     case 'completed':

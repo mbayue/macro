@@ -111,11 +111,15 @@ export class ProbeController {
     return this.active.has(runId);
   }
 
+  hasActive(): boolean {
+    return this.active.size > 0;
+  }
+
   whenDone(runId: string): Promise<void> {
     return this.active.get(runId)?.done ?? Promise.resolve();
   }
 
-  private finish(runId: string, status: Exclude<RunStatus, 'running'>, reason: string | null): boolean {
+  private finish(runId: string, status: Exclude<RunStatus, 'running' | 'queued'>, reason: string | null): boolean {
     const changed = this.store.setRunStatus(runId, status, reason, this.now());
     if (changed) {
       this.store.appendEvent({

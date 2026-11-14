@@ -163,7 +163,7 @@ export function useRun(id: string) {
 
     stopRef.current = async () => {
       const m = model.current;
-      if (!m || m.run.status !== 'running') return;
+      if (!m || (m.run.status !== 'running' && m.run.status !== 'queued')) return;
       setStopPending(true);
       setStopError(null);
       const res = await stopRun(id); // no abort signal, on purpose
@@ -184,7 +184,7 @@ export function useRun(id: string) {
       lastActivity = Date.now();
       lastPollAt = Date.now();
       update();
-      if (model.current.run.status === 'running') openStream();
+      if (model.current.run.status === 'queued' || model.current.run.status === 'running') openStream();
       tick = window.setInterval(onTick, 1000);
     };
 

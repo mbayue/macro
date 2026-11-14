@@ -314,6 +314,10 @@ export class RunController {
     return this.active.has(runId);
   }
 
+  hasActive(): boolean {
+    return this.active.size > 0;
+  }
+
   /** Resolves when the Run's task (including report and `onRunEnded`) has finished. For shutdown and tests. */
   whenDone(runId: string): Promise<void> {
     return this.active.get(runId)?.done ?? Promise.resolve();
@@ -331,7 +335,7 @@ export class RunController {
   }
 
   /** Moves a `running` Run to a terminal status and mirrors it as an event. False when already terminal. */
-  private finish(runId: string, status: Exclude<RunStatus, 'running'>, reason: string | null): boolean {
+  private finish(runId: string, status: Exclude<RunStatus, 'running' | 'queued'>, reason: string | null): boolean {
     const changed = this.store.setRunStatus(runId, status, reason, this.now());
     if (changed) this.appendStatusEvent(runId, status, reason);
     return changed;

@@ -10,11 +10,15 @@ import { parsePlan } from '../plan/parser.ts';
 import { DAILY_MAX, START_LIMIT, dailyCheck, rollingCheck, utcDayStart } from './limits.ts';
 import { PROBE_TITLE, normalizeRunTitle } from './title.ts';
 
+export const MAX_QUEUED_RUNS = 20;
+
 export interface AdmissionDeps {
   store: Store;
   config: Pick<Config, 'sandbox'>;
   /** Run ID generator; defaults to `crypto.randomUUID()`. */
   newId?: () => string;
+  /** Optional check for controller teardown still in flight; defaults to false. */
+  isSlotBusy?: () => boolean;
 }
 
 export interface StartRequest {
@@ -32,11 +36,12 @@ export type AdmissionCode =
   | 'runtime_unavailable'
   | 'plan_not_approved'
   | 'run_active'
+  | 'queue_full'
   | 'rate_limited'
   | 'daily_limit';
 
 export type AdmissionResult =
-  | { ok: true; runId: string }
+  | { ok: true; runId: string; status: 'running' | 'queued'; queuePosition: number | null }
   | {
       ok: false;
       code: AdmissionCode;
@@ -85,16 +90,6 @@ export function admitStart(deps: AdmissionDeps, req: StartRequest): AdmissionRes
       planHash = req.planHash;
     }
 
-    // 9.1, 9.9, 12.7: one running Run or probe at a time.
-    const active = store.getActiveRun();
-    if (active !== null) {
-      const message =
-        active.kind === 'probe'
-          ? `A Containment_Probe is in progress (Run ID ${active.id}). Wait for it to finish.`
-          : `Run ${active.id} is already running. Wait for it to finish or stop it.`;
-      return { ok: false, code: 'run_active', message, activeRunId: active.id };
-    }
-
     // 9.5: per-IP rolling 6 starts / 60 minutes.
     const recent = store.clientStartTimestamps(req.ip, req.now - START_LIMIT.windowMs);
     const rolling = rollingCheck({
@@ -126,6 +121,16 @@ export function admitStart(deps: AdmissionDeps, req: StartRequest): AdmissionRes
       };
     }
 
+    const busy = store.getActiveRun() !== null || (deps.isSlotBusy?.() ?? false);
+    if (busy && store.countQueuedRuns() >= MAX_QUEUED_RUNS) {
+      return {
+        ok: false,
+        code: 'queue_full',
+        message: 'The run queue is full. Try again in a few minutes.',
+      };
+    }
+
+    const status: 'running' | 'queued' = busy ? 'queued' : 'running';
     const runId = newId();
     const title =
       req.kind === 'probe'
@@ -135,6 +140,7 @@ export function admitStart(deps: AdmissionDeps, req: StartRequest): AdmissionRes
       id: runId,
       kind: req.kind,
       planHash,
+      status,
       runtime: config.sandbox.runtime,
       startedAt: req.now,
       ownerUserId: req.ownerUserId ?? null,
@@ -142,6 +148,7 @@ export function admitStart(deps: AdmissionDeps, req: StartRequest): AdmissionRes
       title,
     });
     store.recordClientStart(req.ip, req.now);
-    return { ok: true, runId };
+    const queuePosition = status === 'queued' ? (store.getQueuePosition(runId) ?? 1) : null;
+    return { ok: true, runId, status, queuePosition };
   });
 }

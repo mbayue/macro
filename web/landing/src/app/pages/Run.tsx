@@ -42,8 +42,10 @@ export function RunPage({ id }: { id: string }) {
   }
 
   const { model, now, stale } = state;
+  const queued = model.run.status === 'queued';
   const running = model.run.status === 'running';
   const ended = isTerminal(model.run.status);
+  const queuePos = model.run.queuePosition ?? null;
   const report = ended ? model.report : null;
   const limit = model.plan?.stopThresholds ?? report?.thresholds ?? null;
   const reason = model.run.statusReason === null ? null : plainReason(model.run.statusReason);
@@ -74,12 +76,18 @@ export function RunPage({ id }: { id: string }) {
             </span>
           </p>
         </div>
-        {running ? (
+        {queued || running ? (
           <div className="run-head__actions">
             <button type="button" className="btn btn--danger" disabled={stopPending} onClick={stop}>
-              {stopPending ? 'Stopping\u2026' : 'Stop run'}
+              {stopPending ? 'Stopping\u2026' : queued ? 'Cancel queued run' : 'Stop run'}
             </button>
-            <p className="muted">Ends the current stage and keeps the results so far.</p>
+            <p className="muted">
+              {queued
+                ? queuePos !== null
+                  ? `Queued (#${queuePos} in line): starts automatically when the active run finishes.`
+                  : 'Queued: starts automatically when the active run finishes.'
+                : 'Ends the current stage and keeps the results so far.'}
+            </p>
             <AlertRegion error={stopError} />
           </div>
         ) : report ? (
@@ -401,7 +409,7 @@ function DuringTheStage({
 function LiveStages({ model }: { model: RunModel }) {
   const started = new Set(model.stages.map((s) => s.index));
   const unstarted = (model.plan?.stages ?? []).map((p, index) => ({ index, ...p })).filter((p) => !started.has(p.index));
-  const pending = model.run.status === 'running' ? 'pending' : 'not run';
+  const pending = model.run.status === 'running' || model.run.status === 'queued' ? 'pending' : 'not run';
   const dash = Array.from({ length: 7 }, (_, i) => (
     <td key={i} className="num">
       {DASH}

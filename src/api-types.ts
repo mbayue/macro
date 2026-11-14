@@ -27,6 +27,7 @@ export type ApiErrorCode =
   | 'rate_limited' // per-IP rolling limit (retryAt set)
   | 'daily_limit' // 50 Runs per UTC day (resetAt set)
   | 'run_active' // another Run/probe is running (activeRunId set)
+  | 'queue_full' // run queue is at capacity
   | 'plan_not_approved' // unknown / malformed Plan_Hash
   | 'plan_rejected' // parse error or Policy_Gate violations (see parseError / violations)
   | 'runtime_unavailable' // SANDBOX_RUNTIME problem (requirement 6.13)
@@ -159,6 +160,8 @@ export interface ProbeRequest {
 export interface StartResponse {
   runId: string;
   planHash: string | null; // null for probes
+  status?: 'running' | 'queued';
+  queuePosition?: number | null;
 }
 
 export interface StopResponse {
@@ -178,6 +181,8 @@ export interface RunView {
   startedAt: number;
   endedAt: number | null;
   visibility?: 'public' | 'private';
+  /** 1-based position while status is `queued`; null/omitted otherwise. */
+  queuePosition?: number | null;
   /** Probe runs only: see src/k6/probe-result.ts ProbeClassification. */
   probeResult: unknown;
 }

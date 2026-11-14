@@ -235,6 +235,8 @@ export interface RunStarter {
   start(runId: string): void;
   stop(runId: string): boolean;
   isRunning(runId: string): boolean;
+  hasActive?(): boolean;
+  whenDone?(runId: string): Promise<void>;
 }
 
 export type TurnstileVerifier = (token: string | undefined, ip: string) => Promise<{ ok: boolean }>;
@@ -588,7 +590,7 @@ function toModelCallView(r: ModelCallRow): ModelCallView {
   };
 }
 
-function toRunView(r: RunRow): RunView {
+function toRunView(r: RunRow, queuePosition: number | null = null): RunView {
   return {
     id: r.id,
     kind: r.kind,
@@ -599,6 +601,7 @@ function toRunView(r: RunRow): RunView {
     startedAt: r.startedAt,
     endedAt: r.endedAt,
     visibility: r.visibility,
+    queuePosition,
     probeResult: r.probeResult,
   };
 }
@@ -783,6 +786,8 @@ export function createApp(deps: AppDeps): App {
         return apiError(429, 'daily_limit', res.message, extras, res.resetAt !== undefined ? retryAfter(res.resetAt, at) : undefined);
       case 'run_active':
         return apiError(409, 'run_active', res.message, extras);
+      case 'queue_full':
+        return apiError(429, 'queue_full', res.message, extras);
       case 'runtime_unavailable':
         return apiError(503, 'runtime_unavailable', res.message, extras);
       case 'plan_not_approved':
@@ -790,7 +795,38 @@ export function createApp(deps: AppDeps): App {
     }
   }
 
-  /** Admission, then the `running` status event, then the controller. */
+  const isSlotBusy = (): boolean => Boolean(deps.runController.hasActive?.() || deps.probeController.hasActive?.());
+
+  function startRunAndWatch(kind: RunKind, runId: string): void {
+    const ctl = controllerFor(kind);
+    ctl.start(runId);
+    const done = ctl.whenDone?.(runId);
+    if (done !== undefined) void done.finally(drainQueue);
+  }
+
+  function drainQueue(): void {
+    if (config.sandbox.runtimeError !== undefined) return;
+    if (isSlotBusy()) return;
+    const next = store.claimNextQueuedRun(now());
+    if (next === null) return;
+    try {
+      store.appendEvent({ type: 'status', runId: next.id, payload: { status: 'running' }, ts: now() });
+    } catch (err) {
+      logInternal('queue.status_event', err);
+      try {
+        store.setRunStatus(next.id, 'failed', 'The Run could not be started because of an internal error.', now());
+      } catch (err2) {
+        logInternal('queue.mark_failed', err2);
+      }
+      queueMicrotask(drainQueue);
+      return;
+    }
+    startRunAndWatch(next.kind, next.id);
+  }
+
+  queueMicrotask(drainQueue);
+
+  /** Admission, then `running` or `queued` status event, then the controller when active. */
   function admitAndStart(
     kind: RunKind,
     planHash: string | undefined,
@@ -802,7 +838,7 @@ export function createApp(deps: AppDeps): App {
   ): Response {
     const at = now();
     const admitted = admitStart(
-      { store, config },
+      { store, config, isSlotBusy },
       {
         kind,
         ...(planHash !== undefined ? { planHash } : {}),
@@ -815,18 +851,31 @@ export function createApp(deps: AppDeps): App {
     if (!admitted.ok) return admissionFailure(admitted, at);
     const runId = admitted.runId;
     try {
-      store.appendEvent({ type: 'status', runId, payload: { status: 'running' }, ts: at });
+      const payload =
+        admitted.status === 'queued'
+          ? { status: 'queued', queuePosition: admitted.queuePosition }
+          : { status: 'running' };
+      store.appendEvent({ type: 'status', runId, payload, ts: at });
     } catch (err) {
       logInternal('start.status_event', err);
       try {
-        store.setRunStatus(runId, 'failed', 'The Run could not be started because of an internal error.', now());
+        if (admitted.status === 'queued') {
+          store.stopQueuedRun(runId, now());
+        } else {
+          store.setRunStatus(runId, 'failed', 'The Run could not be started because of an internal error.', now());
+        }
       } catch (err2) {
         logInternal('start.mark_failed', err2);
       }
       return apiError(500, 'internal', MSG.internal);
     }
-    controllerFor(kind).start(runId);
-    const body: StartResponse = { runId, planHash: kind === 'run' ? (planHash ?? null) : null };
+    if (admitted.status === 'running') startRunAndWatch(kind, runId);
+    const body: StartResponse = {
+      runId,
+      planHash: kind === 'run' ? (planHash ?? null) : null,
+      status: admitted.status,
+      queuePosition: admitted.queuePosition,
+    };
     return json(200, body);
   }
 
@@ -1205,8 +1254,15 @@ export function createApp(deps: AppDeps): App {
     if (id === null) return notFound();
     const run = store.getRun(id);
     if (run === null || !canViewRun(run, c.req)) return notFound();
-    // 9.2: no Turnstile. Only a running Run needs the controller; a finished one just reports its status.
-    if (run.status === 'running') controllerFor(run.kind).stop(id);
+    // 9.2: no Turnstile. Queued runs cancel immediately; running runs stop via their controller.
+    if (run.status === 'queued') {
+      const stoppedAt = now();
+      if (store.stopQueuedRun(id, stoppedAt)) {
+        store.appendEvent({ type: 'status', runId: id, payload: { status: 'stopped' }, ts: stoppedAt });
+      }
+    } else if (run.status === 'running') {
+      controllerFor(run.kind).stop(id);
+    }
     const status = store.getRun(id)?.status ?? run.status;
     const body: StopResponse = { runId: id, status };
     return json(200, body);
@@ -1259,8 +1315,9 @@ export function createApp(deps: AppDeps): App {
       reasonWithheld: d.reasonWithheld,
     }));
     const storedTarget = run.planHash === null ? null : store.getPlanTarget(run.planHash);
+    const queuePosition = run.status === 'queued' ? store.getQueuePosition(id) : null;
     const snapshot: RunSnapshot = {
-      run: toRunView(run),
+      run: toRunView(run, queuePosition),
       plan: planFromStore(run.planHash),
       stages: store.getStages(id).map((s) => {
         const rows = store.readStageSamples(id, s.idx);
@@ -1352,7 +1409,7 @@ export function createApp(deps: AppDeps): App {
     const isFinished = (): boolean => {
       const current = store.getRun(id);
       if (current === null) return true;
-      if (current.status === 'running') {
+      if (current.status === 'queued' || current.status === 'running') {
         terminalSince = null;
         return false;
       }

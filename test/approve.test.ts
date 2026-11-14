@@ -225,20 +225,22 @@ describe('Property 7: /api/approve stores only canonical, accepted plans', () =>
     );
   });
 
-  test('an accepted plan approved while a Run is active is stored once but starts nothing', async () => {
+  test('an accepted plan approved while a Run is active is stored once and queued without starting', async () => {
     // Feature: macro, Property 7: Approval stores only canonical, accepted plans
     await fc.assert(
       fc.asyncProperty(arbAcceptedPlan, async (plan) => {
         const h = makeHarness();
         h.store.createRun({ id: 'busy', kind: 'probe', planHash: null, runtime: 'runsc', startedAt: NOW });
         const res = await h.approve(JSON.stringify(plan));
-        expect(res.status).toBe(409);
-        expect((res.body as ApiErrorBody).error.code).toBe('run_active');
+        expect(res.status).toBe(200);
+        const body = res.body as StartResponse;
+        expect(body.status).toBe('queued');
+        expect(body.queuePosition).toBe(1);
         const rows = h.plans();
         expect(rows).toHaveLength(1);
         expect(rows[0]?.text).toBe(printPlan(plan));
         expect(rows[0]?.hash).toBe(planHash(printPlan(plan)));
-        expect(h.runs().map((r) => r.id)).toEqual(['busy']);
+        expect(h.runs().map((r) => r.status)).toEqual(['running', 'queued']);
         expect(h.runStarts).toEqual([]);
         h.store.close();
       }),

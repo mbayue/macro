@@ -72,6 +72,7 @@ export interface StageResult {
 }
 
 export type RunStatus =
+  | 'queued'
   | 'running'
   | 'completed'
   | 'halted'

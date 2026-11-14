@@ -100,23 +100,34 @@ function runRows(store: Store): { id: string; kind: RunKind; status: string }[] 
   return store.db.query<{ id: string; kind: RunKind; status: string }, []>('SELECT id, kind, status FROM runs').all();
 }
 
-/** Asserts exactly one winner among `outcomes` and every other start answered `run_active`. */
+/** Asserts exactly one active winner among `outcomes` and every other start is queued in FIFO order. */
 function expectSingleWinner(h: Harness, outcomes: readonly Outcome[], startsBefore = { run: 0, probe: 0 }): StartResponse {
-  const winners = outcomes.filter((o) => o.status === 200);
+  const admitted = outcomes.filter((o) => o.status === 200);
+  const winners = admitted.filter((o) => (o.body as StartResponse).status === 'running');
   expect(winners).toHaveLength(1);
   const winner = winners[0] as Outcome;
   const won = winner.body as StartResponse;
 
+  const queuedPositions: number[] = [];
   for (const o of outcomes) {
     if (o === winner) continue;
-    expect(o.status).toBe(409);
-    const err = (o.body as ApiErrorBody).error;
-    expect(err.code).toBe('run_active');
-    expect(err.activeRunId).toBe(won.runId);
+    if (o.status === 429) {
+      expect((o.body as ApiErrorBody).error.code).toBe('rate_limited');
+      continue;
+    }
+    expect(o.status).toBe(200);
+    const body = o.body as StartResponse;
+    expect(body.status).toBe('queued');
+    expect(typeof body.queuePosition).toBe('number');
+    queuedPositions.push(body.queuePosition as number);
   }
+  expect(queuedPositions.sort((a, b) => a - b)).toEqual(
+    Array.from({ length: admitted.length - 1 }, (_, i) => i + 1),
+  );
 
   const rows = runRows(h.store);
   expect(rows.filter((r) => r.status === 'running')).toHaveLength(1);
+  expect(rows.filter((r) => r.status === 'queued')).toHaveLength(admitted.length - 1);
   const winnerKind: RunKind = winner.req.via === 'probe' ? 'probe' : 'run';
   const newRows = rows.filter((r) => r.id === won.runId);
   expect(newRows).toEqual([{ id: won.runId, kind: winnerKind, status: 'running' }]);
@@ -140,7 +151,7 @@ describe('Property 20: one active Run under concurrent starts', () => {
           reqs.map((r, i) => send(h, r, i, sharedIp ? '203.0.113.7' : `198.51.100.${i + 1}`)),
         );
         expectSingleWinner(h, outcomes);
-        expect(runRows(h.store)).toHaveLength(1);
+        expect(runRows(h.store).filter((r) => r.status === 'running')).toHaveLength(1);
         h.store.close();
       }),
       { numRuns: 100 },
@@ -154,6 +165,9 @@ describe('Property 20: one active Run under concurrent starts', () => {
         const h = makeHarness();
         const a = await Promise.all(first.map((r, i) => send(h, r, i, `198.51.100.${i + 1}`)));
         const won = expectSingleWinner(h, a);
+        for (const r of runRows(h.store)) {
+          if (r.status === 'queued') h.store.stopQueuedRun(r.id, NOW + 1);
+        }
         expect(h.store.setRunStatus(won.runId, 'completed', null, NOW + 1)).toBe(true);
         expect(h.store.getActiveRun()).toBeNull();
 
@@ -162,7 +176,7 @@ describe('Property 20: one active Run under concurrent starts', () => {
         const won2 = expectSingleWinner(h, b, before);
         expect(won2.runId).not.toBe(won.runId);
         expect(runRows(h.store).filter((r) => r.status === 'running')).toHaveLength(1);
-        expect(runRows(h.store)).toHaveLength(2);
+        expect(runRows(h.store)).toHaveLength(first.length + second.length);
         h.store.close();
       }),
       { numRuns: 100 },
@@ -193,19 +207,24 @@ describe('Property 20: one active Run under concurrent starts', () => {
               return { kind: r.kind, result };
             }),
           );
-          const oks = results.filter((r) => r.result.ok);
-          expect(oks).toHaveLength(1);
-          const winner = oks[0] as { kind: RunKind; result: Extract<AdmissionResult, { ok: true }> };
+          const running = results.filter((r) => r.result.ok && r.result.status === 'running');
+          expect(running).toHaveLength(1);
+          const winner = running[0] as { kind: RunKind; result: Extract<AdmissionResult, { ok: true }> };
+          const okCount = results.filter((r) => r.result.ok).length;
           for (const r of results) {
             if (r === winner) continue;
-            expect(r.result.ok).toBe(false);
             if (!r.result.ok) {
-              expect(r.result.code).toBe('run_active');
-              expect(r.result.activeRunId).toBe(winner.result.runId);
+              expect(r.result.code).toBe('rate_limited');
+              continue;
             }
+            expect(r.result.status).toBe('queued');
+            expect(typeof r.result.queuePosition).toBe('number');
           }
           const rows = runRows(store);
-          expect(rows).toEqual([{ id: winner.result.runId, kind: winner.kind, status: 'running' }]);
+          expect(rows.filter((r) => r.status === 'running')).toEqual([
+            { id: winner.result.runId, kind: winner.kind, status: 'running' },
+          ]);
+          expect(rows.filter((r) => r.status === 'queued')).toHaveLength(okCount - 1);
           store.close();
         },
       ),
@@ -213,27 +232,29 @@ describe('Property 20: one active Run under concurrent starts', () => {
     );
   });
 
-  test('a probe in progress blocks a Run start and a Run blocks a probe, with the matching message', async () => {
+  test('a probe in progress queues a Run start and a Run queues a probe', async () => {
     const h = makeHarness();
     const probe = await send(h, { via: 'probe', delayMs: 0, plan: undefined as unknown as TestPlan }, 0, '203.0.113.1');
     expect(probe.status).toBe(200);
+    expect((probe.body as StartResponse).status).toBe('running');
     const run = await send(h, { via: 'runs', delayMs: 0, plan: undefined as unknown as TestPlan }, 1, '203.0.113.2');
-    expect(run.status).toBe(409);
-    const err = (run.body as ApiErrorBody).error;
-    expect(err.code).toBe('run_active');
-    expect(err.message).toContain('Containment_Probe');
+    expect(run.status).toBe(200);
+    expect((run.body as StartResponse).status).toBe('queued');
+    expect((run.body as StartResponse).queuePosition).toBe(1);
     expect(h.runStarts).toEqual([]);
-    expect(runRows(h.store)).toHaveLength(1);
+    expect(runRows(h.store)).toHaveLength(2);
     h.store.close();
 
     const h2 = makeHarness();
     const first = await send(h2, { via: 'runs', delayMs: 0, plan: undefined as unknown as TestPlan }, 0, '203.0.113.1');
     expect(first.status).toBe(200);
+    expect((first.body as StartResponse).status).toBe('running');
     const second = await send(h2, { via: 'probe', delayMs: 0, plan: undefined as unknown as TestPlan }, 1, '203.0.113.2');
-    expect(second.status).toBe(409);
-    expect((second.body as ApiErrorBody).error.code).toBe('run_active');
+    expect(second.status).toBe(200);
+    expect((second.body as StartResponse).status).toBe('queued');
+    expect((second.body as StartResponse).queuePosition).toBe(1);
     expect(h2.probeStarts).toEqual([]);
-    expect(runRows(h2.store)).toHaveLength(1);
+    expect(runRows(h2.store)).toHaveLength(2);
     h2.store.close();
   });
 });

@@ -231,6 +231,7 @@ export interface NewRun {
   id: string;
   kind: RunKind;
   planHash: string | null;
+  status?: 'running' | 'queued';
   runtime: SandboxRuntime;
   startedAt: number;
   ownerUserId?: string | null;
@@ -694,17 +695,18 @@ export class Store {
 
   // -------------------------------------------------------------------- runs
 
-  /** Inserts a run with status `running`. Does not check the run slot; use admitStart for that. */
+  /** Inserts a run (default `running`). Does not check the run slot; use admitStart for that. */
   createRun(run: NewRun): void {
     this.db
       .prepare(
         `INSERT INTO runs (id, kind, plan_hash, status, runtime, started_at, owner_user_id, visibility, title)
-         VALUES (?, ?, ?, 'running', ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         run.id,
         run.kind,
         run.planHash,
+        run.status ?? 'running',
         run.runtime,
         run.startedAt,
         run.ownerUserId ?? null,
@@ -743,7 +745,12 @@ export class Store {
    * (so a `stopped` run is never overwritten by a late `failed`). Returns whether
    * a row changed.
    */
-  setRunStatus(id: string, status: Exclude<RunStatus, 'running'>, reason: string | null, endedAt: number): boolean {
+  setRunStatus(
+    id: string,
+    status: Exclude<RunStatus, 'running' | 'queued'>,
+    reason: string | null,
+    endedAt: number,
+  ): boolean {
     const res = this.db
       .prepare("UPDATE runs SET status = ?, status_reason = ?, ended_at = ? WHERE id = ? AND status = 'running'")
       .run(status, reason, endedAt, id);
@@ -761,6 +768,73 @@ export class Store {
       .prepare<RawRun, []>(`SELECT ${RUN_COLS} FROM runs WHERE status = 'running' ORDER BY started_at LIMIT 1`)
       .get();
     return r ? toRun(r) : null;
+  }
+
+  /** Number of runs currently waiting in the FIFO queue. */
+  countQueuedRuns(): number {
+    return this.db.prepare<CountRow, []>("SELECT COUNT(*) AS n FROM runs WHERE status = 'queued'").get()?.n ?? 0;
+  }
+
+  /** 1-based FIFO queue position for a `queued` run, or null otherwise. */
+  getQueuePosition(id: string): number | null {
+    const row = this.db
+      .prepare<{ rowid: number; started_at: number; status: string }, [string]>(
+        'SELECT rowid, started_at, status FROM runs WHERE id = ?',
+      )
+      .get(id);
+    if (!row || row.status !== 'queued') return null;
+    const count = this.db
+      .prepare<CountRow, [number, number, number]>(
+        `SELECT COUNT(*) AS n FROM runs
+         WHERE status = 'queued'
+           AND (started_at < ? OR (started_at = ? AND rowid <= ?))`,
+      )
+      .get(row.started_at, row.started_at, row.rowid);
+    return count?.n ?? 1;
+  }
+
+  /** Notify SSE listeners of all currently queued runs (e.g. after a dequeue or cancel). */
+  private notifyQueuedRuns(): void {
+    const rows = this.db.prepare<{ id: string }, []>("SELECT id FROM runs WHERE status = 'queued'").all();
+    for (const r of rows) this.notifyRun(r.id);
+  }
+
+  /**
+   * Atomically promotes the oldest `queued` run to `running` if no run is active.
+   * Returns the promoted RunRow, or null when a run is active or the queue is empty.
+   */
+  claimNextQueuedRun(startedAt: number): RunRow | null {
+    const claimed = this.transaction((): RunRow | null => {
+      if (this.getActiveRun() !== null) return null;
+      const r = this.db
+        .prepare<RawRun, []>(
+          `SELECT ${RUN_COLS} FROM runs WHERE status = 'queued' ORDER BY started_at ASC, rowid ASC LIMIT 1`,
+        )
+        .get();
+      if (!r) return null;
+      const res = this.db
+        .prepare("UPDATE runs SET status = 'running', started_at = ? WHERE id = ? AND status = 'queued'")
+        .run(startedAt, r.id);
+      if (res.changes === 0) return null;
+      return toRun({ ...r, status: 'running', started_at: startedAt });
+    });
+    if (claimed !== null) {
+      this.notifyRun(claimed.id);
+      this.notifyQueuedRuns();
+    }
+    return claimed;
+  }
+
+  /** Cancels a `queued` run before it starts. Returns whether a row changed. */
+  stopQueuedRun(id: string, endedAt: number): boolean {
+    const res = this.db
+      .prepare("UPDATE runs SET status = 'stopped', status_reason = NULL, ended_at = ? WHERE id = ? AND status = 'queued'")
+      .run(endedAt, id);
+    if (res.changes > 0) {
+      this.notifyRun(id);
+      this.notifyQueuedRuns();
+    }
+    return res.changes > 0;
   }
 
   /** Newest first, `limit` defaults to 20. */

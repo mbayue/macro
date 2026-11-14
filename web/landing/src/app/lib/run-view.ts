@@ -29,7 +29,7 @@ export const REPORT_WAIT_MS = 60_000;
 
 const TERMINAL: ReadonlySet<string> = new Set(['completed', 'halted', 'stopped', 'timed_out', 'failed', 'interrupted']);
 const REPORT_STATUSES: ReadonlySet<string> = new Set(['completed', 'halted', 'stopped', 'timed_out']);
-const RUN_STATUSES: ReadonlySet<string> = new Set(['running', ...TERMINAL]);
+const RUN_STATUSES: ReadonlySet<string> = new Set(['queued', 'running', ...TERMINAL]);
 const EVENT_TYPES: readonly EventType[] = ['stage_start', 'stage_end', 'decision', 'status', 'containment', 'report'];
 const CONTAINMENT_LABELS: Readonly<Record<ContainmentType, string>> = {
   sandbox_created: 'Sandbox created',
@@ -358,7 +358,7 @@ export function shouldPoll(
   sinceTerminalMs: number | null,
   liveTransition: boolean,
 ): boolean {
-  if (status === 'running') return true;
+  if (status === 'queued' || status === 'running') return true;
   if (!isTerminal(status) || sinceTerminalMs === null) return false;
   if (liveTransition && sinceTerminalMs < END_GRACE_MS) return true;
   return reportExpected(status) && !hasReport && sinceTerminalMs < REPORT_WAIT_MS;

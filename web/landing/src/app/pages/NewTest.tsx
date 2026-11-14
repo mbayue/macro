@@ -11,7 +11,16 @@ import { useEffect, useId, useRef, useState } from 'react';
 import type { PlanResponse } from '../../../../../src/api-types.ts';
 import type { TestPlan } from '../../../../../src/types.ts';
 import type { AccountDraft } from '../../../../../src/api-types.ts';
-import { getDraft, postVerifyClear, putDraft, stashLocalDraft, takeLocalDraft } from '../lib/auth-api.ts';
+import {
+  clearReviewState,
+  getDraft,
+  loadReviewState,
+  postVerifyClear,
+  putDraft,
+  stashLocalDraft,
+  stashReviewState,
+  takeLocalDraft,
+} from '../lib/auth-api.ts';
 import { type ApiError, type ApiResult, postApprove, postPlan, VERIFICATION_ERROR } from '../lib/api.ts';
 import { isActionPath } from '../../../../../src/plan/discover.ts';
 import { journeyGroups, journeyLabel, type JourneyRow } from '../../../../../src/plan/journey-edit.ts';
@@ -48,15 +57,16 @@ export function NewTest() {
   const min = config.trafficEventMin;
   const max = config.trafficEventMax;
 
-  const [text, setText] = useState('');
+  const initialReview = loadReviewState(me?.user.id ?? null);
+  const [text, setText] = useState(() => initialReview?.lastSubmitted ?? '');
   const [busy, setBusy] = useState<Busy>(null);
-  const [lastSubmitted, setLastSubmitted] = useState<string | null>(null);
+  const [lastSubmitted, setLastSubmitted] = useState<string | null>(() => initialReview?.lastSubmitted ?? null);
   const [planError, setPlanError] = useState<ApiError | null>(null);
-  const [review, setReview] = useState<PlanResponse | null>(null);
+  const [review, setReview] = useState<PlanResponse | null>(() => initialReview?.review ?? null);
   const [reviewSeq, setReviewSeq] = useState(0);
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(() => initialReview?.editing ?? false);
   const [panelInView, setPanelInView] = useState(true);
-  const [targetMode, setTargetMode] = useState<TargetMode>('demo');
+  const [targetMode, setTargetMode] = useState<TargetMode>(() => initialReview?.targetMode ?? 'demo');
   const [lastEditedAt, setLastEditedAt] = useState(() => Date.now());
   const textarea = useRef<HTMLTextAreaElement>(null);
   const focusComposer = useRef(false);
@@ -66,6 +76,15 @@ export function NewTest() {
   const draftTurnstile = useTurnstile();
 
   useEffect(() => () => void (alive.current = false), []);
+
+  useEffect(() => {
+    const ownerUserId = me?.user.id ?? null;
+    if (review === null) {
+      clearReviewState();
+      return;
+    }
+    stashReviewState({ ownerUserId, review, lastSubmitted, editing, targetMode });
+  }, [me, review, lastSubmitted, editing, targetMode]);
 
   // The text box may only mount on this render (after "Edit description" or a discarded plan).
   useEffect(() => {
@@ -133,7 +152,7 @@ export function NewTest() {
       if (local !== null) await syncDraftToServer(local);
       const remote = await getDraft();
       if (!alive.current || !remote.ok) return;
-      if (remote.data.lastEditedAt > 0) applyDraft(remote.data);
+      if (loadReviewState(me.user.id) === null && remote.data.lastEditedAt > 0) applyDraft(remote.data);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me]);
@@ -240,13 +259,17 @@ export function NewTest() {
 
   function cancelPlan() {
     if (!idle) return;
+    clearReviewState();
     setReview(null);
     setEditing(false);
     focusComposer.current = true;
     announce('Plan discarded. Nothing was sent.');
   }
 
-  const onStarted = (runId: string) => navigate(`/run/${encodeURIComponent(runId)}`);
+  const onStarted = (runId: string) => {
+    clearReviewState();
+    navigate(`/run/${encodeURIComponent(runId)}`);
+  };
 
   return (
     <div className={approvable ? 'page page--bar' : 'page'}>

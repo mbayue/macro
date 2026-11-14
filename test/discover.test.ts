@@ -62,7 +62,7 @@ describe('discoverOwnSite', () => {
         { id: 'r1', kind: 'document', method: 'GET', path: '/', defaultOn: true },
         { id: 'r2', kind: 'script', method: 'GET', path: '/assets/app.js', defaultOn: true },
         { id: 'r3', kind: 'style', method: 'GET', path: '/assets/app.css', defaultOn: true },
-        { id: 'r4', kind: 'asset', method: 'GET', path: '/assets/a.webp', defaultOn: false },
+        { id: 'r4', kind: 'asset', method: 'GET', path: '/assets/a.webp', defaultOn: true },
       ],
     });
     expect(seen).toEqual([`${ORIGIN}/`, `${ORIGIN}/assets/app.js`]);
@@ -118,7 +118,7 @@ describe('discoverOwnSite', () => {
     }
   });
 
-  test('33 asset literals stay in the list and start off', async () => {
+  test('33 asset literals stay in the list and start on', async () => {
     const literals = Array.from({ length: 33 }, (_, i) => `"/assets/p${String(i).padStart(2, '0')}.webp"`).join(' ');
     const fetchImpl: FetchLike = async (input) => {
       if (input.endsWith('/')) return htmlResponse('<script src="/assets/app.js"></script>');
@@ -131,7 +131,7 @@ describe('discoverOwnSite', () => {
     expect(result.routes.map((r) => r.id)).toEqual(result.routes.map((_, i) => `r${i + 1}`));
     expect(result.routes).toHaveLength(35);
     expect(result.routes.some((r) => r.path === '/assets/p32.webp')).toBe(true);
-    expect(result.routes.filter((r) => r.defaultOn)).toHaveLength(2);
+    expect(result.routes.filter((r) => r.defaultOn)).toHaveLength(35);
   });
 
   test('homepage anchors become pages in document order and start on', async () => {
@@ -165,7 +165,7 @@ describe('discoverOwnSite', () => {
     expect(byPath.get('/account')).toMatchObject({ kind: 'page', defaultOn: true });
   });
 
-  test('a script anchor starts on and an image anchor starts off', async () => {
+  test('both script and image anchors default to on', async () => {
     const fetchImpl: FetchLike = async () =>
       htmlResponse('<a href="/assets/app.js">js</a><a href="/logo.webp">img</a>');
     const result = await discoverOwnSite(ORIGIN, fetchImpl);
@@ -173,7 +173,7 @@ describe('discoverOwnSite', () => {
     if (!result.ok) return;
     const byPath = new Map(result.routes.map((r) => [r.path, r]));
     expect(byPath.get('/assets/app.js')).toMatchObject({ kind: 'script', defaultOn: true });
-    expect(byPath.get('/logo.webp')).toMatchObject({ kind: 'asset', defaultOn: false });
+    expect(byPath.get('/logo.webp')).toMatchObject({ kind: 'asset', defaultOn: true });
   });
 
   test('drops other origins, query strings, and buttons', async () => {
@@ -188,16 +188,16 @@ describe('discoverOwnSite', () => {
     ]);
   });
 
-  test('40 default-on pages keep all rows and turn the extras off', async () => {
+  test('40 safe pages all default to on', async () => {
     const links = Array.from({ length: 40 }, (_, i) => `<a href="/p${String(i).padStart(2, '0')}">p</a>`).join('');
     const fetchImpl: FetchLike = async () => htmlResponse(links);
     const result = await discoverOwnSite(ORIGIN, fetchImpl);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.routes).toHaveLength(41);
-    expect(result.routes.filter((r) => r.defaultOn)).toHaveLength(32);
+    expect(result.routes.filter((r) => r.defaultOn)).toHaveLength(41);
     expect(result.routes[0]).toMatchObject({ id: 'r1', path: '/', defaultOn: true });
-    expect(selectedRoutes(result.routes)).toHaveLength(32);
+    expect(selectedRoutes(result.routes)).toHaveLength(41);
   });
 
   test('200 image anchors keep 128 rows and drop assets from the end', async () => {

@@ -247,16 +247,13 @@ export async function discoverOwnSite(
   }
   const trimmed = trimDiscoveryList(kept);
 
-  let onCount = 0;
-  const routes: DiscoveredRoute[] = trimmed.map((row, i) => {
-    let defaultOn = row.kind === 'document' || row.kind === 'script' || row.kind === 'style'
-      || (row.kind === 'page' && !isActionPath(row.path));
-    if (defaultOn) {
-      onCount += 1;
-      if (onCount > DISCOVER_MAX_ROUTES) defaultOn = false;
-    }
-    return { id: `r${i + 1}`, kind: row.kind, method: 'GET' as const, path: row.path, defaultOn };
-  });
+  const routes: DiscoveredRoute[] = trimmed.map((row, i) => ({
+    id: `r${i + 1}`,
+    kind: row.kind,
+    method: 'GET' as const,
+    path: row.path,
+    defaultOn: !isActionPath(row.path),
+  }));
 
   return { ok: true, routes };
 }

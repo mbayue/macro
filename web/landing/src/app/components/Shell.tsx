@@ -3,7 +3,7 @@
  * live region. The rail's recent list comes from this browser's storage only.
  */
 import { type ReactNode, useContext, useEffect, useId, useState } from 'react';
-import { postSignOut } from '../lib/auth-api.ts';
+import { clearReviewState, postSignOut } from '../lib/auth-api.ts';
 import { clearRecentRuns, loadRecentRuns, type RecentRun } from '../lib/recent-runs.ts';
 import { ThemeSegmented } from '../../components/Chrome.tsx';
 import { AppContext } from '../context.tsx';
@@ -39,6 +39,7 @@ export function Shell({
     if (!ctx) return;
     await postSignOut();
     clearRecentRuns();
+    clearReviewState();
     setRecent([]);
     await ctx.refreshMe();
     ctx.announce('Signed out.');

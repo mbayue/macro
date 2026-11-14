@@ -5,6 +5,7 @@ import type {
   ClaimResponse,
   MagicLinkResponse,
   MeResponse,
+  PlanResponse,
   VerifyCheckResponse,
   VerifyClearResponse,
   VerifyStartResponse,
@@ -168,6 +169,52 @@ export async function putDraft(
 }
 
 const LOCAL_DRAFT_KEY = 'macro.accountDraft.v1';
+const LOCAL_REVIEW_KEY = 'macro.draftReview.v1';
+
+export interface StashedReview {
+  ownerUserId: string | null;
+  review: PlanResponse;
+  lastSubmitted: string | null;
+  editing: boolean;
+  targetMode: 'demo' | 'own';
+}
+
+export function stashReviewState(state: StashedReview): void {
+  try {
+    sessionStorage.setItem(LOCAL_REVIEW_KEY, JSON.stringify(state));
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+export function loadReviewState(ownerUserId: string | null): StashedReview | null {
+  try {
+    const raw = sessionStorage.getItem(LOCAL_REVIEW_KEY);
+    if (raw === null) return null;
+    const parsed = JSON.parse(raw) as StashedReview;
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      parsed.ownerUserId !== ownerUserId ||
+      typeof parsed.review !== 'object' ||
+      parsed.review === null ||
+      typeof parsed.review.draftId !== 'string'
+    ) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function clearReviewState(): void {
+  try {
+    sessionStorage.removeItem(LOCAL_REVIEW_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 
 export function stashLocalDraft(draft: AccountDraft): void {
   try {

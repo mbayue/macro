@@ -211,8 +211,8 @@ describe('own-site plan approve', () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as PlanResponse;
     expect(body.plan?.target).toBe(OWN);
-    expect(plannerDiscovered?.some((r) => r.path === '/assets/a.webp')).toBe(false);
-    expect(body.routes.some((r) => r.path === '/assets/a.webp' && r.defaultOn === false)).toBe(true);
+    expect(plannerDiscovered?.some((r) => r.path === '/assets/a.webp')).toBe(true);
+    expect(body.routes.some((r) => r.path === '/assets/a.webp' && r.defaultOn === true)).toBe(true);
     const draft = store.getDraft(body.draftId);
     expect(draft?.selectedIds).toEqual((plannerDiscovered ?? []).map((r) => r.id));
     expect(body.plan?.journey.map((s) => s.route).every((id) => (body.routes as { id: string }[]).some((r) => r.id === id))).toBe(true);

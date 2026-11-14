@@ -407,7 +407,7 @@ const TargetModeFields = {
 const PlanBody = z.object({
   trafficEvent: z.unknown().optional(),
   turnstileToken: z.unknown().optional(),
-  routeIds: z.array(z.string().min(1).max(16)).max(33).optional(),
+  routeIds: z.array(z.string().min(1).max(16)).max(128).optional(),
   ...TargetModeFields,
 });
 const ApproveBody = z.object({

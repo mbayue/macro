@@ -1,5 +1,5 @@
-// The TigerData mirror: parameterised inserts through the injected client,
-// schema ensured once, failures swallowed (the mirror never affects the run).
+// The TigerData mirror: batched UNNEST inserts through the injected client,
+// schema/hypertable/policies ensured once, failures swallowed.
 import { describe, expect, test } from 'bun:test';
 import type { StageSample } from '../src/types.ts';
 import { createTigerMirror, ensureTigerSchema } from '../src/metrics/tiger.ts';
@@ -46,39 +46,48 @@ function publicInput(samples: readonly StageSample[] = SAMPLES): Parameters<Retu
 }
 
 describe('ensureTigerSchema', () => {
-  test('creates the table and the hypertable', async () => {
+  test('creates the table, plan_hash column, hypertable, indexes, and TimescaleDB policies', async () => {
     const { client, calls } = stubClient();
     await expect(ensureTigerSchema(TIGER_URL, client)).resolves.toBe(true);
-    expect(calls).toHaveLength(2);
-    expect(calls[0]!.text).toContain('CREATE TABLE IF NOT EXISTS stage_samples');
-    expect(calls[1]!.text).toContain('create_hypertable');
+    const sqls = calls.map((c) => c.text);
+    expect(sqls.some((t) => t.includes('CREATE TABLE IF NOT EXISTS stage_samples'))).toBe(true);
+    expect(sqls.some((t) => t.includes('ADD COLUMN IF NOT EXISTS plan_hash'))).toBe(true);
+    expect(sqls.some((t) => t.includes('create_hypertable'))).toBe(true);
+    expect(sqls.some((t) => t.includes('stage_samples_route_ts_idx'))).toBe(true);
+    expect(sqls.some((t) => t.includes('add_compression_policy'))).toBe(true);
+    expect(sqls.some((t) => t.includes('add_retention_policy'))).toBe(true);
+    expect(sqls.some((t) => t.includes('stage_samples_hourly'))).toBe(true);
   });
 
-  test('a schema failure is reported, not thrown', async () => {
+  test('a core schema failure is reported, not thrown', async () => {
     const { client } = failingClient();
     expect(await ensureTigerSchema(TIGER_URL, client)).toBe(false);
   });
 });
 
 describe('createTigerMirror', () => {
-  test('mirrors public-run samples as parameterised inserts with computed timestamps', async () => {
+  test('mirrors public-run samples in a single batched UNNEST insert with computed timestamps and plan_hash', async () => {
     const { client, calls } = stubClient();
     const mirror = createTigerMirror({ url: TIGER_URL, client });
     await mirror(publicInput());
     const inserts = calls.filter((c) => c.text.startsWith('INSERT'));
-    expect(inserts).toHaveLength(SAMPLES.length);
+    expect(inserts).toHaveLength(1);
     expect(inserts[0]!.text).toContain('INSERT INTO stage_samples');
-    // [sample_ts, run_id, stage_idx, second, route, requests, errors, latency_sum_ms, latency_max_ms]
-    expect(inserts[0]!.params[0]).toBe(new Date(Date.UTC(2026, 0, 15, 12, 0, 0)).toISOString());
-    expect(inserts[0]!.params[1]).toBe('run-1');
-    expect(inserts[0]!.params[2]).toBe(0);
-    expect(inserts[0]!.params[3]).toBe(0);
-    expect(inserts[0]!.params[4]).toBe('store_home');
-    expect(inserts[0]!.params[5]).toBe(10);
-    expect(inserts[0]!.params[6]).toBe(1);
-    expect(inserts[0]!.params[7]).toBe(5250);
-    expect(inserts[0]!.params[8]).toBe(900);
-    expect(inserts[1]!.params[0]).toBe(new Date(Date.UTC(2026, 0, 15, 12, 0, 1)).toISOString());
+    expect(inserts[0]!.text).toContain('UNNEST');
+    const p = inserts[0]!.params as unknown[][];
+    expect(p[0]).toEqual([
+      new Date(Date.UTC(2026, 0, 15, 12, 0, 0)).toISOString(),
+      new Date(Date.UTC(2026, 0, 15, 12, 0, 1)).toISOString(),
+    ]);
+    expect(p[1]).toEqual(['run-1', 'run-1']);
+    expect(p[2]).toEqual([0, 0]);
+    expect(p[3]).toEqual([0, 1]);
+    expect(p[4]).toEqual(['store_home', 'store_home']);
+    expect(p[5]).toEqual([10, 12]);
+    expect(p[6]).toEqual([1, 0]);
+    expect(p[7]).toEqual([5250, 6000]);
+    expect(p[8]).toEqual([900, 600]);
+    expect(p[9]).toEqual(['a'.repeat(64), 'a'.repeat(64)]);
   });
 
   test('the schema is ensured once across mirror calls', async () => {
@@ -87,14 +96,7 @@ describe('createTigerMirror', () => {
     await mirror(publicInput());
     await mirror(publicInput());
     const ddl = calls.filter((c) => c.text.includes('CREATE TABLE') || c.text.includes('create_hypertable'));
-    expect(ddl).toHaveLength(2); // exactly one ensure attempt
-  });
-
-  test('rows older than 30 days are pruned alongside the inserts', async () => {
-    const { client, calls } = stubClient();
-    const mirror = createTigerMirror({ url: TIGER_URL, client });
-    await mirror(publicInput());
-    expect(calls.some((c) => c.text.includes("interval '30 days'"))).toBe(true);
+    expect(ddl).toHaveLength(2); // one CREATE TABLE + one create_hypertable across both calls
   });
 
   test('a private run is never mirrored', async () => {

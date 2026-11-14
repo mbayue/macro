@@ -106,6 +106,7 @@ import { toStageViewPayload } from './run/controller.ts';
 import { PLANNING_LIMIT, rollingCheck } from './run/limits.ts';
 import { LOAD_TEST_TITLE, PROBE_TITLE, normalizeRunTitle } from './run/title.ts';
 import { clientIp } from './security/client-ip.ts';
+import { isPublicHost } from './security/public-host.ts';
 import type { ModelCallRow, RunRow, RunVisibility, StoredEvent, Store } from './store/db.ts';
 import type { RunKind, TestPlan } from './types.ts';
 
@@ -932,7 +933,15 @@ export function createApp(deps: AppDeps): App {
       stored = picked.stored;
       forPlanner = picked.selected;
     } else if (ownPlan) {
-      const found = await discoverOwnSite(targetResolved.target.webOrigin, deps.fetchImpl ?? fetch);
+      const fetchFn = deps.fetchImpl ?? fetch;
+      if (fetchFn === fetch && !(await isPublicHost(new URL(targetResolved.target.webOrigin).hostname))) {
+        return apiError(
+          422,
+          'discover_failed',
+          `Could not read ${targetResolved.target.webOrigin}/. Nothing was sent to the planner.`,
+        );
+      }
+      const found = await discoverOwnSite(targetResolved.target.webOrigin, fetchFn);
       if (!found.ok) {
         logInternal('discover', new Error(found.reason));
         return apiError(

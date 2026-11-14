@@ -5,7 +5,6 @@
  */
 
 import type { FetchLike } from '../auth/verify-origin.ts';
-import { isPublicHost, type LookupAllFn } from '../security/public-host.ts';
 
 export const DISCOVER_TIMEOUT_MS = 5000;
 export const DISCOVER_DOC_MAX_BYTES = 262144;
@@ -173,22 +172,10 @@ function contentType(res: Response): string {
 export async function discoverOwnSite(
   origin: string,
   fetchImpl: FetchLike,
-  lookupFn?: LookupAllFn,
 ): Promise<
   | { ok: true; routes: DiscoveredRoute[] }
   | { ok: false; reason: 'document_unreachable' | 'document_not_html' | 'document_too_large' }
 > {
-  if (fetchImpl === fetch || lookupFn !== undefined) {
-    let hostname: string;
-    try {
-      hostname = new URL(origin).hostname;
-    } catch {
-      return { ok: false, reason: 'document_unreachable' };
-    }
-    if (!(await isPublicHost(hostname, lookupFn))) {
-      return { ok: false, reason: 'document_unreachable' };
-    }
-  }
   let doc: Response;
   try {
     doc = await fetchImpl(`${origin}/`, {

@@ -111,26 +111,38 @@ export function RunPage({ id }: { id: string }) {
       ) : null}
 
       {report ? <p className="verdict">{verdictLine(report, model.routes)}</p> : null}
-      {report ? <ReportTiles model={model} now={now} /> : <LiveTiles model={model} now={now} />}
-      {report && (reason || reportNotices(report).length > 0) ? (
-        <div className="report-notes">
-          {reason ? <p>{reason}</p> : null}
-          <ReportNotices report={report} />
-        </div>
-      ) : null}
+      {queued ? (
+        <Panel title="Waiting in queue">
+          <p className="muted">
+            {queuePos !== null
+              ? `Position #${queuePos} in line. This run will start automatically as soon as the active run finishes.`
+              : 'This run is queued and will start automatically as soon as the active run finishes.'}
+          </p>
+        </Panel>
+      ) : (
+        <>
+          {report ? <ReportTiles model={model} now={now} /> : <LiveTiles model={model} now={now} />}
+          {report && (reason || reportNotices(report).length > 0) ? (
+            <div className="report-notes">
+              {reason ? <p>{reason}</p> : null}
+              <ReportNotices report={report} />
+            </div>
+          ) : null}
 
-      <div className="board">
-        <section className="panel board__chart" aria-labelledby="route-chart-heading">
-          <div className="panel__head">
-            <h2 id="route-chart-heading">p95 latency per route</h2>
-            <span className="muted">After each finished stage</span>
+          <div className="board">
+            <section className="panel board__chart" aria-labelledby="route-chart-heading">
+              <div className="panel__head">
+                <h2 id="route-chart-heading">p95 latency per route</h2>
+                <span className="muted">After each finished stage</span>
+              </div>
+              <TableWrap label="Chart of p95 latency per route">
+                <RouteChart stages={model.stages} plan={model.plan} limitMs={limit?.p95Ms ?? 1500} routes={model.routes} />
+              </TableWrap>
+            </section>
+            <Feed stages={model.stages} decisions={model.decisions} containment={model.containment} total={model.plan?.stages.length ?? null} />
           </div>
-          <TableWrap label="Chart of p95 latency per route">
-            <RouteChart stages={model.stages} plan={model.plan} limitMs={limit?.p95Ms ?? 1500} routes={model.routes} />
-          </TableWrap>
-        </section>
-        <Feed stages={model.stages} decisions={model.decisions} containment={model.containment} total={model.plan?.stages.length ?? null} />
-      </div>
+        </>
+      )}
 
       {report ? null : <StageProfile stages={profile(model, now)} compact />}
 

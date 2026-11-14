@@ -498,7 +498,9 @@ export function NewTest() {
                           type="button"
                           className="btn btn--quiet btn--inline-clear"
                           disabled={!idle}
-                          onClick={() => setScannedChecked(new Set(['r1']))}
+                          onClick={() =>
+                            setScannedChecked(new Set(scanned.routes.filter((r) => r.path === '/').map((r) => r.id)))
+                          }
                         >
                           All off
                         </button>
@@ -510,21 +512,35 @@ export function NewTest() {
                         const checked = locked || scannedChecked.has(r.id);
                         return (
                           <li key={r.id}>
-                            <label className="journey-edit__item">
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                disabled={!idle || locked}
-                                onChange={(e) => {
-                                  const next = new Set(scannedChecked);
-                                  if (e.target.checked) next.add(r.id);
-                                  else next.delete(r.id);
-                                  setScannedChecked(next);
-                                }}
-                              />
-                              <span className="code">{r.path}</span>
-                              <span className="muted">({r.kind})</span>
-                            </label>
+                            {locked ? (
+                              <div className="pick pick--locked">
+                                <span className="pick__box" aria-hidden="true" />
+                                <span className="pick__body">
+                                  <span className="pick__name code">{r.path}</span>
+                                </span>
+                                <span className="pick__aside">Required</span>
+                              </div>
+                            ) : (
+                              <label className={checked ? 'pick is-on' : 'pick'}>
+                                <input
+                                  className="visually-hidden"
+                                  type="checkbox"
+                                  checked={checked}
+                                  disabled={!idle}
+                                  onChange={(e) => {
+                                    const next = new Set(scannedChecked);
+                                    if (e.target.checked) next.add(r.id);
+                                    else next.delete(r.id);
+                                    setScannedChecked(next);
+                                  }}
+                                />
+                                <span className="pick__box" aria-hidden="true" />
+                                <span className="pick__body">
+                                  <span className="pick__name code">{r.path}</span>
+                                </span>
+                                <span className="pick__aside">{r.kind}</span>
+                              </label>
+                            )}
                           </li>
                         );
                       })}

@@ -286,6 +286,10 @@ a { text-underline-offset: 0.2em; }
 .journey-picks__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .journey-picks__revise { align-items: center; }
 .journey-picks__revise p { flex: 1 1 16rem; margin: 0; }
+.journey-edit { display: grid; gap: 10px; margin-top: 8px; }
+.journey-edit__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; font-size: var(--fs-sm); }
+.journey-edit__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 320px; overflow-y: auto; }
+.verify-manual-row { margin: 4px 0 0; }
 .pick {
   position: relative;
   display: grid;
@@ -399,6 +403,7 @@ a { text-underline-offset: 0.2em; }
   transition: border-color 150ms ease, transform 120ms var(--ease);
 }
 .chip-btn:active { transform: scale(0.97); }
+.chip-btn.is-active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .chip-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 @media (hover: hover) and (pointer: fine) { .chip-btn:not(:disabled):hover { border-color: var(--ink); } }
 .topbar__menu {

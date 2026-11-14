@@ -23,15 +23,16 @@ function DomainConnectIcon({ width = 14, height = 14 }: { width?: number; height
   );
 }
 
-function CopyButton({ text }: { text: string }) {
+function CopyButton({ text, onAnnounce }: { text: string; onAnnounce?: (msg: string) => void }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
+      onAnnounce?.('Copied to clipboard.');
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // ignore
+      onAnnounce?.('Could not copy to clipboard.');
     }
   };
   return (
@@ -255,7 +256,7 @@ export function VerifyPanel({
                   rel="noopener noreferrer"
                   className="btn btn--dc"
                 >
-                  ⚡ Auto-configure DNS ↗
+                  Auto-configure DNS ↗
                 </a>
               </div>
               <p className="dc-banner__desc">
@@ -284,7 +285,7 @@ export function VerifyPanel({
           ) : null}
 
           {pending.domainConnectUrl ? (
-            <p style={{ margin: '4px 0 0 0' }}>
+            <p className="verify-manual-row">
               <button
                 type="button"
                 className="verify-manual-toggle"
@@ -301,28 +302,28 @@ export function VerifyPanel({
                 <span className="verify-record__label">DNS TXT name</span>
                 <div className="verify-record__box">
                   <code>{pending.txtName}</code>
-                  <CopyButton text={pending.txtName} />
+                  <CopyButton text={pending.txtName} onAnnounce={announce} />
                 </div>
               </div>
               <div className="verify-record">
                 <span className="verify-record__label">DNS TXT value</span>
                 <div className="verify-record__box">
                   <code>{pending.txtValue}</code>
-                  <CopyButton text={pending.txtValue} />
+                  <CopyButton text={pending.txtValue} onAnnounce={announce} />
                 </div>
               </div>
               <div className="verify-record">
                 <span className="verify-record__label">Well-known URL</span>
                 <div className="verify-record__box">
                   <code>{pending.wellKnownUrl}</code>
-                  <CopyButton text={pending.wellKnownUrl} />
+                  <CopyButton text={pending.wellKnownUrl} onAnnounce={announce} />
                 </div>
               </div>
               <div className="verify-record">
                 <span className="verify-record__label">File body</span>
                 <div className="verify-record__box">
                   <code>{pending.token}</code>
-                  <CopyButton text={pending.token} />
+                  <CopyButton text={pending.token} onAnnounce={announce} />
                 </div>
               </div>
             </div>

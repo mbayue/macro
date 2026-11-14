@@ -2,7 +2,7 @@
  * App shell: skip link, side rail (top bar plus menu on phones), main region and the polite
  * live region. The rail's recent list comes from this browser's storage only.
  */
-import { type ReactNode, useContext, useEffect, useId, useState } from 'react';
+import { type ReactNode, useContext, useEffect, useId, useRef, useState } from 'react';
 import type { RunStatus } from '../../../../../src/types.ts';
 import { clearReviewState, postSignOut } from '../lib/auth-api.ts';
 import { clearRecentRuns, loadRecentRuns, type RecentRun } from '../lib/recent-runs.ts';
@@ -35,8 +35,21 @@ export function Shell({
   const [open, setOpen] = useState(false);
   const [recent, setRecent] = useState<RecentRun[]>([]);
   const [activeRun, setActiveRun] = useState<(RecentRun & { status: 'running' | 'queued' }) | null>(null);
+  const menuBtnRef = useRef<HTMLButtonElement>(null);
   const railId = useId();
   const key = currentKey(route);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        menuBtnRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [open]);
 
   async function onSignOut() {
     if (!ctx) return;
@@ -128,6 +141,7 @@ export function Shell({
           Macro
         </a>
         <button
+          ref={menuBtnRef}
           type="button"
           className="topbar__menu"
           aria-expanded={open}
@@ -172,24 +186,27 @@ export function Shell({
           </div>
         ) : null}
 
-        {recent.length > 0 ? (
-          <div className="rail__recent">
-            <h2 className="rail__heading">{me !== null ? 'Your runs' : 'In this browser'}</h2>
-            <ul className="rail__list">
-              {recent.map((r) => {
-                const active = key === `${r.kind}:${r.id}`;
-                return item(
-                  r.kind === 'probe' ? probeHref(r.id) : runHref(r.id),
-                  <>
-                    <span className="rail__name">{r.kind === 'probe' ? 'Containment probe' : r.name}</span>
-                    <span className="rail__id">{r.id.slice(0, 8)}</span>
-                  </>,
-                  active,
-                );
-              })}
-            </ul>
-          </div>
-        ) : null}
+        {(() => {
+          const pastRecent = activeRun === null ? recent : recent.filter((r) => r.id !== activeRun.id);
+          return pastRecent.length > 0 ? (
+            <div className="rail__recent">
+              <h2 className="rail__heading">{me !== null ? 'Your runs' : 'In this browser'}</h2>
+              <ul className="rail__list">
+                {pastRecent.map((r) => {
+                  const active = key === `${r.kind}:${r.id}`;
+                  return item(
+                    r.kind === 'probe' ? probeHref(r.id) : runHref(r.id),
+                    <>
+                      <span className="rail__name">{r.kind === 'probe' ? 'Containment probe' : r.name}</span>
+                      <span className="rail__id">{r.id.slice(0, 8)}</span>
+                    </>,
+                    active,
+                  );
+                })}
+              </ul>
+            </div>
+          ) : null;
+        })()}
 
         <div className="rail__foot">
           <div className="rail__identity">

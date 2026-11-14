@@ -2,7 +2,8 @@
  * Sign in (`#/sign-in`): GitHub OAuth or magic link email.
  */
 import { useEffect, useState } from 'react';
-import { githubStartHref, postMagicLink } from '../lib/auth-api.ts';
+import { clearReviewState, githubStartHref, postMagicLink, postSignOut } from '../lib/auth-api.ts';
+import { clearRecentRuns } from '../lib/recent-runs.ts';
 import { AlertRegion, Busy, Panel } from '../components/ui.tsx';
 import { useApp } from '../context.tsx';
 
@@ -37,12 +38,27 @@ export function SignIn() {
             Your account can run private load tests against your verified origin.
           </p>
           <p className="actions">
-            <button type="button" className="btn" onClick={() => navigate('#/')}>
+            <button type="button" className="btn" onClick={() => navigate('/')}>
               Back to new test
             </button>
             <a href="#/runs" className="btn btn--quiet">
               View your runs
             </a>
+            <button
+              type="button"
+              className="btn btn--quiet"
+              onClick={() => {
+                void (async () => {
+                  await postSignOut();
+                  clearRecentRuns();
+                  clearReviewState();
+                  await refreshMe();
+                  announce('Signed out.');
+                })();
+              }}
+            >
+              Sign out
+            </button>
           </p>
         </Panel>
       </section>

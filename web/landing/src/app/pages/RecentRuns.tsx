@@ -26,6 +26,7 @@ export function RecentRunsPage() {
   );
   const [status, setStatus] = useState<Record<string, Status>>({});
   const [source, setSource] = useState<'account' | 'browser'>('browser');
+  const [filter, setFilter] = useState<'all' | 'run' | 'probe'>('all');
 
   useEffect(() => {
     const abort = new AbortController();
@@ -110,33 +111,64 @@ export function RecentRunsPage() {
           </div>
         </div>
       ) : (
-        <ul className="runs">
-          {list.map((r) => {
-            const st = status[r.id] ?? 'checking';
+        <>
+          <div className="row" role="group" aria-label="Filter runs by kind">
+            {(
+              [
+                ['all', 'All'],
+                ['run', 'Load tests'],
+                ['probe', 'Probes'],
+              ] as const
+            ).map(([k, label]) => (
+              <button
+                key={k}
+                type="button"
+                className={filter === k ? 'chip-btn is-active' : 'chip-btn'}
+                aria-pressed={filter === k}
+                onClick={() => setFilter(k)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {(() => {
+            const visible = filter === 'all' ? list : list.filter((r) => r.kind === filter);
+            if (visible.length === 0) {
+              return (
+                <div className="empty">
+                  <p>No {filter === 'probe' ? 'containment probes' : 'load tests'} found.</p>
+                </div>
+              );
+            }
             return (
-              <li key={r.id}>
-                <a className="runs__item" href={r.kind === 'probe' ? probeHref(r.id) : runHref(r.id)}>
-                  <span className="runs__name">{r.kind === 'probe' ? 'Containment probe' : r.name}</span>
-                  <span className="runs__meta">
-                    <span className="code">{r.id}</span>
-                    <span className="muted">started {fmtUtc(r.startedAt)}</span>
-                  </span>
-                  <span className="runs__status">
-                    {st === 'checking' ? (
-                      <Badge>checking</Badge>
-                    ) : st === 'unknown' ? (
-                      <Badge>status unknown</Badge>
-                    ) : st === 'running' ? (
-                      <Badge tone="live">running now</Badge>
-                    ) : (
-                      <StatusBadge status={st} />
-                    )}
-                  </span>
-                </a>
-              </li>
+              <ul className="runs">
+                {visible.map((r) => {
+                  const st = status[r.id] ?? 'checking';
+                  return (
+                    <li key={r.id}>
+                      <a className="runs__item" href={r.kind === 'probe' ? probeHref(r.id) : runHref(r.id)}>
+                        <span className="runs__name">{r.kind === 'probe' ? 'Containment probe' : r.name}</span>
+                        <span className="runs__meta">
+                          <span className="code">{r.id}</span>
+                          <span className="muted">started {fmtUtc(r.startedAt)}</span>
+                        </span>
+                        <span className="runs__status">
+                          {st === 'checking' ? (
+                            <Badge>checking</Badge>
+                          ) : st === 'unknown' ? (
+                            <Badge>status unknown</Badge>
+                          ) : (
+                            <StatusBadge status={st} />
+                          )}
+                        </span>
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
             );
-          })}
-        </ul>
+          })()}
+        </>
       )}
     </div>
   );

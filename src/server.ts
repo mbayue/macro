@@ -1797,6 +1797,9 @@ export function createApp(deps: AppDeps): App {
     });
   };
 
+  // Disabled for now without deleting the implementation.
+  const DOMAIN_CONNECT_ENABLED = false;
+
   const postVerifyStart: Handler = async ({ req }) => {
     if (config.auth === undefined) {
       return apiError(503, 'auth_unavailable', MSG.authUnavailable);
@@ -1819,13 +1822,17 @@ export function createApp(deps: AppDeps): App {
       return apiError(500, 'internal', MSG.internal);
     }
     const detection = await detectDnsProvider(norm.host, deps.resolveNs, {
-      resolveTxt: deps.resolveTxt,
-      resolveCname: deps.resolveCname,
-      fetchFn: deps.fetchImpl as typeof fetch | undefined,
-      verifyToken: token,
-      redirectUri: config.auth ? `${config.auth.publicBaseUrl}/app/#/verify?domainConnect=done` : undefined,
-      privateKeyPem: config.domainConnect?.privateKey,
-      keyId: config.domainConnect?.keyId,
+      ...(DOMAIN_CONNECT_ENABLED
+        ? {
+            resolveTxt: deps.resolveTxt,
+            resolveCname: deps.resolveCname,
+            fetchFn: deps.fetchImpl as typeof fetch | undefined,
+            verifyToken: token,
+            redirectUri: config.auth ? `${config.auth.publicBaseUrl}/app/#/verify?domainConnect=done` : undefined,
+            privateKeyPem: config.domainConnect?.privateKey,
+            keyId: config.domainConnect?.keyId,
+          }
+        : {}),
     });
     const body: VerifyStartResponse = {
       token,
@@ -1834,8 +1841,12 @@ export function createApp(deps: AppDeps): App {
       wellKnownUrl: wellKnownUrlForOrigin(norm.origin),
       isCloudflare: detection.isCloudflare,
       cloudFlareDirectUrl: detection.cloudFlareDirectUrl,
-      domainConnectUrl: detection.domainConnectUrl,
-      domainConnectProviderName: detection.domainConnectProviderName,
+      ...(DOMAIN_CONNECT_ENABLED
+        ? {
+            domainConnectUrl: detection.domainConnectUrl,
+            domainConnectProviderName: detection.domainConnectProviderName,
+          }
+        : {}),
     };
     return json(200, body);
   };
@@ -1849,13 +1860,17 @@ export function createApp(deps: AppDeps): App {
     const pending = store.getPendingOriginVerification(auth.user.id);
     if (pending === null) return apiError(404, 'not_found', MSG.notFound);
     const detection = await detectDnsProvider(pending.host, deps.resolveNs, {
-      resolveTxt: deps.resolveTxt,
-      resolveCname: deps.resolveCname,
-      fetchFn: deps.fetchImpl as typeof fetch | undefined,
-      verifyToken: pending.token,
-      redirectUri: config.auth ? `${config.auth.publicBaseUrl}/app/#/verify?domainConnect=done` : undefined,
-      privateKeyPem: config.domainConnect?.privateKey,
-      keyId: config.domainConnect?.keyId,
+      ...(DOMAIN_CONNECT_ENABLED
+        ? {
+            resolveTxt: deps.resolveTxt,
+            resolveCname: deps.resolveCname,
+            fetchFn: deps.fetchImpl as typeof fetch | undefined,
+            verifyToken: pending.token,
+            redirectUri: config.auth ? `${config.auth.publicBaseUrl}/app/#/verify?domainConnect=done` : undefined,
+            privateKeyPem: config.domainConnect?.privateKey,
+            keyId: config.domainConnect?.keyId,
+          }
+        : {}),
     });
     const body: VerifyStartResponse = {
       token: pending.token,
@@ -1864,8 +1879,12 @@ export function createApp(deps: AppDeps): App {
       wellKnownUrl: wellKnownUrlForOrigin(pending.origin),
       isCloudflare: detection.isCloudflare,
       cloudFlareDirectUrl: detection.cloudFlareDirectUrl,
-      domainConnectUrl: detection.domainConnectUrl,
-      domainConnectProviderName: detection.domainConnectProviderName,
+      ...(DOMAIN_CONNECT_ENABLED
+        ? {
+            domainConnectUrl: detection.domainConnectUrl,
+            domainConnectProviderName: detection.domainConnectProviderName,
+          }
+        : {}),
     };
     return json(200, body);
   };

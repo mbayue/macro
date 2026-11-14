@@ -9,7 +9,7 @@
  */
 import { useEffect, useId, useRef, useState } from 'react';
 import type { TestPlan } from '../../../../../src/types.ts';
-import type { AccountDraft, PlanResponse, PlanRouteView } from '../../../../../src/api-types.ts';
+import type { AccountDraft, PlanResponse } from '../../../../../src/api-types.ts';
 import {
   clearReviewState,
   getDraft,
@@ -20,7 +20,7 @@ import {
   stashReviewState,
   takeLocalDraft,
 } from '../lib/auth-api.ts';
-import { type ApiError, type ApiResult, postApprove, postDiscover, postPlan, VERIFICATION_ERROR } from '../lib/api.ts';
+import { type ApiError, type ApiResult, postApprove, postPlan, VERIFICATION_ERROR } from '../lib/api.ts';
 import { isActionPath } from '../../../../../src/plan/discover.ts';
 import { journeyGroups, journeyLabel, type JourneyRow } from '../../../../../src/plan/journey-edit.ts';
 import { countCodePoints } from '../lib/describe.ts';
@@ -30,7 +30,7 @@ import { ModelCalls } from '../components/ModelCalls.tsx';
 import { NextUp } from '../components/NextUp.tsx';
 import { StageProfile } from '../components/StageProfile.tsx';
 import { TurnstileBox, useTurnstile } from '../components/Turnstile.tsx';
-import { AlertRegion, Badge, Busy, KeyValues, Panel, TableWrap, ViolationsTable } from '../components/ui.tsx';
+import { AlertRegion, Badge, Busy, ConfirmButton, KeyValues, Panel, TableWrap, ViolationsTable } from '../components/ui.tsx';
 import { VerifyPanel } from '../components/VerifyPanel.tsx';
 import { useApp } from '../context.tsx';
 
@@ -67,10 +67,6 @@ export function NewTest() {
   const [panelInView, setPanelInView] = useState(true);
   const [targetMode, setTargetMode] = useState<TargetMode>(() => initialReview?.targetMode ?? 'demo');
   const [lastEditedAt, setLastEditedAt] = useState(() => Date.now());
-  const [scanning, setScanning] = useState(false);
-  const [scanError, setScanError] = useState<ApiError | null>(null);
-  const [scanned, setScanned] = useState<{ origin: string; routes: PlanRouteView[] } | null>(null);
-  const [scannedChecked, setScannedChecked] = useState<Set<string>>(() => new Set());
   const textarea = useRef<HTMLTextAreaElement>(null);
   const focusComposer = useRef(false);
   const startFromBar = useRef<(() => void) | null>(null);
@@ -184,29 +180,9 @@ export function NewTest() {
     if (!idle || me === null) return;
     const res = await postVerifyClear();
     if (res.ok) {
-      setScanned(null);
-      setScannedChecked(new Set());
-      setScanError(null);
       await refreshMe();
       announce('Cleared verified origin.');
     }
-  }
-
-  async function scanRoutes() {
-    if (!idle || scanning || verifiedOrigin === null) return;
-    setScanning(true);
-    setScanError(null);
-    const res = await postDiscover({ targetOrigin: verifiedOrigin.origin });
-    if (!alive.current) return;
-    setScanning(false);
-    if (!res.ok) {
-      setScanError(res.error);
-      announce(res.error.message);
-      return;
-    }
-    setScanned(res.data);
-    setScannedChecked(new Set(res.data.routes.filter((r) => r.defaultOn === true).map((r) => r.id)));
-    announce(`Scanned ${res.data.routes.length} routes from ${res.data.origin}.`);
   }
 
   async function startPlanning(value: string, routeIds?: string[]) {
@@ -433,22 +409,16 @@ export function NewTest() {
                     <>
                       <span className="code">{verifiedOrigin.origin}</span>
                       <span className="badge badge--ok">Verified</span>
-                      <button
-                        type="button"
+                      <ConfirmButton
+                        label="Change"
+                        confirmLabel="Clear verified site"
+                        cancelLabel="Keep"
                         className="btn btn--quiet btn--inline-clear"
-                        disabled={!idle || scanning}
-                        onClick={() => void scanRoutes()}
-                      >
-                        {scanning ? 'Scanning\u2026' : scanned?.origin === verifiedOrigin.origin ? 'Re-scan routes' : 'Scan routes'}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn--quiet btn--inline-clear"
+                        confirmClassName="btn btn--danger btn--inline-clear"
+                        cancelClassName="btn btn--quiet btn--inline-clear"
                         disabled={!idle}
-                        onClick={() => void clearVerifiedOrigin()}
-                      >
-                        Change
-                      </button>
+                        onConfirm={() => void clearVerifiedOrigin()}
+                      />
                     </>
                   ) : me === null ? (
                     <>
@@ -478,75 +448,6 @@ export function NewTest() {
                     Macro reads / on your site, then the scripts that page links, and uses those files as the journey. It does not run the page.
                   </p>
                 ) : null}
-                {targetMode === 'own' && scanError ? <AlertRegion error={scanError} /> : null}
-                {targetMode === 'own' && verifiedOrigin !== null && scanned !== null && scanned.origin === verifiedOrigin.origin ? (
-                  <div className="journey-edit">
-                    <div className="journey-edit__head">
-                      <span className="muted">
-                        Scanned {scanned.routes.length} routes ({scannedChecked.size} selected for planner)
-                      </span>
-                      <span className="row">
-                        <button
-                          type="button"
-                          className="btn btn--quiet btn--inline-clear"
-                          disabled={!idle}
-                          onClick={() => setScannedChecked(new Set(scanned.routes.map((r) => r.id)))}
-                        >
-                          All on
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn--quiet btn--inline-clear"
-                          disabled={!idle}
-                          onClick={() =>
-                            setScannedChecked(new Set(scanned.routes.filter((r) => r.path === '/').map((r) => r.id)))
-                          }
-                        >
-                          All off
-                        </button>
-                      </span>
-                    </div>
-                    <ul className="journey-edit__list">
-                      {scanned.routes.map((r) => {
-                        const locked = r.path === '/';
-                        const checked = locked || scannedChecked.has(r.id);
-                        return (
-                          <li key={r.id}>
-                            {locked ? (
-                              <div className="pick pick--locked">
-                                <span className="pick__box" aria-hidden="true" />
-                                <span className="pick__body">
-                                  <span className="pick__name code">{r.path}</span>
-                                </span>
-                                <span className="pick__aside">Required</span>
-                              </div>
-                            ) : (
-                              <label className={checked ? 'pick is-on' : 'pick'}>
-                                <input
-                                  className="visually-hidden"
-                                  type="checkbox"
-                                  checked={checked}
-                                  disabled={!idle}
-                                  onChange={(e) => {
-                                    const next = new Set(scannedChecked);
-                                    if (e.target.checked) next.add(r.id);
-                                    else next.delete(r.id);
-                                    setScannedChecked(next);
-                                  }}
-                                />
-                                <span className="pick__box" aria-hidden="true" />
-                                <span className="pick__body">
-                                  <span className="pick__name code">{r.path}</span>
-                                </span>
-                                <span className="pick__aside">{r.kind}</span>
-                              </label>
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                ) : null}
               </div>
 
               <div className="row">
@@ -554,18 +455,6 @@ export function NewTest() {
                   type="submit"
                   className="btn"
                   disabled={!inRange || !idle || ownNeedsVerify}
-                  onClick={(e) => {
-                    if (
-                      targetMode === 'own' &&
-                      verifiedOrigin !== null &&
-                      scanned !== null &&
-                      scanned.origin === verifiedOrigin.origin &&
-                      scannedChecked.size > 0
-                    ) {
-                      e.preventDefault();
-                      void startPlanning(text, [...scannedChecked]);
-                    }
-                  }}
                 >
                   {review !== null ? 'Draft a new plan' : 'Draft a plan'}
                 </button>
@@ -645,17 +534,17 @@ export function NewTest() {
                   <VerifyPanel initialHost="" />
                 </div>
               ) : null}
-              <GateRules folded />
+              <GateRules folded targetOrigin={activeOrigin} />
             </>
           ) : showVerify ? (
             <>
               <div id="verify-panel">
                 <VerifyPanel initialHost="" />
               </div>
-              <GateRules folded />
+              <GateRules folded targetOrigin={activeOrigin} />
             </>
           ) : (
-            <GateRules />
+            <GateRules targetOrigin={activeOrigin} />
           )}
         </aside>
       </div>
@@ -1256,9 +1145,16 @@ function ApprovePanel({
         <button type="button" className="btn btn--ink" disabled={!idle || checksDiffer} onClick={() => void approve()}>
           Approve and run
         </button>
-        <button type="button" className="btn btn--line" disabled={!idle} onClick={onCancel}>
-          Cancel
-        </button>
+        <ConfirmButton
+          label="Cancel"
+          confirmLabel="Discard plan"
+          cancelLabel="Keep"
+          className="btn btn--line"
+          confirmClassName="btn btn--danger"
+          cancelClassName="btn btn--line"
+          disabled={!idle}
+          onConfirm={onCancel}
+        />
         {busy === 'approving' ? <Busy>Starting the run.</Busy> : null}
       </div>
       {checksDiffer ? <p>Revise the plan to use these checks.</p> : null}

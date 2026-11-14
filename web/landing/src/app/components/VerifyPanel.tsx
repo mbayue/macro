@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { VerifyStartResponse } from '../../../../../src/api-types.ts';
 import { getVerifyPending, postVerifyCancel, postVerifyCheck, postVerifyClear, postVerifyStart } from '../lib/auth-api.ts';
 import { useApp } from '../context.tsx';
-import { AlertRegion, Busy, Panel } from './ui.tsx';
+import { AlertRegion, Busy, ConfirmButton, Panel } from './ui.tsx';
 
 function CloudflareIcon({ width = 14, height = 14 }: { width?: number; height?: number }) {
   return (
@@ -180,9 +180,22 @@ export function VerifyPanel({
       {verified !== null ? (
         <p role="status">
           Verified: <strong>{verified.host}</strong>{' '}
-          <button type="button" className="btn btn--ghost" disabled={busy !== null} onClick={() => void onClear()}>
-            {busy === 'clear' ? <Busy>Clearing</Busy> : 'Clear'}
-          </button>
+          {busy === 'clear' ? (
+            <button type="button" className="btn btn--ghost" disabled>
+              <Busy>Clearing</Busy>
+            </button>
+          ) : (
+            <ConfirmButton
+              label="Clear"
+              confirmLabel="Confirm clear"
+              cancelLabel="Keep"
+              className="btn btn--ghost"
+              confirmClassName="btn btn--danger"
+              cancelClassName="btn btn--ghost"
+              disabled={busy !== null}
+              onConfirm={() => void onClear()}
+            />
+          )}
         </p>
       ) : null}
 
@@ -332,9 +345,22 @@ export function VerifyPanel({
             <button type="button" className="btn" disabled={busy !== null} onClick={() => void onCheck()}>
               {busy === 'check' ? <Busy>Checking</Busy> : 'I added the proof — check'}
             </button>
-            <button type="button" className="btn btn--ghost" disabled={busy !== null} onClick={() => void onStartOver()}>
-              {busy === 'cancel' ? <Busy>Resetting</Busy> : 'Start over'}
-            </button>
+            {busy === 'cancel' ? (
+              <button type="button" className="btn btn--ghost" disabled>
+                <Busy>Resetting</Busy>
+              </button>
+            ) : (
+              <ConfirmButton
+                label="Start over"
+                confirmLabel="Reset token"
+                cancelLabel="Keep"
+                className="btn btn--ghost"
+                confirmClassName="btn btn--danger"
+                cancelClassName="btn btn--ghost"
+                disabled={busy !== null}
+                onConfirm={() => void onStartOver()}
+              />
+            )}
           </p>
         </div>
       )}

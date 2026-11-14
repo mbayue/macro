@@ -15,7 +15,7 @@ import { RouteChart } from '../components/run/RouteChart.tsx';
 import { SecondChart } from '../components/run/SecondChart.tsx';
 import { ModelCalls } from '../components/ModelCalls.tsx';
 import { type ProfileStage, StageProfile } from '../components/StageProfile.tsx';
-import { AlertRegion, ApiErrorText, Badge, DASH, KeyValues, PageSkeleton, Panel, StatusBadge, TableWrap } from '../components/ui.tsx';
+import { AlertRegion, ApiErrorText, Badge, ConfirmButton, DASH, KeyValues, PageSkeleton, Panel, StatusBadge, TableWrap } from '../components/ui.tsx';
 import { useRun } from '../hooks/useRun.ts';
 
 export function RunPage({ id }: { id: string }) {
@@ -78,9 +78,20 @@ export function RunPage({ id }: { id: string }) {
         </div>
         {queued || running ? (
           <div className="run-head__actions">
-            <button type="button" className="btn btn--danger" disabled={stopPending} onClick={stop}>
-              {stopPending ? 'Stopping\u2026' : queued ? 'Cancel queued run' : 'Stop run'}
-            </button>
+            {stopPending ? (
+              <button type="button" className="btn btn--danger" disabled>
+                Stopping{'\u2026'}
+              </button>
+            ) : (
+              <ConfirmButton
+                label={queued ? 'Cancel queued run' : 'Stop run'}
+                confirmLabel={queued ? 'Confirm cancel' : 'Confirm stop'}
+                cancelLabel={queued ? 'Keep queued' : 'Keep running'}
+                className="btn btn--danger"
+                confirmClassName="btn btn--danger"
+                onConfirm={stop}
+              />
+            )}
             <p className="muted">
               {queued
                 ? queuePos !== null

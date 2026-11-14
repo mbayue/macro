@@ -10,34 +10,40 @@ import { KeyValues, Panel } from './ui.tsx';
 const TITLE = 'What the policy gate allows';
 const NOTE = 'Fixed code checks every plan against these rules before it can be approved. The AI cannot change them.';
 
-function Rules() {
+function Rules({ targetOrigin }: { targetOrigin?: string | null | undefined }) {
   const { config } = useApp();
+  const target = targetOrigin ?? config.webOrigin;
+  const isOwn = target !== config.webOrigin;
   return (
     <>
       <KeyValues
         items={[
-          ['Target', <span className="code">{config.webOrigin}</span>],
+          ['Target', <span className="code">{target}</span>],
           ['Stages', '1 to 6, each with more users than the one before'],
           ['Users per stage', '1 to 500'],
           ['Stage length', '30 to 180 s, at most 600 s in total'],
         ]}
       />
       <h3 className="h-small">Routes a plan can use</h3>
-      <ul className="routes">
-        {config.catalog.map((r) => (
-          <li key={r.id}>
-            <span className="code">{r.id}</span>
-            <span className="routes__path">
-              <span className="code">{r.method}</span> {r.path}
-            </span>
-          </li>
-        ))}
-      </ul>
+      {isOwn ? (
+        <p className="muted">Discovered from {target} when you click Draft a plan.</p>
+      ) : (
+        <ul className="routes">
+          {config.catalog.map((r) => (
+            <li key={r.id}>
+              <span className="code">{r.id}</span>
+              <span className="routes__path">
+                <span className="code">{r.method}</span> {r.path}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </>
   );
 }
 
-export function GateRules({ folded = false }: { folded?: boolean }) {
+export function GateRules({ folded = false, targetOrigin }: { folded?: boolean; targetOrigin?: string | null | undefined }) {
   if (folded) {
     return (
       <details className="panel disclosure">
@@ -45,13 +51,13 @@ export function GateRules({ folded = false }: { folded?: boolean }) {
           <h2 className="disclosure__title">{TITLE}</h2>
         </summary>
         <p className="panel__note">{NOTE}</p>
-        <Rules />
+        <Rules targetOrigin={targetOrigin} />
       </details>
     );
   }
   return (
     <Panel title={TITLE} id="gate-rules-heading" note={NOTE}>
-      <Rules />
+      <Rules targetOrigin={targetOrigin} />
     </Panel>
   );
 }

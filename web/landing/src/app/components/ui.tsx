@@ -1,5 +1,5 @@
 /** Small building blocks shared by every screen of the app. */
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import type { ApiError } from '../lib/api.ts';
 import { fmtUtc, parseErrorText } from '../lib/format.ts';
 import type { PolicyViolationView } from '../../../../../src/api-types.ts';
@@ -205,3 +205,57 @@ export function Panel({
 }
 
 export const DASH = '\u2013';
+
+/** Two-step inline confirmation for destructive actions without native popups. */
+export function ConfirmButton({
+  label,
+  confirmLabel,
+  cancelLabel = 'Keep',
+  disabled = false,
+  className = 'btn btn--quiet',
+  confirmClassName = 'btn btn--danger',
+  cancelClassName = 'btn btn--quiet',
+  onConfirm,
+}: {
+  label: ReactNode;
+  confirmLabel: ReactNode;
+  cancelLabel?: ReactNode;
+  disabled?: boolean;
+  className?: string;
+  confirmClassName?: string;
+  cancelClassName?: string;
+  onConfirm: () => void;
+}) {
+  const [armed, setArmed] = useState(false);
+
+  useEffect(() => {
+    if (disabled) setArmed(false);
+  }, [disabled]);
+
+  if (!armed) {
+    return (
+      <button type="button" className={className} disabled={disabled} onClick={() => setArmed(true)}>
+        {label}
+      </button>
+    );
+  }
+
+  return (
+    <span className="row">
+      <button
+        type="button"
+        className={confirmClassName}
+        disabled={disabled}
+        onClick={() => {
+          setArmed(false);
+          onConfirm();
+        }}
+      >
+        {confirmLabel}
+      </button>
+      <button type="button" className={cancelClassName} disabled={disabled} onClick={() => setArmed(false)}>
+        {cancelLabel}
+      </button>
+    </span>
+  );
+}

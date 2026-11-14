@@ -47,9 +47,10 @@ export interface Config {
   readonly port: number;
   readonly dataDir: string;
   /**
-   * `DOCKER_HOST` as a `tcp://host[:port]` URL. Set on the VM deploy, where the
-   * API reaches Docker through the least-privilege socket proxy (compose wires
-   * it). Unset means the local unix socket (/var/run/docker.sock).
+   * `DOCKER_HOST`: `tcp://host[:port]` on the VM deploy, where the API reaches
+   * Docker through the least-privilege socket proxy (compose wires it), or
+   * `pipe://<pipe path>` for Windows local dev. Unset means the local unix
+   * socket (/var/run/docker.sock).
    */
   readonly dockerHost?: string;
   /** Requirement 17 only. Key omitted when unset. */
@@ -185,17 +186,25 @@ export function parseConfig(env: Env): ConfigResult {
 
   const vultrApiKey = read(env, 'VULTR_API_KEY');
 
-  // Docker endpoint: unset = the local unix socket. When set, only tcp:// is
-  // accepted (the compose deploy points it at the least-privilege socket proxy).
+  // Docker endpoint: unset = the local unix socket. tcp:// targets the
+  // least-privilege socket proxy (the compose deploy sets it); pipe:// names a
+  // Windows named pipe, so `bun run dev` reaches Docker Desktop on a dev box.
   const dockerHostRaw = read(env, 'DOCKER_HOST');
   let dockerHost: string | undefined;
   if (dockerHostRaw !== undefined) {
-    const m = /^tcp:\/\/([a-z0-9](?:[a-z0-9._-]*[a-z0-9]))(?::(\d{1,5}))?$/i.exec(dockerHostRaw);
-    const port = m?.[2];
-    if (m === null || (port !== undefined && (Number(port) < 1 || Number(port) > 65535))) {
-      fail('DOCKER_HOST', 'must be tcp://host[:port] when set (for example tcp://socket-proxy:2375)');
+    const tcp = /^tcp:\/\/([a-z0-9](?:[a-z0-9._-]*[a-z0-9]))(?::(\d{1,5}))?$/i.exec(dockerHostRaw);
+    const pipe = /^pipe:\/\/(.{1,256})$/i.exec(dockerHostRaw);
+    const port = tcp?.[2];
+    if (tcp !== null) {
+      if (port !== undefined && (Number(port) < 1 || Number(port) > 65535)) {
+        fail('DOCKER_HOST', 'must be tcp://host[:port] when set (for example tcp://socket-proxy:2375)');
+      } else {
+        dockerHost = dockerHostRaw.toLowerCase();
+      }
+    } else if (pipe !== null) {
+      dockerHost = dockerHostRaw;
     } else {
-      dockerHost = dockerHostRaw.toLowerCase();
+      fail('DOCKER_HOST', 'must be tcp://host[:port] or pipe://<pipe path> when set');
     }
   }
 

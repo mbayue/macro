@@ -8,23 +8,20 @@
  * Transport: the production DockerClient speaks HTTP over `/var/run/docker.sock`
  * (Bun's `unix` fetch extension). On Windows there is no unix socket — Docker
  * Desktop exposes the same API on the named pipe `\\.\pipe\docker_engine`, which
- * Bun's `unix` option cannot open, so this module carries its own node:http
- * transport for that pipe. On POSIX the production transport is used unchanged.
+ * Bun's `unix` option cannot open; `pipeFetch` in `src/sandbox/docker.ts`
+ * carries a node:http transport for that pipe and is used here too.
  *
  * Safety: every container and network these tests create is labelled `macro=1`,
  * and the suite refuses to start when `macro=1` resources already exist —
  * `cleanupAll` would sweep a live Macro deployment otherwise.
  */
 
-import http from 'node:http';
-import net from 'node:net';
-import type { Duplex } from 'node:stream';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { K6_IMAGE_DEFAULT, parseConfig } from '../../src/config.ts';
 import type { Config } from '../../src/config.ts';
-import { DockerClient } from '../../src/sandbox/docker.ts';
+import { DockerClient, pipeFetch } from '../../src/sandbox/docker.ts';
 import type { DockerFetch, DockerInfo, DockerRequestInit } from '../../src/sandbox/docker.ts';
 import { SandboxRunner } from '../../src/sandbox/runner.ts';
 import type { ContainmentEvent } from '../../src/sandbox/runner.ts';
@@ -34,82 +31,6 @@ export const PROXY_IMAGE = 'macro-proxy:latest';
 const REPO_ROOT = join(import.meta.dir, '..', '..');
 const PIPE_PATH = '\\\\.\\pipe\\docker_engine';
 const DAEMON_INFO_TIMEOUT_MS = 5_000;
-
-// --------------------------------------------------------------- transports
-
-/** HTTP over the Docker Desktop named pipe (Windows). Injectable like `DockerFetch`. */
-export function pipeFetch(pipePath: string): DockerFetch {
-  const agent = new PipeAgent(pipePath);
-  return (url, init) => pipeRequest(agent, url, init);
-}
-
-class PipeAgent extends http.Agent {
-  constructor(private readonly pipePath: string) {
-    super({ keepAlive: false, maxSockets: 16 });
-  }
-  createConnection(
-    _options: http.ClientRequestArgs,
-    callback?: ((err: Error | null, stream: Duplex) => void) | undefined,
-  ): Duplex | null | undefined {
-    const socket = net.connect({ path: this.pipePath });
-    callback?.(null, socket);
-    return socket;
-  }
-}
-
-async function pipeRequest(agent: http.Agent, url: string, init: DockerRequestInit | undefined): Promise<Response> {
-  const u = new URL(url);
-  const headers: Record<string, string> = {};
-  new Headers(init?.headers ?? undefined).forEach((value, key) => {
-    headers[key] = value;
-  });
-  return new Promise<Response>((resolve, reject) => {
-    const req = http.request(
-      {
-        host: u.hostname,
-        ...(u.port === '' ? {} : { port: Number(u.port) }),
-        path: `${u.pathname}${u.search}`,
-        method: init?.method ?? 'GET',
-        agent,
-        headers,
-      },
-      (res) => {
-        const chunks: Uint8Array[] = [];
-        res.on('data', (d: Buffer) => chunks.push(new Uint8Array(d)));
-        res.on('error', (e: unknown) => reject(e instanceof Error ? e : new Error(String(e))));
-        res.on('end', () => {
-          const out = new Headers();
-          for (const [key, value] of Object.entries(res.headers)) {
-            if (Array.isArray(value)) for (const one of value) out.append(key, one);
-            else if (value !== undefined) out.set(key, value);
-          }
-          const total = chunks.reduce((n, c) => n + c.length, 0);
-          const body = new Uint8Array(total);
-          let off = 0;
-          for (const c of chunks) {
-            body.set(c, off);
-            off += c.length;
-          }
-          resolve(new Response(total === 0 ? null : body, { status: res.statusCode ?? 500, headers: out }));
-        });
-      },
-    );
-    req.on('error', (e: unknown) => reject(e instanceof Error ? e : new Error(String(e))));
-    const signal = init?.signal ?? undefined;
-    if (signal !== undefined) {
-      if (signal.aborted) {
-        req.destroy();
-        reject(new Error('aborted'));
-        return;
-      }
-      signal.addEventListener('abort', () => req.destroy(new Error('aborted')), { once: true });
-    }
-    const body = init?.body;
-    if (typeof body === 'string') req.write(body);
-    else if (body instanceof Uint8Array) req.write(body);
-    req.end();
-  });
-}
 
 // ------------------------------------------------------------------ probing
 

@@ -322,11 +322,13 @@ describe('DOCKER_HOST', () => {
     ['tcp://socket-proxy', 'tcp://socket-proxy'],
     ['TCP://Socket-Proxy:2375', 'tcp://socket-proxy:2375'],
     ['  tcp://socket-proxy:2375  ', 'tcp://socket-proxy:2375'],
+    ['pipe://\\\\.\\pipe\\docker_engine', 'pipe://\\\\.\\pipe\\docker_engine'],
+    ['PIPE://\\\\.\\pipe\\Macro', 'PIPE://\\\\.\\pipe\\Macro'],
   ])('%p is accepted as %p', (raw, expected) => {
     expect(ok(parseConfig(env({ DOCKER_HOST: raw }))).dockerHost).toBe(expected);
   });
 
-  test.each(['unix:///var/run/docker.sock', 'http://socket-proxy:2375', 'tcp://', 'tcp://-bad-', 'tcp://x:99999'])(
+  test.each(['unix:///var/run/docker.sock', 'http://socket-proxy:2375', 'tcp://', 'tcp://-bad-', 'tcp://x:99999', 'pipe://'])(
     'an unsupported DOCKER_HOST (%p) fails by name',
     (raw) => {
       expect(settingsOf(parseConfig(env({ DOCKER_HOST: raw })))).toEqual(['DOCKER_HOST']);

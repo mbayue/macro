@@ -7,6 +7,10 @@
  *   the request line.
  */
 
+import http from 'node:http';
+import net from 'node:net';
+import type { Duplex } from 'node:stream';
+
 export const DOCKER_API_VERSION = 'v1.47';
 export const DEFAULT_DOCKER_SOCKET = '/var/run/docker.sock';
 
@@ -39,13 +43,94 @@ export function tcpFetch(baseUrl: string, fetchImpl: typeof fetch = fetch): Dock
     fetchImpl(url.replace('http://docker', baseUrl), { ...init, timeout: false } as RequestInit);
 }
 
+// Windows has no unix socket: Docker Desktop exposes the same API on a named
+// pipe, which Bun's `unix` option cannot open. This node:http transport speaks
+// HTTP over that pipe (Linux never needs it; the socket works there).
+
+class PipeAgent extends http.Agent {
+  constructor(private readonly pipePath: string) {
+    super({ keepAlive: false, maxSockets: 16 });
+  }
+  createConnection(
+    _options: http.ClientRequestArgs,
+    callback?: ((err: Error | null, stream: Duplex) => void) | undefined,
+  ): Duplex | null | undefined {
+    const socket = net.connect({ path: this.pipePath });
+    callback?.(null, socket);
+    return socket;
+  }
+}
+
+async function pipeRequest(agent: http.Agent, url: string, init: DockerRequestInit | undefined): Promise<Response> {
+  const u = new URL(url);
+  const headers: Record<string, string> = {};
+  new Headers(init?.headers ?? undefined).forEach((value, key) => {
+    headers[key] = value;
+  });
+  return new Promise<Response>((resolve, reject) => {
+    const req = http.request(
+      {
+        host: u.hostname,
+        ...(u.port === '' ? {} : { port: Number(u.port) }),
+        path: `${u.pathname}${u.search}`,
+        method: init?.method ?? 'GET',
+        agent,
+        headers,
+      },
+      (res) => {
+        const chunks: Uint8Array[] = [];
+        res.on('data', (d: Buffer) => chunks.push(new Uint8Array(d)));
+        res.on('error', (e: unknown) => reject(e instanceof Error ? e : new Error(String(e))));
+        res.on('end', () => {
+          const out = new Headers();
+          for (const [key, value] of Object.entries(res.headers)) {
+            if (Array.isArray(value)) for (const one of value) out.append(key, one);
+            else if (value !== undefined) out.set(key, value);
+          }
+          const total = chunks.reduce((n, c) => n + c.length, 0);
+          const body = new Uint8Array(total);
+          let off = 0;
+          for (const c of chunks) {
+            body.set(c, off);
+            off += c.length;
+          }
+          resolve(new Response(total === 0 ? null : body, { status: res.statusCode ?? 500, headers: out }));
+        });
+      },
+    );
+    req.on('error', (e: unknown) => reject(e instanceof Error ? e : new Error(String(e))));
+    const signal = init?.signal ?? undefined;
+    if (signal !== undefined) {
+      if (signal.aborted) {
+        req.destroy();
+        reject(new Error('aborted'));
+        return;
+      }
+      signal.addEventListener('abort', () => req.destroy(new Error('aborted')), { once: true });
+    }
+    const body = init?.body;
+    if (typeof body === 'string') req.write(body);
+    else if (body instanceof Uint8Array) req.write(body);
+    req.end();
+  });
+}
+
+/** HTTP over the Docker Desktop named pipe (Windows). Injectable like `DockerFetch`. */
+export function pipeFetch(pipePath: string): DockerFetch {
+  const agent = new PipeAgent(pipePath);
+  return (url, init) => pipeRequest(agent, url, init);
+}
+
 /**
  * The transport for one Config's Docker endpoint: the local unix socket by
- * default, or the configured `tcp://host[:port]` (the least-privilege socket
- * proxy on the VM). Port defaults to 2375, the Docker API port.
+ * default, or the configured endpoint — `tcp://host[:port]` (the
+ * least-privilege socket proxy on the VM) or `pipe://<pipe path>` (Windows
+ * local dev against Docker Desktop). Port defaults to 2375.
  */
 export function fetchForDockerHost(dockerHost: string | undefined): DockerFetch {
   if (dockerHost === undefined) return socketFetch();
+  const pipe = /^pipe:\/\/(.{1,256})$/i.exec(dockerHost);
+  if (pipe !== null) return pipeFetch(pipe[1]!);
   const m = /^tcp:\/\/([a-z0-9](?:[a-z0-9._-]*[a-z0-9]))(?::(\d{1,5}))?$/i.exec(dockerHost);
   if (m === null) throw new Error(`invalid DOCKER_HOST: ${JSON.stringify(dockerHost)}`);
   const port = m[2] ?? '2375';

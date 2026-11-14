@@ -65,12 +65,12 @@ describe('tcpFetch rewrites the internal docker host onto the configured endpoin
   );
 });
 
-describe('fetchForDockerHost maps one DOCKER_HOST to a TCP transport', () => {
+describe('fetchForDockerHost maps one DOCKER_HOST to a transport', () => {
   test('undefined keeps the default unix-socket transport', () => {
     expect(typeof fetchForDockerHost(undefined)).toBe('function');
   });
 
-  test('the resolved transport rewrites onto the mapped base with the default port', async () => {
+  test('the resolved tcp transport rewrites onto the mapped base with the default port', async () => {
     // fetchForDockerHost builds its transport over plain fetch; the mapping it
     // performs is `tcp://host[:port]` -> `http://host:2375`, so assert it by
     // feeding the same mapping through an injectable tcpFetch.
@@ -81,7 +81,12 @@ describe('fetchForDockerHost maps one DOCKER_HOST to a TCP transport', () => {
     expect(fetchForDockerHost('tcp://socket-proxy')).toBeDefined();
   });
 
-  test.each(['unix:///var/run/docker.sock', 'http://socket-proxy:2375', 'tcp://', 'tcp://-bad-', ''])(
+  test('a pipe:// host maps onto the named-pipe transport', () => {
+    const tf = fetchForDockerHost('pipe://\\\\.\\pipe\\docker_engine');
+    expect(typeof tf).toBe('function');
+  });
+
+  test.each(['unix:///var/run/docker.sock', 'http://socket-proxy:2375', 'tcp://', 'tcp://-bad-', 'pipe://', ''])(
     'an unsupported DOCKER_HOST is refused: %p',
     (host) => {
       expect(() => fetchForDockerHost(host)).toThrow('invalid DOCKER_HOST');

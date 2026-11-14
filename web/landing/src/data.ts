@@ -14,18 +14,18 @@ export const HOW_STEPS: readonly HowStep[] = [
   {
     name: 'Describe',
     title: 'First, describe the traffic',
-    text: 'Write what you expect in plain words: who arrives, when, and what they do. The AI planner turns it into a staged k6 plan.',
+    text: 'Write what you expect in plain words: who arrives, when, and what they do. For your own verified site, Macro auto-discovers safe routes before the AI drafts a staged k6 plan.',
     img: '/landing/img/ui-describe.png',
-    width: 1016,
-    height: 600,
-    alt: "Macro's planner: a text box for describing the expected traffic, three example prompts and the demo target.",
+    width: 956,
+    height: 548,
+    alt: "Macro's planner: a text box for describing the expected traffic, three example prompts, and the Demo shop / My site target selector.",
   },
   {
     name: 'Check',
     title: 'Then the gate checks it',
     text: 'Fixed code checks the target, the routes, the users and the duration. A rejected plan has no approve button, and nothing is sent.',
     img: '/landing/img/ui-gate.png',
-    width: 1016,
+    width: 742,
     height: 840,
     alt: 'A plan aimed at another website, rejected by the policy gate with rule 4.2 on the target field and 0 requests sent.',
   },
@@ -34,8 +34,8 @@ export const HOW_STEPS: readonly HowStep[] = [
     title: 'Each stage runs sandboxed',
     text: 'Stages of 25, 50, 100 and 200 users run in fresh gVisor sandboxes. After each one, the supervisor decides whether to go on.',
     img: '/landing/img/ui-run.png',
-    width: 1018,
-    height: 720,
+    width: 1156,
+    height: 785,
     alt: 'A running test: stage 1 of 4 at 25 users, with stages 2 to 4 pending and a Stop run button.',
   },
   {
@@ -43,8 +43,8 @@ export const HOW_STEPS: readonly HowStep[] = [
     title: 'Finally, read the report',
     text: 'Safe capacity, breaking point and the first route to slow down, all from measured numbers. The AI explanation sits in its own section.',
     img: '/landing/img/ui-report.png',
-    width: 1040,
-    height: 890,
+    width: 1146,
+    height: 880,
     alt: 'The capacity report: safe capacity 200 users, breaking point not reached, first degraded route store_home, and a p95 chart.',
   },
 ];
@@ -154,11 +154,11 @@ export const PLAN_ROWS: readonly { label: string; key: keyof Pick<Plan, 'sites' 
 export const FAQ: readonly { q: string; a: string }[] = [
   {
     q: 'Can Macro test my own site today?',
-    a: 'Not yet. The demo can only reach one demo shop. Your own sites need domain verification with a DNS TXT record, which is the next thing being built. Join the waitlist to hear when it ships.',
+    a: 'Yes. Sign in with GitHub or an email link, verify your HTTPS site with a DNS TXT record (or a /.well-known/macro-site-verification file), and Macro will auto-discover safe routes and run private load tests against it. The public demo shop still works signed out.',
   },
   {
     q: 'What stops someone using it as a DDoS tool?',
-    a: 'The target must match a verified site exactly, and the policy gate caps users and duration in code. The sandbox network has no route out except a proxy that allows HTTPS to that one host.',
+    a: 'The target must match a verified site (or the demo shop) exactly, and the policy gate caps users and duration in code. The sandbox network has no route out except a proxy that allows HTTPS to that one host, and concurrent runs queue FIFO.',
   },
   {
     q: 'What does the AI decide, and what does code decide?',
@@ -170,7 +170,7 @@ export const FAQ: readonly { q: string; a: string }[] = [
   },
   {
     q: 'Is Macro free?',
-    a: 'Yes, for now. The live demo costs nothing, and the code is MIT-licensed, so you can run your own copy and pay only for your server and Vultr inference. One run costs about 2 cents on Vultr.',
+    a: 'Yes, for now. The hosted app costs nothing during early access, and the code is MIT-licensed, so you can run your own copy and pay only for your server and Vultr inference. One run costs about 2 cents on Vultr.',
   },
   {
     q: 'What runs inside the sandbox?',

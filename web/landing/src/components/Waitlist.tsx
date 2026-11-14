@@ -8,7 +8,7 @@ type State =
   | { kind: 'done' }
   | { kind: 'error'; message: string };
 
-const IDLE_NOTE = 'One email when you can verify and test your own site. Nothing else.';
+const IDLE_NOTE = 'One email if paid plans with higher user and run limits launch. Nothing else.';
 const EMAIL_RE = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
 
 let siteKeyPromise: Promise<string> | null = null;
@@ -72,7 +72,7 @@ export function Waitlist() {
 
   const note =
     state.kind === 'done'
-      ? "You're on the list. We'll email you once, when you can test your own site."
+      ? "You're on the list. We'll email you once if paid plans launch."
       : state.kind === 'error'
         ? state.message
         : state.kind === 'sending'
@@ -101,7 +101,7 @@ export function Waitlist() {
               onChange={(e) => setEmail(e.target.value)}
             />{' '}
             to the{' '}
-            <button type="submit" aria-label="Join the waitlist" disabled={state.kind === 'sending'}>
+            <button type="submit" disabled={state.kind === 'sending'}>
               waitlist
             </button>
           </h2>

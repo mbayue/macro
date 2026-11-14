@@ -45,7 +45,22 @@ export function HowItWorks() {
         <p>{s.text}</p>
       </div>
       <div className="how__shot">
-        <img src={s.img} width={s.width} height={s.height} alt={s.alt} />
+        <div className="how__frame">
+          <div className="how__chrome" aria-hidden="true">
+            <span className="how__dots">
+              <i />
+              <i />
+              <i />
+            </span>
+            <span className="how__route">macro.my.id/app</span>
+            <span className="how__step-tag">
+              0{shown + 1} / 0{HOW_STEPS.length} · {s.name}
+            </span>
+          </div>
+          <div className="how__viewport">
+            <img src={s.img} width={s.width} height={s.height} alt={s.alt} />
+          </div>
+        </div>
       </div>
       <div className="how__control">
         <label htmlFor="how-range" className="visually-hidden">

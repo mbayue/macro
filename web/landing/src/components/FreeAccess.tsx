@@ -4,9 +4,9 @@
  */
 const OPTIONS = [
   {
-    name: 'Live demo',
-    lead: 'Plan, check and run load tests against our demo shop in the browser.',
-    facts: ['No account, no card', 'Up to 500 virtual users per stage', 'Containment probe included'],
+    name: 'Hosted early access',
+    lead: 'Plan, check, and run load tests against your own verified site privately or on the public demo shop.',
+    facts: ['Sign in for own-site testing (or try the demo signed out)', 'Up to 500 virtual users per stage', 'Containment probe and FIFO run queue included'],
     action: { label: 'Try the live demo', href: '/app/' },
     accent: true,
   },
@@ -27,7 +27,7 @@ export function FreeAccess() {
           Free while Macro is in early access
         </h2>
         <p data-reveal data-i="1">
-          There are no paid plans yet. If hosted plans for testing your own sites come later, people on the waitlist hear first.
+          Hosted own-site testing and the demo shop are free in early access. People on the waitlist hear first if paid tiers launch later.
         </p>
       </div>
       <div className="free__grid">

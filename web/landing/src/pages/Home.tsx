@@ -149,8 +149,8 @@ export function Home() {
               <div className="tile tile--shot" data-reveal data-i="1">
                 <img
                   src="/landing/img/ui-probe.png"
-                  width={1016}
-                  height={548}
+                  width={742}
+                  height={464}
                   loading="lazy"
                   alt="Macro's probe result: 5 of 5 actions contained, with a table of the five attempts each marked contained."
                 />

@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test';
+import { isAbsolute } from 'node:path';
 import { DEFAULTS, K6_IMAGE_DEFAULT, parseConfig, parseHttpsOrigin, redactedConfig } from '../src/config.ts';
+import { absoluteDataDir } from '../src/config.ts';
 import type { Config, ConfigResult } from '../src/config.ts';
 
 // Synthetic values only: parseConfig takes an explicit object and never touches process.env.
@@ -307,6 +309,22 @@ describe('optional auth block', () => {
     for (const secret of ['session-secret-aaaa', 're_test_bbbb', 'gh-secret-dddd']) {
       expect(text).not.toContain(secret);
     }
+  });
+});
+
+describe('absoluteDataDir', () => {
+  test('a relative DATA_DIR resolves to an absolute path against the working directory', () => {
+    // Assert the invariant (absolute, pointing at the dir) rather than the exact
+    // string: path joining differs between win32 and POSIX.
+    for (const relative of ['./data', 'data']) {
+      const resolved = absoluteDataDir(relative, '/repo');
+      expect(isAbsolute(resolved)).toBe(true);
+      expect(resolved.endsWith('data')).toBe(true);
+    }
+  });
+
+  test('an absolute DATA_DIR is kept as written', () => {
+    expect(absoluteDataDir('/var/lib/macro', '/repo')).toBe('/var/lib/macro');
   });
 });
 

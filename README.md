@@ -150,15 +150,14 @@ The landing site and the planner app are React + Vite in `web/landing/`. Landing
 
 ### Local development on Windows
 
-Bun cannot open Docker Desktop's named pipe with its `unix` fetch option, so point `DOCKER_HOST` at it with the `pipe://` scheme, and give `DATA_DIR` an **absolute** path — Docker bind mounts of a relative path fail:
+Bun cannot open Docker Desktop's named pipe with its `unix` fetch option, so point `DOCKER_HOST` at it with the `pipe://` scheme:
 
 ```bash
 set DOCKER_HOST=pipe://\\.\pipe\docker_engine
-set DATA_DIR=C:\absolute\path\to\macro\data
 bun run dev
 ```
 
-With both set, runs work locally on `runc`; `bun run test:vm` uses the same pipe on its own. The `test:vm` suite skips whenever these are unset.
+With that set, runs work locally on `runc` (a relative `DATA_DIR` is resolved to an absolute path at startup); `bun run test:vm` uses the same pipe on its own. The `test:vm` suite skips whenever these are unset.
 
 ### Waitlist
 

@@ -1,6 +1,8 @@
 // Startup configuration. `parseConfig` is pure; `loadConfigOrExit` is the only
 // place that reads `process.env`.
 
+import { isAbsolute, join } from 'node:path';
+
 // Pinned digest of grafana/k6 (k6 v2.3.0, linux/amd64), verified on the macro VM under runsc.
 export const K6_IMAGE_DEFAULT = 'grafana/k6@sha256:3e4186aea62e11a45560bfc51e19eeafe82fc07ce069c78aff44b7ff893d9a5e';
 
@@ -311,10 +313,18 @@ export function redactedConfig(config: Config): unknown {
   };
 }
 
+/**
+ * Docker bind mounts use host paths, so a relative DATA_DIR cannot work; resolve
+ * one against `cwd` (the compose deploy's /var/lib/macro is already absolute).
+ */
+export function absoluteDataDir(dataDir: string, cwd: string = process.cwd()): string {
+  return isAbsolute(dataDir) ? dataDir : join(cwd, dataDir);
+}
+
 /** Reads `process.env` once. On any error prints each (naming the setting, never a secret value) and exits 1. */
 export function loadConfigOrExit(): Config {
   const result = parseConfig(process.env);
-  if (result.ok) return result.config;
+  if (result.ok) return { ...result.config, dataDir: absoluteDataDir(result.config.dataDir) };
   for (const e of result.errors) {
     console.error(`config error: ${e.setting} ${e.reason}`);
   }

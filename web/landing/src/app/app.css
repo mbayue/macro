@@ -1126,7 +1126,9 @@ a { text-underline-offset: 0.2em; }
 
   /* Tables are sized for a scrolling screen; on paper they must fit the page
    * width instead of clipping their right-hand columns (the Stages table lost
-   * p99 and Verdict in the first print). */
+   * p99 and Verdict in the first print), and stay whole on one page so a header
+   * is never orphaned at a page bottom with its rows on the next (the doubled
+   * "Model calls" header). A table taller than a full page still breaks. */
   .table-wrap { overflow: visible; }
   .table,
   .table--stages,
@@ -1137,6 +1139,7 @@ a { text-underline-offset: 0.2em; }
     min-width: 0;
     width: 100%;
     font-size: 9pt;
+    break-inside: avoid-page;
   }
   .table th,
   .table td {

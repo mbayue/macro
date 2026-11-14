@@ -11,6 +11,7 @@ import type {
   ApiErrorCode,
   ApproveRequest,
   ConfigResponse,
+  DemoTrendsResponse,
   DiscoverRequest,
   DiscoverResponse,
   GateDemoRequest,
@@ -200,4 +201,8 @@ export function postGateDemo(
   signal?: AbortSignal,
 ): Promise<ApiResult<GateDemoResponse>> {
   return request<GateDemoResponse>('POST', '/api/gate-demo', body, signal);
+}
+
+export function getDemoTrends(signal?: AbortSignal): Promise<ApiResult<DemoTrendsResponse>> {
+  return request<DemoTrendsResponse>('GET', '/api/trends/demo', undefined, signal);
 }

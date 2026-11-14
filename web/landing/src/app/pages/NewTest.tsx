@@ -9,7 +9,7 @@
  */
 import { useEffect, useId, useRef, useState } from 'react';
 import type { TestPlan } from '../../../../../src/types.ts';
-import type { AccountDraft, PlanResponse } from '../../../../../src/api-types.ts';
+import type { AccountDraft, DemoTrendsResponse, PlanResponse } from '../../../../../src/api-types.ts';
 import {
   clearReviewState,
   getDraft,
@@ -20,7 +20,7 @@ import {
   stashReviewState,
   takeLocalDraft,
 } from '../lib/auth-api.ts';
-import { type ApiError, type ApiResult, postApprove, postPlan, VERIFICATION_ERROR } from '../lib/api.ts';
+import { type ApiError, type ApiResult, getDemoTrends, postApprove, postPlan, VERIFICATION_ERROR } from '../lib/api.ts';
 import { isActionPath } from '../../../../../src/plan/discover.ts';
 import { journeyGroups, journeyLabel, type JourneyRow } from '../../../../../src/plan/journey-edit.ts';
 import { countCodePoints } from '../lib/describe.ts';
@@ -73,8 +73,17 @@ export function NewTest() {
   const alive = useRef(true);
   const draftHydrated = useRef(false);
   const draftTurnstile = useTurnstile();
+  const [demoTrends, setDemoTrends] = useState<DemoTrendsResponse | null>(null);
 
   useEffect(() => () => void (alive.current = false), []);
+
+  useEffect(() => {
+    const abort = new AbortController();
+    void getDemoTrends(abort.signal).then((res) => {
+      if (!abort.signal.aborted && res.ok) setDemoTrends(res.data);
+    });
+    return () => abort.abort();
+  }, []);
 
   useEffect(() => {
     const ownerUserId = me?.user.id ?? null;
@@ -544,7 +553,29 @@ export function NewTest() {
               <GateRules folded targetOrigin={activeOrigin} />
             </>
           ) : (
-            <GateRules targetOrigin={activeOrigin} />
+            <>
+              <GateRules targetOrigin={activeOrigin} />
+              {targetMode === 'demo' && demoTrends?.available && demoTrends.routes.length > 0 ? (
+                <Panel title="30-day demo baseline">
+                  <p className="muted">Observed across public demo runs over the last 30 days.</p>
+                  <KeyValues
+                    items={demoTrends.routes.slice(0, 6).map((r) => {
+                      const errPct = typeof r.errorRatePct === 'number' ? r.errorRatePct.toFixed(1) : '0.0';
+                      const health = r.status ?? 'steady';
+                      return [
+                        r.route,
+                        <span>
+                          {r.avgMs !== null ? `${Math.round(r.avgMs)} ms` : 'n/a'} · {errPct}% err{' '}
+                          <Badge tone={health === 'degraded' ? 'bad' : health === 'spiky' ? 'warn' : 'ok'}>
+                            {health}
+                          </Badge>
+                        </span>,
+                      ];
+                    })}
+                  />
+                </Panel>
+              ) : null}
+            </>
           )}
         </aside>
       </div>

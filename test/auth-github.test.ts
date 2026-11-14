@@ -92,6 +92,46 @@ describe('GitHub OAuth', () => {
     expect(store.findUserByEmail('octo@example.com')).not.toBeNull();
   });
 
+  test('a GitHub sign-in stamps joined_at on an invited waitlist row', async () => {
+    const fetchImpl = asFetch(async (url) => {
+      const u = String(url);
+      if (u.includes('access_token')) {
+        return new Response(JSON.stringify({ access_token: 'tok' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (u.endsWith('/user')) {
+        return new Response(JSON.stringify({ id: 42, login: 'octo' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (u.endsWith('/user/emails')) {
+        return new Response(JSON.stringify([{ email: 'octo@example.com', primary: true, verified: true }]), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      return new Response('no', { status: 404 });
+    });
+    const { app, store } = makeApp(fetchImpl);
+    store.addWaitlistEmail('octo@example.com', Date.UTC(2026, 0, 14));
+    store.markWaitlistInvited('octo@example.com', Date.UTC(2026, 0, 14, 23));
+    const start = await app.fetch(new Request('http://macro.test/api/auth/github/start', { redirect: 'manual' }));
+    const stateCookie = (start.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
+    const state = new URL(start.headers.get('location') ?? '').searchParams.get('state') ?? '';
+    const cb = await app.fetch(
+      new Request(`http://macro.test/api/auth/github/callback?code=abc&state=${encodeURIComponent(state)}`, {
+        headers: { cookie: stateCookie },
+        redirect: 'manual',
+      }),
+    );
+    expect(cb.status).toBe(303);
+    const row = store.getWaitlist('octo@example.com');
+    expect(row?.joinedAt).toBe(Date.UTC(2026, 0, 15, 12, 0, 0));
+  });
+
   test('no usable email creates no user', async () => {
     const fetchImpl = asFetch(async (url) => {
       const u = String(url);

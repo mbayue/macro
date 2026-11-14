@@ -150,12 +150,16 @@ The landing site and the planner app are React + Vite in `web/landing/`. Landing
 
 ### Waitlist
 
-`POST /api/waitlist` stores an email (normalised, once) after a Turnstile check, with at most 5 sign-ups per IP per hour. Only the email and the sign-up time are stored. On the VM:
+`POST /api/waitlist` stores an email (normalised, once) after a Turnstile check, with at most 5 sign-ups per IP per hour. The row keeps the email, the sign-up time, and, after an invite, the invite and first-join times. On the VM:
 
 ```bash
-docker exec macro-api bun src/admin/waitlist.ts list            # CSV
-docker exec macro-api bun src/admin/waitlist.ts remove <email>  # deletion request
+docker exec macro-api bun src/admin/waitlist.ts list              # CSV: email, signed up, invited, joined
+docker exec macro-api bun src/admin/waitlist.ts invite <email>    # one invite (--force re-sends)
+docker exec macro-api bun src/admin/waitlist.ts invite --all      # every not-yet-invited address, 200 ms apart
+docker exec macro-api bun src/admin/waitlist.ts remove <email>    # deletion request
 ```
+
+Invites go through Resend with the same sender as the sign-in emails and need `RESEND_API_KEY` and `RESEND_FROM` (already set when accounts are on). A failed send records nothing, so re-running retries exactly the failures. The first sign-in from an invited address stamps the join time, which is what turns `list` into the funnel.
 
 ## Limits
 

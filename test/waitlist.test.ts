@@ -76,7 +76,9 @@ describe('POST /api/waitlist', () => {
     const again = await h.post({ email: 'ana@shop.example.com ', turnstileToken: 't' });
     expect(first).toEqual({ status: 200, body: { ok: true } });
     expect(again).toEqual(first);
-    expect(h.store.listWaitlist()).toEqual([{ email: 'ana@shop.example.com', createdAt: NOW }]);
+    expect(h.store.listWaitlist()).toEqual([
+      { email: 'ana@shop.example.com', createdAt: NOW, invitedAt: null, joinedAt: null },
+    ]);
   });
 
   test('an invalid address is refused before Turnstile and stores nothing', async () => {
@@ -132,5 +134,140 @@ describe('POST /api/waitlist', () => {
     expect(h.store.removeWaitlistEmail('a@shop.example.com')).toBe(true);
     expect(h.store.removeWaitlistEmail('a@shop.example.com')).toBe(false);
     expect(h.store.listWaitlist().map((r) => r.email)).toEqual(['b@shop.example.com']);
+  });
+});
+
+describe('waitlist join tracking', () => {
+  function authHarness(): {
+    store: Store;
+    app: App;
+    sent: { to: string; url: string }[];
+    clock: { now: number };
+  } {
+    const store = new Store(':memory:');
+    const sent: { to: string; url: string }[] = [];
+    const clock = { now: NOW };
+    const config = testConfig({
+      SESSION_SECRET: 'session-secret-test',
+      PUBLIC_BASE_URL: 'https://macro.test',
+      RESEND_API_KEY: 're_test',
+      RESEND_FROM: 'Macro <hello@macro.test>',
+      GITHUB_CLIENT_ID: 'gh-id',
+      GITHUB_CLIENT_SECRET: 'gh-secret',
+      GITHUB_REDIRECT_URI: 'https://macro.test/api/auth/github/callback',
+    });
+    const controller: RunStarter = { start: () => {}, stop: () => false, isRunning: () => false };
+    const app = createApp({
+      store,
+      config,
+      verifyTurnstile: () => Promise.resolve({ ok: true }),
+      client: new InferenceClient({
+        config: config.inference,
+        store,
+        fetchImpl: asFetch(() => Promise.reject(new Error('no network'))),
+      }),
+      runController: controller,
+      probeController: controller,
+      now: () => clock.now,
+      log: () => {},
+      mailer: {
+        sendMagicLink: async (input) => {
+          sent.push(input);
+          return { ok: true };
+        },
+      },
+    });
+    return { store, app, sent, clock };
+  }
+
+  /** Requests a magic link and consumes it, creating the session. Steps past the 60 s send cooldown. */
+  async function signIn(h: ReturnType<typeof authHarness>, email: string): Promise<void> {
+    h.clock.now += 61_000;
+    const post = await h.app.fetch(
+      new Request('http://macro.test/api/auth/magic-link', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email }),
+      }),
+    );
+    expect(post.status).toBe(200);
+    const url = new URL(h.sent[h.sent.length - 1]!.url);
+    const consume = await h.app.fetch(new Request(url.toString(), { method: 'GET', redirect: 'manual' }));
+    expect(consume.status).toBe(303);
+  }
+
+  test('an invited address is stamped joined at its first sign-in, and only once', async () => {
+    const h = authHarness();
+    h.store.addWaitlistEmail('ana@shop.example.com', NOW);
+    h.store.markWaitlistInvited('ana@shop.example.com', NOW + 5);
+    await signIn(h, 'ana@shop.example.com');
+    expect(h.store.getWaitlist('ana@shop.example.com')?.joinedAt).toBe(NOW + 61_000);
+    await signIn(h, 'ana@shop.example.com');
+    expect(h.store.getWaitlist('ana@shop.example.com')?.joinedAt).toBe(NOW + 61_000);
+  });
+
+  test('a sign-in before any invite does not touch the row', async () => {
+    const h = authHarness();
+    h.store.addWaitlistEmail('late@shop.example.com', NOW);
+    await signIn(h, 'late@shop.example.com');
+    const row = h.store.getWaitlist('late@shop.example.com');
+    expect(row?.joinedAt).toBeNull();
+    expect(row?.invitedAt).toBeNull();
+    // The invite then works, and the next sign-in counts.
+    h.store.markWaitlistInvited('late@shop.example.com', NOW + 50);
+    await signIn(h, 'late@shop.example.com');
+    expect(h.store.getWaitlist('late@shop.example.com')?.joinedAt).toBe(NOW + 122_000);
+  });
+});
+
+describe('waitlist activation times', () => {
+  test('an uninvited row reads with null times', () => {
+    const h = makeHarness();
+    h.store.addWaitlistEmail('ana@shop.example.com', NOW);
+    expect(h.store.getWaitlist('ana@shop.example.com')).toEqual({
+      email: 'ana@shop.example.com',
+      createdAt: NOW,
+      invitedAt: null,
+      joinedAt: null,
+    });
+    expect(h.store.getWaitlist('nobody@shop.example.com')).toBeNull();
+  });
+
+  test('markWaitlistInvited sets the time and markWaitlistJoined stamps an invited row once', () => {
+    const h = makeHarness();
+    h.store.addWaitlistEmail('ana@shop.example.com', NOW);
+    h.store.markWaitlistInvited('ana@shop.example.com', NOW + 1000);
+    expect(h.store.getWaitlist('ana@shop.example.com')?.invitedAt).toBe(NOW + 1000);
+    expect(h.store.markWaitlistJoined('ana@shop.example.com', NOW + 2000)).toBe(true);
+    expect(h.store.getWaitlist('ana@shop.example.com')?.joinedAt).toBe(NOW + 2000);
+    expect(h.store.markWaitlistJoined('ana@shop.example.com', NOW + 3000)).toBe(false);
+    expect(h.store.getWaitlist('ana@shop.example.com')?.joinedAt).toBe(NOW + 2000);
+  });
+
+  test('markWaitlistJoined refuses unknown and uninvited rows', () => {
+    const h = makeHarness();
+    h.store.addWaitlistEmail('late@shop.example.com', NOW);
+    expect(h.store.markWaitlistJoined('late@shop.example.com', NOW + 1)).toBe(false);
+    expect(h.store.getWaitlist('late@shop.example.com')?.joinedAt).toBeNull();
+    expect(h.store.markWaitlistJoined('nobody@shop.example.com', NOW + 1)).toBe(false);
+  });
+
+  test('markWaitlistInvited overwrites the time (the force re-send case)', () => {
+    const h = makeHarness();
+    h.store.addWaitlistEmail('ana@shop.example.com', NOW);
+    h.store.markWaitlistInvited('ana@shop.example.com', NOW + 1);
+    h.store.markWaitlistInvited('ana@shop.example.com', NOW + 2);
+    expect(h.store.getWaitlist('ana@shop.example.com')?.invitedAt).toBe(NOW + 2);
+  });
+
+  test('listWaitlist orders oldest first and carries both times', () => {
+    const h = makeHarness();
+    h.store.addWaitlistEmail('b@shop.example.com', NOW + 10);
+    h.store.addWaitlistEmail('a@shop.example.com', NOW);
+    h.store.markWaitlistInvited('a@shop.example.com', NOW + 5);
+    expect(h.store.listWaitlist()).toEqual([
+      { email: 'a@shop.example.com', createdAt: NOW, invitedAt: NOW + 5, joinedAt: null },
+      { email: 'b@shop.example.com', createdAt: NOW + 10, invitedAt: null, joinedAt: null },
+    ]);
   });
 });

@@ -1588,6 +1588,7 @@ export function createApp(deps: AppDeps): App {
     store.linkIdentity(user.id, 'email', identity.email);
     store.setUserGithubLogin(user.id, identity.login);
     const session = store.createSession(user.id, at, SESSION_TTL_MS);
+    store.markWaitlistJoined(identity.email, at);
     // Clear oauth state and set session: use two Set-Cookie via Headers.
     const headers = new Headers({
       Location: '/app/#/',
@@ -1616,6 +1617,7 @@ export function createApp(deps: AppDeps): App {
     }
     store.linkIdentity(user.id, 'email', consumed.email);
     const session = store.createSession(user.id, at, SESSION_TTL_MS);
+    store.markWaitlistJoined(consumed.email, at);
     const location = safeReturnTo(url.searchParams.get('returnTo'));
     return new Response(null, {
       status: 303,

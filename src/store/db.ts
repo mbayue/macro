@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS drafts (
   id TEXT PRIMARY KEY, traffic_event TEXT NOT NULL, created_at INTEGER NOT NULL,
   origin TEXT, routes_json TEXT, selected_ids_json TEXT
 );
-CREATE TABLE IF NOT EXISTS waitlist (email TEXT PRIMARY KEY, created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS waitlist (email TEXT PRIMARY KEY, created_at INTEGER NOT NULL, invited_at INTEGER, joined_at INTEGER);
 CREATE TABLE IF NOT EXISTS plans (hash TEXT PRIMARY KEY, text TEXT NOT NULL, approved_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS plan_targets (
   plan_hash TEXT PRIMARY KEY REFERENCES plans(hash),
@@ -512,6 +512,7 @@ export class Store {
     this.db.exec(SCHEMA);
     this.migrateRunsOwnership();
     this.migrateDraftDiscovery();
+    this.migrateWaitlistActivation();
   }
 
   /** Add ownership columns on DBs created before account privacy. */
@@ -540,6 +541,16 @@ export class Store {
     if (!cols.includes('origin')) this.db.exec('ALTER TABLE drafts ADD COLUMN origin TEXT');
     if (!cols.includes('routes_json')) this.db.exec('ALTER TABLE drafts ADD COLUMN routes_json TEXT');
     if (!cols.includes('selected_ids_json')) this.db.exec('ALTER TABLE drafts ADD COLUMN selected_ids_json TEXT');
+  }
+
+  /** Add invite-tracking columns on waitlist rows created before activation. */
+  private migrateWaitlistActivation(): void {
+    const cols = this.db
+      .prepare<{ name: string }, []>('PRAGMA table_info(waitlist)')
+      .all()
+      .map((c) => c.name);
+    if (!cols.includes('invited_at')) this.db.exec('ALTER TABLE waitlist ADD COLUMN invited_at INTEGER');
+    if (!cols.includes('joined_at')) this.db.exec('ALTER TABLE waitlist ADD COLUMN joined_at INTEGER');
   }
 
   /** Opens `${dataDir}/macro.db`. */
@@ -943,12 +954,41 @@ export class Store {
     return this.db.prepare('INSERT OR IGNORE INTO waitlist (email, created_at) VALUES (?, ?)').run(email, ts).changes > 0;
   }
 
-  /** Every waitlist entry, oldest first. */
-  listWaitlist(): { email: string; createdAt: number }[] {
+  /** Every waitlist entry, oldest first, with the invite funnel times. */
+  listWaitlist(): { email: string; createdAt: number; invitedAt: number | null; joinedAt: number | null }[] {
     return this.db
-      .prepare<{ email: string; created_at: number }, []>('SELECT email, created_at FROM waitlist ORDER BY created_at, email')
+      .prepare<{ email: string; created_at: number; invited_at: number | null; joined_at: number | null }, []>(
+        'SELECT email, created_at, invited_at, joined_at FROM waitlist ORDER BY created_at, email',
+      )
       .all()
-      .map((r) => ({ email: r.email, createdAt: r.created_at }));
+      .map((r) => ({ email: r.email, createdAt: r.created_at, invitedAt: r.invited_at, joinedAt: r.joined_at }));
+  }
+
+  /** One waitlist row, or null. */
+  getWaitlist(email: string): { email: string; createdAt: number; invitedAt: number | null; joinedAt: number | null } | null {
+    const r = this.db
+      .prepare<{ email: string; created_at: number; invited_at: number | null; joined_at: number | null }, [string]>(
+        'SELECT email, created_at, invited_at, joined_at FROM waitlist WHERE email = ?',
+      )
+      .get(email);
+    return r === null ? null : { email: r.email, createdAt: r.created_at, invitedAt: r.invited_at, joinedAt: r.joined_at };
+  }
+
+  /** Marks the invite as sent. Overwrites the time, so a forced re-send moves it. */
+  markWaitlistInvited(email: string, ts: number): void {
+    this.db.prepare('UPDATE waitlist SET invited_at = ? WHERE email = ?').run(ts, email);
+  }
+
+  /**
+   * Stamps the first sign-in after an invite. True only when the row exists, is
+   * invited, and had no joined time yet.
+   */
+  markWaitlistJoined(email: string, ts: number): boolean {
+    return (
+      this.db
+        .prepare('UPDATE waitlist SET joined_at = ? WHERE email = ? AND invited_at IS NOT NULL AND joined_at IS NULL')
+        .run(ts, email).changes > 0
+    );
   }
 
   /** Removes one email (a deletion request). Returns true when a row was deleted. */

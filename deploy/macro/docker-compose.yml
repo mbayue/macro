@@ -25,6 +25,8 @@ services:
     cap_add: [NET_BIND_SERVICE]
     security_opt:
       - no-new-privileges:true
+    networks:
+      - default
     depends_on:
       - macro-api
 
@@ -45,14 +47,15 @@ services:
       IMAGES: "1"
       INFO: "1"
       ALLOW_START: "1"
-      ALLOW_RESTARTS: "1"
       # Non-GET methods, still scoped to the enabled sections above.
       POST: "1"
       PING: "1"
       VERSION: "1"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    # No `ports:` on purpose: only macro-api reaches it, over the Compose network.
+    # No `ports:` on purpose: only macro-api reaches it, over an internal-only network.
+    networks:
+      - socket_net
     security_opt:
       - no-new-privileges:true
     cap_drop: [ALL]
@@ -78,6 +81,10 @@ services:
     expose:
       - "3000"
     init: true
+    cap_drop: [ALL]
+    networks:
+      - default
+      - socket_net
     security_opt:
       - no-new-privileges:true
     # Public resolvers for external lookups (origin TXT verification, outbound
@@ -118,3 +125,7 @@ services:
 volumes:
   caddy_data:
   caddy_config:
+
+networks:
+  socket_net:
+    internal: true

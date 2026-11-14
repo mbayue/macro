@@ -10,6 +10,9 @@ dist/
 # Runtime data
 data/
 *.sqlite
+*.db
+*.db-wal
+*.db-shm
 *.log
 
 .impeccable

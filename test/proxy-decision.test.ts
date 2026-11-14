@@ -91,6 +91,9 @@ function refBlocked(a: Addr, extra: readonly Addr[]): boolean {
   if (inPrefix6(a.n, groupsToBig([0xfc00, 0, 0, 0, 0, 0, 0, 0]), 7)) return true; // fc00::/7
   if (inPrefix6(a.n, groupsToBig([0xfe80, 0, 0, 0, 0, 0, 0, 0]), 10)) return true; // fe80::/10
   if (inPrefix6(a.n, groupsToBig([0xff00, 0, 0, 0, 0, 0, 0, 0]), 8)) return true; // ff00::/8
+  if (inPrefix6(a.n, groupsToBig([0x2002, 0, 0, 0, 0, 0, 0, 0]), 16)) return true; // 2002::/16 (6to4)
+  if (inPrefix6(a.n, groupsToBig([0x0064, 0xff9b, 0x0001, 0, 0, 0, 0, 0]), 48)) return true; // 64:ff9b:1::/48 (local NAT64)
+  if (inPrefix6(a.n, groupsToBig([0x0100, 0, 0, 0, 0, 0, 0, 0]), 64)) return true; // 100::/64 (discard)
   return false;
 }
 

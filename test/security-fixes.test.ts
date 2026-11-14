@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'bun:test';
+import { isBlockedIp } from '../proxy/ip.ts';
 import { InferenceClient } from '../src/agents/inference.ts';
 import type { ResendMailer } from '../src/auth/magic-link.ts';
+import { checkWellKnown } from '../src/auth/verify-origin.ts';
+import { isDenylistedHost } from '../src/plan/policy.ts';
 import { createApp } from '../src/server.ts';
 import type { RunStarter } from '../src/server.ts';
 import { Store } from '../src/store/db.ts';
@@ -109,5 +112,25 @@ describe('security fixes regression', () => {
     await r2.body?.cancel();
     await r4.body?.cancel();
     store.close();
+  });
+
+  test('isBlockedIp blocks 2002::/16, 64:ff9b:1::/48, and 100::/64', () => {
+    expect(isBlockedIp('2002:c000:0204::1')).toBe(true);
+    expect(isBlockedIp('64:ff9b:1::1')).toBe(true);
+    expect(isBlockedIp('100::1')).toBe(true);
+  });
+
+  test('isDenylistedHost blocks localhost, .local, and .internal while allowing yue.macro.my.id', () => {
+    expect(isDenylistedHost('localhost')).toBe(true);
+    expect(isDenylistedHost('sub.localhost')).toBe(true);
+    expect(isDenylistedHost('printer.local')).toBe(true);
+    expect(isDenylistedHost('metadata.internal')).toBe(true);
+    expect(isDenylistedHost('yue.macro.my.id')).toBe(false);
+  });
+
+  test('checkWellKnown rejects oversized responses without reading unbounded bodies', async () => {
+    const big = 'a'.repeat(5000);
+    const ok = await checkWellKnown('https://example.com', 'tok', async () => new Response(big, { status: 200 }));
+    expect(ok).toBe(false);
   });
 });

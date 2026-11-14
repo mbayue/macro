@@ -36,6 +36,9 @@ export function isDenylistedHost(hostname: string): boolean {
   if (host.endsWith('.') && !host.endsWith(']')) host = host.slice(0, -1);
   if (host.startsWith('[')) return true; // bracketed IPv6 literal
   if (IPV4_LITERAL.test(host)) return true;
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal')) {
+    return true;
+  }
   if (host === 'macro.my.id') return true;
   return host === 'yueshop.xyz' || host.endsWith('.yueshop.xyz');
 }

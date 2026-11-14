@@ -166,6 +166,9 @@ export function isBlockedIp(address: string, extraBlocked: readonly string[] = [
   if ((first & 0xfe00) === 0xfc00) return true; // fc00::/7
   if ((first & 0xffc0) === 0xfe80) return true; // fe80::/10
   if ((first & 0xff00) === 0xff00) return true; // ff00::/8
+  if (first === 0x2002) return true; // 2002::/16 (6to4)
+  if (first === 0x0064 && g(groups, 1) === 0xff9b && g(groups, 2) === 0x0001) return true; // 64:ff9b:1::/48 (local NAT64)
+  if (first === 0x0100 && g(groups, 1) === 0 && g(groups, 2) === 0 && g(groups, 3) === 0) return true; // 100::/64 (discard)
   return false;
 }
 

@@ -96,18 +96,19 @@ for host in "$WEB_HOST" "$API_HOST"; do
 done
 
 # --- 2. Certificates and no Cloudflare (14.2, 14.3) -------------------------
+check_err_file="$(mktemp)"
 for url in "https://${WEB_HOST}/" "https://${API_HOST}/api/v1/health"; do
-  headers="$(curl -sS --fail --max-time 30 -D - -o /dev/null "$url" 2>/tmp/macro-check-err.$$)"
+  headers="$(curl -sS --fail --max-time 30 -D - -o /dev/null "$url" 2>"$check_err_file")"
   rc=$?
   if [ $rc -ne 0 ]; then
-    fail "TLS $url (curl exit $rc: $(tr '\n' ' ' </tmp/macro-check-err.$$ | cut -c1-160))"
+    fail "TLS $url (curl exit $rc: $(tr '\n' ' ' <"$check_err_file" | cut -c1-160))"
   elif printf '%s' "$headers" | grep -qiE '^(cf-ray|server: cloudflare)'; then
     fail "TLS $url is valid but served through Cloudflare"
   else
     pass "TLS $url valid certificate, not Cloudflare"
   fi
 done
-rm -f /tmp/macro-check-err.$$
+rm -f "$check_err_file"
 
 # --- 3. Products (14.6) -----------------------------------------------------
 body="$(curl -sS --fail --max-time 30 "https://${API_HOST}/api/v1/products" 2>/dev/null)"

@@ -204,9 +204,9 @@ function isMissing(e: unknown): boolean {
 }
 
 async function openRegular(path: string): Promise<Awaited<ReturnType<typeof open>> | null> {
-  // O_NOFOLLOW: the Sandbox controls the output directory and must not be able to
-  // point us at another file with a symlink.
-  const flags = fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0);
+  // O_NOFOLLOW + O_NONBLOCK: the Sandbox controls the output directory and must not be able to
+  // point us at a symlink or block us on a FIFO.
+  const flags = fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0) | (fsConstants.O_NONBLOCK ?? 0);
   let handle: Awaited<ReturnType<typeof open>>;
   try {
     handle = await open(path, flags);

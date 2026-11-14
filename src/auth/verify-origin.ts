@@ -102,8 +102,32 @@ export async function checkWellKnown(
       headers: { accept: 'text/plain,*/*' },
     });
     if (res.status !== 200) return false;
-    const body = (await res.text()).trim();
-    return body === token;
+    const reader = res.body?.getReader();
+    let bodyText: string;
+    if (reader) {
+      const chunks: Uint8Array[] = [];
+      let total = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > 4096) {
+          await reader.cancel();
+          return false;
+        }
+        chunks.push(value);
+      }
+      const merged = new Uint8Array(total);
+      let off = 0;
+      for (const c of chunks) {
+        merged.set(c, off);
+        off += c.byteLength;
+      }
+      bodyText = new TextDecoder().decode(merged);
+    } else {
+      bodyText = await res.text();
+    }
+    return bodyText.trim() === token;
   } catch {
     return false;
   }

@@ -2,9 +2,9 @@
 
 **Know your breaking point before your users do.**
 
-Describe the traffic you expect in plain words ("a new banner drops tonight, 500 players open the store, 10% order"). An AI agent drafts a staged load test, fixed code checks it, you approve it, and k6 runs it inside a sandbox that can reach only the demo shop. You get a capacity report: safe capacity, breaking point, and the first route that slowed down.
+Describe the traffic you expect in plain words ("a new banner drops tonight, 500 players open the store, 10% order"). An AI agent drafts a staged load test, fixed code checks it, you approve it, and k6 runs it inside a sandbox that can reach only the demo shop or your verified site. You get a capacity report: safe capacity, breaking point, and the first route that slowed down.
 
-- Website: **https://macro.my.id** · live demo app: **https://macro.my.id/app/** (no sign-in, protected by Cloudflare Turnstile)
+- Website: **https://macro.my.id** · app: **https://macro.my.id/app/** (signed-out demo protected by Cloudflare Turnstile; sign in for private own-site testing)
 
 **The model proposes, code decides.** The AI drafts the plan, advises whether to continue after each stage, and explains the result. The target, limits, k6 script, sandbox settings, stop rules and every number in the report come from fixed code.
 
@@ -73,17 +73,17 @@ One trust boundary to know about: only the `socket-proxy` container mounts the D
    - an allocation of more than 1 GiB of memory
 3. Expected result: all five **contained**. The timeline shows Egress blocked three times, Memory cap hit, then Sandbox removed.
 
-The panel **See the policy gate block a hostile plan** sends three hostile plans (another website, far too much load, an unknown route) through the same gate the approval uses. Each one is rejected with its rule violations, and 0 requests are sent. No model is involved.
+The hero preview (**Drafted plan checked by policy gate**) also demonstrates how the deterministic gate checks plans (**Campaign spike**, **Unverified host**, **Over 500 VUs**) before any request is sent.
 
 ## Try a load test
 
-1. Pick an example such as **Gacha banner launch**, or write your own, then submit.
+1. Pick an example such as **Campaign spike**, or write your own, then submit.
 2. Review the draft plan (stages, journey, stop thresholds) and press **Approve and run**.
 3. Watch the stages run live. A typical 4-stage run (25, 50, 100, 200 VUs) takes about 4.5 minutes.
 4. Read the report: safe capacity, breaking point, first degraded route, a p95 and error-rate chart, per-route tables, a per-second latency chart for each stage ("During the stage"), and the AI explanation.
 5. **Re-run** the same plan and compare two runs side by side.
 
-Example result from the live deployment: all four stages passed and safe capacity was 200 VUs. `store_home` was the first route to slow down, at p95 1,611 ms at 200 VUs (limit 1,500 ms).
+Example result from the live deployment: safe capacity was 100 VUs; at 200 VUs, `store_home` was the first route to slow down, at p95 1,611 ms (limit 1,500 ms).
 
 ## Setup
 
@@ -121,7 +121,7 @@ When auth is configured:
 
 1. Open `/app/#/sign-in` (GitHub OAuth or Resend magic link). GitHub must provide a verified email or Macro refuses the sign-in.
 2. On **New test**, choose **Demo shop** (public, works signed out) or **My site** (requires sign-in and a verified origin).
-3. Verify one HTTPS host. Macro detects nameservers (Cloudflare quick link or the official upstream [Domain Connect template](https://github.com/Domain-Connect/Templates/blob/master/macro.my.id.verify.json)), or manual verification via a DNS TXT record at `_macro-verify.<host>` or a file at `/.well-known/macro-site-verification` containing the issued token. Once verified, Macro automatically discovers client routes from the site's document and scripts to constrain journey planning.
+3. Verify one HTTPS host via a DNS TXT record at `_macro-verify.<host>` or a file at `/.well-known/macro-site-verification` containing the issued token (Domain Connect is implemented behind `DOMAIN_CONNECT_ENABLED = false` in `src/server.ts`). Once verified, Macro automatically discovers client routes from the site's document and scripts to constrain journey planning.
 4. Own-site runs are private to the account; demo runs stay public and can be claimed onto the account from browser recent-runs after sign-in.
 
 Local smoke (auth configured): sign in → verify a throwaway host you control → draft Demo and My site plans → confirm a private own-site report 404s when signed out → sign out lands on New test.
@@ -139,7 +139,7 @@ YUE is a separate, pre-existing project and isn't in this repo. [`deploy/yue-dem
 
 ```bash
 bun install
-bun test             # 539 tests, no Docker needed (the real-container suite skips)
+bun test             # 670 unit/property tests, no Docker needed (13 real-container tests skip)
 bun run check        # tsc --noEmit
 bun run build:web    # the app at /app/ and the prerendered landing site at /, /privacy, /terms
 bun run dev          # the API; serves web/dist
@@ -175,7 +175,7 @@ Invites go through Resend with the same sender as the sign-in emails and need `R
 
 ## Limits
 
-- **Targets are gated.** Signed-out clients only hit the demo allowlist. Signed-in clients may add one verified HTTPS origin (DNS TXT, Domain Connect, or `/.well-known/`). Contested hosts stay with the first verifier until clear or replace.
+- **Targets are gated.** Signed-out clients only hit the demo allowlist. Signed-in clients may add one verified HTTPS origin (DNS TXT or `/.well-known/`). Contested hosts stay with the first verifier until clear or replace.
 - **One load generator** in Singapore with 1 CPU per sandbox. At high VU counts, the generator itself can become the limit.
 - **"First degraded route" is an observation, not a root cause.**
 - **Quotas:** one active run at a time, rolling planning and start limits (per IP when signed out, per account when signed in), a daily start cap, and a 15-minute cap per run.

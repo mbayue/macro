@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Footer, Nav } from '../components/Chrome.tsx';
 
-const UPDATED = '9 November 2026';
+const UPDATED = '14 November 2026';
 const CONTACT = 'hello@macro.my.id';
 
 type Section = { id: string; title: string; body: ReactNode };
@@ -65,10 +65,10 @@ function Page({ title, lead, facts, sections }: { title: string; lead: string; f
 const Mail = () => <a href={`mailto:${CONTACT}`}>{CONTACT}</a>;
 
 const PRIVACY_FACTS: Fact[] = [
-  { term: 'We store', detail: 'Your email and when you joined the waitlist' },
+  { term: 'We store', detail: 'Waitlist email, account info (if signed in), and run data' },
   { term: 'We never', detail: 'Sell it or share it for marketing' },
-  { term: 'Demo runs', detail: 'Open to anyone who has the link' },
-  { term: 'Cookies', detail: 'None of our own' },
+  { term: 'Runs', detail: 'Demo runs are public; own-site runs are private to your account' },
+  { term: 'Cookies', detail: 'Only a session cookie when you sign in' },
   { term: 'To delete', detail: <Mail /> },
 ];
 
@@ -91,8 +91,8 @@ const PRIVACY_SECTIONS: Section[] = [
         <p>
           When you join the waitlist we store your email address and the time you signed up. Nothing else: not your name, and not
           your IP address (it is held in memory for up to an hour, only to limit sign-ups, and is never written down). We use your
-          email only to email you when you can verify and test your own site, plus anything essential about that launch. We never
-          sell it, share it for marketing, or add it to other lists.
+          email only to notify you once if paid plans with higher user and run limits launch, plus anything essential about that
+          change. We never sell it, share it for marketing, or add it to other lists.
         </p>
         <p>
           We keep it until the hosted product launches and for as long as you stay subscribed after that. Ask us at <Mail /> and we
@@ -103,22 +103,30 @@ const PRIVACY_SECTIONS: Section[] = [
   },
   {
     id: 'live-demo',
-    title: 'Using the live demo',
+    title: 'Using the app (demo and accounts)',
     body: (
       <ul>
         <li>
           The traffic descriptions you type, the plans drafted from them and the results of each run are stored in Macro's database.
-          Anyone with a run's link can open its page, so do not put personal data in a traffic description.
+          Demo runs are public (anyone with a run's link can open its page), so do not put personal data in a traffic description.
+        </li>
+        <li>
+          If you sign in (with GitHub or an email magic link), we store your email address, optional GitHub identity, your verified
+          HTTPS origin and verification token, any saved draft text, and your private own-site runs.
+        </li>
+        <li>
+          When you verify and draft a test for your own site, Macro fetches public documents and scripts from that origin to
+          discover safe routes for the planner.
         </li>
         <li>
           Your traffic description and the measured results are sent to Vultr Serverless Inference, which drafts the plan, advises
           between stages and writes the report explanation.
         </li>
         <li>
-          Your IP address is recorded with a timestamp when you draft a plan or start a run, so we can enforce the per-person limits.
-          These records are deleted automatically after 24 hours.
+          Your IP address is recorded with a timestamp when you draft a plan or start a run while signed out, so we can enforce
+          per-person limits. These records are deleted automatically after 24 hours.
         </li>
-        <li>The list of recent runs on the planner page is kept in your own browser (local storage). It is never sent to us.</li>
+        <li>The list of recent runs on the planner page is kept in your own browser (local storage) unless you claim them onto an account.</li>
       </ul>
     ),
   },
@@ -135,6 +143,16 @@ const PRIVACY_SECTIONS: Section[] = [
             <strong>Cloudflare</strong> sits in front of the site for security and delivery, runs Turnstile (the check that you are a
             person, not a bot) on forms, and provides privacy-first page analytics without cookies.
           </li>
+          <li>
+            <strong>Resend</strong> sends sign-in magic links and waitlist emails when you request them.
+          </li>
+          <li>
+            <strong>GitHub</strong> handles OAuth sign-in if you choose to sign in with GitHub.
+          </li>
+          <li>
+            <strong>Tiger Cloud</strong> receives public demo-run per-second metrics when configured; private own-site runs are not
+            sent there.
+          </li>
         </ul>
         <p>Each processes data under its own privacy policy and only to provide its part of the service.</p>
       </>
@@ -145,8 +163,9 @@ const PRIVACY_SECTIONS: Section[] = [
     title: 'Cookies',
     body: (
       <p>
-        Macro sets no cookies of its own and uses no advertising or cross-site tracking. If you switch between light and dark mode,
-        that choice is kept in your browser's local storage and never sent to us.
+        Macro uses no advertising or cross-site tracking cookies. Signed-out browsing sets no cookies of its own; if you sign in,
+        Macro sets an HttpOnly session cookie solely to keep you signed in. If you switch between light and dark mode, that choice
+        is kept in your browser's local storage and never sent to us.
       </p>
     ),
   },
@@ -179,10 +198,10 @@ export function Privacy() {
 }
 
 const TERMS_FACTS: Fact[] = [
-  { term: 'Today', detail: 'A free demo that tests only our own demo shop' },
-  { term: 'Your site', detail: 'Only sites you own, once domain verification launches' },
+  { term: 'Today', detail: 'Free early access: public demo shop + verified own-site testing' },
+  { term: 'Your site', detail: 'Only HTTPS sites you own, verified via DNS TXT or /.well-known/' },
   { term: 'Results', detail: 'Estimates from one run in one region' },
-  { term: 'Warranty', detail: 'None. The demo is provided as it is' },
+  { term: 'Warranty', detail: 'None. The service is provided as it is' },
   { term: 'Questions', detail: <Mail /> },
 ];
 
@@ -192,9 +211,9 @@ const TERMS_SECTIONS: Section[] = [
     title: 'What Macro is today',
     body: (
       <p>
-        Macro is in early access. The live demo is free and can only load-test one demo shop that we run for that purpose. Testing
-        your own site on the hosted service is not available yet. There are no paid plans today; if they come later, their prices
-        will be shown before you can buy one.
+        Macro is in free early access. Anyone can use the live demo against our demo shop without signing in, and signed-in users
+        can verify one HTTPS origin they own to run private load tests against their own site (up to 500 virtual users per stage).
+        There are no paid plans today; if they launch later, prices will be shown before you can buy one.
       </p>
     ),
   },
@@ -223,8 +242,8 @@ const TERMS_SECTIONS: Section[] = [
     title: 'Load tests on your own site',
     body: (
       <p>
-        When testing your own site becomes available, you may only test sites you own or are allowed to test, and you will prove that
-        with domain verification. You are responsible for the load you choose to send.
+        You may only verify and load-test sites you own or are explicitly authorized to test, proved via DNS TXT or{' '}
+        <code>/.well-known/macro-site-verification</code>. You are responsible for the load you approve and send.
       </p>
     ),
   },

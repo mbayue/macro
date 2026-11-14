@@ -1357,6 +1357,7 @@ export function createApp(deps: AppDeps): App {
         const body = store.getReport(r.id)?.body;
         return {
           runId: r.id,
+          kind: r.kind,
           startedAt: r.startedAt,
           status: r.status,
           safeCapacity: headlineValue(body, 'safeCapacity'),
@@ -1967,6 +1968,7 @@ export function createApp(deps: AppDeps): App {
       const body = store.getReport(r.id)?.body;
       return {
         runId: r.id,
+        kind: r.kind,
         startedAt: r.startedAt,
         status: r.status,
         safeCapacity: headlineValue(body, 'safeCapacity'),

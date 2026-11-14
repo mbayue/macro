@@ -48,9 +48,37 @@ export function Shell({
 
   // Refresh the recent list and close the phone menu on every navigation.
   useEffect(() => {
-    setRecent(loadRecentRuns().slice(0, RECENT_IN_RAIL));
     setOpen(false);
-  }, [key]);
+    if (me === null) {
+      setRecent(loadRecentRuns().slice(0, RECENT_IN_RAIL));
+      return;
+    }
+    const abort = new AbortController();
+    void (async () => {
+      try {
+        const res = await fetch('/api/account/runs', { credentials: 'same-origin', signal: abort.signal });
+        if (!res.ok || abort.signal.aborted) {
+          if (!abort.signal.aborted) setRecent(loadRecentRuns().slice(0, RECENT_IN_RAIL));
+          return;
+        }
+        const body = (await res.json()) as {
+          runs: { runId: string; kind?: 'run' | 'probe'; startedAt: number; title?: string }[];
+        };
+        if (abort.signal.aborted) return;
+        setRecent(
+          body.runs.slice(0, RECENT_IN_RAIL).map((r) => ({
+            id: r.runId,
+            kind: r.kind ?? 'run',
+            name: r.title && r.title.trim() !== '' ? r.title : r.kind === 'probe' ? 'Containment probe' : 'Load test',
+            startedAt: r.startedAt,
+          })),
+        );
+      } catch {
+        if (!abort.signal.aborted) setRecent(loadRecentRuns().slice(0, RECENT_IN_RAIL));
+      }
+    })();
+    return () => abort.abort();
+  }, [key, me]);
 
   const item = (href: string, label: ReactNode, active: boolean) => (
     <li key={href}>

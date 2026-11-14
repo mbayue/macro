@@ -29,30 +29,39 @@ export function RecentRunsPage() {
 
   useEffect(() => {
     const abort = new AbortController();
-    void (async () => {
-      if (me !== null) {
-        try {
-          const res = await fetch('/api/account/runs', { credentials: 'same-origin', signal: abort.signal });
-          if (res.ok) {
-            const body = (await res.json()) as {
-              runs: { runId: string; startedAt: number; status: RunStatus; title?: string }[];
-            };
-            setSource('account');
-            setList(
-              body.runs.map((r) => ({
-                id: r.runId,
-                kind: 'run' as const,
-                name: r.title && r.title.trim() !== '' ? r.title : 'Load test',
-                startedAt: r.startedAt,
-              })),
-            );
-            setStatus(Object.fromEntries(body.runs.map((r) => [r.runId, r.status])));
-            return;
-          }
-        } catch {
-          /* fall through to browser list */
+    let timer: number | undefined;
+
+    const loadAccount = async (): Promise<boolean> => {
+      try {
+        const res = await fetch('/api/account/runs', { credentials: 'same-origin', signal: abort.signal });
+        if (!res.ok) return false;
+        const body = (await res.json()) as {
+          runs: { runId: string; kind?: 'run' | 'probe'; startedAt: number; status: RunStatus; title?: string }[];
+        };
+        if (abort.signal.aborted) return true;
+        setSource('account');
+        setList(
+          body.runs.map((r) => ({
+            id: r.runId,
+            kind: r.kind ?? 'run',
+            name: r.title && r.title.trim() !== '' ? r.title : r.kind === 'probe' ? 'Containment probe' : 'Load test',
+            startedAt: r.startedAt,
+          })),
+        );
+        setStatus(Object.fromEntries(body.runs.map((r) => [r.runId, r.status])));
+        const hasPending = body.runs.some((r) => r.status === 'queued' || r.status === 'running');
+        if (hasPending) {
+          timer = window.setTimeout(() => void loadAccount(), 3000);
         }
+        return true;
+      } catch {
+        return false;
       }
+    };
+
+    void (async () => {
+      if (me !== null && (await loadAccount())) return;
+      if (abort.signal.aborted) return;
 
       setSource('browser');
       const local = loadRecentRuns();
@@ -68,7 +77,10 @@ export function RecentRunsPage() {
         });
       }
     })();
-    return () => abort.abort();
+    return () => {
+      abort.abort();
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
   }, [me]);
 
   return (

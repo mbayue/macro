@@ -257,6 +257,7 @@ export interface RunSnapshot {
 
 export interface RunListItem {
   runId: string;
+  kind?: RunKind;
   startedAt: number;
   status: RunStatus;
   /** null = "none" / "not reached" per requirement 13.2. */

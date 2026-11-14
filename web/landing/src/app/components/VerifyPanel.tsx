@@ -192,26 +192,52 @@ export function VerifyPanel({
       ) : null}
 
       {pending === null ? (
-        <form onSubmit={onStart} className="stack">
-          <label className="field">
-            <span className="field__label">Host or https origin</span>
-            <input
-              type="text"
-              name="host"
-              autoComplete="url"
-              required
-              placeholder="shop.example.com"
-              value={host}
-              onChange={(e) => setHost(e.target.value)}
-              disabled={busy !== null}
-            />
-          </label>
-          <p className="actions">
-            <button type="submit" className="btn" disabled={busy !== null || host.trim() === ''}>
-              {busy === 'start' ? <Busy>Starting</Busy> : 'Start verification'}
-            </button>
-          </p>
-        </form>
+        verified !== null ? (
+          <details className="disclosure disclosure--inline">
+            <summary>Verify a different host</summary>
+            <form onSubmit={onStart} className="stack">
+              <label className="field">
+                <span className="field__label">Host or https origin</span>
+                <input
+                  type="text"
+                  name="host"
+                  autoComplete="url"
+                  required
+                  placeholder="shop.example.com"
+                  value={host}
+                  onChange={(e) => setHost(e.target.value)}
+                  disabled={busy !== null}
+                />
+              </label>
+              <p className="actions">
+                <button type="submit" className="btn" disabled={busy !== null || host.trim() === ''}>
+                  {busy === 'start' ? <Busy>Starting</Busy> : 'Start verification'}
+                </button>
+              </p>
+            </form>
+          </details>
+        ) : (
+          <form onSubmit={onStart} className="stack">
+            <label className="field">
+              <span className="field__label">Host or https origin</span>
+              <input
+                type="text"
+                name="host"
+                autoComplete="url"
+                required
+                placeholder="shop.example.com"
+                value={host}
+                onChange={(e) => setHost(e.target.value)}
+                disabled={busy !== null}
+              />
+            </label>
+            <p className="actions">
+              <button type="submit" className="btn" disabled={busy !== null || host.trim() === ''}>
+                {busy === 'start' ? <Busy>Starting</Busy> : 'Start verification'}
+              </button>
+            </p>
+          </form>
+        )
       ) : (
         <div className="stack">
           {pending.domainConnectUrl ? (

@@ -876,6 +876,12 @@ function JourneyChecks({
   const [checked, setChecked] = useState<ReadonlySet<string>>(
     () => new Set(routes.filter((row) => row.defaultOn === true).map((row) => row.id)),
   );
+  // A revised plan returns a new routes list; re-sync the checkboxes to its
+  // defaultOn flags, or the stale selection keeps checksDiffer true forever
+  // and "Approve and run" stays disabled.
+  useEffect(() => {
+    setChecked(new Set(routes.filter((row) => row.defaultOn === true).map((row) => row.id)));
+  }, [routes]);
   const baseline = routes
     .filter((row) => row.defaultOn === true)
     .map((row) => row.id)
@@ -892,6 +898,17 @@ function JourneyChecks({
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      return next;
+    });
+  }
+
+  function setGroup(rows: readonly { id: string }[], on: boolean) {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      for (const row of rows) {
+        if (on) next.add(row.id);
+        else next.delete(row.id);
+      }
       return next;
     });
   }
@@ -916,6 +933,16 @@ function JourneyChecks({
                 {rows.length}
                 <span className="visually-hidden"> routes</span>
               </span>
+              {locked || rows.length < 2 ? null : (
+                <button
+                  type="button"
+                  className="btn btn--ghost journey-picks__all"
+                  disabled={disabled}
+                  onClick={() => setGroup(rows, !rows.every((row) => checked.has(row.id)))}
+                >
+                  {rows.every((row) => checked.has(row.id)) ? 'All off' : 'All on'}
+                </button>
+              )}
             </div>
             <div className="journey-picks__kinds">
               {kinds.map((group) => {

@@ -80,6 +80,13 @@ services:
     init: true
     security_opt:
       - no-new-privileges:true
+    # Public resolvers for external lookups (origin TXT verification, outbound
+    # API hostnames): the VPS resolvers can cache stale negative answers for a
+    # while after a record is added, which flakes the verification check.
+    # Docker's embedded DNS still resolves internal names (socket-proxy).
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     healthcheck:
       test:
         - CMD

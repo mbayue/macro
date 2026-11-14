@@ -1750,7 +1750,13 @@ export function createApp(deps: AppDeps): App {
       });
     const fetchImpl = deps.fetchImpl ?? fetch;
 
-    const dnsOk = await checkDnsTxt(pending.host, pending.token, resolveTxt);
+    // Resolvers cache the negative answer for a while, so a check fired
+    // immediately after the record is added can flake. One retry absorbs it.
+    let dnsOk = await checkDnsTxt(pending.host, pending.token, resolveTxt);
+    if (!dnsOk) {
+      await new Promise((resolve) => setTimeout(resolve, 750));
+      dnsOk = await checkDnsTxt(pending.host, pending.token, resolveTxt);
+    }
     const wellKnownOk = dnsOk
       ? false
       : await checkWellKnown(pending.origin, pending.token, fetchImpl);

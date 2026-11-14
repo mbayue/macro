@@ -385,12 +385,23 @@ describe('Property 9: Stage scripts contain only approved values', () => {
         { route: 'order_create', probability: 10, thinkMs: 0 },
       ],
     });
-    // Sampler bookkeeping: wall-clock second, per-second per-route buckets.
+    // The sampler records into tagged custom metrics: k6 gives each VU its own
+    // copy of module state and runs handleSummary in a separate init context,
+    // so in-memory buckets never reach the summary (verified against the pinned
+    // k6 image in Docker — a buckets object stays empty there).
     expect(script).toContain('function sample(');
-    expect(script).toContain("const second = Math.floor((Date.now() - startedAt) / 1000)");
-    expect(script).toContain("buckets[key] || (buckets[key] = [second, routeId, 0, 0, 0, 0])");
-    // The summary the script writes carries macro_samples alongside the k6 data.
-    expect(script).toContain('const samples = { intervalSec: 1, buckets: Object.values(buckets) };');
+    expect(script).toContain('const second = Math.floor((Date.now() - startedAt) / 1000)');
+    expect(script).toContain('sampleCount.add(1, tags)');
+    expect(script).toContain('sampleLatency.add(');
+    // Every (route, second) tag combo is enumerated as an always-true threshold:
+    // k6 emits a sub-metric into data.metrics only for thresholded combinations.
+    expect(script).toContain('for (let s = 0; s <= CFG.durationSec; s++)');
+    expect(script).toContain("thresholds['macro_sample_count{route:' + id + ',second:' + s + '}'] = ['count>=0']");
+    expect(script).toContain("thresholds['macro_sample_errors{route:' + id + ',second:' + s + '}'] = ['count>=0']");
+    expect(script).toContain("thresholds['macro_sample_latency{route:' + id + ',second:' + s + '}'] = ['max>=0']");
+    // handleSummary rebuilds the buckets from data.metrics and merges macro_samples.
+    expect(script).toContain('function sampleTags(');
+    expect(script).toContain('const samples = { intervalSec: 1, buckets: buckets };');
     expect(script).toContain('JSON.stringify(Object.assign({}, data, { macro_samples: samples }))');
   });
 });

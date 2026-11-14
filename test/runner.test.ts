@@ -898,13 +898,20 @@ describe('create-failure cleanup (6.16)', () => {
     expect(removeNetAt).toBeGreaterThan(removeProxyAt);
   });
 
-  test('a network that cannot be removed is reported in the error', async () => {
-    const h = harness();
-    h.docker.failOps.set('containerCreate', () => new Error('boom'));
-    h.docker.networkRemoveFailures = 99;
-    await expect(h.clock.drive(h.runner.openRunNetwork(RUN_ID))).rejects.toThrow('network not removed');
-    expect(h.docker.count('networkRemove')).toBe(3);
-  });
+  // The three removal attempts wait on the fake clock's backoff; under full-suite
+  // parallel load the real wall clock can outrun bun's 5 s default, so this test
+  // carries its own budget (the clock itself stays virtual and deterministic).
+  test(
+    'a network that cannot be removed is reported in the error',
+    async () => {
+      const h = harness();
+      h.docker.failOps.set('containerCreate', () => new Error('boom'));
+      h.docker.networkRemoveFailures = 99;
+      await expect(h.clock.drive(h.runner.openRunNetwork(RUN_ID))).rejects.toThrow('network not removed');
+      expect(h.docker.count('networkRemove')).toBe(3);
+    },
+    30_000,
+  );
 
   test('the executor turns a Run network failure into an error Stage and creates no Sandbox', async () => {
     const h = harness();

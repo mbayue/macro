@@ -80,7 +80,7 @@ The panel **See the policy gate block a hostile plan** sends three hostile plans
 1. Pick an example such as **Gacha banner launch**, or write your own, then submit.
 2. Review the draft plan (stages, journey, stop thresholds) and press **Approve and run**.
 3. Watch the stages run live. A typical 4-stage run (25, 50, 100, 200 VUs) takes about 4.5 minutes.
-4. Read the report: safe capacity, breaking point, first degraded route, a p95 and error-rate chart, per-route tables and the AI explanation.
+4. Read the report: safe capacity, breaking point, first degraded route, a p95 and error-rate chart, per-route tables, a per-second latency chart for each stage ("During the stage"), and the AI explanation.
 5. **Re-run** the same plan and compare two runs side by side.
 
 Example result from the live deployment: all four stages passed and safe capacity was 200 VUs. `store_home` was the first route to slow down, at p95 1,611 ms at 200 VUs (limit 1,500 ms).
@@ -108,6 +108,7 @@ Main settings (full list in [`.env.example`](.env.example) and [`src/config.ts`]
 | `TARGET_ORIGINS` | The whole allowlist: the web origin, then the API origin. |
 | `SANDBOX_RUNTIME` | `runsc` (default) or `runc` to opt out of gVisor. |
 | `K6_IMAGE` | Must be pinned by `@sha256:` digest. |
+| `TIGERDATA_URL` | Optional, secret. `postgres://` connection string of a Tiger Cloud service: public-run per-second samples are mirrored there best effort (SQLite stays the source of truth). Unset disables the mirror. |
 | Auth block (all or nothing) | `SESSION_SECRET`, `PUBLIC_BASE_URL`, `RESEND_API_KEY`, `RESEND_FROM`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_REDIRECT_URI`. Omit all to disable sign-in; set every one to enable accounts. |
 
 If a sandbox prerequisite is missing (Docker, gVisor, the proxy image), the API still starts but refuses every run, and `GET /api/config` names the problem.

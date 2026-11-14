@@ -952,6 +952,23 @@ a { text-underline-offset: 0.2em; }
 .route-chart__swatch { stroke: var(--bar); stroke-width: 2; }
 .route-chart__label.is-lead .route-chart__swatch { stroke: var(--accent-text); stroke-width: 3; }
 .route-chart__empty { fill: var(--muted); font-size: 14px; }
+
+/* ---- Second chart: per-second average latency inside one stage. ---- */
+/* No new table classes here, so the print block needs no extra selector. */
+.second-chart { width: 100%; height: auto; display: block; font-family: var(--text); }
+.second-chart__grid { stroke: var(--surface-2); stroke-width: 1; }
+.second-chart__tick { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.second-chart__line path { fill: none; stroke: var(--bar); stroke-width: 2; stroke-linejoin: round; }
+.second-chart__line.is-lead path { stroke: var(--accent-text); stroke-width: 3; }
+.second-chart__burst line { stroke: var(--bad); stroke-width: 2; }
+.second-chart__name { fill: var(--muted); font-size: 12px; }
+.second-chart__name.is-lead { fill: var(--ink); font-weight: 500; }
+.second-chart__leader { fill: none; stroke: var(--bar); stroke-width: 1; }
+.second-chart__swatch { stroke: var(--bar); stroke-width: 2; }
+.second-chart__label.is-lead .second-chart__swatch { stroke: var(--accent-text); stroke-width: 3; }
+.second-chart__empty { fill: var(--muted); font-size: 14px; }
+.during-stage { display: grid; gap: 10px; padding: 14px 0; border-top: 1px solid var(--surface-2); }
+.during-stage:first-child { border-top: 0; padding-top: 0; }
 .feed { grid-template-rows: auto minmax(0, 1fr); max-height: 440px; }
 .feed__list { list-style: none; margin: 0; padding: 0 0 24px; overflow-y: auto; display: grid; align-content: start; }
 /* The feed scrolls inside its panel; fade the cut edge so a clipped item reads as more below. */

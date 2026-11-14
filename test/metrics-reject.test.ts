@@ -316,3 +316,61 @@ describe('Property 12: Metrics_Reader rejects incomplete summaries', () => {
     );
   });
 });
+
+describe('macro_samples validation', () => {
+  // A valid metrics summary; macro_samples corruption fails the whole read,
+  // because samples are measured data with the same discipline as metrics.
+  const BASE_SUMMARY = {
+    state: { testRunDurationMs: 30000 },
+    metrics: {
+      http_reqs: { values: { count: 19 } },
+      http_req_duration: { values: { med: 500, 'p(95)': 600, 'p(99)': 700 } },
+      http_req_failed: { values: { passes: 18, fails: 1, rate: 1 / 19 } },
+    },
+  };
+
+  const BAD_SAMPLES: readonly unknown[] = [
+    'not an object',
+    42,
+    { intervalSec: 2, buckets: [] },
+    { buckets: [] },
+    { intervalSec: 1, buckets: 'no' },
+    { intervalSec: 1, buckets: [[0, 'store_home']] },
+    { intervalSec: 1, buckets: [[0, 'store_home', 1, 0, 0]] },
+    { intervalSec: 1, buckets: [[-1, 'store_home', 1, 0, 0, 0]] },
+    { intervalSec: 1, buckets: [[0.5, 'store_home', 1, 0, 0, 0]] },
+    { intervalSec: 1, buckets: [[0, 'store_home', -1, 0, 0, 0]] },
+    { intervalSec: 1, buckets: [[0, 'store_home', 1, 0, -1, 0]] },
+    { intervalSec: 1, buckets: [[0, '', 1, 0, 0, 0]] },
+    { intervalSec: 1, buckets: Array.from({ length: 6001 }, () => [0, 'x', 1, 0, 0, 0]) },
+  ];
+
+  test.each(BAD_SAMPLES)('malformed macro_samples %j rejects the summary', (samples) => {
+    const result = readSummary(JSON.stringify({ ...BASE_SUMMARY, macro_samples: samples }));
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('summary has invalid macro_samples');
+  });
+
+  test('a valid macro_samples block passes', () => {
+    const result = readSummary(
+      JSON.stringify({
+        ...BASE_SUMMARY,
+        macro_samples: { intervalSec: 1, buckets: [[0, 'store_home', 10, 1, 5250, 900]] },
+      }),
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  test('arbitrary macro_samples junk never throws', () => {
+    fc.assert(
+      fc.property(
+        fc.oneof(fc.string({ maxLength: 60 }), fc.json(), fc.constantFrom(1, 'x', [], {})),
+        (junk) => {
+          const result = readSummary(JSON.stringify({ ...BASE_SUMMARY, macro_samples: junk }));
+          expect(result.ok).toBe(false);
+        },
+      ),
+      { numRuns: 300 },
+    );
+  });
+});

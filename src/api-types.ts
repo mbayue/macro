@@ -181,6 +181,20 @@ export interface RunView {
   probeResult: unknown;
 }
 
+/**
+ * One per-second sample of a finished Stage: how a route behaved during that
+ * second. Derived from the stored stage_samples rows (avg = sum / requests);
+ * older runs and Stages without samples simply omit the field.
+ */
+export interface StageSampleView {
+  second: number;
+  route: string;
+  requests: number;
+  errors: number;
+  avgMs: number;
+  maxMs: number;
+}
+
 export interface StageView {
   index: number;
   vus: number;
@@ -191,6 +205,8 @@ export interface StageView {
   metrics: StageMetrics | null;
   startedAt: number | null;
   endedAt: number | null;
+  /** Present only when the Stage has stored per-second samples. */
+  samples?: StageSampleView[];
 }
 
 export interface DecisionView {

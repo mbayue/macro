@@ -1239,7 +1239,22 @@ export function createApp(deps: AppDeps): App {
     const snapshot: RunSnapshot = {
       run: toRunView(run),
       plan: planFromStore(run.planHash),
-      stages: store.getStages(id).map(toStageViewPayload),
+      stages: store.getStages(id).map((s) => {
+        const rows = store.readStageSamples(id, s.idx);
+        const view = toStageViewPayload(s);
+        if (rows.length === 0) return view;
+        return {
+          ...view,
+          samples: rows.map((r) => ({
+            second: r.second,
+            route: r.route,
+            requests: r.requests,
+            errors: r.errors,
+            avgMs: r.requests > 0 ? r.latencySumMs / r.requests : 0,
+            maxMs: r.latencyMaxMs,
+          })),
+        };
+      }),
       decisions,
       events: allEvents(id),
       report,

@@ -8,9 +8,11 @@
 
 import { z } from 'zod';
 import { ROUTE_CATALOG } from '../plan/catalog.ts';
-import type { Metrics, StageMetrics } from '../types.ts';
+import type { Metrics, StageMetrics, StageSample } from '../types.ts';
 
-export type ReadSummaryResult = { ok: true; metrics: StageMetrics } | { ok: false; reason: string };
+export type ReadSummaryResult =
+  | { ok: true; metrics: StageMetrics; samples: StageSample[] }
+  | { ok: false; reason: string };
 
 const MetricEntry = z.object({ values: z.record(z.string(), z.unknown()).optional() }).passthrough();
 
@@ -20,6 +22,19 @@ const SummarySchema = z
     metrics: z.record(z.string(), z.unknown()).optional(),
   })
   .passthrough();
+
+// Per-second, per-route buckets written by the stage script (design "Sampling").
+// `intervalSec` is fixed at 1; buckets are capped so a hostile or broken summary
+// cannot smuggle in unbounded rows.
+const SampleBucket = z.tuple([
+  z.number().int().min(0),
+  z.string().min(1).max(32),
+  z.number().int().min(0),
+  z.number().int().min(0),
+  z.number().min(0),
+  z.number().min(0),
+]);
+const SamplesSchema = z.object({ intervalSec: z.literal(1), buckets: z.array(SampleBucket).max(6000) });
 
 type Values = Record<string, unknown>;
 
@@ -113,6 +128,25 @@ function block(
   };
 }
 
+/**
+ * Extract the per-second sample buckets from the summary. Absent (older
+ * summaries) reads as empty; malformed fails the whole read, because samples
+ * are measured data with the same discipline as the metrics.
+ */
+function readSamples(raw: unknown): StageSample[] {
+  if (raw === undefined) return [];
+  const parsed = SamplesSchema.safeParse(raw);
+  if (!parsed.success) fail('summary has invalid macro_samples');
+  return parsed.data.buckets.map(([second, route, count, errors, sumMs, maxMs]) => ({
+    second,
+    route,
+    requests: count,
+    errors,
+    latencySumMs: sumMs,
+    latencyMaxMs: maxMs,
+  }));
+}
+
 /** Extract Stage_Metrics from the k6 summary JSON text. Never throws. */
 export function readSummary(summaryJson: string, routeIds?: readonly string[]): ReadSummaryResult {
   try {
@@ -142,7 +176,8 @@ export function readSummary(summaryJson: string, routeIds?: readonly string[]): 
       const m = block(metrics, `{route:${id}}`, durationSec, false);
       if (m !== undefined) routes[id] = m;
     }
-    return { ok: true, metrics: { overall, routes } };
+    const samples = readSamples(parsed.data.macro_samples);
+    return { ok: true, metrics: { overall, routes }, samples };
   } catch (e) {
     if (e instanceof Fail) return { ok: false, reason: e.message };
     return { ok: false, reason: 'summary could not be read' };

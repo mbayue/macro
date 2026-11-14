@@ -12,9 +12,10 @@ import type { CapacityReport, StageView as ReportStageView } from '../../../../.
 import { Feed } from '../components/run/Feed.tsx';
 import { AiSection, ReportExport, ReportMeta, ReportNotices, ReportStages, RunsPanel } from '../components/run/Report.tsx';
 import { RouteChart } from '../components/run/RouteChart.tsx';
+import { SecondChart } from '../components/run/SecondChart.tsx';
 import { ModelCalls } from '../components/ModelCalls.tsx';
 import { type ProfileStage, StageProfile } from '../components/StageProfile.tsx';
-import { AlertRegion, ApiErrorText, Badge, DASH, KeyValues, PageSkeleton, StatusBadge, TableWrap } from '../components/ui.tsx';
+import { AlertRegion, ApiErrorText, Badge, DASH, KeyValues, PageSkeleton, Panel, StatusBadge, TableWrap } from '../components/ui.tsx';
 import { useRun } from '../hooks/useRun.ts';
 
 export function RunPage({ id }: { id: string }) {
@@ -133,6 +134,7 @@ export function RunPage({ id }: { id: string }) {
           </div>
           <ReportExport report={report} />
           <ReportStages report={report} />
+          <DuringTheStage stages={model.stages} routes={model.routes} />
           <AiSection report={report} />
           <ModelCalls calls={model.modelCalls} />
           <RunsPanel report={report} />
@@ -363,6 +365,35 @@ function TileProgress({ value }: { value: number }) {
     <span className="tile__progress" aria-hidden="true">
       <span ref={ref} />
     </span>
+  );
+}
+
+/**
+ * "During the stage": one per-second chart per stage that carries samples, drawn
+ * from the stored rows. Stages without samples (older runs) render nothing.
+ */
+function DuringTheStage({
+  stages,
+  routes,
+}: {
+  stages: readonly StageView[];
+  routes: readonly { id: string; path: string }[];
+}) {
+  const withSamples = stages.filter((s) => (s.samples?.length ?? 0) > 0);
+  if (withSamples.length === 0) return null;
+  return (
+    <Panel title="During the stage" id="during-stage-heading" note="Average latency per second, measured while each stage ran.">
+      {withSamples.map((s) => (
+        <div key={s.index} className="during-stage">
+          <h3 className="h-small">
+            Stage {s.index + 1} ({s.vus} VUs)
+          </h3>
+          <TableWrap label={`Chart of average latency per second for stage ${s.index + 1}`}>
+            <SecondChart stage={s} displayIndex={s.index + 1} routes={routes} />
+          </TableWrap>
+        </div>
+      ))}
+    </Panel>
   );
 }
 

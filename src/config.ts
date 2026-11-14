@@ -55,6 +55,12 @@ export interface Config {
    * socket (/var/run/docker.sock).
    */
   readonly dockerHost?: string;
+  /**
+   * `TIGERDATA_URL`: postgres:// connection string of the Tiger Cloud service
+   * (trial now, always-free tier later). Present = the best-effort mirror of
+   * public-run stage samples runs; omitted = the mirror is disabled.
+   */
+  readonly tigerDataUrl?: string;
   /** Requirement 17 only. Key omitted when unset. */
   readonly vultrApiKey?: string;
   /**
@@ -210,6 +216,18 @@ export function parseConfig(env: Env): ConfigResult {
     }
   }
 
+  // TigerData mirror: postgres:// connection string, stored as written. Unset
+  // (or empty) disables the mirror; a malformed value fails by name.
+  const tigerDataUrlRaw = read(env, 'TIGERDATA_URL');
+  let tigerDataUrl: string | undefined;
+  if (tigerDataUrlRaw !== undefined) {
+    if (/^postgres(?:ql)?:\/\/\S{1,500}$/i.test(tigerDataUrlRaw)) {
+      tigerDataUrl = tigerDataUrlRaw;
+    } else {
+      fail('TIGERDATA_URL', 'must be a postgres:// or postgresql:// URL when set');
+    }
+  }
+
   // Auth: all-or-nothing. Any one set requires every auth setting.
   const AUTH_KEYS = [
     'SESSION_SECRET',
@@ -277,6 +295,7 @@ export function parseConfig(env: Env): ConfigResult {
     port,
     dataDir,
     ...(dockerHost !== undefined ? { dockerHost } : {}),
+    ...(tigerDataUrl !== undefined ? { tigerDataUrl } : {}),
     ...(vultrApiKey !== undefined ? { vultrApiKey } : {}),
     ...(auth !== undefined ? { auth } : {}),
     ...(domainConnect !== undefined ? { domainConnect } : {}),
@@ -291,6 +310,9 @@ export function redactedConfig(config: Config): unknown {
     ...config,
     inference: { ...config.inference, apiKey: mark(config.inference.apiKey) },
     turnstile: { ...config.turnstile, secretKey: mark(config.turnstile.secretKey) },
+    // The URL itself carries credentials (user:password@host), so only its
+    // presence is loggable.
+    tigerDataUrl: mark(config.tigerDataUrl),
     vultrApiKey: mark(config.vultrApiKey),
     ...(config.auth !== undefined
       ? {

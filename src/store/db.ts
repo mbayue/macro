@@ -21,6 +21,7 @@ import type {
   RunStatus,
   SandboxRuntime,
   StageMetrics,
+  StageSample,
   StageStatus,
   StageVerdict,
 } from '../types.ts';
@@ -112,6 +113,12 @@ CREATE TABLE IF NOT EXISTS decisions (
   source TEXT NOT NULL, reason TEXT NOT NULL, reason_withheld INTEGER NOT NULL,
   PRIMARY KEY (run_id, stage_idx)
 );
+CREATE TABLE IF NOT EXISTS stage_samples (
+  run_id TEXT NOT NULL, stage_idx INTEGER NOT NULL, second INTEGER NOT NULL, route TEXT NOT NULL,
+  requests INTEGER NOT NULL, errors INTEGER NOT NULL, latency_sum_ms REAL NOT NULL, latency_max_ms REAL NOT NULL,
+  PRIMARY KEY (run_id, stage_idx, second, route)
+);
+CREATE INDEX IF NOT EXISTS stage_samples_run ON stage_samples(run_id, stage_idx);
 CREATE TABLE IF NOT EXISTS events (
   id INTEGER PRIMARY KEY AUTOINCREMENT, run_id TEXT NOT NULL, type TEXT NOT NULL,
   stage_idx INTEGER, payload TEXT, ts INTEGER NOT NULL
@@ -830,6 +837,44 @@ export class Store {
       .prepare<RawStage, [string]>('SELECT * FROM stages WHERE run_id = ? ORDER BY idx')
       .all(runId)
       .map(toStage);
+  }
+
+  // ----------------------------------------------------------- stage samples
+
+  /** Replaces the samples of one stage in a single transaction. */
+  storeStageSamples(runId: string, stageIdx: number, samples: readonly StageSample[]): void {
+    const insert = this.db.prepare(
+      `INSERT OR REPLACE INTO stage_samples
+       (run_id, stage_idx, second, route, requests, errors, latency_sum_ms, latency_max_ms)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    this.transaction(() => {
+      this.db.prepare('DELETE FROM stage_samples WHERE run_id = ? AND stage_idx = ?').run(runId, stageIdx);
+      for (const s of samples) {
+        insert.run(runId, stageIdx, s.second, s.route, s.requests, s.errors, s.latencySumMs, s.latencyMaxMs);
+      }
+    });
+  }
+
+  /** One stage's samples ordered by second then route. Empty for stages without samples. */
+  readStageSamples(runId: string, stageIdx: number): StageSample[] {
+    return this.db
+      .prepare<
+        { second: number; route: string; requests: number; errors: number; latency_sum_ms: number; latency_max_ms: number },
+        [string, number]
+      >(
+        `SELECT second, route, requests, errors, latency_sum_ms, latency_max_ms
+         FROM stage_samples WHERE run_id = ? AND stage_idx = ? ORDER BY second, route`,
+      )
+      .all(runId, stageIdx)
+      .map((r) => ({
+        second: r.second,
+        route: r.route,
+        requests: r.requests,
+        errors: r.errors,
+        latencySumMs: r.latency_sum_ms,
+        latencyMaxMs: r.latency_max_ms,
+      }));
   }
 
   // --------------------------------------------------------------- decisions

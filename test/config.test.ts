@@ -359,3 +359,43 @@ describe('DOCKER_HOST', () => {
   });
 });
 
+describe('TIGERDATA_URL', () => {
+  test('unset means no tigerDataUrl field (the mirror is disabled)', () => {
+    const c = ok(parseConfig(env()));
+    expect('tigerDataUrl' in c).toBe(false);
+    expect(c.tigerDataUrl).toBeUndefined();
+  });
+
+  test.each([
+    'postgres://tsdbadmin:pw@host.cloud.tigerdata.com:12345/tsdb?sslmode=require',
+    'postgresql://user@host/db',
+  ])('%p is accepted as written', (raw) => {
+    expect(ok(parseConfig(env({ TIGERDATA_URL: raw }))).tigerDataUrl).toBe(raw);
+  });
+
+  test('whitespace around the value is trimmed', () => {
+    expect(ok(parseConfig(env({ TIGERDATA_URL: '  postgres://host/db ' }))).tigerDataUrl).toBe('postgres://host/db');
+  });
+
+  test.each(['mysql://host/db', 'https://host/db', 'postgres://', 'postgres://host db', 'not a url'])(
+    'an unsupported TIGERDATA_URL (%p) fails by name',
+    (raw) => {
+      expect(settingsOf(parseConfig(env({ TIGERDATA_URL: raw })))).toEqual(['TIGERDATA_URL']);
+    },
+  );
+
+  test('an empty TIGERDATA_URL counts as unset, like every other optional setting', () => {
+    const c = ok(parseConfig(env({ TIGERDATA_URL: '' })));
+    expect(c.tigerDataUrl).toBeUndefined();
+  });
+
+  test('the URL carries credentials, so redactedConfig marks it [set] and never prints it', () => {
+    const url = 'postgres://tsdbadmin:SECRET-PW@host.cloud.tigerdata.com:12345/tsdb';
+    const c = ok(parseConfig(env({ TIGERDATA_URL: url })));
+    const text = JSON.stringify(redactedConfig(c));
+    expect(text).not.toContain(url);
+    expect(text).not.toContain('SECRET-PW');
+    expect(text).toContain('[set]');
+  });
+});
+

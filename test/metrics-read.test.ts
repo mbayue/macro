@@ -4,6 +4,15 @@ import { readSummary } from '../src/k6/metrics.ts';
 import type { RouteId } from '../src/types.ts';
 import { arbGenSummary, buildSummary, expectedMetrics, ROUTE_IDS } from './arb-run.ts';
 
+const VALID_SAMPLES = {
+  intervalSec: 1,
+  buckets: [
+    [0, 'store_home', 10, 1, 5250, 900],
+    [0, 'catalog_list', 8, 0, 2000, 300],
+    [1, 'store_home', 11, 0, 6000, 700],
+  ],
+};
+
 function read(summary: unknown): ReturnType<typeof readSummary> {
   return readSummary(JSON.stringify(summary));
 }
@@ -163,5 +172,41 @@ describe('Property 11: Metrics_Reader recovers generated summary values', () => 
       }),
       { numRuns: 100 },
     );
+  });
+});
+
+describe('macro_samples (per-second buckets)', () => {
+  // A minimal valid metrics summary (one overall block + two route blocks).
+  const BASE_SUMMARY = {
+    state: { testRunDurationMs: 30000 },
+    metrics: {
+      http_reqs: { values: { count: 19 } },
+      http_req_duration: { values: { med: 500, 'p(95)': 600, 'p(99)': 700 } },
+      http_req_failed: { values: { passes: 18, fails: 1, rate: 1 / 19 } },
+      'http_reqs{route:store_home}': { values: { count: 10 } },
+      'http_req_duration{route:store_home}': { values: { med: 500, 'p(95)': 525, 'p(99)': 900 } },
+      'http_req_failed{route:store_home}': { values: { passes: 9, fails: 1, rate: 0.1 } },
+      'http_reqs{route:catalog_list}': { values: { count: 8 } },
+      'http_req_duration{route:catalog_list}': { values: { med: 250, 'p(95)': 300, 'p(99)': 300 } },
+      'http_req_failed{route:catalog_list}': { values: { passes: 8, fails: 0, rate: 0 } },
+    },
+  };
+
+  test('valid buckets are recovered as ordered StageSample rows', () => {
+    const got = read({ ...BASE_SUMMARY, macro_samples: VALID_SAMPLES });
+    expect(got.ok).toBe(true);
+    if (!got.ok) return;
+    expect(got.samples).toEqual([
+      { second: 0, route: 'store_home', requests: 10, errors: 1, latencySumMs: 5250, latencyMaxMs: 900 },
+      { second: 0, route: 'catalog_list', requests: 8, errors: 0, latencySumMs: 2000, latencyMaxMs: 300 },
+      { second: 1, route: 'store_home', requests: 11, errors: 0, latencySumMs: 6000, latencyMaxMs: 700 },
+    ]);
+  });
+
+  test('a summary without macro_samples reads with empty samples', () => {
+    const got = read(BASE_SUMMARY);
+    expect(got.ok).toBe(true);
+    if (!got.ok) return;
+    expect(got.samples).toEqual([]);
   });
 });

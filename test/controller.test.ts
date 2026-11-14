@@ -4,6 +4,7 @@ import { REASON_INTERNAL, REASON_TIMED_OUT, RunController } from '../src/run/con
 import type { RunExecutor, SetTimerFn, SuperviseFn } from '../src/run/controller.ts';
 import { fallbackReason } from '../src/run/decide.ts';
 import { planHash, printPlan } from '../src/plan/printer.ts';
+import type { MirrorStageInput } from '../src/metrics/tiger.ts';
 import { buildProxyCreateBody } from '../src/sandbox/runner.ts';
 import type { StageRunResult, StageSpec } from '../src/sandbox/runner.ts';
 import { Store } from '../src/store/db.ts';
@@ -65,6 +66,8 @@ interface SetupOptions {
   supervise?: SuperviseFn;
   openRun?: () => Promise<unknown>;
   seed?: (store: Store) => void;
+  /** Optional TigerData mirror seam. */
+  mirror?: (input: MirrorStageInput) => void | Promise<void>;
   /** Skip creating the plan/run rows (the test seeds its own). */
   noSeed?: boolean;
 }
@@ -110,6 +113,7 @@ function setup(options: SetupOptions = {}) {
     executor,
     now: () => (clock += 1),
     ...(options.supervise !== undefined ? { supervise: options.supervise } : {}),
+    ...(options.mirror !== undefined ? { mirrorStageSamples: options.mirror } : {}),
     onRunEnded: (runId, status) => {
       ended.push({ runId, status });
     },
@@ -566,6 +570,48 @@ describe('a stop is never overwritten by a later result', () => {
     expect(h.eventTypes().filter((t) => t === 'status')).toHaveLength(1);
   });
 
+  test('a finished stage stores its per-second samples', async () => {
+    const withSamples: StageRunResult = {
+      status: 'done',
+      summaryJson: JSON.stringify({
+        ...JSON.parse(summaryJson({ p95: 200 })),
+        macro_samples: { intervalSec: 1, buckets: [[0, 'store_home', 10, 0, 5250, 900], [1, 'store_home', 12, 0, 6000, 600]] },
+      }),
+      oomKilled: false,
+      killed: false,
+    };
+    const h = setup({ plan: planWithVus([10]), run: () => withSamples });
+    h.controller.start(RUN_ID);
+    await h.controller.whenDone(RUN_ID);
+    expect(h.status()).toBe('completed');
+    expect(h.store.readStageSamples(RUN_ID, 0)).toEqual([
+      { second: 0, route: 'store_home', requests: 10, errors: 0, latencySumMs: 5250, latencyMaxMs: 900 },
+      { second: 1, route: 'store_home', requests: 12, errors: 0, latencySumMs: 6000, latencyMaxMs: 600 },
+    ]);
+    expect(h.store.readStageSamples(RUN_ID, 1)).toEqual([]);
+  });
+
+  test('a late result after a stop discards its samples', async () => {
+    const gate = deferred<StageRunResult>();
+    let started = false;
+    const h = setup({ run: () => ((started = true), gate.promise) });
+    h.controller.start(RUN_ID);
+    await until(() => started, 'executor running');
+    h.controller.stop(RUN_ID);
+    gate.resolve({
+      status: 'done',
+      summaryJson: JSON.stringify({
+        ...JSON.parse(summaryJson({ p95: 200 })),
+        macro_samples: { intervalSec: 1, buckets: [[0, 'store_home', 10, 0, 5250, 900]] },
+      }),
+      oomKilled: false,
+      killed: false,
+    });
+    await h.controller.whenDone(RUN_ID);
+    expect(h.status()).toBe('stopped');
+    expect(h.store.readStageSamples(RUN_ID, 0)).toEqual([]);
+  });
+
   test('a timeout during a Stage ends the Run as timed_out and later results are discarded', async () => {
     const gate = deferred<StageRunResult>();
     let started = false;
@@ -578,6 +624,106 @@ describe('a stop is never overwritten by a later result', () => {
     expect(h.status()).toBe('timed_out');
     expect(h.store.getStage(RUN_ID, 0)?.errorReason).toContain('timed out');
     expect(h.calls).toHaveLength(1);
+  });
+});
+
+// ---- TigerData mirror seam -----------------------------------------------------------------
+
+const SAMPLE_SUMMARY: StageRunResult = {
+  status: 'done',
+  summaryJson: JSON.stringify({
+    ...JSON.parse(summaryJson({ p95: 200 })),
+    macro_samples: { intervalSec: 1, buckets: [[0, 'store_home', 10, 0, 5250, 900], [1, 'store_home', 12, 0, 6000, 600]] },
+  }),
+  oomKilled: false,
+  killed: false,
+};
+
+function seedPrivateRun(store: Store, plan?: TestPlan): string {
+  const { hash, text } = storedPlan(plan ?? planWithVus([10]));
+  store.storeApprovedPlan({ hash, text, approvedAt: 1 });
+  store.createRun({ id: RUN_ID, kind: 'run', planHash: hash, runtime: 'runsc', startedAt: 1, visibility: 'private' });
+  return hash;
+}
+
+describe('the TigerData mirror seam', () => {
+  test('a public run mirrors its stage samples (the seeded default run is public)', async () => {
+    const mirrored: MirrorStageInput[] = [];
+    const h = setup({
+      plan: planWithVus([10]),
+      run: () => SAMPLE_SUMMARY,
+      mirror: (input) => {
+        mirrored.push(input);
+      },
+    });
+    await runToEnd(h);
+    expect(h.status()).toBe('completed');
+    await until(() => mirrored.length === 1, 'mirror called');
+    const m = mirrored[0]!;
+    expect(m.runId).toBe(RUN_ID);
+    expect(m.stageIdx).toBe(0);
+    expect(m.visibility).toBe('public');
+    expect(m.startedAt).not.toBeNull();
+    expect(m.planHash).toBe(h.store.getRun(RUN_ID)!.planHash);
+    expect(m.samples).toEqual([
+      { second: 0, route: 'store_home', requests: 10, errors: 0, latencySumMs: 5250, latencyMaxMs: 900 },
+      { second: 1, route: 'store_home', requests: 12, errors: 0, latencySumMs: 6000, latencyMaxMs: 600 },
+    ]);
+  });
+
+  test('a private run never reaches the mirror', async () => {
+    const mirrored: MirrorStageInput[] = [];
+    const h = setup({
+      noSeed: true,
+      run: () => SAMPLE_SUMMARY,
+      mirror: (input) => {
+        mirrored.push(input);
+      },
+      seed: (store) => {
+        seedPrivateRun(store);
+      },
+    });
+    await runToEnd(h);
+    expect(h.status()).toBe('completed');
+    await new Promise((r) => setTimeout(r, 20));
+    expect(mirrored).toHaveLength(0);
+  });
+
+  test('a run without samples never reaches the mirror', async () => {
+    const mirrored: MirrorStageInput[] = [];
+    const h = setup({
+      plan: planWithVus([10]),
+      mirror: (input) => {
+        mirrored.push(input);
+      },
+    });
+    await runToEnd(h);
+    expect(h.status()).toBe('completed');
+    await new Promise((r) => setTimeout(r, 20));
+    expect(mirrored).toHaveLength(0);
+  });
+
+  test('a slow mirror never blocks or delays the Run', async () => {
+    let mirrorStarted = false;
+    const h = setup({
+      plan: planWithVus([10]),
+      run: () => SAMPLE_SUMMARY,
+      mirror: () =>
+        new Promise<void>((resolve) => {
+          mirrorStarted = true;
+          setTimeout(resolve, 60_000);
+        }),
+    });
+    await runToEnd(h);
+    expect(h.status()).toBe('completed');
+    expect(mirrorStarted).toBe(true); // it fired, but nobody waited for it
+  });
+
+  test('a mirror failure is logged and the Run still completes', async () => {
+    const h = setup({ plan: planWithVus([10]), run: () => SAMPLE_SUMMARY, mirror: () => Promise.reject(new Error('boom')) });
+    await runToEnd(h);
+    expect(h.status()).toBe('completed');
+    await until(() => h.logs.some((m) => m.includes('mirror')), 'mirror failure logged');
   });
 });
 

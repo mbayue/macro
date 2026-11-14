@@ -20,6 +20,7 @@ import type { StageView as ApiStageView } from '../api-types.ts';
 import type { Config } from '../config.ts';
 import { readSummary } from '../k6/metrics.ts';
 import { generateStageScript } from '../k6/script.ts';
+import type { MirrorStageInput } from '../metrics/tiger.ts';
 import { ORDER_PRODUCT_ID, PRODUCT_IDS } from '../plan/catalog.ts';
 import { parsePlan } from '../plan/parser.ts';
 import { evaluatePlan } from '../plan/policy.ts';
@@ -30,7 +31,7 @@ import { allowedNumbers, guardText } from '../report/number-guard.ts';
 import type { StageExecutor } from '../sandbox/runner.ts';
 import type { DiscoveredRoute } from '../plan/discover.ts';
 import type { RunRow, StageRow, Store } from '../store/db.ts';
-import type { ContainmentType, DecisionSource, DecisionValue, RunStatus, StageResult, TestPlan } from '../types.ts';
+import type { ContainmentType, DecisionSource, DecisionValue, RunStatus, StageResult, StageSample, TestPlan } from '../types.ts';
 import { applyDecision } from './decide.ts';
 import type { AgentDecision } from './decide.ts';
 import { stageVerdict } from './verdict.ts';
@@ -83,6 +84,12 @@ export interface RunControllerDeps {
    * Errors are caught and logged.
    */
   onRunEnded?: (runId: string, status: RunStatus) => void | Promise<void>;
+  /**
+   * Optional TigerData mirror seam, called fire-and-forget once per Stage that
+   * produced samples. Only public (demo) Runs are mirrored; failures are caught
+   * and logged, and never block, delay, or fail the Run.
+   */
+  mirrorStageSamples?: (input: MirrorStageInput) => void | Promise<void>;
   /** Injectable timer (default: setTimeout). Used for the Run limit and the Supervisor guard. */
   setTimer?: SetTimerFn;
   runTimeoutMs?: number;
@@ -249,6 +256,7 @@ export class RunController {
   private readonly now: () => number;
   private readonly supervise: SuperviseFn | undefined;
   private readonly onRunEnded: RunControllerDeps['onRunEnded'];
+  private readonly mirrorStageSamples: RunControllerDeps['mirrorStageSamples'];
   private readonly setTimer: SetTimerFn;
   private readonly runTimeoutMs: number;
   private readonly superviseTimeoutMs: number;
@@ -262,6 +270,7 @@ export class RunController {
     this.now = deps.now ?? Date.now;
     this.supervise = deps.supervise;
     this.onRunEnded = deps.onRunEnded;
+    this.mirrorStageSamples = deps.mirrorStageSamples;
     this.setTimer = deps.setTimer ?? defaultSetTimer;
     this.runTimeoutMs = deps.runTimeoutMs ?? RUN_TIMEOUT_MS;
     this.superviseTimeoutMs = deps.superviseTimeoutMs ?? SUPERVISE_TIMEOUT_MS;
@@ -518,11 +527,17 @@ export class RunController {
         return;
       }
       const metrics = read.metrics;
+      if (read.samples.length > 0) {
+        this.store.storeStageSamples(runId, i, read.samples);
+      }
 
       // Verdict is stored BEFORE any Supervisor call (7.5).
       const verdict = stageVerdict(metrics.overall, plan.stopThresholds);
       this.store.finishStage({ runId, idx: i, metrics, verdict, endedAt: this.now() });
       this.appendStageEvent('stage_end', runId, i);
+      if (read.samples.length > 0) {
+        this.mirrorStage(runId, i, read.samples);
+      }
 
       const isLast = i === lastIdx;
 
@@ -593,6 +608,30 @@ export class RunController {
       payload: row === null ? null : toStageViewPayload(row),
       ts: this.now(),
     });
+  }
+
+  /**
+   * Best-effort TigerData mirror of a finished public Stage's samples. Nothing
+   * is awaited, so a slow or broken mirror cannot delay the next Stage or the
+   * Run's status; the catch is the only error path.
+   */
+  private mirrorStage(runId: string, stageIdx: number, samples: readonly StageSample[]): void {
+    const mirror = this.mirrorStageSamples;
+    if (mirror === undefined) return;
+    const run = this.store.getRun(runId);
+    if (run === null || run.visibility !== 'public') return;
+    const startedAt = this.store.getStage(runId, stageIdx)?.startedAt ?? null;
+    const input: MirrorStageInput = {
+      runId,
+      stageIdx,
+      startedAt,
+      samples,
+      planHash: run.planHash,
+      visibility: run.visibility,
+    };
+    void Promise.resolve()
+      .then(() => mirror(input))
+      .catch((e: unknown) => this.log(`tiger mirror failed for ${runId}: ${errText(e)}`));
   }
 
   private recordDecision(

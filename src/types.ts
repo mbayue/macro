@@ -49,6 +49,16 @@ export interface StageMetrics {
   routes: Partial<Record<string, Metrics>>;
 }
 
+/** One per-second, per-route bucket measured by the k6 script (design "Sampling"). */
+export interface StageSample {
+  second: number;
+  route: string;
+  requests: number;
+  errors: number;
+  latencySumMs: number;
+  latencyMaxMs: number;
+}
+
 export type StageStatus = 'running' | 'done' | 'error';
 
 export type StageVerdict = 'pass' | 'fail';

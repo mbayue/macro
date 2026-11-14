@@ -376,6 +376,23 @@ describe('Property 9: Stage scripts contain only approved values', () => {
     // No order body when the journey has no order_create.
     expect(parseCfg(generateStageScript(BASE_INPUT))).toMatchObject({ orderBody: null });
   });
+
+  test('fixed template facts: the per-second sampler feeds macro_samples', () => {
+    const script = generateStageScript({
+      ...BASE_INPUT,
+      journey: [
+        { route: 'store_home', probability: 100, thinkMs: 0 },
+        { route: 'order_create', probability: 10, thinkMs: 0 },
+      ],
+    });
+    // Sampler bookkeeping: wall-clock second, per-second per-route buckets.
+    expect(script).toContain('function sample(');
+    expect(script).toContain("const second = Math.floor((Date.now() - startedAt) / 1000)");
+    expect(script).toContain("buckets[key] || (buckets[key] = [second, routeId, 0, 0, 0, 0])");
+    // The summary the script writes carries macro_samples alongside the k6 data.
+    expect(script).toContain('const samples = { intervalSec: 1, buckets: Object.values(buckets) };');
+    expect(script).toContain('JSON.stringify(Object.assign({}, data, { macro_samples: samples }))');
+  });
 });
 
 test('own-site routes are embedded and the shop catalog is not', () => {

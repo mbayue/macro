@@ -235,6 +235,24 @@ ${pathLine}
   }
   const res = http.request(entry.method, origin + path, body, params);
   macro429.add(res.status === 429 ? 1 : 0, { route: routeId });
+  sample(routeId, res);
+}
+
+// Per-second, per-route buckets: what happened during the stage, second by
+// second. Written into the summary by handleSummary as macro_samples.
+const startedAt = Date.now();
+const buckets = {};
+
+function sample(routeId, res) {
+  const second = Math.floor((Date.now() - startedAt) / 1000);
+  const key = second + '|' + routeId;
+  const ok = res.status >= 200 && res.status < 400;
+  const lat = res.timings && res.timings.duration ? res.timings.duration : 0;
+  const b = buckets[key] || (buckets[key] = [second, routeId, 0, 0, 0, 0]);
+  b[2] += 1;
+  if (!ok) b[3] += 1;
+  b[4] += lat;
+  if (lat > b[5]) b[5] = lat;
 }
 
 export default function () {
@@ -247,7 +265,8 @@ export default function () {
 }
 
 export function handleSummary(data) {
-  return { '${K6_SUMMARY_PATH}': JSON.stringify(data) };
+  const samples = { intervalSec: 1, buckets: Object.values(buckets) };
+  return { '${K6_SUMMARY_PATH}': JSON.stringify(Object.assign({}, data, { macro_samples: samples })) };
 }
 `;
 }

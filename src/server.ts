@@ -126,16 +126,16 @@ export const SSE_MAX_LIFETIME_MS = 30 * 60_000;
 
 export const EXAMPLES: readonly { label: string; text: string }[] = [
   {
-    label: 'Gacha banner launch',
-    text: 'A new Uma Musume banner drops tonight; 500 players open the store, browse the catalog, check the ledger, 10% place an order.',
+    label: 'Campaign spike',
+    text: 'A marketing campaign brings 300 visitors to the home page over ten minutes. They browse a few pages and about 5% of them sign up or place an order.',
   },
   {
-    label: 'Streamer shout-out',
-    text: 'A streamer with 20,000 viewers mentions the shop on a live stream. Expect a burst of about 200 visitors over ten minutes who open the store, browse the catalog and look at a few product pages. Almost nobody orders.',
+    label: 'Live mention',
+    text: 'A streamer with 2,000 viewers mentions the site on a live stream. Expect a burst of about 200 visitors over ten minutes who open the home page and browse a few pages. Almost nobody orders.',
   },
   {
     label: 'Weekend sale',
-    text: 'The weekend Fate/Grand Order sale starts at noon. Around 300 shoppers check the catalog and several product pages in a row, then about 5% of them place an order.',
+    text: 'The weekend sale starts at noon. Around 300 shoppers check the catalog and several product pages in a row, then about 5% of them place an order.',
   },
 ];
 

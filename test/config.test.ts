@@ -310,3 +310,32 @@ describe('optional auth block', () => {
   });
 });
 
+describe('DOCKER_HOST', () => {
+  test('unset means no dockerHost field (local unix socket)', () => {
+    const c = ok(parseConfig(env()));
+    expect('dockerHost' in c).toBe(false);
+    expect(c.dockerHost).toBeUndefined();
+  });
+
+  test.each([
+    ['tcp://socket-proxy:2375', 'tcp://socket-proxy:2375'],
+    ['tcp://socket-proxy', 'tcp://socket-proxy'],
+    ['TCP://Socket-Proxy:2375', 'tcp://socket-proxy:2375'],
+    ['  tcp://socket-proxy:2375  ', 'tcp://socket-proxy:2375'],
+  ])('%p is accepted as %p', (raw, expected) => {
+    expect(ok(parseConfig(env({ DOCKER_HOST: raw }))).dockerHost).toBe(expected);
+  });
+
+  test.each(['unix:///var/run/docker.sock', 'http://socket-proxy:2375', 'tcp://', 'tcp://-bad-', 'tcp://x:99999'])(
+    'an unsupported DOCKER_HOST (%p) fails by name',
+    (raw) => {
+      expect(settingsOf(parseConfig(env({ DOCKER_HOST: raw })))).toEqual(['DOCKER_HOST']);
+    },
+  );
+
+  test('an empty DOCKER_HOST counts as unset, like every other optional setting', () => {
+    const c = ok(parseConfig(env({ DOCKER_HOST: '' })));
+    expect(c.dockerHost).toBeUndefined();
+  });
+});
+

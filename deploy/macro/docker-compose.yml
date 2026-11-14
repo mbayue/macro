@@ -28,6 +28,35 @@ services:
     depends_on:
       - macro-api
 
+  # Least-privilege Docker API proxy (Tecnativa, pinned by digest): the ONLY
+  # container that mounts the Docker socket. It forwards just the endpoints
+  # Macro_API uses — container create/start/wait/kill/inspect/logs/remove,
+  # network create/connect/list/remove, image inspect, /info — and answers 403
+  # for everything else (exec, build, volumes, swarm, secrets, image pull...).
+  # The HAProxy defaults (timeout server/client 10m) cover the longest
+  # container wait a Stage can produce (~3.5 minutes).
+  socket-proxy:
+    image: tecnativa/docker-socket-proxy@sha256:1f5038b54f06c3e18422902cf00ba21803d1c97805aae032e5e6673d532d3459
+    container_name: macro-socket-proxy
+    restart: unless-stopped
+    environment:
+      CONTAINERS: "1"
+      NETWORKS: "1"
+      IMAGES: "1"
+      INFO: "1"
+      ALLOW_START: "1"
+      ALLOW_RESTARTS: "1"
+      # Non-GET methods, still scoped to the enabled sections above.
+      POST: "1"
+      PING: "1"
+      VERSION: "1"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    # No `ports:` on purpose: only macro-api reaches it, over the Compose network.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+
   macro-api:
     build:
       context: ../..
@@ -40,8 +69,9 @@ services:
     environment:
       # Same path inside and outside: sandbox bind mounts are resolved by the host daemon.
       DATA_DIR: /var/lib/macro
+      # Docker over TCP through the socket proxy above; no socket is mounted here.
+      DOCKER_HOST: tcp://socket-proxy:2375
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       - /var/lib/macro:/var/lib/macro
     # No `ports:` on purpose: only Caddy reaches this service, over the Compose network.
     # The server must listen on 0.0.0.0 (Bun's default) for Caddy to connect.
@@ -61,6 +91,8 @@ services:
       retries: 5
       start_period: 20s
     depends_on:
+      socket-proxy:
+        condition: service_started
       macro-proxy:
         condition: service_completed_successfully
 

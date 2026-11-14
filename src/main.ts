@@ -15,7 +15,7 @@ import type { Config } from './config.ts';
 import type { CapacityReport } from './report/build.ts';
 import { RunController } from './run/controller.ts';
 import { ProbeController } from './run/probe.ts';
-import { DockerClient } from './sandbox/docker.ts';
+import { DockerClient, fetchForDockerHost } from './sandbox/docker.ts';
 import { DockerStageExecutor, SandboxRefusedError, SandboxRunner } from './sandbox/runner.ts';
 import { resolveTxt } from 'node:dns/promises';
 import { createResendMailer } from './auth/magic-link.ts';
@@ -55,7 +55,9 @@ async function main(): Promise<void> {
   const store = Store.open(config.dataDir);
   const stopPurge = store.startPurgeTimer();
 
-  const docker = new DockerClient();
+  // Unix socket by default; the compose deploy points DOCKER_HOST at the
+  // least-privilege socket proxy, so the API container never holds the socket.
+  const docker = new DockerClient(fetchForDockerHost(config.dockerHost));
   const runner = new SandboxRunner({
     docker,
     config,

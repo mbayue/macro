@@ -46,6 +46,12 @@ export interface Config {
   readonly macroVmIp: string;
   readonly port: number;
   readonly dataDir: string;
+  /**
+   * `DOCKER_HOST` as a `tcp://host[:port]` URL. Set on the VM deploy, where the
+   * API reaches Docker through the least-privilege socket proxy (compose wires
+   * it). Unset means the local unix socket (/var/run/docker.sock).
+   */
+  readonly dockerHost?: string;
   /** Requirement 17 only. Key omitted when unset. */
   readonly vultrApiKey?: string;
   /**
@@ -179,6 +185,20 @@ export function parseConfig(env: Env): ConfigResult {
 
   const vultrApiKey = read(env, 'VULTR_API_KEY');
 
+  // Docker endpoint: unset = the local unix socket. When set, only tcp:// is
+  // accepted (the compose deploy points it at the least-privilege socket proxy).
+  const dockerHostRaw = read(env, 'DOCKER_HOST');
+  let dockerHost: string | undefined;
+  if (dockerHostRaw !== undefined) {
+    const m = /^tcp:\/\/([a-z0-9](?:[a-z0-9._-]*[a-z0-9]))(?::(\d{1,5}))?$/i.exec(dockerHostRaw);
+    const port = m?.[2];
+    if (m === null || (port !== undefined && (Number(port) < 1 || Number(port) > 65535))) {
+      fail('DOCKER_HOST', 'must be tcp://host[:port] when set (for example tcp://socket-proxy:2375)');
+    } else {
+      dockerHost = dockerHostRaw.toLowerCase();
+    }
+  }
+
   // Auth: all-or-nothing. Any one set requires every auth setting.
   const AUTH_KEYS = [
     'SESSION_SECRET',
@@ -245,6 +265,7 @@ export function parseConfig(env: Env): ConfigResult {
     macroVmIp,
     port,
     dataDir,
+    ...(dockerHost !== undefined ? { dockerHost } : {}),
     ...(vultrApiKey !== undefined ? { vultrApiKey } : {}),
     ...(auth !== undefined ? { auth } : {}),
     ...(domainConnect !== undefined ? { domainConnect } : {}),

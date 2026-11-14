@@ -24,6 +24,34 @@ export function socketFetch(socketPath: string = DEFAULT_DOCKER_SOCKET): DockerF
     fetch(url, { ...init, unix: socketPath, timeout: false } as RequestInit);
 }
 
+const TCP_BASE_RE = /^http:\/\/[a-z0-9](?:[a-z0-9._-]*[a-z0-9])(?::\d{1,5})?$/i;
+
+/**
+ * Transport over a plain TCP endpoint: the client builds every URL against the
+ * internal host `docker`, and this rewrites the origin onto `baseUrl`.
+ * `init.signal` and `timeout: false` behave as in `socketFetch`.
+ */
+export function tcpFetch(baseUrl: string, fetchImpl: typeof fetch = fetch): DockerFetch {
+  if (!TCP_BASE_RE.test(baseUrl)) {
+    throw new Error(`invalid Docker TCP base URL: ${JSON.stringify(baseUrl)}`);
+  }
+  return (url, init) =>
+    fetchImpl(url.replace('http://docker', baseUrl), { ...init, timeout: false } as RequestInit);
+}
+
+/**
+ * The transport for one Config's Docker endpoint: the local unix socket by
+ * default, or the configured `tcp://host[:port]` (the least-privilege socket
+ * proxy on the VM). Port defaults to 2375, the Docker API port.
+ */
+export function fetchForDockerHost(dockerHost: string | undefined): DockerFetch {
+  if (dockerHost === undefined) return socketFetch();
+  const m = /^tcp:\/\/([a-z0-9](?:[a-z0-9._-]*[a-z0-9]))(?::(\d{1,5}))?$/i.exec(dockerHost);
+  if (m === null) throw new Error(`invalid DOCKER_HOST: ${JSON.stringify(dockerHost)}`);
+  const port = m[2] ?? '2375';
+  return tcpFetch(`http://${m[1]!}:${port}`);
+}
+
 export class DockerError extends Error {
   readonly status: number;
   constructor(status: number, message: string) {
@@ -62,6 +90,8 @@ export interface ContainerHostConfig {
   NetworkMode?: string;
   Binds?: string[];
   Tmpfs?: Record<string, string>;
+  /** Host port publishing (`"2375/tcp": [{ HostPort: "" }]` for an ephemeral port). */
+  PortBindings?: Record<string, { HostIp?: string; HostPort?: string }[]>;
   AutoRemove?: boolean;
 }
 
@@ -80,6 +110,8 @@ export interface ContainerCreateBody {
   Env?: string[];
   User?: string;
   Labels?: Record<string, string>;
+  /** Port map for published ports (`"2375/tcp": {}`); the Sandbox never publishes. */
+  ExposedPorts?: Record<string, object>;
   HostConfig?: ContainerHostConfig;
   NetworkingConfig?: NetworkingConfig;
 }
@@ -106,6 +138,8 @@ export interface ContainerInspect {
   HostConfig: ContainerHostConfig;
   NetworkSettings?: {
     Networks?: Record<string, { IPAddress?: string; [key: string]: unknown }>;
+    /** Published port map (`"2375/tcp": [{ HostIp, HostPort }]`) when the container publishes ports. */
+    Ports?: Record<string, { HostIp?: string; HostPort?: string }[]>;
     [key: string]: unknown;
   };
   [key: string]: unknown;

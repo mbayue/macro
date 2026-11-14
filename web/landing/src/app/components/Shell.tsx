@@ -161,7 +161,7 @@ export function Shell({
         <a className="wordmark rail__brand" href="#/">
           Macro
         </a>
-        <a className={route.view === 'new' ? 'btn btn--quiet rail__new is-current' : 'btn btn--quiet rail__new'} href="#/" aria-current={route.view === 'new' ? 'page' : undefined}>
+        <a className={route.view === 'new' ? 'btn rail__new is-current' : 'btn rail__new'} href="#/" aria-current={route.view === 'new' ? 'page' : undefined}>
           New test
         </a>
         <ul className="rail__list">

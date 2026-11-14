@@ -162,5 +162,27 @@ describe('Domain Connect Signer & URL Builder', () => {
       const res = await fetchDomainConnectSettings('api.example.com', 'example.com', mockFetch404);
       expect(res).toBeNull();
     });
+
+    test('discoverDomainConnectApi and fetchDomainConnectSettings reject IP literals, ports, internal hosts, and redirects', async () => {
+      for (const bad of ['127.0.0.1', '127.0.0.1:8080', 'localhost', 'socket-proxy', 'evil.internal', 'db.local']) {
+        const discovered = await discoverDomainConnectApi('example.com', async () => [[bad]]);
+        expect(discovered).toBeNull();
+        let called = false;
+        const res = await fetchDomainConnectSettings(bad, 'example.com', async () => {
+          called = true;
+          return new Response('{}', { status: 200 });
+        });
+        expect(res).toBeNull();
+        expect(called).toBe(false);
+      }
+
+      let seenInit: RequestInit | undefined;
+      const redirectRes = await fetchDomainConnectSettings('api.example.com', 'example.com', async (_url, init) => {
+        seenInit = init;
+        return new Response(null, { status: 302, headers: { Location: 'http://127.0.0.1/' } });
+      });
+      expect(seenInit?.redirect).toBe('manual');
+      expect(redirectRes).toBeNull();
+    });
   });
 });

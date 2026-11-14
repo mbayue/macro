@@ -177,6 +177,7 @@ export interface RunView {
   runtime: SandboxRuntime;
   startedAt: number;
   endedAt: number | null;
+  visibility?: 'public' | 'private';
   /** Probe runs only: see src/k6/probe-result.ts ProbeClassification. */
   probeResult: unknown;
 }

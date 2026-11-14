@@ -123,6 +123,8 @@ export const SSE_HEARTBEAT_MS = 3000;
 /** A terminal Run whose controller task is still busy (AI report) keeps its streams open this long. */
 export const SSE_TERMINAL_GRACE_MS = 180_000;
 export const SSE_MAX_LIFETIME_MS = 30 * 60_000;
+export const SSE_MAX_PER_IP = 8;
+export const SSE_MAX_TOTAL = 64;
 
 export const EXAMPLES: readonly { label: string; text: string }[] = [
   {
@@ -271,6 +273,8 @@ export interface AppDeps {
     heartbeatMs?: number;
     terminalGraceMs?: number;
     maxLifetimeMs?: number;
+    maxPerIp?: number;
+    maxTotal?: number;
   };
   /** Receives one JSON line per internal error. Defaults to `console.error`. */
   log?: (line: string) => void;
@@ -429,12 +433,17 @@ const MagicLinkBody = z.object({
   returnTo: z.string().max(500).optional(),
 });
 
-/** Same-origin relative path for post-login redirect; rejects absolute URLs and protocol-relative. */
+/** Same-origin relative path for post-login redirect; rejects absolute URLs, protocol-relative, and control chars. */
 function safeReturnTo(raw: string | null | undefined): string {
   if (raw === null || raw === undefined || raw === '') return '/app/#/';
-  if (!raw.startsWith('/')) return '/app/#/';
-  if (raw.startsWith('//')) return '/app/#/';
-  if (raw.includes('\\') || raw.includes('\0')) return '/app/#/';
+  if (/[\x00-\x1f\x7f]/.test(raw)) return '/app/#/';
+  if (!raw.startsWith('/') || raw.startsWith('//') || raw.includes('\\')) return '/app/#/';
+  try {
+    const parsed = new URL(raw, 'https://macro.invalid');
+    if (parsed.origin !== 'https://macro.invalid') return '/app/#/';
+  } catch {
+    return '/app/#/';
+  }
   return raw;
 }
 
@@ -588,6 +597,7 @@ function toRunView(r: RunRow): RunView {
     runtime: r.runtime,
     startedAt: r.startedAt,
     endedAt: r.endedAt,
+    visibility: r.visibility,
     probeResult: r.probeResult,
   };
 }
@@ -654,7 +664,11 @@ export function createApp(deps: AppDeps): App {
     heartbeatMs: deps.sse?.heartbeatMs ?? SSE_HEARTBEAT_MS,
     terminalGraceMs: deps.sse?.terminalGraceMs ?? SSE_TERMINAL_GRACE_MS,
     maxLifetimeMs: deps.sse?.maxLifetimeMs ?? SSE_MAX_LIFETIME_MS,
+    maxPerIp: deps.sse?.maxPerIp ?? SSE_MAX_PER_IP,
+    maxTotal: deps.sse?.maxTotal ?? SSE_MAX_TOTAL,
   };
+  let activeSseTotal = 0;
+  const activeSseByIp = new Map<string, number>();
   const planner: PlannerFn =
     deps.planner ??
     ((trafficEvent, draftId, target, discovered) =>
@@ -1307,12 +1321,17 @@ export function createApp(deps: AppDeps): App {
 
   // --------------------------------------------------------------------- SSE
 
-  const getEvents: Handler = ({ req, server, params }) => {
+  const getEvents: Handler = ({ req, ip, server, params }) => {
     const id = safeDecode(params[0] ?? '');
     if (id === null || !ID_RE.test(id)) return notFound();
     const run = store.getRun(id);
     if (run === null || !canViewRun(run, req)) return notFound();
     const controller = controllerFor(run.kind);
+
+    const ipCount = activeSseByIp.get(ip) ?? 0;
+    if (activeSseTotal >= sseCfg.maxTotal || ipCount >= sseCfg.maxPerIp) {
+      return apiError(429, 'rate_limited', 'Too many open event streams. Try again in a moment.');
+    }
 
     server?.timeout(req, 0);
 
@@ -1337,9 +1356,23 @@ export function createApp(deps: AppDeps): App {
       return new Response(null, { status: 204, headers: { 'cache-control': 'no-store' } });
     }
 
+    activeSseTotal += 1;
+    activeSseByIp.set(ip, ipCount + 1);
+    let released = false;
+    const releaseSseSlot = (): void => {
+      if (released) return;
+      released = true;
+      activeSseTotal = Math.max(0, activeSseTotal - 1);
+      const cur = activeSseByIp.get(ip) ?? 0;
+      if (cur <= 1) activeSseByIp.delete(ip);
+      else activeSseByIp.set(ip, cur - 1);
+    };
+
     const encoder = new TextEncoder();
     const startedAt = now();
-    let cleanup = (): void => {};
+    let cleanup = (): void => {
+      releaseSseSlot();
+    };
     const stream = new ReadableStream<Uint8Array>({
       start(ctl) {
         let closed = false;
@@ -1347,6 +1380,7 @@ export function createApp(deps: AppDeps): App {
         cleanup = (): void => {
           if (closed) return;
           closed = true;
+          releaseSseSlot();
           for (const c of cancels) c();
           cancels.length = 0;
           req.signal.removeEventListener('abort', cleanup);
@@ -1381,7 +1415,7 @@ export function createApp(deps: AppDeps): App {
               sent += rows.length;
               if (rows.length < 200) break;
             }
-            if ((finished && sent === 0) || now() - startedAt > sseCfg.maxLifetimeMs) cleanup();
+            if (finished || now() - startedAt > sseCfg.maxLifetimeMs) cleanup();
           } catch (err) {
             logInternal('sse', err);
             cleanup();

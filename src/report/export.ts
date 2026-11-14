@@ -39,10 +39,11 @@ export const CSV_COLUMNS: readonly string[] = [
   'note',
 ];
 
-/** RFC 4180 field: quoted only when it must be, inner quotes doubled. */
+/** RFC 4180 field with spreadsheet formula-prefix neutralization. */
 export function csvField(value: string): string {
-  if (/[",\r\n]/.test(value)) return `"${value.replaceAll('"', '""')}"`;
-  return value;
+  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  if (/[",\r\n]/.test(safe)) return `"${safe.replaceAll('"', '""')}"`;
+  return safe;
 }
 
 const num = (n: number): string => String(n);

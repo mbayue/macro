@@ -4,7 +4,7 @@
  */
 import { type ReactNode, useContext, useEffect, useId, useState } from 'react';
 import { postSignOut } from '../lib/auth-api.ts';
-import { loadRecentRuns, type RecentRun } from '../lib/recent-runs.ts';
+import { clearRecentRuns, loadRecentRuns, type RecentRun } from '../lib/recent-runs.ts';
 import { ThemeSegmented } from '../../components/Chrome.tsx';
 import { AppContext } from '../context.tsx';
 import { probeHref, type Route, runHref } from '../router.ts';
@@ -38,6 +38,8 @@ export function Shell({
   async function onSignOut() {
     if (!ctx) return;
     await postSignOut();
+    clearRecentRuns();
+    setRecent([]);
     await ctx.refreshMe();
     ctx.announce('Signed out.');
     ctx.navigate('/');

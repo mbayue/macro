@@ -687,7 +687,7 @@ export class Store {
   }
 
   /**
-   * Claim public runs for a user. Skips missing / private / already-owned-by-claimant.
+   * Claim unowned public runs for a user. Skips missing, private, or already-owned runs.
    * Never flips visibility. Returns the ids that changed.
    */
   claimPublicRuns(userId: string, runIds: readonly string[]): string[] {
@@ -696,10 +696,10 @@ export class Store {
       const update = this.db.prepare(
         `UPDATE runs SET owner_user_id = ?
          WHERE id = ? AND visibility = 'public'
-           AND (owner_user_id IS NULL OR owner_user_id != ?)`,
+           AND owner_user_id IS NULL`,
       );
       for (const id of runIds) {
-        const res = update.run(userId, id, userId);
+        const res = update.run(userId, id);
         if (res.changes > 0) claimed.push(id);
       }
     });

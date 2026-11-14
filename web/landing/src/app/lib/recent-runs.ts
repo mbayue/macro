@@ -64,3 +64,11 @@ export function rememberRun(entry: RecentRun): void {
 export function forgetRun(id: string): void {
   save(loadRecentRuns().filter((r) => r.id !== id));
 }
+
+export function clearRecentRuns(): void {
+  try {
+    window.localStorage.removeItem(KEY);
+  } catch {
+    // Storage disabled: nothing to clear.
+  }
+}

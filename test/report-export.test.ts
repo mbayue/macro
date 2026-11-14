@@ -149,16 +149,23 @@ describe('report CSV escaping', () => {
     ['a\nb', '"a\nb"'],
     ['a\rb', '"a\rb"'],
     ['', ''],
+    ['=1+1', "'=1+1"],
+    ['+1+1', "'+1+1"],
+    ['-1+1', "'-1+1"],
+    ['@SUM(1,1)', `"'@SUM(1,1)"`],
+    ['\t1', "'\t1"],
+    ['=a,b', `"'=a,b"`],
   ])('csvField(%p) is %p', (input, expected) => {
     expect(csvField(input)).toBe(expected);
   });
 
-  test('a plan name with any characters round-trips through the file', () => {
+  test('a plan name with any characters round-trips through the file with formula neutralization', () => {
     const arbName = fc.string({ minLength: 0, maxLength: 80 });
     fc.assert(
       fc.property(arbName, (name) => {
         const rows = parseCsv(reportToCsv(twoStageReport(name)));
-        expect(rows[1]![1]).toBe(name);
+        const expected = /^[=+\-@\t\r]/.test(name) ? `'${name}` : name;
+        expect(rows[1]![1]).toBe(expected);
       }),
     );
   });

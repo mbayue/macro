@@ -3,6 +3,31 @@
  * Implements discovery, settings fetching, query signing (RSA-SHA256), and synchronous apply URL generation.
  */
 import crypto from 'node:crypto';
+import { isIP } from 'node:net';
+
+const DNS_HOSTNAME_RE =
+  /^[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?(?:\.[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?)+$/i;
+
+/**
+ * Validate that a DNS-derived Domain Connect API host is a public multi-label
+ * DNS hostname (no ports, userinfo, paths, IP literals, or internal suffixes).
+ */
+export function isSafeDomainConnectHost(raw: string): boolean {
+  const host = raw.trim().replace(/\.+$/, '').toLowerCase();
+  if (host.length === 0 || host.length > 253) return false;
+  if (isIP(host) !== 0) return false;
+  if (!DNS_HOSTNAME_RE.test(host)) return false;
+  if (
+    host === 'localhost' ||
+    host.endsWith('.localhost') ||
+    host.endsWith('.local') ||
+    host.endsWith('.internal') ||
+    host.endsWith('.arpa')
+  ) {
+    return false;
+  }
+  return true;
+}
 
 export const PROVIDER_ID = 'macro.my.id';
 export const SERVICE_ID = 'verify';
@@ -116,9 +141,9 @@ export async function discoverDomainConnectApi(
 
     if (Array.isArray(txtRecords) && txtRecords.length > 0) {
       for (const chunk of txtRecords) {
-        const text = chunk.join('').trim();
-        if (text) {
-          return text.replace(/\.+$/, '');
+        const text = chunk.join('').trim().replace(/\.+$/, '');
+        if (text && isSafeDomainConnectHost(text)) {
+          return text;
         }
       }
     }
@@ -136,9 +161,9 @@ export async function discoverDomainConnectApi(
     ]);
 
     if (Array.isArray(cnameRecords) && cnameRecords.length > 0) {
-      const first = cnameRecords[0]?.trim();
-      if (first) {
-        return first.replace(/\.+$/, '');
+      const first = cnameRecords[0]?.trim().replace(/\.+$/, '');
+      if (first && isSafeDomainConnectHost(first)) {
+        return first;
       }
     }
   } catch {
@@ -156,12 +181,14 @@ export async function fetchDomainConnectSettings(
   apexDomain: string,
   fetchFn?: FetchFn,
 ): Promise<DomainConnectSettings | null> {
+  const host = apiHost.trim().replace(/[./]+$/, '');
+  if (!isSafeDomainConnectHost(host)) return null;
   const customFetch = fetchFn ?? fetch;
-  const host = apiHost.replace(/\/+$/, '');
   const url = `https://${host}/v2/${encodeURIComponent(apexDomain)}/settings`;
 
   try {
     const res = await customFetch(url, {
+      redirect: 'manual',
       signal: AbortSignal.timeout(1500),
       headers: {
         Accept: 'application/json',

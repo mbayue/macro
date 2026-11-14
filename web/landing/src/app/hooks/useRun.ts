@@ -200,7 +200,9 @@ export function useRun(id: string) {
         navigate(`/probe/${encodeURIComponent(id)}`);
         return;
       }
-      rememberRun({ id, kind: 'run', name: res.data.plan?.name ?? 'Load test', startedAt: res.data.run.startedAt });
+      if (res.data.run.visibility !== 'private') {
+        rememberRun({ id, kind: 'run', name: res.data.plan?.name ?? 'Load test', startedAt: res.data.run.startedAt });
+      }
       mount(res.data);
     })();
 

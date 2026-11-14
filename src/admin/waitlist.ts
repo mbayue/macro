@@ -20,7 +20,8 @@ const [command, ...rest] = args;
 const store = Store.open(process.env['DATA_DIR'] ?? '/var/lib/macro');
 
 function csvCell(v: string): string {
-  return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+  const safe = /^[=+\-@\t\r]/.test(v) ? `'${v}` : v;
+  return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 
 function inviteMailer(): ReturnType<typeof createResendMailer> {

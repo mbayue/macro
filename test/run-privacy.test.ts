@@ -28,11 +28,11 @@ function authConfig() {
   });
 }
 
-async function signIn(app: App, sent: { url: string }[], email: string): Promise<string> {
+async function signIn(app: App, sent: { url: string }[], email: string, ip = '198.51.100.1'): Promise<string> {
   await app.fetch(
     new Request('http://macro.test/api/auth/magic-link', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'cf-connecting-ip': ip },
       body: JSON.stringify({ email }),
     }),
   );
@@ -192,5 +192,19 @@ describe('run privacy and claim', () => {
     const after = store.getRun(runId)!;
     expect(after.ownerUserId).toBe(store.findUserByEmail('claimer@example.com')!.id);
     expect(after.visibility).toBe('public');
+
+    // A second signed-in user cannot hijack an already-owned public run.
+    const otherCookie = await signIn(app, sent, 'attacker@example.com', '198.51.100.2');
+    const hijack = await app.fetch(
+      new Request('http://macro.test/api/auth/claim', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', cookie: otherCookie },
+        body: JSON.stringify({ runIds: [runId] }),
+      }),
+    );
+    expect(hijack.status).toBe(200);
+    const hijackBody = (await hijack.json()) as ClaimResponse;
+    expect(hijackBody.claimed).toEqual([]);
+    expect(store.getRun(runId)!.ownerUserId).toBe(store.findUserByEmail('claimer@example.com')!.id);
   });
 });

@@ -30,6 +30,7 @@ export interface PlannerDeps {
   client: InferenceClient;
   target: Config['target'];
   discovered?: readonly DiscoveredRoute[];
+  baselineNote?: string;
 }
 
 export type PlanOutcome =
@@ -343,7 +344,11 @@ export async function planTrafficEvent(
   if (!deps.client.configured) return { ok: false, error: 'inference_not_configured' };
 
   const system = plannerSystemPrompt(deps.target, deps.discovered);
-  const user = plannerUserMessage(trafficEvent);
+  const baseUser = plannerUserMessage(trafficEvent);
+  const user =
+    deps.baselineNote !== undefined && deps.baselineNote !== ''
+      ? `${baseUser}\n\nHistorical 30-day target baseline (for context only; still follow all user requirements and policy limits):\n${deps.baselineNote}`
+      : baseUser;
   const tool = proposePlanTool(deps.discovered);
   const base = { agent: 'planner' as const, system, user, tool, timeoutMs: PLANNER_TIMEOUT_MS, maxTokens: PLANNER_MAX_TOKENS, reasoningEffort: 'low' as const, draftId };
 

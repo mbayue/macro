@@ -12,7 +12,7 @@ import { writeReport } from './agents/reporter.ts';
 import { makeSupervisor } from './agents/supervisor.ts';
 import { SQL } from 'bun';
 import { loadConfigOrExit, redactedConfig } from './config.ts';
-import { createTigerMirror } from './metrics/tiger.ts';
+import { createTigerMirror, createTigerTrendsReader, formatDemoBaselineContext } from './metrics/tiger.ts';
 import type { Config } from './config.ts';
 import type { CapacityReport } from './report/build.ts';
 import { RunController } from './run/controller.ts';
@@ -133,9 +133,14 @@ async function main(): Promise<void> {
 
   // Optional TigerData mirror of public-run samples. Unset TIGERDATA_URL
   // disables it; Bun connects lazily, so startup never waits on the service.
+  const tigerSql = effective.tigerDataUrl !== undefined ? new SQL(effective.tigerDataUrl) : undefined;
   const tigerMirror =
-    effective.tigerDataUrl !== undefined
-      ? createTigerMirror({ url: effective.tigerDataUrl, client: new SQL(effective.tigerDataUrl) })
+    effective.tigerDataUrl !== undefined && tigerSql !== undefined
+      ? createTigerMirror({ url: effective.tigerDataUrl, client: tigerSql })
+      : undefined;
+  const getDemoTrends =
+    effective.tigerDataUrl !== undefined && tigerSql !== undefined
+      ? createTigerTrendsReader({ url: effective.tigerDataUrl, client: tigerSql })
       : undefined;
 
   /** Adds the AI section to a stored report and announces it. Never throws. */
@@ -145,10 +150,22 @@ async function main(): Promise<void> {
       if (row === null) return;
       const run = store.getRun(runId);
       const target = run?.planHash == null ? null : store.getPlanTarget(run.planHash);
+      let baselineNote: string | undefined;
+      if (run?.visibility === 'public' && getDemoTrends !== undefined) {
+        const trends = await Promise.race([
+          getDemoTrends(),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 400)),
+        ]).catch(() => null);
+        if (trends !== null) baselineNote = formatDemoBaselineContext(trends);
+      }
       const ai = await writeReport(
         { client },
         row.body as CapacityReport,
-        target === null ? { runId } : { runId, routes: target.routes },
+        {
+          runId,
+          ...(target !== null ? { routes: target.routes } : {}),
+          ...(baselineNote !== undefined ? { baselineNote } : {}),
+        },
       );
       store.setReportAi(runId, ai, ai.status === 'unavailable' ? 'unavailable' : 'ready');
       store.appendEvent({ type: 'report', runId, payload: { ready: true, ai: true }, ts: Date.now() });
@@ -182,6 +199,7 @@ async function main(): Promise<void> {
     probeController,
     resolveTxt,
     fetchImpl: fetch,
+    ...(getDemoTrends !== undefined ? { getDemoTrends } : {}),
     ...(effective.auth !== undefined
       ? {
           mailer: createResendMailer({

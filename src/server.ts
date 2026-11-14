@@ -36,6 +36,7 @@ import type {
   AccountDraft,
   AccountRunsResponse,
   ClaimResponse,
+  DemoTrendsResponse,
   MagicLinkResponse,
   MeResponse,
   VerifyCheckResponse,
@@ -44,6 +45,7 @@ import type {
   WaitlistResponse,
 } from './api-types.ts';
 import { planTrafficEvent } from './agents/planner.ts';
+import { formatDemoBaselineContext } from './metrics/tiger.ts';
 import type { PlanOutcome } from './agents/planner.ts';
 import type { InferenceClient } from './agents/inference.ts';
 import {
@@ -246,6 +248,7 @@ export type PlannerFn = (
   draftId: string,
   target?: Config['target'],
   discovered?: readonly DiscoveredRoute[],
+  baselineNote?: string,
 ) => Promise<PlanOutcome>;
 
 /** The part of `Bun.Server` this module uses. */
@@ -294,6 +297,8 @@ export interface AppDeps {
   resolveNs?: ResolveNs;
   /** Injectable fetch for well-known origin checks (defaults to global fetch). */
   fetchImpl?: FetchLike;
+  /** Optional TigerData 30-day demo baseline reader (`GET /api/trends/demo`). */
+  getDemoTrends?: () => Promise<DemoTrendsResponse>;
 }
 
 export interface App {
@@ -679,11 +684,14 @@ export function createApp(deps: AppDeps): App {
   const activeSseByIp = new Map<string, number>();
   const planner: PlannerFn =
     deps.planner ??
-    ((trafficEvent, draftId, target, discovered) =>
+    ((trafficEvent, draftId, target, discovered, baselineNote) =>
       planTrafficEvent(
-        discovered === undefined
-          ? { client: deps.client, target: target ?? config.target }
-          : { client: deps.client, target: target ?? config.target, discovered },
+        {
+          client: deps.client,
+          target: target ?? config.target,
+          ...(discovered !== undefined ? { discovered } : {}),
+          ...(baselineNote !== undefined ? { baselineNote } : {}),
+        },
         trafficEvent,
         draftId,
       ));
@@ -931,6 +939,14 @@ export function createApp(deps: AppDeps): App {
     return json(200, body, { 'cache-control': 'no-cache' });
   };
 
+  const getDemoTrends: Handler = async () => {
+    const body: DemoTrendsResponse =
+      deps.getDemoTrends === undefined
+        ? { available: false, windowDays: 30, routes: [] }
+        : await deps.getDemoTrends().catch(() => ({ available: false, windowDays: 30 as const, routes: [] }));
+    return json(200, body, { 'cache-control': 'no-cache' });
+  };
+
   const postDiscover: Handler = async ({ req }) => {
     const read = await readJsonBody(req);
     if (!read.ok) return read.res;
@@ -1061,9 +1077,18 @@ export function createApp(deps: AppDeps): App {
     store.createDraft({ id: draftId, trafficEvent, createdAt: at });
     if (stored !== undefined) store.setDraftDiscovery(draftId, targetResolved.target.webOrigin, stored);
 
+    let baselineNote: string | undefined;
+    if (parsed.data.targetMode !== 'own' && deps.getDemoTrends !== undefined) {
+      const trends = await Promise.race([
+        deps.getDemoTrends(),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 400)),
+      ]).catch(() => null);
+      if (trends !== null) baselineNote = formatDemoBaselineContext(trends);
+    }
+
     let outcome: PlanOutcome;
     try {
-      outcome = await planner(trafficEvent, draftId, targetResolved.target, forPlanner);
+      outcome = await planner(trafficEvent, draftId, targetResolved.target, forPlanner, baselineNote);
     } catch (err) {
       logInternal('planner', err);
       return apiError(502, 'planning_failed', MSG.planningFailed);
@@ -2055,6 +2080,7 @@ export function createApp(deps: AppDeps): App {
   const routes: RouteDef[] = [
     { method: 'GET', re: /^\/healthz$/, name: 'healthz', handler: health },
     { method: 'GET', re: /^\/api\/config$/, name: 'config', handler: getConfig },
+    { method: 'GET', re: /^\/api\/trends\/demo$/, name: 'demo_trends', handler: getDemoTrends },
     { method: 'POST', re: /^\/api\/discover$/, name: 'discover', handler: postDiscover },
     { method: 'POST', re: /^\/api\/plan$/, name: 'plan', handler: postPlan },
     { method: 'POST', re: /^\/api\/approve$/, name: 'approve', handler: postApprove },

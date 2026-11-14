@@ -2,7 +2,7 @@
 // schema/hypertable/policies ensured once, failures swallowed.
 import { describe, expect, test } from 'bun:test';
 import type { StageSample } from '../src/types.ts';
-import { createTigerMirror, ensureTigerSchema } from '../src/metrics/tiger.ts';
+import { createTigerMirror, createTigerTrendsReader, ensureTigerSchema, formatDemoBaselineContext } from '../src/metrics/tiger.ts';
 import type { TigerClient } from '../src/metrics/tiger.ts';
 
 const TIGER_URL = 'postgres://tsdbadmin:pw@host.cloud.tigerdata.com:12345/tsdb?sslmode=require';
@@ -125,5 +125,47 @@ describe('createTigerMirror', () => {
     const mirror = createTigerMirror({ url: TIGER_URL, client });
     await expect(mirror(publicInput())).resolves.toBeUndefined();
     expect(calls.length).toBeGreaterThan(0); // it tried
+  });
+});
+
+describe('createTigerTrendsReader', () => {
+  test('reads routes from the hourly continuous aggregate when present', async () => {
+    const client: TigerClient = {
+      async unsafe(text) {
+        if (text.includes('stage_samples_hourly')) {
+          return [{ route: 'store_home', requests: 22, errors: 1, avg_ms: 511.4, max_ms: 900 }];
+        }
+        return [];
+      },
+    };
+    const read = createTigerTrendsReader({ url: TIGER_URL, client });
+    await expect(read()).resolves.toEqual({
+      available: true,
+      windowDays: 30,
+      routes: [{ route: 'store_home', requests: 22, errors: 1, errorRatePct: 4.5, avgMs: 511.4, maxMs: 900, status: 'steady' }],
+    });
+  });
+
+  test('falls back to raw stage_samples when the continuous aggregate query fails', async () => {
+    const client: TigerClient = {
+      async unsafe(text) {
+        if (text.includes('stage_samples_hourly')) throw new Error('view does not exist');
+        return [{ route: 'catalog_list', requests: 10, errors: 2, avg_ms: 120.5, max_ms: 210 }];
+      },
+    };
+    const read = createTigerTrendsReader({ url: TIGER_URL, client });
+    const res = await read();
+    expect(res).toEqual({
+      available: true,
+      windowDays: 30,
+      routes: [{ route: 'catalog_list', requests: 10, errors: 2, errorRatePct: 20, avgMs: 120.5, maxMs: 210, status: 'degraded' }],
+    });
+    expect(formatDemoBaselineContext(res)).toContain('catalog_list: 121 ms avg, 210 ms max, 20.0% errors across 10 reqs (degraded)');
+  });
+
+  test('returns available: false when both queries fail', async () => {
+    const { client } = failingClient();
+    const read = createTigerTrendsReader({ url: TIGER_URL, client });
+    await expect(read()).resolves.toEqual({ available: false, windowDays: 30, routes: [] });
   });
 });

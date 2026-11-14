@@ -15,6 +15,7 @@
  */
 
 import { SQL } from 'bun';
+import type { DemoRouteHealth, DemoTrendRoute, DemoTrendsResponse } from '../api-types.ts';
 import type { StageSample } from '../types.ts';
 
 /** The one Bun SQL method the mirror uses, shaped so tests can stub it. */
@@ -180,6 +181,97 @@ export function createTigerMirror(opts: {
       ]);
     } catch {
       // Best effort by design: a mirror failure never affects the run.
+    }
+  };
+}
+
+const TRENDS_CAGG_SQL = `SELECT route,
+  COALESCE(SUM(requests), 0)::int AS requests,
+  COALESCE(SUM(errors), 0)::int AS errors,
+  ROUND(SUM(latency_sum_ms)::numeric / NULLIF(SUM(requests), 0), 1)::float8 AS avg_ms,
+  COALESCE(MAX(latency_max_ms), 0)::float8 AS max_ms
+FROM stage_samples_hourly
+WHERE bucket >= now() - interval '30 days'
+GROUP BY route
+ORDER BY SUM(requests) DESC
+LIMIT 12`;
+
+const TRENDS_RAW_SQL = `SELECT route,
+  COALESCE(SUM(requests), 0)::int AS requests,
+  COALESCE(SUM(errors), 0)::int AS errors,
+  ROUND(SUM(latency_sum_ms)::numeric / NULLIF(SUM(requests), 0), 1)::float8 AS avg_ms,
+  COALESCE(MAX(latency_max_ms), 0)::float8 AS max_ms
+FROM stage_samples
+WHERE sample_ts >= now() - interval '30 days'
+GROUP BY route
+ORDER BY SUM(requests) DESC
+LIMIT 12`;
+
+function routeHealth(errorRatePct: number, avgMs: number | null, maxMs: number): DemoRouteHealth {
+  if (errorRatePct >= 5) return 'degraded';
+  if (avgMs !== null && avgMs > 0 && maxMs / avgMs >= 5) return 'spiky';
+  return 'steady';
+}
+
+function toTrendRoutes(rows: unknown): DemoTrendRoute[] {
+  if (!Array.isArray(rows)) return [];
+  const out: DemoTrendRoute[] = [];
+  for (const r of rows) {
+    if (typeof r !== 'object' || r === null) continue;
+    const row = r as Record<string, unknown>;
+    if (typeof row['route'] !== 'string') continue;
+    const requests = Number(row['requests'] ?? 0);
+    const errors = Number(row['errors'] ?? 0);
+    const avgMs = row['avg_ms'] === null || row['avg_ms'] === undefined ? null : Number(row['avg_ms']);
+    const maxMs = Number(row['max_ms'] ?? 0);
+    const errorRatePct = requests > 0 ? Math.round((errors / requests) * 1000) / 10 : 0;
+    out.push({
+      route: row['route'],
+      requests,
+      errors,
+      errorRatePct,
+      avgMs,
+      maxMs,
+      status: routeHealth(errorRatePct, avgMs, maxMs),
+    });
+  }
+  return out;
+}
+
+/** Compact multi-line summary of the 30-day demo baseline for AI prompts. */
+export function formatDemoBaselineContext(trends: DemoTrendsResponse): string | undefined {
+  if (!trends.available || trends.routes.length === 0) return undefined;
+  return trends.routes
+    .slice(0, 6)
+    .map((r) => {
+      const avg = r.avgMs !== null ? `${Math.round(r.avgMs)} ms avg` : 'n/a avg';
+      return `- ${r.route}: ${avg}, ${Math.round(r.maxMs)} ms max, ${r.errorRatePct.toFixed(1)}% errors across ${r.requests} reqs (${r.status})`;
+    })
+    .join('\n');
+}
+
+/** Reads 30-day per-route demo-shop baselines from the hourly cagg (falling back to raw samples). */
+export function createTigerTrendsReader(opts: {
+  url: string;
+  client?: TigerClient;
+}): () => Promise<DemoTrendsResponse> {
+  const client = opts.client ?? bunClient(opts.url);
+
+  return async () => {
+    try {
+      const caggRows = await client.unsafe(TRENDS_CAGG_SQL);
+      const fromCagg = toTrendRoutes(caggRows);
+      if (fromCagg.length > 0) {
+        return { available: true, windowDays: 30, routes: fromCagg };
+      }
+    } catch {
+      // Continuous aggregate may not exist or be populated yet; fall back to raw hypertable.
+    }
+    try {
+      const rawRows = await client.unsafe(TRENDS_RAW_SQL);
+      return { available: true, windowDays: 30, routes: toTrendRoutes(rawRows) };
+    } catch {
+      return { available: false, windowDays: 30, routes: [] };
     }
   };
 }

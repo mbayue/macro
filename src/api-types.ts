@@ -394,3 +394,23 @@ export interface ClaimRequest {
 export interface ClaimResponse {
   claimed: string[];
 }
+
+// ---- GET /api/trends/demo ---------------------------------------------------
+
+export type DemoRouteHealth = 'steady' | 'spiky' | 'degraded';
+
+export interface DemoTrendRoute {
+  route: string;
+  requests: number;
+  errors: number;
+  errorRatePct: number;
+  avgMs: number | null;
+  maxMs: number;
+  status: DemoRouteHealth;
+}
+
+export interface DemoTrendsResponse {
+  available: boolean;
+  windowDays: 30;
+  routes: DemoTrendRoute[];
+}

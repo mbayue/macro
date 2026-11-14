@@ -135,17 +135,22 @@ function hasMetrics(report: CapacityReport): boolean {
 export async function writeReport(
   deps: ReporterDeps,
   report: CapacityReport,
-  ctx: { runId: string; routes?: readonly ReportRoute[] },
+  ctx: { runId: string; routes?: readonly ReportRoute[]; baselineNote?: string },
 ): Promise<AiSection> {
   // 10.12: nothing to explain, so no request.
   if (!hasMetrics(report)) return { status: 'unavailable', notes: [] };
 
   const unavailable: AiSection = { status: 'unavailable', notes: [NOTE_UNAVAILABLE] };
   try {
+    const baseUser = reportToPromptText(report, ctx.routes);
+    const user =
+      ctx.baselineNote !== undefined && ctx.baselineNote !== ''
+        ? `${baseUser}\n\nHistorical 30-day demo baseline (use to distinguish known baseline errors/latency from new regressions):\n${ctx.baselineNote}`
+        : baseUser;
     const result = await deps.client.callTool({
       agent: 'reporter',
       system: REPORTER_SYSTEM_PROMPT,
-      user: reportToPromptText(report, ctx.routes),
+      user,
       tool: writeReportTool(),
       timeoutMs: REPORTER_TIMEOUT_MS,
       maxTokens: REPORTER_MAX_TOKENS,

@@ -19,6 +19,7 @@ import type {
   ApiErrorCode,
   ConfigResponse,
   DecisionView,
+  DiscoverResponse,
   EventView,
   GateDemoResponse,
   GateDemoScenario,
@@ -404,6 +405,9 @@ const TargetModeFields = {
   targetMode: z.enum(['demo', 'own']).optional(),
   targetOrigin: z.string().min(1).max(253).optional(),
 };
+const DiscoverBody = z.object({
+  targetOrigin: z.string().min(1).max(253).optional(),
+});
 const PlanBody = z.object({
   trafficEvent: z.unknown().optional(),
   turnstileToken: z.unknown().optional(),
@@ -925,6 +929,53 @@ export function createApp(deps: AppDeps): App {
       trafficEventMax: 1000,
     };
     return json(200, body, { 'cache-control': 'no-cache' });
+  };
+
+  const postDiscover: Handler = async ({ req }) => {
+    const read = await readJsonBody(req);
+    if (!read.ok) return read.res;
+    const parsed = DiscoverBody.safeParse(read.value);
+    if (!parsed.success) return apiError(400, 'invalid_input', MSG.invalid);
+
+    const auth = requireSession(req);
+    if (auth instanceof Response) return auth;
+
+    const targetResolved = resolvePlanTarget('own', parsed.data.targetOrigin, auth.user);
+    if (!targetResolved.ok) return targetResolved.res;
+
+    const fetchFn = deps.fetchImpl ?? fetch;
+    if (fetchFn === fetch && !(await isPublicHost(new URL(targetResolved.target.webOrigin).hostname))) {
+      return apiError(
+        422,
+        'discover_failed',
+        `Could not read ${targetResolved.target.webOrigin}/. Nothing was sent to the planner.`,
+      );
+    }
+    const found = await discoverOwnSite(targetResolved.target.webOrigin, fetchFn);
+    if (!found.ok) {
+      logInternal('discover', new Error(found.reason));
+      return apiError(
+        422,
+        'discover_failed',
+        `Could not read ${targetResolved.target.webOrigin}/. Nothing was sent to the planner.`,
+      );
+    }
+
+    const draftId = crypto.randomUUID();
+    store.createDraft({ id: draftId, trafficEvent: '', createdAt: now() });
+    store.setDraftDiscovery(draftId, targetResolved.target.webOrigin, found.routes);
+
+    const body: DiscoverResponse = {
+      origin: targetResolved.target.webOrigin,
+      routes: found.routes.map((r) => ({
+        id: r.id,
+        path: r.path,
+        method: r.method,
+        kind: r.kind,
+        defaultOn: r.defaultOn,
+      })),
+    };
+    return json(200, body);
   };
 
   const postPlan: Handler = async ({ req, ip, server }) => {
@@ -1985,6 +2036,7 @@ export function createApp(deps: AppDeps): App {
   const routes: RouteDef[] = [
     { method: 'GET', re: /^\/healthz$/, name: 'healthz', handler: health },
     { method: 'GET', re: /^\/api\/config$/, name: 'config', handler: getConfig },
+    { method: 'POST', re: /^\/api\/discover$/, name: 'discover', handler: postDiscover },
     { method: 'POST', re: /^\/api\/plan$/, name: 'plan', handler: postPlan },
     { method: 'POST', re: /^\/api\/approve$/, name: 'approve', handler: postApprove },
     { method: 'POST', re: /^\/api\/runs$/, name: 'runs', handler: postRuns },

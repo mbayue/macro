@@ -3,9 +3,11 @@
  * live region. The rail's recent list comes from this browser's storage only.
  */
 import { type ReactNode, useContext, useEffect, useId, useState } from 'react';
+import type { RunStatus } from '../../../../../src/types.ts';
 import { clearReviewState, postSignOut } from '../lib/auth-api.ts';
 import { clearRecentRuns, loadRecentRuns, type RecentRun } from '../lib/recent-runs.ts';
 import { ThemeSegmented } from '../../components/Chrome.tsx';
+import { StatusBadge } from './ui.tsx';
 import { AppContext } from '../context.tsx';
 import { probeHref, type Route, runHref } from '../router.ts';
 
@@ -32,6 +34,7 @@ export function Shell({
   const me = ctx?.me ?? null;
   const [open, setOpen] = useState(false);
   const [recent, setRecent] = useState<RecentRun[]>([]);
+  const [activeRun, setActiveRun] = useState<(RecentRun & { status: 'running' | 'queued' }) | null>(null);
   const railId = useId();
   const key = currentKey(route);
 
@@ -41,6 +44,7 @@ export function Shell({
     clearRecentRuns();
     clearReviewState();
     setRecent([]);
+    setActiveRun(null);
     await ctx.refreshMe();
     ctx.announce('Signed out.');
     ctx.navigate('/');
@@ -50,11 +54,14 @@ export function Shell({
   useEffect(() => {
     setOpen(false);
     if (me === null) {
+      setActiveRun(null);
       setRecent(loadRecentRuns().slice(0, RECENT_IN_RAIL));
       return;
     }
     const abort = new AbortController();
-    void (async () => {
+    let timer: number | undefined;
+
+    const load = async () => {
       try {
         const res = await fetch('/api/account/runs', { credentials: 'same-origin', signal: abort.signal });
         if (!res.ok || abort.signal.aborted) {
@@ -62,22 +69,36 @@ export function Shell({
           return;
         }
         const body = (await res.json()) as {
-          runs: { runId: string; kind?: 'run' | 'probe'; startedAt: number; title?: string }[];
+          runs: { runId: string; kind?: 'run' | 'probe'; startedAt: number; status: RunStatus; title?: string }[];
         };
         if (abort.signal.aborted) return;
-        setRecent(
-          body.runs.slice(0, RECENT_IN_RAIL).map((r) => ({
-            id: r.runId,
-            kind: r.kind ?? 'run',
-            name: r.title && r.title.trim() !== '' ? r.title : r.kind === 'probe' ? 'Containment probe' : 'Load test',
-            startedAt: r.startedAt,
-          })),
+        const mapped = body.runs.map((r) => ({
+          id: r.runId,
+          kind: r.kind ?? ('run' as const),
+          name: r.title && r.title.trim() !== '' ? r.title : r.kind === 'probe' ? 'Containment probe' : 'Load test',
+          startedAt: r.startedAt,
+          status: r.status,
+        }));
+        setRecent(mapped.slice(0, RECENT_IN_RAIL));
+        const liveRun = mapped.find((r) => r.status === 'running' || r.status === 'queued') ?? null;
+        setActiveRun(
+          liveRun === null
+            ? null
+            : { id: liveRun.id, kind: liveRun.kind, name: liveRun.name, startedAt: liveRun.startedAt, status: liveRun.status as 'running' | 'queued' },
         );
+        if (liveRun !== null) {
+          timer = window.setTimeout(() => void load(), 5000);
+        }
       } catch {
         if (!abort.signal.aborted) setRecent(loadRecentRuns().slice(0, RECENT_IN_RAIL));
       }
-    })();
-    return () => abort.abort();
+    };
+
+    void load();
+    return () => {
+      abort.abort();
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
   }, [key, me]);
 
   const item = (href: string, label: ReactNode, active: boolean) => (
@@ -133,6 +154,22 @@ export function Shell({
           <a className="rail__link" href="#/verify-panel">
             Finish verifying {me.pendingVerification.host}
           </a>
+        ) : null}
+
+        {activeRun !== null ? (
+          <div className="rail__recent">
+            <h2 className="rail__heading">In progress</h2>
+            <ul className="rail__list">
+              {item(
+                activeRun.kind === 'probe' ? probeHref(activeRun.id) : runHref(activeRun.id),
+                <>
+                  <span className="rail__name">{activeRun.kind === 'probe' ? 'Containment probe' : activeRun.name}</span>
+                  <StatusBadge status={activeRun.status} />
+                </>,
+                key === `${activeRun.kind}:${activeRun.id}`,
+              )}
+            </ul>
+          </div>
         ) : null}
 
         {recent.length > 0 ? (

@@ -11,6 +11,8 @@ import type {
   ApiErrorCode,
   ApproveRequest,
   ConfigResponse,
+  DiscoverRequest,
+  DiscoverResponse,
   GateDemoRequest,
   GateDemoResponse,
   ParseErrorView,
@@ -156,6 +158,10 @@ export function getConfig(signal?: AbortSignal): Promise<ApiResult<ConfigRespons
 
 export function postPlan(body: PlanRequest, signal?: AbortSignal): Promise<ApiResult<PlanResponse>> {
   return request<PlanResponse>('POST', '/api/plan', body, signal);
+}
+
+export function postDiscover(body: DiscoverRequest, signal?: AbortSignal): Promise<ApiResult<DiscoverResponse>> {
+  return request<DiscoverResponse>('POST', '/api/discover', body, signal);
 }
 
 export function postApprove(body: ApproveRequest, signal?: AbortSignal): Promise<ApiResult<StartResponse>> {

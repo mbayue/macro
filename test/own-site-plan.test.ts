@@ -540,4 +540,95 @@ describe('own-site approve', () => {
     expect(store.getPlanTarget(planHash)?.webOrigin).toBe(OWN);
     expect(store.getPlanTarget(planHash)?.apiOrigin).toBe(OWN);
   });
+
+  test('POST /api/discover previews routes for a verified origin and lets /api/plan use routeIds without re-fetching', async () => {
+    const store = new Store(':memory:');
+    const sent: { to: string; url: string }[] = [];
+    const mailer: ResendMailer = {
+      sendMagicLink: async (input) => {
+        sent.push(input);
+        return { ok: true };
+      },
+    };
+    const seen: string[] = [];
+    const fetchImpl = (async (input: string) => {
+      seen.push(input);
+      if (input === `${OWN}/`) {
+        return htmlResponse('<script src="/assets/app.js"></script><link rel="stylesheet" href="/assets/app.css">');
+      }
+      return jsResponse('"/assets/a.webp"');
+    }) as typeof fetch;
+    let plannerDiscovered: readonly DiscoveredRoute[] | undefined;
+    const cfg = authConfig();
+    const app = createApp({
+      store,
+      config: cfg,
+      verifyTurnstile: () => Promise.resolve({ ok: true }),
+      client: new InferenceClient({ config: cfg.inference, store, fetchImpl: asFetch(() => Promise.reject(new Error('no'))) }),
+      planner: (async (_event: string, _draftId: string, _t?: unknown, discovered?: readonly DiscoveredRoute[]) => {
+        plannerDiscovered = discovered;
+        const plan = ownSitePlan(OWN);
+        const gate = discovered === undefined ? evaluatePlan(plan, [OWN]) : evaluatePlan(plan, [OWN], [...discovered]);
+        if (gate.status !== 'accepted') throw new Error('fixture plan must gate clean');
+        return {
+          ok: true,
+          plan,
+          planText: printPlan(plan),
+          planHash: planHash(printPlan(plan)),
+          rationale: 'browse',
+          gate,
+          parseError: null,
+        };
+      }) as never,
+      runController: fakeController(),
+      probeController: fakeController(),
+      mailer,
+      fetchImpl,
+      now: () => NOW,
+      log: () => {},
+    });
+
+    const unauth = await app.fetch(
+      new Request('http://macro.test/api/discover', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ targetOrigin: OWN }),
+      }),
+    );
+    expect(unauth.status).toBe(401);
+
+    const cookie = await signIn(app, sent);
+    const user = store.findUserByEmail('a@example.com')!;
+    store.setVerifiedOrigin(user.id, OWN, 'sketch.my.id', 'tok', NOW);
+
+    const discRes = await app.fetch(
+      new Request('http://macro.test/api/discover', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', cookie },
+        body: JSON.stringify({ targetOrigin: OWN }),
+      }),
+    );
+    expect(discRes.status).toBe(200);
+    const discBody = (await discRes.json()) as { origin: string; routes: { id: string; path: string }[] };
+    expect(discBody.origin).toBe(OWN);
+    expect(discBody.routes.length).toBeGreaterThanOrEqual(2);
+    const seenAfterDiscover = seen.length;
+
+    const planRes = await app.fetch(
+      new Request('http://macro.test/api/plan', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', cookie },
+        body: JSON.stringify({
+          trafficEvent: 'normal browsing',
+          turnstileToken: 't',
+          targetMode: 'own',
+          targetOrigin: OWN,
+          routeIds: ['r1'],
+        }),
+      }),
+    );
+    expect(planRes.status).toBe(200);
+    expect(seen.length).toBe(seenAfterDiscover);
+    expect(plannerDiscovered?.map((r) => r.id)).toEqual(['r1']);
+  });
 });

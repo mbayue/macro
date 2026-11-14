@@ -124,6 +124,15 @@ export interface PlanRouteView {
   defaultOn?: boolean;
 }
 
+export interface DiscoverRequest {
+  targetOrigin?: string;
+}
+
+export interface DiscoverResponse {
+  origin: string;
+  routes: PlanRouteView[];
+}
+
 export interface PlanResponse {
   draftId: string;
   /** null when parsing failed (then `parseError` is set). */

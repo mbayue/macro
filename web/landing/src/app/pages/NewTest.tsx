@@ -477,9 +477,9 @@ export function NewTest() {
         </div>
         <aside
           className="split__side"
-          aria-label={approvable && !openedVerify ? 'Approve the plan' : showVerify ? 'Verify your site' : 'Policy gate rules'}
+          aria-label={approvable && review?.plan ? 'Approve the plan' : showVerify ? 'Verify your site' : 'Policy gate rules'}
         >
-          {approvable && review?.plan && review.planText !== null && !openedVerify ? (
+          {approvable && review?.plan && review.planText !== null ? (
             <>
               <ApprovePanel
                 key={reviewSeq}
@@ -499,6 +499,13 @@ export function NewTest() {
                 alive={alive}
                 checksDiffer={checksDiffer}
               />
+              {/* The verify panel stays reachable after drafting: the user may
+                  have opened it from the rail and then drafted on this page. */}
+              {openedVerify ? (
+                <div id="verify-panel">
+                  <VerifyPanel initialHost="" />
+                </div>
+              ) : null}
               <GateRules folded />
             </>
           ) : showVerify ? (

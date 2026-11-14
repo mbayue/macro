@@ -118,7 +118,7 @@ export const TRAFFIC_EVENT_MAX = 1000;
 export const CSP =
   "default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com; frame-src https://challenges.cloudflare.com; connect-src 'self' https://cloudflareinsights.com; style-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'";
 
-export const SSE_POLL_MS = 500;
+export const SSE_POLL_MS = 5000;
 export const SSE_HEARTBEAT_MS = 3000;
 /** A terminal Run whose controller task is still busy (AI report) keeps its streams open this long. */
 export const SSE_TERMINAL_GRACE_MS = 180_000;
@@ -1424,6 +1424,7 @@ export function createApp(deps: AppDeps): App {
 
         req.signal.addEventListener('abort', cleanup, { once: true });
         send('retry: 3000\n\n');
+        cancels.push(store.onRunUpdate(id, tick));
         tick();
         if (closed) return;
         cancels.push(clock.every(tick, sseCfg.pollMs));

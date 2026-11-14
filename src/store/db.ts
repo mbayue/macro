@@ -507,6 +507,33 @@ function normalizeEmail(email: string): string {
 
 export class Store {
   readonly db: Database;
+  private readonly runListeners = new Map<string, Set<() => void>>();
+
+  /** Subscribe to new events or status transitions for a run; returns an unsubscribe callback. */
+  onRunUpdate(runId: string, listener: () => void): () => void {
+    let set = this.runListeners.get(runId);
+    if (set === undefined) {
+      set = new Set();
+      this.runListeners.set(runId, set);
+    }
+    set.add(listener);
+    return () => {
+      set.delete(listener);
+      if (set.size === 0) this.runListeners.delete(runId);
+    };
+  }
+
+  private notifyRun(runId: string): void {
+    const set = this.runListeners.get(runId);
+    if (set === undefined) return;
+    for (const fn of [...set]) {
+      try {
+        fn();
+      } catch {
+        // Listener failures must not break DB writes.
+      }
+    }
+  }
 
   /** @param path SQLite file path, or `:memory:`. Parent directory is created when missing. */
   constructor(path: string) {
@@ -720,6 +747,7 @@ export class Store {
     const res = this.db
       .prepare("UPDATE runs SET status = ?, status_reason = ?, ended_at = ? WHERE id = ? AND status = 'running'")
       .run(status, reason, endedAt, id);
+    if (res.changes > 0) this.notifyRun(id);
     return res.changes > 0;
   }
 
@@ -916,7 +944,9 @@ export class Store {
         e.payload === undefined ? null : JSON.stringify(e.payload),
         e.ts,
       );
-    return Number(res.lastInsertRowid);
+    const id = Number(res.lastInsertRowid);
+    this.notifyRun(e.runId);
+    return id;
   }
 
   /** Events of `runId` with id > afterId, ascending (SSE replay; pass 0 for all). */

@@ -133,4 +133,50 @@ describe('security fixes regression', () => {
     const ok = await checkWellKnown('https://example.com', 'tok', async () => new Response(big, { status: 200 }));
     expect(ok).toBe(false);
   });
+
+  test('SSE /api/runs/:id/events pushes new events immediately without waiting for pollMs', async () => {
+    const store = new Store(':memory:');
+    const now = Date.now();
+    store.storeApprovedPlan({ hash: 'e'.repeat(64), text: JSON.stringify(samplePlan()), approvedAt: now });
+    store.createRun({
+      id: 'run-sse-push-1',
+      kind: 'run',
+      planHash: 'e'.repeat(64),
+      runtime: 'runc',
+      startedAt: now,
+      visibility: 'public',
+    });
+
+    const config = authConfig();
+    const app = createApp({
+      store,
+      config,
+      verifyTurnstile: async () => ({ ok: true }),
+      client: new InferenceClient({ config: config.inference, store, fetchImpl: asFetch(async () => new Response('{}')) }),
+      runController: fakeController('run-sse-push-1'),
+      probeController: fakeController(),
+      sse: { pollMs: 60_000, heartbeatMs: 60_000 },
+    });
+
+    const res = await app.fetch(new Request('http://macro.test/api/runs/run-sse-push-1/events'));
+    expect(res.status).toBe(200);
+    const reader = res.body!.getReader();
+    const dec = new TextDecoder();
+
+    // First chunk is the retry directive.
+    const first = await reader.read();
+    expect(dec.decode(first.value)).toContain('retry: 3000');
+
+    // Append an event and assert it arrives immediately (< 500ms, well below pollMs: 60_000).
+    const nextRead = reader.read();
+    store.appendEvent({ runId: 'run-sse-push-1', type: 'stage_start', stageIdx: 0, payload: { stageIdx: 0 }, ts: now });
+    const second = await Promise.race([
+      nextRead,
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('SSE push timed out')), 500)),
+    ]);
+    expect(dec.decode(second.value)).toContain('event: stage_start');
+
+    await reader.cancel();
+    store.close();
+  });
 });

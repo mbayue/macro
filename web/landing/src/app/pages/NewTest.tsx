@@ -9,7 +9,7 @@
  */
 import { useEffect, useId, useRef, useState } from 'react';
 import type { TestPlan } from '../../../../../src/types.ts';
-import type { AccountDraft, DemoTrendsResponse, PlanResponse } from '../../../../../src/api-types.ts';
+import type { AccountDraft, DemoTrendsResponse, PlanResponse, QuotaResponse } from '../../../../../src/api-types.ts';
 import {
   clearReviewState,
   getDraft,
@@ -20,7 +20,7 @@ import {
   stashReviewState,
   takeLocalDraft,
 } from '../lib/auth-api.ts';
-import { type ApiError, type ApiResult, getDemoTrends, postApprove, postPlan, VERIFICATION_ERROR } from '../lib/api.ts';
+import { type ApiError, type ApiResult, getDemoTrends, getQuota, postApprove, postPlan, VERIFICATION_ERROR } from '../lib/api.ts';
 import { isActionPath } from '../../../../../src/plan/discover.ts';
 import { journeyGroups, journeyLabel, type JourneyRow } from '../../../../../src/plan/journey-edit.ts';
 import { countCodePoints } from '../lib/describe.ts';
@@ -74,6 +74,7 @@ export function NewTest() {
   const draftHydrated = useRef(false);
   const draftTurnstile = useTurnstile();
   const [demoTrends, setDemoTrends] = useState<DemoTrendsResponse | null>(null);
+  const [quota, setQuota] = useState<QuotaResponse | null>(null);
 
   useEffect(() => () => void (alive.current = false), []);
 
@@ -84,6 +85,14 @@ export function NewTest() {
     });
     return () => abort.abort();
   }, []);
+
+  useEffect(() => {
+    const abort = new AbortController();
+    void getQuota(abort.signal).then((res) => {
+      if (!abort.signal.aborted && res.ok) setQuota(res.data);
+    });
+    return () => abort.abort();
+  }, [me?.user.id, review?.planHash]);
 
   useEffect(() => {
     const ownerUserId = me?.user.id ?? null;
@@ -563,6 +572,17 @@ export function NewTest() {
                       View sample report
                     </a>
                   </p>
+                </Panel>
+              ) : null}
+              {quota ? (
+                <Panel title="Usage quota">
+                  <KeyValues
+                    items={[
+                      ['Plans left (1h)', `${quota.planning.remaining} of ${quota.planning.limit}`],
+                      ['Runs left (today)', `${quota.dailyRuns.remaining} of ${quota.dailyRuns.limit}`],
+                      ['Scope', quota.scope === 'account' ? 'Your account' : 'This IP'],
+                    ]}
+                  />
                 </Panel>
               ) : null}
               {targetMode === 'demo' && demoTrends?.available && demoTrends.routes.length > 0 ? (

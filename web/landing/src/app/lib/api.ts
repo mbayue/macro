@@ -21,6 +21,7 @@ import type {
   PlanResponse,
   PolicyViolationView,
   ProbeRequest,
+  QuotaResponse,
   RerunRequest,
   RunListResponse,
   RunSnapshot,
@@ -205,4 +206,8 @@ export function postGateDemo(
 
 export function getDemoTrends(signal?: AbortSignal): Promise<ApiResult<DemoTrendsResponse>> {
   return request<DemoTrendsResponse>('GET', '/api/trends/demo', undefined, signal);
+}
+
+export function getQuota(signal?: AbortSignal): Promise<ApiResult<QuotaResponse>> {
+  return request<QuotaResponse>('GET', '/api/quota', undefined, signal);
 }

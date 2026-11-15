@@ -1236,6 +1236,34 @@ export class Store {
     return r ? toUser(r) : null;
   }
 
+  /**
+   * Deletes a user account, its sessions/identities/verifications/drafts (via CASCADE),
+   * and all private runs owned by the user; public demo runs are unlinked.
+   */
+  deleteUser(userId: string): boolean {
+    return this.transaction(() => {
+      const priv = this.db
+        .prepare<{ id: string }, [string]>(
+          "SELECT id FROM runs WHERE owner_user_id = ? AND visibility = 'private'",
+        )
+        .all(userId);
+      for (const { id } of priv) {
+        this.db.prepare('DELETE FROM stage_samples WHERE run_id = ?').run(id);
+        this.db.prepare('DELETE FROM stages WHERE run_id = ?').run(id);
+        this.db.prepare('DELETE FROM decisions WHERE run_id = ?').run(id);
+        this.db.prepare('DELETE FROM events WHERE run_id = ?').run(id);
+        this.db.prepare('DELETE FROM reports WHERE run_id = ?').run(id);
+        this.db.prepare('DELETE FROM model_calls WHERE run_id = ?').run(id);
+        this.db.prepare('DELETE FROM runs WHERE id = ?').run(id);
+      }
+      this.db.prepare('UPDATE runs SET owner_user_id = NULL WHERE owner_user_id = ?').run(userId);
+      const subject = `user:${userId}`;
+      this.db.prepare('DELETE FROM planning_requests WHERE ip = ?').run(subject);
+      this.db.prepare('DELETE FROM client_starts WHERE ip = ?').run(subject);
+      return this.db.prepare('DELETE FROM users WHERE id = ?').run(userId).changes > 0;
+    });
+  }
+
   linkIdentity(userId: string, provider: 'email' | 'github', providerSubject: string): void {
     const subject = provider === 'email' ? normalizeEmail(providerSubject) : providerSubject;
     this.db

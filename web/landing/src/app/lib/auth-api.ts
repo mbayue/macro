@@ -68,6 +68,18 @@ export async function postSignOut(): Promise<ApiResult<null>> {
   }
 }
 
+export async function deleteAccount(): Promise<ApiResult<null>> {
+  try {
+    const res = await fetch('/api/me', { method: 'DELETE', credentials: 'same-origin' });
+    if (!res.ok && res.status !== 204) {
+      return { ok: false, error: apiErrorFromBody(await readJson(res)) };
+    }
+    return { ok: true, data: null };
+  } catch {
+    return { ok: false, error: NETWORK_ERROR };
+  }
+}
+
 export function githubStartHref(): string {
   return '/api/auth/github/start';
 }

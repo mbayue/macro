@@ -89,6 +89,12 @@ export interface ConfigResponse {
   sampleRunId?: string | null;
 }
 
+export interface QuotaResponse {
+  scope: 'account' | 'ip';
+  planning: { used: number; limit: number; remaining: number };
+  dailyRuns: { used: number; limit: number; remaining: number };
+}
+
 // ---- Model calls (requirement 2.6) ----------------------------------------
 
 export interface ModelCallView {

@@ -2,9 +2,9 @@
  * Sign in (`#/sign-in`): GitHub OAuth or magic link email.
  */
 import { useEffect, useState } from 'react';
-import { clearReviewState, githubStartHref, postMagicLink, postSignOut } from '../lib/auth-api.ts';
+import { clearReviewState, deleteAccount, githubStartHref, postMagicLink, postSignOut } from '../lib/auth-api.ts';
 import { clearRecentRuns } from '../lib/recent-runs.ts';
-import { AlertRegion, Busy, Panel } from '../components/ui.tsx';
+import { AlertRegion, Busy, ConfirmButton, Panel } from '../components/ui.tsx';
 import { useApp } from '../context.tsx';
 
 export function SignIn() {
@@ -23,6 +23,9 @@ export function SignIn() {
 
   const params = new URLSearchParams(window.location.hash.split('?')[1] ?? '');
   const githubEmailError = params.get('error') === 'github_email';
+
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   if (me !== null) {
     return (
@@ -59,6 +62,41 @@ export function SignIn() {
             >
               Sign out
             </button>
+          </p>
+        </Panel>
+        <Panel title="Delete account">
+          <p className="muted">
+            Permanently deletes your account, verified origin, saved draft, and private runs.
+          </p>
+          {deleteError ? (
+            <AlertRegion>
+              <p>{deleteError}</p>
+            </AlertRegion>
+          ) : null}
+          <p className="actions">
+            <ConfirmButton
+              label={deleting ? 'Deleting…' : 'Delete account'}
+              confirmLabel="Confirm delete"
+              cancelLabel="Keep account"
+              disabled={deleting}
+              onConfirm={() => {
+                void (async () => {
+                  setDeleting(true);
+                  setDeleteError(null);
+                  const res = await deleteAccount();
+                  setDeleting(false);
+                  if (!res.ok) {
+                    setDeleteError(res.error.message);
+                    announce(res.error.message);
+                    return;
+                  }
+                  clearRecentRuns();
+                  clearReviewState();
+                  await refreshMe();
+                  announce('Account deleted.');
+                })();
+              }}
+            />
           </p>
         </Panel>
       </section>

@@ -27,6 +27,7 @@ import type {
   ModelCallView,
   ParseErrorView,
   PlanResponse,
+  QuotaResponse,
   RunListItem,
   RunListResponse,
   RunSnapshot,
@@ -106,7 +107,7 @@ import type { CompareInput } from './report/compare.ts';
 import { admitStart, formatUtc, isPlanHash } from './run/admission.ts';
 import type { AdmissionResult } from './run/admission.ts';
 import { toStageViewPayload } from './run/controller.ts';
-import { PLANNING_LIMIT, rollingCheck } from './run/limits.ts';
+import { DAILY_MAX, PLANNING_LIMIT, rollingCheck } from './run/limits.ts';
 import { LOAD_TEST_TITLE, PROBE_TITLE, normalizeRunTitle } from './run/title.ts';
 import { clientIp } from './security/client-ip.ts';
 import { isPublicHost } from './security/public-host.ts';
@@ -657,7 +658,7 @@ interface Ctx {
 }
 type Handler = (c: Ctx) => Response | Promise<Response>;
 interface RouteDef {
-  method: 'GET' | 'POST' | 'PUT';
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
   re: RegExp;
   name: string;
   handler: Handler;
@@ -922,6 +923,51 @@ export function createApp(deps: AppDeps): App {
         'cache-control': 'no-store',
       },
     });
+  };
+
+  const deleteMe: Handler = async ({ req }) => {
+    if (config.auth === undefined) {
+      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
+    }
+    const auth = requireSession(req);
+    if (auth instanceof Response) return auth;
+    try {
+      store.deleteUser(auth.user.id);
+    } catch (err) {
+      logInternal('me.delete', err);
+      return apiError(500, 'internal', MSG.internal);
+    }
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Set-Cookie': serializeClearSessionCookie(cookieSecure),
+        'cache-control': 'no-store',
+      },
+    });
+  };
+
+  const getQuota: Handler = async ({ req, ip }) => {
+    const at = now();
+    const auth = resolveSession(req);
+    const subject = auth !== null ? `user:${auth.user.id}` : ip;
+    const planningUsed = store.planningRequestTimestamps(subject, at - PLANNING_LIMIT.windowMs).length;
+    const d = new Date(at);
+    const dayStart = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+    const dailyUsed = store.countRunsStartedSince(dayStart);
+    const body: QuotaResponse = {
+      scope: auth !== null ? 'account' : 'ip',
+      planning: {
+        used: planningUsed,
+        limit: PLANNING_LIMIT.max,
+        remaining: Math.max(0, PLANNING_LIMIT.max - planningUsed),
+      },
+      dailyRuns: {
+        used: dailyUsed,
+        limit: DAILY_MAX,
+        remaining: Math.max(0, DAILY_MAX - dailyUsed),
+      },
+    };
+    return json(200, body, { 'cache-control': 'no-store' });
   };
 
   const getConfig: Handler = () => {
@@ -2113,6 +2159,8 @@ export function createApp(deps: AppDeps): App {
     { method: 'GET', re: /^\/api\/auth\/github\/start$/, name: 'github_start', handler: getGithubStart },
     { method: 'GET', re: /^\/api\/auth\/github\/callback$/, name: 'github_callback', handler: getGithubCallback },
     { method: 'GET', re: /^\/api\/me$/, name: 'me', handler: getMe },
+    { method: 'DELETE', re: /^\/api\/me$/, name: 'me_delete', handler: deleteMe },
+    { method: 'GET', re: /^\/api\/quota$/, name: 'quota', handler: getQuota },
     { method: 'POST', re: /^\/api\/auth\/sign-out$/, name: 'sign_out', handler: postSignOut },
     { method: 'POST', re: /^\/api\/auth\/claim$/, name: 'auth_claim', handler: postClaim },
     { method: 'POST', re: /^\/api\/verify\/start$/, name: 'verify_start', handler: postVerifyStart },

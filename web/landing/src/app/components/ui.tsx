@@ -242,6 +242,9 @@ export function ConfirmButton({
 
   return (
     <span className="row">
+      <button type="button" className={cancelClassName} disabled={disabled} onClick={() => setArmed(false)}>
+        {cancelLabel}
+      </button>
       <button
         type="button"
         className={confirmClassName}
@@ -252,9 +255,6 @@ export function ConfirmButton({
         }}
       >
         {confirmLabel}
-      </button>
-      <button type="button" className={cancelClassName} disabled={disabled} onClick={() => setArmed(false)}>
-        {cancelLabel}
       </button>
     </span>
   );

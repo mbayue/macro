@@ -33,7 +33,13 @@
 }
 
 /* The working policy gate fragment */
-[data-ui] { font-family: var(--text); }
+[data-ui] {
+  font-family: var(--text);
+  --ink: #ffffff;
+  --muted: #9ea2a1;
+  --ok: #00ed64;
+  --bad: #ff8a80;
+}
 .gate {
   position: absolute; left: 56px; top: 56px; width: 620px;
   background: var(--ui-bg); color: var(--ink);
@@ -379,7 +385,8 @@ details[open] .plus::after { transform: rotate(0deg); }
   .plan-block .plan-name, .plan-block .plan-price { font-size: 9vw; }
   .plan-block dl { margin: 20px 0; display: grid; gap: 12px; font-size: 17px; }
   .plan-block dt { color: var(--muted); }
-  .plan-block--rec dt { color: var(--accent-ink-soft); }
+  .plan-block--rec dt,
+  .plan-block--rec .plan-price small { color: var(--accent-ink-soft); }
   .plan-block dd { margin: 0; }
   .plan-block .btn { width: 100%; }
   .faq summary { font-size: 18px; min-height: 64px; padding: 12px 20px; }
@@ -397,7 +404,10 @@ details[open] .plus::after { transform: rotate(0deg); }
 .pricing-head-mobile__title { font-size: 9vw; }
 .pricing-head-mobile__note { margin-top: 10px; font-size: 16px; color: var(--muted); }
 .btn--quiet { background: var(--surface-2); color: var(--ink); }
-@media (hover: hover) and (pointer: fine) { .btn--quiet:hover { background: var(--bar); } }
+@media (hover: hover) and (pointer: fine) {
+  .btn--quiet:hover { background: var(--bar); color: var(--bg); }
+  :root[data-theme="dark"] .btn--quiet:hover { background: var(--surface-2); color: var(--ink); }
+}
 @media (max-width: 48rem) { .pricing-head-mobile { display: block; } }
 
 /* ---- Stagger index, set as data-i (the CSP forbids style attributes) ---- */

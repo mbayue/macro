@@ -182,6 +182,48 @@ describe('security fixes regression', () => {
     store.close();
   });
 
+  test('POST /api/runs/:id/stop requires Turnstile for anonymous viewers of public runs', async () => {
+    const store = new Store(':memory:');
+    const now = Date.now();
+    store.storeApprovedPlan({ hash: 'f'.repeat(64), text: JSON.stringify(samplePlan()), approvedAt: now });
+    store.createRun({
+      id: 'run-stop-gate-1',
+      kind: 'run',
+      planHash: 'f'.repeat(64),
+      runtime: 'runc',
+      startedAt: now,
+      status: 'running',
+      visibility: 'public',
+    });
+    const verifyTurnstile = async (token: unknown) => ({ ok: token === 'good-token' });
+    const config = authConfig();
+    const app = createApp({
+      store,
+      config,
+      verifyTurnstile,
+      client: new InferenceClient({ config: config.inference, store, fetchImpl: asFetch(async () => new Response('{}')) }),
+      runController: fakeController('run-stop-gate-1'),
+      probeController: fakeController(),
+    });
+    const deny = await app.fetch(
+      new Request('http://macro.test/api/runs/run-stop-gate-1/stop', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      }),
+    );
+    expect(deny.status).toBe(403);
+    const allow = await app.fetch(
+      new Request('http://macro.test/api/runs/run-stop-gate-1/stop', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'cf-connecting-ip': '203.0.113.50' },
+        body: JSON.stringify({ turnstileToken: 'good-token' }),
+      }),
+    );
+    expect(allow.status).toBe(200);
+    store.close();
+  });
+
   test('fetchDomainConnectSettings and isPublicHost block hosts resolving to private or metadata IPs', async () => {
     let dcFetched = false;
     const dcRes = await fetchDomainConnectSettings(

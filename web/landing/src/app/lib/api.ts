@@ -26,6 +26,7 @@ import type {
   RunListResponse,
   RunSnapshot,
   StartResponse,
+  StopRequest,
   StopResponse,
 } from '../../../../../src/api-types.ts';
 
@@ -175,8 +176,12 @@ export function postRun(body: RerunRequest, signal?: AbortSignal): Promise<ApiRe
   return request<StartResponse>('POST', '/api/runs', body, signal);
 }
 
-export function stopRun(runId: string, signal?: AbortSignal): Promise<ApiResult<StopResponse>> {
-  return request<StopResponse>('POST', `/api/runs/${enc(runId)}/stop`, undefined, signal);
+export function stopRun(
+  runId: string,
+  body?: StopRequest,
+  signal?: AbortSignal,
+): Promise<ApiResult<StopResponse>> {
+  return request<StopResponse>('POST', `/api/runs/${enc(runId)}/stop`, body ?? {}, signal);
 }
 
 export function getRun(runId: string, signal?: AbortSignal): Promise<ApiResult<RunSnapshot>> {

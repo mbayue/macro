@@ -181,6 +181,11 @@ export interface StartResponse {
   queuePosition?: number | null;
 }
 
+/** POST /api/runs/:id/stop — Turnstile required when signed out and the run is public. */
+export interface StopRequest {
+  turnstileToken?: string;
+}
+
 export interface StopResponse {
   runId: string;
   status: RunStatus;

@@ -9,7 +9,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RunSnapshot } from '../../../../../src/api-types.ts';
-import { type ApiError, getRun, stopRun } from '../lib/api.ts';
+import { type ApiError, getRun, stopRun, VERIFICATION_ERROR } from '../lib/api.ts';
 import { rememberRun } from '../lib/recent-runs.ts';
 import {
   applyEvent,
@@ -24,6 +24,7 @@ import {
   shouldPoll,
   statusWords,
 } from '../lib/run-view.ts';
+import { useTurnstile } from '../components/Turnstile.tsx';
 import { useApp } from '../context.tsx';
 
 const EVENT_TYPES = ['stage_start', 'stage_end', 'decision', 'status', 'containment', 'report'] as const;
@@ -34,7 +35,8 @@ export type RunState =
   | { kind: 'ready'; model: RunModel; stale: boolean; now: number; version: number };
 
 export function useRun(id: string) {
-  const { navigate, announce } = useApp();
+  const { navigate, announce, me } = useApp();
+  const turnstile = useTurnstile();
   const [state, setState] = useState<RunState>({ kind: 'loading' });
   const [stopPending, setStopPending] = useState(false);
   const [stopError, setStopError] = useState<ApiError | null>(null);
@@ -166,7 +168,18 @@ export function useRun(id: string) {
       if (!m || (m.run.status !== 'running' && m.run.status !== 'queued')) return;
       setStopPending(true);
       setStopError(null);
-      const res = await stopRun(id); // no abort signal, on purpose
+      let body: { turnstileToken?: string } = {};
+      if (me === null) {
+        try {
+          body = { turnstileToken: await turnstile.token() };
+        } catch {
+          setStopPending(false);
+          setStopError(VERIFICATION_ERROR);
+          return;
+        }
+      }
+      const res = await stopRun(id, body); // no abort signal, on purpose
+      turnstile.reset();
       if (dead || !model.current) return;
       setStopPending(false);
       if (!res.ok) {
@@ -214,13 +227,14 @@ export function useRun(id: string) {
       if (tick !== undefined) window.clearInterval(tick);
       model.current = null;
     };
-  }, [id, attempt, announce, navigate, publish]);
+  }, [id, attempt, announce, me, navigate, publish, turnstile]);
 
   return {
     state,
     stop: () => void stopRef.current(),
     stopPending,
     stopError,
+    turnstileBox: turnstile.box,
     retry: () => setAttempt((a) => a + 1),
   };
 }

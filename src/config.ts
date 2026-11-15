@@ -12,7 +12,7 @@ export const DEFAULTS = {
   inferenceFallbackModel: 'mimo-v2.6-flash',
   targetOrigins: 'https://yue.macro.my.id,https://api.yue.macro.my.id',
   sandboxRuntime: 'runsc',
-  macroVmIp: '45.77.37.116',
+  macroVmIp: '139.180.219.252',
   port: 3000,
   dataDir: '/var/lib/macro',
 } as const;

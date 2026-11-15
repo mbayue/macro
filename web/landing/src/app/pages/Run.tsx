@@ -15,11 +15,12 @@ import { RouteChart } from '../components/run/RouteChart.tsx';
 import { SecondChart } from '../components/run/SecondChart.tsx';
 import { ModelCalls } from '../components/ModelCalls.tsx';
 import { type ProfileStage, StageProfile } from '../components/StageProfile.tsx';
+import { TurnstileBox } from '../components/Turnstile.tsx';
 import { AlertRegion, ApiErrorText, Badge, ConfirmButton, DASH, KeyValues, PageSkeleton, Panel, StatusBadge, TableWrap } from '../components/ui.tsx';
 import { useRun } from '../hooks/useRun.ts';
 
 export function RunPage({ id }: { id: string }) {
-  const { state, stop, stopPending, stopError, retry } = useRun(id);
+  const { state, stop, stopPending, stopError, turnstileBox, retry } = useRun(id);
 
   if (state.kind === 'loading') {
     return <PageSkeleton title="Loading run…" />;
@@ -100,6 +101,7 @@ export function RunPage({ id }: { id: string }) {
                 : 'Ends the current stage and keeps the results so far.'}
             </p>
             <AlertRegion error={stopError} />
+            <TurnstileBox boxRef={turnstileBox} />
           </div>
         ) : report ? (
           <div className="run-head__actions">

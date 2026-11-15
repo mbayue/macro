@@ -428,6 +428,7 @@ const ApproveBody = z.object({
 });
 const RerunBody = z.object({ planHash: z.string(), turnstileToken: z.unknown().optional() });
 const ProbeBody = z.object({ turnstileToken: z.unknown().optional() });
+const StopBody = z.object({ turnstileToken: z.unknown().optional() });
 
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
@@ -1373,12 +1374,20 @@ export function createApp(deps: AppDeps): App {
     return auth !== null && auth.user.id === run.ownerUserId;
   }
 
-  const postStop: Handler = (c) => {
+  const postStop: Handler = async (c) => {
     const id = runIdParam(c);
     if (id === null) return notFound();
     const run = store.getRun(id);
     if (run === null || !canViewRun(run, c.req)) return notFound();
-    // 9.2: no Turnstile. Queued runs cancel immediately; running runs stop via their controller.
+    if (run.visibility === 'public' && resolveSession(c.req) === null) {
+      const read = await readJsonBody(c.req);
+      if (!read.ok) return read.res;
+      const parsed = StopBody.safeParse(read.value);
+      if (!parsed.success) return apiError(400, 'invalid_input', MSG.invalid);
+      const denied = await turnstileGate(parsed.data.turnstileToken, c.ip);
+      if (denied !== null) return denied;
+    }
+    // Queued runs cancel immediately; running runs stop via their controller.
     if (run.status === 'queued') {
       const stoppedAt = now();
       if (store.stopQueuedRun(id, stoppedAt)) {

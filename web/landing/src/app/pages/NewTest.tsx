@@ -555,6 +555,16 @@ export function NewTest() {
           ) : (
             <>
               <GateRules targetOrigin={activeOrigin} />
+              {targetMode === 'demo' && config.sampleRunId ? (
+                <Panel title="Sample report">
+                  <p className="muted">Inspect a completed public demo run with stages, charts, and capacity verdict.</p>
+                  <p className="actions">
+                    <a className="btn btn--quiet" href={`#/run/${config.sampleRunId}`}>
+                      View sample report
+                    </a>
+                  </p>
+                </Panel>
+              ) : null}
               {targetMode === 'demo' && demoTrends?.available && demoTrends.routes.length > 0 ? (
                 <Panel title="30-day demo baseline">
                   <p className="muted">Observed across public demo runs over the last 30 days.</p>

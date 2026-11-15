@@ -857,6 +857,19 @@ export class Store {
       .map(toRun);
   }
 
+  /** Most recent completed public demo run that has a saved report, or null. */
+  getLatestPublicCompletedRunId(): string | null {
+    const row = this.db
+      .prepare<{ id: string }, []>(
+        `SELECT r.id FROM runs r
+         JOIN reports rep ON rep.run_id = r.id
+         WHERE r.owner_user_id IS NULL AND r.kind = 'run' AND r.status = 'completed'
+         ORDER BY r.started_at DESC, r.rowid DESC LIMIT 1`,
+      )
+      .get();
+    return row?.id ?? null;
+  }
+
   /** Runs and probes with `started_at >= sinceMs`. Pass the UTC day start for the daily limit. */
   countRunsStartedSince(sinceMs: number): number {
     return (

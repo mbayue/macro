@@ -20,7 +20,7 @@ type Row = {
 };
 
 export function RecentRunsPage() {
-  const { me } = useApp();
+  const { config, me } = useApp();
   const [list, setList] = useState<Row[]>(() =>
     loadRecentRuns().map((r) => ({ id: r.id, kind: r.kind, name: r.name, startedAt: r.startedAt })),
   );
@@ -105,6 +105,11 @@ export function RecentRunsPage() {
             <a className="btn" href="#/">
               Start a new test
             </a>
+            {config.sampleRunId ? (
+              <a className="btn btn--quiet" href={runHref(config.sampleRunId)}>
+                View sample report
+              </a>
+            ) : null}
             <a className="btn btn--quiet" href="#/probe">
               Run the containment probe
             </a>

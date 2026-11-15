@@ -935,6 +935,7 @@ export function createApp(deps: AppDeps): App {
       catalog: ROUTE_CATALOG.map((r) => ({ id: r.id, role: r.role, method: r.method, path: r.path })),
       trafficEventMin: 10,
       trafficEventMax: 1000,
+      sampleRunId: store.getLatestPublicCompletedRunId(),
     };
     return json(200, body, { 'cache-control': 'no-cache' });
   };

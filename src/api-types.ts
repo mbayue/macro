@@ -85,6 +85,8 @@ export interface ConfigResponse {
   catalog: CatalogRouteView[];
   trafficEventMin: 10;
   trafficEventMax: 1000;
+  /** Most recent completed public demo run ID with a report, if any. */
+  sampleRunId?: string | null;
 }
 
 // ---- Model calls (requirement 2.6) ----------------------------------------

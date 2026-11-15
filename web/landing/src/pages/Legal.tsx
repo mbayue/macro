@@ -69,7 +69,14 @@ const PRIVACY_FACTS: Fact[] = [
   { term: 'We never', detail: 'Sell it or share it for marketing' },
   { term: 'Runs', detail: 'Demo runs are public; own-site runs are private to your account' },
   { term: 'Cookies', detail: 'Only a session cookie when you sign in' },
-  { term: 'To delete', detail: <Mail /> },
+  {
+    term: 'To delete',
+    detail: (
+      <>
+        <a href="/app/#/account">Account settings</a> (signed in) or <Mail />
+      </>
+    ),
+  },
 ];
 
 const PRIVACY_SECTIONS: Section[] = [
@@ -174,8 +181,9 @@ const PRIVACY_SECTIONS: Section[] = [
     title: 'Your rights',
     body: (
       <p>
-        You can ask what we hold about you, ask us to correct it, or ask us to delete it, by writing to <Mail />. We answer within 30
-        days.
+        If you have an account, you can delete it directly from <a href="/app/#/account">Account</a> (this immediately removes
+        your account, verified origin, saved draft, and private runs, and unlinks any public demo runs). For waitlist entries,
+        questions about what we hold, or corrections, write to <Mail />. We answer within 30 days.
       </p>
     ),
   },

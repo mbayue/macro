@@ -119,7 +119,7 @@ Auth is optional. With the auth env block unset, `/api/me` and verify routes sta
 
 When auth is configured:
 
-1. Open `/app/#/sign-in` (GitHub OAuth or Resend magic link). GitHub must provide a verified email or Macro refuses the sign-in.
+1. Open `/app/#/sign-in` (GitHub OAuth or Resend magic link). GitHub must provide a verified email or Macro refuses the sign-in. Once signed in, clicking your profile in the left rail opens `/app/#/account` (where you can also delete your account via `DELETE /api/me`).
 2. On **New test**, choose **Demo shop** (public, works signed out) or **My site** (requires sign-in and a verified origin).
 3. Verify one HTTPS host via a DNS TXT record at `_macro-verify.<host>` or a file at `/.well-known/macro-site-verification` containing the issued token (Domain Connect is implemented behind `DOMAIN_CONNECT_ENABLED = false` in `src/server.ts`). Once verified, Macro automatically discovers client routes from the site's document and scripts to constrain journey planning.
 4. Own-site runs are private to the account; demo runs stay public and can be claimed onto the account from browser recent-runs after sign-in.
@@ -178,12 +178,12 @@ Invites go through Resend with the same sender as the sign-in emails and need `R
 - **Targets are gated.** Signed-out clients only hit the demo allowlist. Signed-in clients may add one verified HTTPS origin (DNS TXT or `/.well-known/`). Contested hosts stay with the first verifier until clear or replace.
 - **One load generator** in Singapore with 1 CPU per sandbox. At high VU counts, the generator itself can become the limit.
 - **"First degraded route" is an observation, not a root cause.**
-- **Quotas:** one active run at a time, rolling planning and start limits (per IP when signed out, per account when signed in), a daily start cap, and a 15-minute cap per run.
+- **Quotas:** one active run at a time, rolling planning and start limits (per IP when signed out, per account when signed in), a daily start cap, and a 15-minute cap per run (live usage is exposed via `GET /api/quota` and shown on **New test**).
 - **Not built:** regional runs from other Vultr regions, multi-seat orgs, and own-site containment probes.
 
 ## Testing
 
-`bun test` runs the unit and property suite ([fast-check](https://fast-check.dev)). They cover the plan parser, the policy gate against an independent reference model, script generation, the proxy decision, sandbox lifecycle with a fake Docker, metrics and verdicts, agent fallbacks, the number check and run comparison, plus account auth, verification (DNS TXT, well-known, Domain Connect template), route discovery, drafts, run privacy, and the security headers on every response.
+`bun test` runs the unit and property suite ([fast-check](https://fast-check.dev)). They cover the plan parser, the policy gate against an independent reference model, script generation, the proxy decision, sandbox lifecycle with a fake Docker, metrics and verdicts, agent fallbacks, the number check and run comparison, plus account auth, verification (DNS TXT, well-known, Domain Connect template), route discovery, drafts, run privacy, quota reporting, account deletion, and the security headers on every response.
 
 `bun run test:vm` runs the real-container suite (`test/vm/`) against a real Docker daemon: a k6 stage writes its summary, egress to a non-allowlisted host and to `169.254.169.254` is denied and logged by the real proxy, an over-1-GiB allocation is OOM-killed, a sandbox past its time cap is killed, the startup sweep removes everything labelled `macro=1`, and the production containment probe runs end to end. The suite is opt-in (`MACRO_VM_TEST=1`), pulls the pinned k6 image and builds the proxy image on first use, and refuses to start when `macro=1` resources already exist, so it can never sweep a live deployment. gVisor is used when registered; otherwise the suite runs on `runc`. One host difference is reported rather than assumed: Linux VMs (production, CI) enforce the 1 GiB memory cap eagerly, so the probe passes all five actions there; Docker Desktop/WSL2 lets a bounded allocation finish, and the suite says so instead of claiming containment. GitHub Actions runs both suites on push ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
 

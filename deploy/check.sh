@@ -17,12 +17,33 @@
 # Wait 60 s before running the script again from the same IP.
 #
 # Environment overrides:
-#   YUE_IP (45.32.113.74)  MACRO_IP (45.77.37.116)  WEB_HOST (yue.macro.my.id)
+#   YUE_IP (required)  MACRO_IP (required)  WEB_HOST (yue.macro.my.id)
 #   API_HOST (api.yue.macro.my.id)  YUE_ENV_FILE (/opt/yue/.env)  BURST (200)
 #   SSH_KEY (~/.ssh/id_ed25519 when it exists)  SSH_USER (root)
 
-YUE_IP="${YUE_IP:-45.32.113.74}"
-MACRO_IP="${MACRO_IP:-45.77.37.116}"
+# Load repo .env if present (without overriding variables already set in the shell).
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ENV_FILE="${SCRIPT_DIR}/../.env"
+if [ -f "$ENV_FILE" ]; then
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"
+    case "$line" in
+      ''|\#*) continue ;;
+      *=*)
+        key="${line%%=*}"
+        case "$key" in ''|*[!A-Za-z0-9_]*|[0-9]*) continue ;; esac
+        val="${line#*=}"
+        val="${val%\"}" ; val="${val#\"}"
+        val="${val%\'}" ; val="${val#\'}"
+        eval "[ -z \"\${${key}+x}\" ]" && export "${key}=${val}"
+        ;;
+    esac
+  done < "$ENV_FILE"
+fi
+MACRO_IP="${MACRO_IP:-${MACRO_VM_IP:-}}"
+
+: "${YUE_IP:?set YUE_IP to the Demo_Target VM IP}"
+: "${MACRO_IP:?set MACRO_IP (or MACRO_VM_IP in .env) to the Macro VM IP}"
 WEB_HOST="${WEB_HOST:-yue.macro.my.id}"
 API_HOST="${API_HOST:-api.yue.macro.my.id}"
 YUE_ENV_FILE="${YUE_ENV_FILE:-/opt/yue/.env}"

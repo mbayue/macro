@@ -107,7 +107,7 @@ import type { CompareInput } from './report/compare.ts';
 import { admitStart, formatUtc, isPlanHash } from './run/admission.ts';
 import type { AdmissionResult } from './run/admission.ts';
 import { toStageViewPayload } from './run/controller.ts';
-import { DAILY_MAX, PLANNING_LIMIT, rollingCheck } from './run/limits.ts';
+import { DAILY_IP_MAX, DAILY_MAX, PLANNING_LIMIT, rollingCheck } from './run/limits.ts';
 import { LOAD_TEST_TITLE, PROBE_TITLE, normalizeRunTitle } from './run/title.ts';
 import { clientIp } from './security/client-ip.ts';
 import { isPublicHost } from './security/public-host.ts';
@@ -953,7 +953,8 @@ export function createApp(deps: AppDeps): App {
     const planningUsed = store.planningRequestTimestamps(subject, at - PLANNING_LIMIT.windowMs).length;
     const d = new Date(at);
     const dayStart = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-    const dailyUsed = store.countRunsStartedSince(dayStart);
+    const dailyLimit = auth !== null ? DAILY_MAX : DAILY_IP_MAX;
+    const dailyUsed = store.clientStartTimestamps(subject, dayStart - 1).length;
     const body: QuotaResponse = {
       scope: auth !== null ? 'account' : 'ip',
       planning: {
@@ -963,8 +964,8 @@ export function createApp(deps: AppDeps): App {
       },
       dailyRuns: {
         used: dailyUsed,
-        limit: DAILY_MAX,
-        remaining: Math.max(0, DAILY_MAX - dailyUsed),
+        limit: dailyLimit,
+        remaining: Math.max(0, dailyLimit - dailyUsed),
       },
     };
     return json(200, body, { 'cache-control': 'no-store' });

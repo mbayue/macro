@@ -43,14 +43,16 @@ describe('GET /api/quota and DELETE /api/me', () => {
       log: () => {},
     });
 
+    store.recordClientStart('unknown', NOW - 200);
     const ipRes = await app.fetch(new Request('http://macro.test/api/quota'));
     expect(ipRes.status).toBe(200);
     const ipQuota = (await ipRes.json()) as QuotaResponse;
     expect(ipQuota.scope).toBe('ip');
     expect(ipQuota.planning.used).toBe(0);
     expect(ipQuota.planning.remaining).toBe(ipQuota.planning.limit);
-    expect(ipQuota.dailyRuns.used).toBe(0);
-    expect(ipQuota.dailyRuns.remaining).toBe(ipQuota.dailyRuns.limit);
+    expect(ipQuota.dailyRuns.used).toBe(1);
+    expect(ipQuota.dailyRuns.limit).toBe(10);
+    expect(ipQuota.dailyRuns.remaining).toBe(9);
 
     const user = store.createUser('quota@example.com', NOW);
     const session = store.createSession(user.id, NOW, 60_000);
@@ -67,6 +69,9 @@ describe('GET /api/quota and DELETE /api/me', () => {
     expect(userQuota.scope).toBe('account');
     expect(userQuota.planning.used).toBe(2);
     expect(userQuota.planning.remaining).toBe(userQuota.planning.limit - 2);
+    expect(userQuota.dailyRuns.used).toBe(0);
+    expect(userQuota.dailyRuns.limit).toBe(50);
+    expect(userQuota.dailyRuns.remaining).toBe(50);
   });
 
   test('DELETE /api/me requires auth and deletes user + private runs while unlinking public runs', async () => {

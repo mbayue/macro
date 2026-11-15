@@ -7,7 +7,7 @@ import type { Config } from '../config.ts';
 import type { RunVisibility, Store } from '../store/db.ts';
 import type { RunKind } from '../types.ts';
 import { parsePlan } from '../plan/parser.ts';
-import { DAILY_MAX, START_LIMIT, dailyCheck, rollingCheck, utcDayStart } from './limits.ts';
+import { DAILY_IP_MAX, DAILY_MAX, START_LIMIT, dailyCheck, rollingCheck, utcDayStart } from './limits.ts';
 import { PROBE_TITLE, normalizeRunTitle } from './title.ts';
 
 export const MAX_QUEUED_RUNS = 20;
@@ -109,14 +109,16 @@ export function admitStart(deps: AdmissionDeps, req: StartRequest): AdmissionRes
       };
     }
 
-    // 9.6: 50 starts per UTC day, counted from the database so a restart does not reset it.
-    const today = store.runStartTimestampsSince(utcDayStart(req.now));
-    const daily = dailyCheck({ startedAtMs: today, now: req.now, max: DAILY_MAX });
+    // 9.6: per-client daily limit (50/UTC day for signed-in accounts, 10/UTC day for guest IPs).
+    const isAccount = req.ip.startsWith('user:');
+    const dailyLimit = isAccount ? DAILY_MAX : DAILY_IP_MAX;
+    const today = store.clientStartTimestamps(req.ip, utcDayStart(req.now) - 1);
+    const daily = dailyCheck({ startedAtMs: today, now: req.now, max: dailyLimit });
     if (!daily.allowed) {
       return {
         ok: false,
         code: 'daily_limit',
-        message: `The daily demo limit of ${DAILY_MAX} Runs and probes is reached. The limit resets at ${formatUtc(daily.resetAt)}.`,
+        message: `Daily limit of ${dailyLimit} Runs and probes reached for this ${isAccount ? 'account' : 'IP'}. The limit resets at ${formatUtc(daily.resetAt)}.`,
         resetAt: daily.resetAt,
       };
     }

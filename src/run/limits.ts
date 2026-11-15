@@ -4,6 +4,7 @@
 export const PLANNING_LIMIT = { windowMs: 3_600_000, max: 10 } as const;
 export const START_LIMIT = { windowMs: 3_600_000, max: 6 } as const;
 export const DAILY_MAX = 50;
+export const DAILY_IP_MAX = 10;
 
 const DAY_MS = 86_400_000;
 

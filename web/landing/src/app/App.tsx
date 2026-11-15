@@ -158,6 +158,7 @@ export function App() {
         screen = <RecentRunsPage key={key} />;
         break;
       case 'sign-in':
+      case 'account':
         screen = <SignIn key={key} />;
         break;
       default:

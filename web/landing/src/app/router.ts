@@ -7,6 +7,7 @@ export type Route =
   | { view: 'probe-start' }
   | { view: 'runs' }
   | { view: 'sign-in' }
+  | { view: 'account' }
   | { view: 'notfound' };
 
 const ID_PATTERN = /^[A-Za-z0-9._~-]{1,100}$/;
@@ -17,6 +18,7 @@ export function parseRoute(hash: string): Route {
   if (bare === '' || bare === 'verify-panel') return { view: 'new' };
   const [kind, rawId, ...rest] = bare.split('/');
   if (kind === 'sign-in' && (rawId === undefined || rawId === '') && rest.length === 0) return { view: 'sign-in' };
+  if (kind === 'account' && (rawId === undefined || rawId === '') && rest.length === 0) return { view: 'account' };
   if (kind === 'runs' && (rawId === undefined || rawId === '') && rest.length === 0) return { view: 'runs' };
   if (kind === 'probe' && (rawId === undefined || rawId === '') && rest.length === 0) return { view: 'probe-start' };
   if ((kind === 'run' || kind === 'probe') && rawId !== undefined && rest.length === 0) {
@@ -44,6 +46,8 @@ export function routeTitle(route: Route): string {
       return 'Macro: recent runs';
     case 'sign-in':
       return 'Macro: sign in';
+    case 'account':
+      return 'Macro: account';
     case 'notfound':
       return 'Macro: page not found';
   }

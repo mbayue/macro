@@ -225,15 +225,22 @@ export function Shell({
               </a>
             ) : (
               <div className="rail__identity-row">
-                <div className="rail__avatar" aria-hidden="true">
-                  {(me.user.githubLogin ?? me.user.email ?? 'U').slice(0, 1).toUpperCase()}
-                </div>
-                <div className="rail__identity-meta">
-                  <p className="rail__identity-name">{me.user.githubLogin ?? me.user.email}</p>
-                  {me.verifiedOrigin !== null ? (
-                    <p className="rail__identity-site muted">{me.verifiedOrigin.host}</p>
-                  ) : null}
-                </div>
+                <a
+                  className="rail__identity-account"
+                  href="#/account"
+                  aria-current={route.view === 'account' || route.view === 'sign-in' ? 'page' : undefined}
+                  title="Account"
+                >
+                  <div className="rail__avatar" aria-hidden="true">
+                    {(me.user.githubLogin ?? me.user.email ?? 'U').slice(0, 1).toUpperCase()}
+                  </div>
+                  <div className="rail__identity-meta">
+                    <p className="rail__identity-name">{me.user.githubLogin ?? me.user.email}</p>
+                    {me.verifiedOrigin !== null ? (
+                      <p className="rail__identity-site muted">{me.verifiedOrigin.host}</p>
+                    ) : null}
+                  </div>
+                </a>
                 <button
                   type="button"
                   className="rail__identity-out"

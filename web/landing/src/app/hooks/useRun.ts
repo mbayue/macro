@@ -37,6 +37,10 @@ export type RunState =
 export function useRun(id: string) {
   const { navigate, announce, me } = useApp();
   const turnstile = useTurnstile();
+  const meRef = useRef(me);
+  meRef.current = me;
+  const turnstileRef = useRef(turnstile);
+  turnstileRef.current = turnstile;
   const [state, setState] = useState<RunState>({ kind: 'loading' });
   const [stopPending, setStopPending] = useState(false);
   const [stopError, setStopError] = useState<ApiError | null>(null);
@@ -169,9 +173,9 @@ export function useRun(id: string) {
       setStopPending(true);
       setStopError(null);
       let body: { turnstileToken?: string } = {};
-      if (me === null) {
+      if (meRef.current === null) {
         try {
-          body = { turnstileToken: await turnstile.token() };
+          body = { turnstileToken: await turnstileRef.current.token() };
         } catch {
           setStopPending(false);
           setStopError(VERIFICATION_ERROR);
@@ -179,7 +183,7 @@ export function useRun(id: string) {
         }
       }
       const res = await stopRun(id, body); // no abort signal, on purpose
-      turnstile.reset();
+      turnstileRef.current.reset();
       if (dead || !model.current) return;
       setStopPending(false);
       if (!res.ok) {
@@ -227,7 +231,7 @@ export function useRun(id: string) {
       if (tick !== undefined) window.clearInterval(tick);
       model.current = null;
     };
-  }, [id, attempt, announce, me, navigate, publish, turnstile]);
+  }, [id, attempt, announce, navigate, publish]);
 
   return {
     state,

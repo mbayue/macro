@@ -857,13 +857,13 @@ export class Store {
       .map(toRun);
   }
 
-  /** Most recent completed public demo run that has a saved report, or null. */
+  /** Most recent finished public demo run (`completed` or `halted`) that has a saved report, or null. */
   getLatestPublicCompletedRunId(): string | null {
     const row = this.db
       .prepare<{ id: string }, []>(
         `SELECT r.id FROM runs r
          JOIN reports rep ON rep.run_id = r.id
-         WHERE r.owner_user_id IS NULL AND r.kind = 'run' AND r.status = 'completed'
+         WHERE r.visibility = 'public' AND r.kind = 'run' AND r.status IN ('completed', 'halted')
          ORDER BY r.started_at DESC, r.rowid DESC LIMIT 1`,
       )
       .get();

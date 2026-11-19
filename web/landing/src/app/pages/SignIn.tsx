@@ -2,13 +2,13 @@
  * Sign in (`#/sign-in`): GitHub OAuth or magic link email.
  */
 import { useEffect, useState } from 'react';
-import { clearReviewState, deleteAccount, githubStartHref, postMagicLink, postSignOut } from '../lib/auth-api.ts';
+import { clearReviewState, deleteAccount, githubStartHref, googleStartHref, postMagicLink, postSignOut } from '../lib/auth-api.ts';
 import { clearRecentRuns } from '../lib/recent-runs.ts';
 import { AlertRegion, Busy, ConfirmButton, Panel } from '../components/ui.tsx';
 import { useApp } from '../context.tsx';
 
 export function SignIn() {
-  const { me, navigate, announce, refreshMe } = useApp();
+  const { config, me, navigate, announce, refreshMe } = useApp();
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
@@ -23,6 +23,7 @@ export function SignIn() {
 
   const params = new URLSearchParams(window.location.hash.split('?')[1] ?? '');
   const githubEmailError = params.get('error') === 'github_email';
+  const googleEmailError = params.get('error') === 'google_email';
 
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -135,6 +136,23 @@ export function SignIn() {
         <AlertRegion>
           <p>GitHub did not provide a verified email. Use a magic link, or make a verified email public on GitHub and try again.</p>
         </AlertRegion>
+      ) : null}
+
+      {googleEmailError ? (
+        <AlertRegion>
+          <p>Google did not provide a verified email. Use a magic link or another Google account with a verified email.</p>
+        </AlertRegion>
+      ) : null}
+
+      {config.googleSignIn ? (
+        <Panel title="Google">
+          <p className="muted">Uses your Google account. Macro needs a verified email address.</p>
+          <p className="actions">
+            <a className="btn" href={googleStartHref()}>
+              Continue with Google
+            </a>
+          </p>
+        </Panel>
       ) : null}
 
       <Panel title="GitHub">

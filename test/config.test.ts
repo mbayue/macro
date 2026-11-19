@@ -451,3 +451,36 @@ describe('firebase', () => {
   );
 });
 
+describe('googleAuth', () => {
+  const G = {
+    GOOGLE_CLIENT_ID: 'google-client-123',
+    GOOGLE_CLIENT_SECRET: 'google-secret-xyz',
+    GOOGLE_REDIRECT_URI: 'https://macro.my.id/api/auth/google/callback',
+  };
+
+  test('unset means no googleAuth field', () => {
+    const c = ok(parseConfig(env()));
+    expect('googleAuth' in c).toBe(false);
+    expect(c.googleAuth).toBeUndefined();
+  });
+
+  test('accepts complete googleAuth env and hides secret in redactedConfig', () => {
+    const c = ok(parseConfig(env(G)));
+    expect(c.googleAuth).toEqual({
+      clientId: G.GOOGLE_CLIENT_ID,
+      clientSecret: G.GOOGLE_CLIENT_SECRET,
+      redirectUri: G.GOOGLE_REDIRECT_URI,
+    });
+    const text = JSON.stringify(redactedConfig(c));
+    expect(text).not.toContain(G.GOOGLE_CLIENT_SECRET);
+  });
+
+  test.each(['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI'])(
+    'partial googleAuth config missing %s reports that field by name',
+    (missing) => {
+      const patch: Record<string, string | undefined> = { ...G, [missing]: undefined };
+      expect(settingsOf(parseConfig(env(patch)))).toEqual([missing]);
+    },
+  );
+});
+

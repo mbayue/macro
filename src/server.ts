@@ -55,6 +55,11 @@ import {
   githubAuthorizeUrl,
 } from './auth/github.ts';
 import {
+  exchangeGoogleCode,
+  fetchGoogleIdentity,
+  googleAuthorizeUrl,
+} from './auth/google.ts';
+import {
   generateMagicToken,
   hashMagicToken,
   MAGIC_LINK_TTL_MS,
@@ -290,6 +295,8 @@ export interface AppDeps {
   mailer?: ResendMailer;
   /** Injectable fetch for GitHub OAuth (defaults to global fetch). */
   githubFetch?: typeof fetch;
+  /** Injectable fetch for Google OAuth (defaults to global fetch). */
+  googleFetch?: typeof fetch;
   /** Injectable DNS TXT resolver for origin verification (defaults to node:dns/promises). */
   resolveTxt?: ResolveTxt;
   /** Injectable DNS CNAME resolver for Domain Connect discovery (defaults to node:dns/promises). */
@@ -985,6 +992,7 @@ export function createApp(deps: AppDeps): App {
       trafficEventMax: 1000,
       sampleRunId: store.getLatestPublicCompletedRunId(),
       firebase: config.firebase ?? null,
+      googleSignIn: config.auth !== undefined && config.googleAuth !== undefined,
     };
     return json(200, body, { 'cache-control': 'no-cache' });
   };
@@ -1802,13 +1810,8 @@ export function createApp(deps: AppDeps): App {
     return json(200, body);
   };
 
-  const getGithubStart: Handler = async () => {
-    if (config.auth === undefined) {
-      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
-    }
-    const state = generateMagicToken();
-    const location = githubAuthorizeUrl(config.auth, state);
-    return new Response(null, {
+  const startOauthRedirect = (location: string, state: string): Response =>
+    new Response(null, {
       status: 302,
       headers: {
         Location: location,
@@ -1816,6 +1819,41 @@ export function createApp(deps: AppDeps): App {
         'cache-control': 'no-store',
       },
     });
+
+  const completeOauthLogin = (opts: {
+    provider: 'github' | 'google';
+    subject: string;
+    email: string;
+    githubLogin?: string;
+  }): Response => {
+    const at = now();
+    let user =
+      store.findUserByIdentity(opts.provider, opts.subject) ?? store.findUserByEmail(opts.email);
+    if (user === null) {
+      user = store.createUser(opts.email, at);
+    }
+    store.linkIdentity(user.id, opts.provider, opts.subject);
+    store.linkIdentity(user.id, 'email', opts.email);
+    if (opts.githubLogin !== undefined) {
+      store.setUserGithubLogin(user.id, opts.githubLogin);
+    }
+    const session = store.createSession(user.id, at, SESSION_TTL_MS);
+    store.markWaitlistJoined(opts.email, at);
+    const headers = new Headers({
+      Location: '/app/#/',
+      'cache-control': 'no-store',
+    });
+    headers.append('Set-Cookie', clearOauthStateCookie(cookieSecure));
+    headers.append('Set-Cookie', serializeSessionCookie(session.id, session.expiresAt, cookieSecure));
+    return new Response(null, { status: 303, headers });
+  };
+
+  const getGithubStart: Handler = async () => {
+    if (config.auth === undefined) {
+      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
+    }
+    const state = generateMagicToken();
+    return startOauthRedirect(githubAuthorizeUrl(config.auth, state), state);
   };
 
   const getGithubCallback: Handler = async ({ req, url }) => {
@@ -1848,25 +1886,57 @@ export function createApp(deps: AppDeps): App {
       return apiError(400, 'invalid_input', MSG.oauthFailed, {}, { 'Set-Cookie': clearOauthStateCookie(cookieSecure) });
     }
 
-    const at = now();
-    let user =
-      store.findUserByIdentity('github', identity.subject) ?? store.findUserByEmail(identity.email);
-    if (user === null) {
-      user = store.createUser(identity.email, at);
-    }
-    store.linkIdentity(user.id, 'github', identity.subject);
-    store.linkIdentity(user.id, 'email', identity.email);
-    store.setUserGithubLogin(user.id, identity.login);
-    const session = store.createSession(user.id, at, SESSION_TTL_MS);
-    store.markWaitlistJoined(identity.email, at);
-    // Clear oauth state and set session: use two Set-Cookie via Headers.
-    const headers = new Headers({
-      Location: '/app/#/',
-      'cache-control': 'no-store',
+    return completeOauthLogin({
+      provider: 'github',
+      subject: identity.subject,
+      email: identity.email,
+      githubLogin: identity.login,
     });
-    headers.append('Set-Cookie', clearOauthStateCookie(cookieSecure));
-    headers.append('Set-Cookie', serializeSessionCookie(session.id, session.expiresAt, cookieSecure));
-    return new Response(null, { status: 303, headers });
+  };
+
+  const getGoogleStart: Handler = async () => {
+    if (config.auth === undefined || config.googleAuth === undefined) {
+      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
+    }
+    const state = generateMagicToken();
+    return startOauthRedirect(googleAuthorizeUrl(config.googleAuth, state), state);
+  };
+
+  const getGoogleCallback: Handler = async ({ req, url }) => {
+    if (config.auth === undefined || config.googleAuth === undefined) {
+      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
+    }
+    const expected = parseCookieValue(req.headers.get('cookie'), OAUTH_STATE_COOKIE);
+    const state = url.searchParams.get('state') ?? '';
+    const code = url.searchParams.get('code') ?? '';
+    if (expected === null || state === '' || state !== expected || code === '') {
+      return apiError(400, 'invalid_input', MSG.oauthFailed, {}, { 'Set-Cookie': clearOauthStateCookie(cookieSecure) });
+    }
+    const gFetch = deps.googleFetch ?? fetch;
+    const token = await exchangeGoogleCode(config.googleAuth, code, gFetch);
+    if ('error' in token) {
+      return apiError(400, 'invalid_input', MSG.oauthFailed, {}, { 'Set-Cookie': clearOauthStateCookie(cookieSecure) });
+    }
+    const identity = await fetchGoogleIdentity(token.accessToken, gFetch);
+    if ('error' in identity) {
+      if (identity.error === 'no_email') {
+        return new Response(null, {
+          status: 303,
+          headers: {
+            Location: '/app/#/sign-in?error=google_email',
+            'Set-Cookie': clearOauthStateCookie(cookieSecure),
+            'cache-control': 'no-store',
+          },
+        });
+      }
+      return apiError(400, 'invalid_input', MSG.oauthFailed, {}, { 'Set-Cookie': clearOauthStateCookie(cookieSecure) });
+    }
+
+    return completeOauthLogin({
+      provider: 'google',
+      subject: identity.subject,
+      email: identity.email,
+    });
   };
 
   const getMagicLinkConsume: Handler = async ({ url }) => {
@@ -2169,6 +2239,8 @@ export function createApp(deps: AppDeps): App {
     { method: 'GET', re: /^\/api\/auth\/magic-link\/consume$/, name: 'magic_link_consume', handler: getMagicLinkConsume },
     { method: 'GET', re: /^\/api\/auth\/github\/start$/, name: 'github_start', handler: getGithubStart },
     { method: 'GET', re: /^\/api\/auth\/github\/callback$/, name: 'github_callback', handler: getGithubCallback },
+    { method: 'GET', re: /^\/api\/auth\/google\/start$/, name: 'google_start', handler: getGoogleStart },
+    { method: 'GET', re: /^\/api\/auth\/google\/callback$/, name: 'google_callback', handler: getGoogleCallback },
     { method: 'GET', re: /^\/api\/me$/, name: 'me', handler: getMe },
     { method: 'DELETE', re: /^\/api\/me$/, name: 'me_delete', handler: deleteMe },
     { method: 'GET', re: /^\/api\/quota$/, name: 'quota', handler: getQuota },

@@ -139,7 +139,7 @@ CREATE TABLE IF NOT EXISTS users (
   created_at INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS auth_identities (
-  provider TEXT NOT NULL CHECK (provider IN ('email','github')),
+  provider TEXT NOT NULL CHECK (provider IN ('email','github','google')),
   provider_subject TEXT NOT NULL,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   PRIMARY KEY (provider, provider_subject)
@@ -548,6 +548,7 @@ export class Store {
     this.migrateRunsOwnership();
     this.migrateDraftDiscovery();
     this.migrateWaitlistActivation();
+    this.migrateAuthIdentitiesProvider();
   }
 
   /** Add ownership columns on DBs created before account privacy. */
@@ -586,6 +587,30 @@ export class Store {
       .map((c) => c.name);
     if (!cols.includes('invited_at')) this.db.exec('ALTER TABLE waitlist ADD COLUMN invited_at INTEGER');
     if (!cols.includes('joined_at')) this.db.exec('ALTER TABLE waitlist ADD COLUMN joined_at INTEGER');
+  }
+
+  private migrateAuthIdentitiesProvider(): void {
+    const row = this.db
+      .prepare<{ sql: string | null }, []>(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'auth_identities'",
+      )
+      .get();
+    if (!row?.sql || row.sql.includes("'google'")) return;
+    this.db.exec(`
+      BEGIN IMMEDIATE;
+      CREATE TABLE auth_identities_next (
+        provider TEXT NOT NULL CHECK (provider IN ('email','github','google')),
+        provider_subject TEXT NOT NULL,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        PRIMARY KEY (provider, provider_subject)
+      );
+      INSERT INTO auth_identities_next (provider, provider_subject, user_id)
+      SELECT provider, provider_subject, user_id FROM auth_identities;
+      DROP TABLE auth_identities;
+      ALTER TABLE auth_identities_next RENAME TO auth_identities;
+      CREATE INDEX IF NOT EXISTS auth_identities_user ON auth_identities(user_id);
+      COMMIT;
+    `);
   }
 
   /** Opens `${dataDir}/macro.db`. */
@@ -1264,7 +1289,7 @@ export class Store {
     });
   }
 
-  linkIdentity(userId: string, provider: 'email' | 'github', providerSubject: string): void {
+  linkIdentity(userId: string, provider: 'email' | 'github' | 'google', providerSubject: string): void {
     const subject = provider === 'email' ? normalizeEmail(providerSubject) : providerSubject;
     this.db
       .prepare(
@@ -1274,7 +1299,7 @@ export class Store {
       .run(provider, subject, userId);
   }
 
-  findUserByIdentity(provider: 'email' | 'github', providerSubject: string): UserRow | null {
+  findUserByIdentity(provider: 'email' | 'github' | 'google', providerSubject: string): UserRow | null {
     const subject = provider === 'email' ? normalizeEmail(providerSubject) : providerSubject;
     const r = this.db
       .prepare<RawUser, [string, string]>(

@@ -98,6 +98,8 @@ export interface ConfigResponse {
   sampleRunId?: string | null;
   /** Public Firebase Web SDK config for client-side Hybrid Inference, or null when unconfigured. */
   firebase?: FirebaseWebConfig | null;
+  /** True when optional Direct Google OAuth is configured alongside auth. */
+  googleSignIn?: boolean;
 }
 
 export interface QuotaResponse {

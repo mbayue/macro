@@ -84,6 +84,10 @@ export function githubStartHref(): string {
   return '/api/auth/github/start';
 }
 
+export function googleStartHref(): string {
+  return '/api/auth/google/start';
+}
+
 export async function postVerifyStart(host: string): Promise<ApiResult<VerifyStartResponse>> {
   try {
     const res = await fetch('/api/verify/start', {

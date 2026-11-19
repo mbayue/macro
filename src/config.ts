@@ -86,6 +86,15 @@ export interface Config {
    * Omitted when unset (Hybrid AI UI stays hidden).
    */
   readonly firebase?: FirebaseWebConfig;
+  /**
+   * Optional Google OAuth client credentials (all-or-nothing).
+   * Omitted when unset (Google sign-in stays disabled).
+   */
+  readonly googleAuth?: {
+    readonly clientId: string;
+    readonly clientSecret: string;
+    readonly redirectUri: string;
+  };
 }
 
 export interface ConfigError {
@@ -181,6 +190,33 @@ function parseFirebaseConfig(
     ...(authDomain !== undefined ? { authDomain } : {}),
     ...(measurementId !== undefined ? { measurementId } : {}),
     ...(appCheckSiteKey !== undefined ? { appCheckSiteKey } : {}),
+  };
+}
+
+function parseGoogleAuthConfig(
+  env: Env,
+  fail: (setting: string, reason: string) => void,
+): Config['googleAuth'] {
+  const keys = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI'] as const;
+  const values = Object.fromEntries(keys.map((k) => [k, read(env, k)])) as Record<
+    (typeof keys)[number],
+    string | undefined
+  >;
+  if (!keys.some((k) => values[k] !== undefined)) return undefined;
+
+  let missing = false;
+  for (const k of keys) {
+    if (values[k] === undefined) {
+      fail(k, 'is required when any GOOGLE_* setting is provided');
+      missing = true;
+    }
+  }
+  if (missing) return undefined;
+
+  return {
+    clientId: values.GOOGLE_CLIENT_ID as string,
+    clientSecret: values.GOOGLE_CLIENT_SECRET as string,
+    redirectUri: values.GOOGLE_REDIRECT_URI as string,
   };
 }
 
@@ -317,6 +353,7 @@ export function parseConfig(env: Env): ConfigResult {
       : undefined;
 
   const firebase = parseFirebaseConfig(env, fail);
+  const googleAuth = parseGoogleAuthConfig(env, fail);
 
   if (
     errors.length > 0 ||
@@ -346,6 +383,7 @@ export function parseConfig(env: Env): ConfigResult {
     ...(auth !== undefined ? { auth } : {}),
     ...(domainConnect !== undefined ? { domainConnect } : {}),
     ...(firebase !== undefined ? { firebase } : {}),
+    ...(googleAuth !== undefined ? { googleAuth } : {}),
   };
   return { ok: true, config: deepFreeze(config) };
 }
@@ -376,6 +414,14 @@ export function redactedConfig(config: Config): unknown {
           domainConnect: {
             keyId: config.domainConnect.keyId,
             privateKey: mark(config.domainConnect.privateKey),
+          },
+        }
+      : {}),
+    ...(config.googleAuth !== undefined
+      ? {
+          googleAuth: {
+            ...config.googleAuth,
+            clientSecret: mark(config.googleAuth.clientSecret),
           },
         }
       : {}),

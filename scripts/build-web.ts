@@ -10,6 +10,7 @@ import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { build as viteBuild } from 'vite';
+import { validateWebDist } from './build-web-check.ts';
 
 const root = resolve(import.meta.dir, '..');
 const webDir = join(root, 'web');
@@ -64,16 +65,7 @@ for (const [file, page] of [
 }
 
 // ---- 2. sanity checks ----
-for (const name of ['index.html', 'privacy.html', 'terms.html', '404.html', join('app', 'index.html'), 'favicon.svg']) {
-  if (!(await Bun.file(join(outDir, name)).exists())) fail(`Web build is missing ${name}.`);
-}
-if (await Bun.file(join(outDir, 'app-next', 'index.html')).exists()) {
-  fail('Web build still contains /app-next/; the React app must ship at /app/ only.');
-}
-for (const name of ['index.html', 'privacy.html', 'terms.html', '404.html', join('app', 'index.html')]) {
-  const html = await readFile(join(outDir, name), 'utf8');
-  if (/\sstyle="/.test(html)) fail(`${name} contains a style attribute, which the CSP blocks.`);
-  if (/<script(?![^>]*\ssrc=)[^>]*>/.test(html)) fail(`${name} contains an inline script, which the CSP blocks.`);
-}
+const errors = await validateWebDist(outDir);
+if (errors.length > 0) fail(errors.join('\n'));
 
 console.log('Built web/dist: the planner app at /app/ and the prerendered landing site.');

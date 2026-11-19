@@ -11,6 +11,9 @@
     "exactOptionalPropertyTypes": true,
     "verbatimModuleSyntax": true,
     "allowImportingTsExtensions": true,
+    "paths": {
+      "@/*": ["./web/landing/src/app/*"]
+    },
     "noEmit": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true

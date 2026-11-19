@@ -5,6 +5,7 @@
  *   bun run dev:landing   # Vite dev server with hot reload; /api goes to the local Macro API
  */
 import { fileURLToPath } from 'node:url';
+import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
 
@@ -45,7 +46,12 @@ function devPrerender(): Plugin {
 
 export default defineConfig({
   root,
-  plugins: [react(), devPrerender()],
+  plugins: [tailwindcss(), react(), devPrerender()],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src/app', import.meta.url)),
+    },
+  },
   publicDir: 'public',
   build: {
     outDir: fileURLToPath(new URL('../dist', import.meta.url)),

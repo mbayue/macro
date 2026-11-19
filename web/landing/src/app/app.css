@@ -1,22 +1,28 @@
-@import '../tokens.css';
+@import './tailwind.css';
 
-/* Macro app (/app/). Colours come from tokens.css. This file adds the operate scale. */
-:root {
-  --warn: #7a4e00;
-  --fs-xs: 0.75rem;
-  --fs-sm: 0.8125rem;
-  --fs-base: 0.9375rem;
-  --fs-md: 1.0625rem;
-  --fs-lg: 1.375rem;
-  --fs-title: 2.25rem;
-  --fs-num: 2.75rem;
-  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
-  --rail: 240px;
+/* Macro app (/app/). Colours come from tokens.css via tailwind.css. This file adds the operate scale. */
+@layer base {
+  :root {
+    --warn: #7a4e00;
+    --fs-xs: 0.75rem;
+    --fs-sm: 0.8125rem;
+    --fs-base: 0.9375rem;
+    --fs-md: 1.0625rem;
+    --fs-lg: 1.375rem;
+    --fs-title: 2.25rem;
+    --fs-num: 2.75rem;
+    --mono: "Geist Mono", ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+    --rail: 240px;
+  }
+  :root[data-theme="dark"] { --warn: #f2c46d; }
+
+  body { font-size: var(--fs-base); }
+  [tabindex="-1"]:focus { outline: none; }
+  a { text-decoration: underline; text-underline-offset: 0.2em; }
+  * { scrollbar-color: var(--bar) transparent; scrollbar-width: thin; }
 }
-:root[data-theme="dark"] { --warn: #f2c46d; }
 
-body { font-size: var(--fs-base); }
-
+@layer components {
 /* ---- Pre-React HTML boot placeholder ---- */
 .boot-screen {
   min-height: 100vh;
@@ -72,7 +78,6 @@ body { font-size: var(--fs-base); }
   margin-top: 12px;
 }
 .shell h1, .shell h2, .shell h3 { font-family: var(--text); font-weight: 500; letter-spacing: -0.005em; line-height: 1.3; font-size: var(--fs-md); }
-[tabindex="-1"]:focus { outline: none; }
 .muted { color: var(--muted); }
 .code { font-family: var(--mono); font-size: 0.92em; overflow-wrap: anywhere; }
 .num { font-variant-numeric: tabular-nums; }
@@ -81,7 +86,6 @@ body { font-size: var(--fs-base); }
 .stack-tight { display: grid; gap: 6px; }
 .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 .h-small { font-size: var(--fs-sm) !important; color: var(--muted); display: flex; gap: 8px; align-items: center; }
-a { text-underline-offset: 0.2em; }
 
 /* ---- Shell ---- */
 .shell { display: grid; grid-template-columns: var(--rail) minmax(0, 1fr); min-height: 100vh; }
@@ -520,7 +524,7 @@ a { text-underline-offset: 0.2em; }
 .notice .badge { justify-self: start; }
 .notice--bad { border-color: var(--bad); }
 .notice--warn { border-color: var(--warn); }
-.notices { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: var(--fs-sm); color: var(--muted); }
+.notices { list-style: disc; margin: 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: var(--fs-sm); color: var(--muted); }
 
 /* Accessible visually-hidden utility */
 .visually-hidden {
@@ -1031,9 +1035,8 @@ a { text-underline-offset: 0.2em; }
 .meta-strip dt { color: var(--muted); font-size: var(--fs-xs); }
 .meta-strip dd { margin: 0; min-width: 0; }
 .ai__cols { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 32px; align-items: start; }
-* { scrollbar-color: var(--bar) transparent; scrollbar-width: thin; }
-.ai__notes { margin: 0; padding-left: 1.2em; color: var(--muted); font-size: var(--fs-sm); }
-.ai__list { margin: 0; padding-left: 1.4em; display: grid; gap: 6px; }
+.ai__notes { list-style: disc; margin: 0; padding-left: 1.2em; color: var(--muted); font-size: var(--fs-sm); }
+.ai__list { list-style: decimal; margin: 0; padding-left: 1.4em; display: grid; gap: 6px; }
 .compare { display: grid; gap: 14px; margin-top: 8px; }
 .compare__runs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; font-size: var(--fs-sm); }
 
@@ -1263,4 +1266,5 @@ a { text-underline-offset: 0.2em; }
 .report-qa__answer .prose {
   max-width: none;
   white-space: pre-wrap;
+}
 }

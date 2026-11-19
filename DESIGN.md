@@ -65,8 +65,12 @@ typography:
     fontSize: "12px"
     fontWeight: 400
   code:
-    fontFamily: "ui-monospace, SF Mono, Cascadia Mono, Menlo, Consolas, monospace"
+    fontFamily: "Geist Mono, ui-monospace, SF Mono, Cascadia Mono, Menlo, Consolas, monospace"
     fontSize: "0.92em"
+  telemetry:
+    fontFamily: "Geist Mono, ui-monospace, SF Mono, Cascadia Mono, Menlo, Consolas, monospace"
+    fontWeight: 400
+    fontVariantNumeric: "tabular-nums"
 rounded:
   badge: "4px"
   md: "6px"
@@ -142,9 +146,9 @@ An evergreen field with one spring-green accent, the same colours as mongodb.com
 
 **Display Font:** Stack Sans Headline 300 (self-hosted, OFL)
 **Body Font:** Stack Sans Text 400 and 500 (self-hosted, OFL)
-**Code Font:** the platform monospace stack, only for real code: ids, hosts, routes, paths, hashes.
+**Telemetry & Code Font:** Geist Mono 400 (self-hosted, OFL; preloaded only in `/app/`), with `tabular-nums` for numerical readouts, quotas, latencies, timestamps, IDs, hosts, routes, paths, hashes, and SVG axis ticks.
 
-**Character:** a narrow, quiet grotesque that lets large readings feel measured rather than loud.
+**Character:** a narrow, quiet grotesque paired with crisp tabular monospace so large readings and instrument readouts stay measured rather than loud.
 
 ### Hierarchy
 - **Display** (300, fluid on the landing page only): landing headlines.
@@ -153,13 +157,22 @@ An evergreen field with one spring-green accent, the same colours as mongodb.com
 - **Heading** (500, 1.0625rem, 1.3): panel and section headings in the app.
 - **Body** (400, 0.9375rem, 1.5): app text; prose blocks capped at 72ch.
 - **Label** (400, 0.8125rem): table headers, key-value terms, tile labels; never uppercase-tracked.
+- **Telemetry Readout** (Geist Mono 400, `tabular-nums`, 0.75rem–0.875rem): quota counters, run IDs, stage indices, latencies, and chart axis numbers.
 
 ### Named Rules
-**The Readings Rule.** Headline 300 is for titles and numbers only; controls, labels and data stay in Stack Sans Text.
+**The Readings Rule.** Headline 300 is for titles and signature figures only; controls, labels, and prose stay in Stack Sans Text, and instrument metrics/identifiers use Geist Mono with `tabular-nums`.
 
 ## Layout
 
-The app is a side rail (240px) beside a main column that fills up to 1600px and centres beyond it, so the space left and right stays equal. Task pages split into a main column and a 300 to 380px side column for the rules and actions that belong to the task; the side column is sticky. The run page is a board: four tiles, then the route chart beside the event feed, then the stage strip, then tables. Gaps are 8px between tiles and sibling panels, 16 to 24px between sections. Below 1180px tiles go two-up and the board stacks; below 860px the rail becomes a top bar with a menu, and everything is one column. A one-line footer note sits at the bottom of the screen on short pages and after the content on long ones.
+The app is a collapsible desktop rail (`240px` expanded, `64px` collapsed icon-only, preference stored in the browser) beside a workspace column containing a sticky top context bar and a main content column that fills up to `1600px` and centres beyond it. Task pages split into a main column and a `300` to `380px` sticky side column for the rules and actions that belong to the task. The run page is a board: four tiles, then the route chart beside the event feed, then the stage strip, then tables. Gaps are `8px` between tiles and sibling panels, `16` to `24px` between sections. Below `1180px` tiles go two-up and the board stacks; at `860px` or less the rail becomes a sticky mobile top bar with a left-side menu sheet, quota hides from the context bar, and everything stacks to one column. A one-line footer note sits at the bottom of the screen on short pages and after the content on long ones.
+
+## Telemetry Framing
+
+The app uses thin-line telemetry framing to separate instrument surfaces without adding weight:
+- **1px Hairline Grid Frames:** Structural separators (`--surface-2`) frame the rail, top context bar, meta strips, and table cells; interactive controls and overlay surfaces (`Dialog`, `Sheet`, `DropdownMenu`) use `1px` `--bar` borders (or `--bar-hover` when placed on `surface-2` to maintain >= 3:1 non-text contrast).
+- **Corner Ticks:** Key telemetry panels and KPI tiles may use subtle 1px hairline corner ticks (`--bar` or `--accent-text` on the live/active tile) to anchor readings like an oscilloscope or bench display.
+- **Tabulated Monospace Readouts:** Quotas (`used/limit`), IDs, hostnames, durations, latencies, and chart axis labels render in **Geist Mono** (`400`, `tabular-nums`) so live numbers never jitter horizontally as digits update.
+- **Zero Elevation Artifacts:** Framing is strictly 1px hairlines and tonal steps (`bg`, `surface`, `surface-2`)—never box shadows, blurs, gradients, or glows.
 
 ## Elevation & Depth
 
@@ -188,7 +201,9 @@ One corner language: 6px on buttons, panels, tiles, inputs and bars; 4px on badg
 - **Style:** ground-coloured field inside a panel, 1px bar-coloured border, 6px radius. **Focus:** 2px accent-text outline and border.
 
 ### Navigation
-- **Rail:** wordmark, the spring-green New test button, quiet links, then this browser's recent runs, then the theme toggle and legal links. Current item: surface-2 fill and ink text.
+- **Rail:** Macro wordmark, spring-green **New test** primary action (`#/`), quiet navigation links (**Test Studio** `#/`, **Runs** `#/runs`, **Containment Probe** `#/probe`, **Account** `#/account` or `#/sign-in`), and footer legal links (**About Macro**, **Privacy**, **Terms**). Collapses to a `64px` icon-only bar with tooltips on desktop (`> 860px`), saving the choice in `localStorage` (`macro.railCollapsed.v1`). At `860px` or less, becomes a sticky mobile top bar with a **Quick Jump** trigger and a menu button opening a left-side navigation sheet containing full routes, active target status, theme toggle, and account controls. Current item: `surface-2` fill, ink text, and a hairline accent indicator. Recent runs stay out of the rail and live in **Quick Jump** and **Runs Table**.
+- **Top Context Bar:** Sticky header above `<main>` showing the active target host and `Demo` / `Verified` badge (plus a pending verification link to `#/verify-panel` when present), `/api/quota` planning and daily run readouts (`used/limit` in **Geist Mono**, labelled `per IP` when signed out, hidden at `<= 860px`), **Quick Jump** trigger (`Ctrl+K` / `⌘K`), theme toggle, and account menu (`Sign in` when signed out; identity, account links, and `Sign out` when signed in).
+- **Quick Jump (`Ctrl/Cmd+K`):** Keyboard-driven command dialog listing main routes, recent runs (`/api/account/runs` when signed in, browser storage when signed out), and global actions (**New test**, **Toggle theme**, **Sign in** / **Sign out**), returning focus cleanly when dismissed.
 
 ### Live board (signature)
 - Four tiles; while running the spring-green tile is the stage in progress, and when the run ends the same tiles become the report's headline (safe capacity in spring green at the landing figure scale, breaking point, first degraded route, status). Every live number names the stage it came from.

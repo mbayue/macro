@@ -8,7 +8,7 @@ function Command({ className, ...props }: React.ComponentProps<typeof CommandPri
   return (
     <CommandPrimitive
       data-slot="command"
-      className={cn('flex size-full flex-col overflow-hidden rounded-md bg-popover p-1 text-popover-foreground', className)}
+      className={cn('flex size-full flex-col overflow-hidden rounded-md bg-popover text-popover-foreground', className)}
       {...props}
     />
   );
@@ -20,12 +20,14 @@ function CommandDialog({
   children,
   className,
   showCloseButton = false,
+  finalFocus,
   ...props
 }: Omit<React.ComponentProps<typeof Dialog>, 'children'> & {
   title?: string;
   description?: string;
   className?: string;
   showCloseButton?: boolean;
+  finalFocus?: React.ComponentProps<typeof DialogContent>['finalFocus'] | undefined;
   children: React.ReactNode;
 }) {
   return (
@@ -35,8 +37,9 @@ function CommandDialog({
         <DialogDescription>{description}</DialogDescription>
       </DialogHeader>
       <DialogContent
-        className={cn('top-1/3 translate-y-0 overflow-hidden rounded-md p-0', className)}
+        className={cn('top-1/4 translate-y-0 overflow-hidden rounded-md p-0', className)}
         showCloseButton={showCloseButton}
+        {...(finalFocus !== undefined ? { finalFocus } : {})}
       >
         {children}
       </DialogContent>
@@ -48,7 +51,7 @@ function CommandInput({ className, ...props }: React.ComponentProps<typeof Comma
   return (
     <div
       data-slot="command-input-wrapper"
-      className="flex h-10 items-center gap-2 rounded-t-md border-b border-border bg-background px-3 focus-within:outline-[2px] focus-within:outline-offset-[-2px] focus-within:outline-ring"
+      className="flex h-11 items-center gap-2 border-b border-border bg-background px-3 focus-within:outline-[2px] focus-within:outline-offset-[-2px] focus-within:outline-ring"
     >
       <SearchIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       <CommandPrimitive.Input
@@ -68,7 +71,7 @@ function CommandList({ className, ...props }: React.ComponentProps<typeof Comman
     <CommandPrimitive.List
       data-slot="command-list"
       className={cn(
-        'max-h-72 scroll-py-1 overflow-x-hidden overflow-y-auto focus-visible:outline-[2px] focus-visible:outline-ring',
+        'max-h-72 scroll-py-1 overflow-x-hidden overflow-y-auto p-1 focus-visible:outline-[2px] focus-visible:outline-ring',
         className,
       )}
       {...props}

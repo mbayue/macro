@@ -1,21 +1,66 @@
 /**
- * App shell: skip link, side rail (top bar plus menu on phones), main region and the polite
- * live region. The rail's recent list comes from this browser's storage only.
+ * Composable workspace shell: skip link, collapsible desktop rail (mobile top bar + Sheet under 860px),
+ * sticky top context bar, main content region, Ctrl/Cmd+K Quick Jump, and polite live region.
  */
-import { type ReactNode, useContext, useEffect, useId, useRef, useState } from 'react';
-import type { RunStatus } from '../../../../../src/types.ts';
-import { clearReviewState, postSignOut } from '../lib/auth-api.ts';
-import { clearRecentRuns, loadRecentRuns, type RecentRun } from '../lib/recent-runs.ts';
-import { ThemeSegmented } from '../../components/Chrome.tsx';
-import { StatusBadge } from './ui.tsx';
-import { AppContext } from '../context.tsx';
-import { probeHref, type Route, runHref } from '../router.ts';
+import type { ReactNode } from 'react';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import type { Route } from '../router.ts';
+import { QuickJump } from './shell/QuickJump.tsx';
+import { DesktopRail, MobileTopBar } from './shell/Rail.tsx';
+import { ShellProvider, useShell } from './shell/ShellContext.tsx';
+import { TopContextBar } from './shell/TopContextBar.tsx';
 
-const RECENT_IN_RAIL = 4;
+function ShellLayout({
+  live,
+  mainRef,
+  children,
+}: {
+  live: string;
+  mainRef: React.RefObject<HTMLElement | null>;
+  children: ReactNode;
+}) {
+  const { state } = useShell();
+  const me = state.me;
 
-function currentKey(route: Route): string {
-  if (route.view === 'run' || route.view === 'probe') return `${route.view}:${route.id}`;
-  return route.view;
+  return (
+    <div className="shell" data-rail-collapsed={state.railCollapsed ? 'true' : 'false'}>
+      <a
+        className="skip-link"
+        href="#main"
+        onClick={(e) => {
+          // A bare "#main" would change the hash route.
+          e.preventDefault();
+          mainRef.current?.focus();
+        }}
+      >
+        Skip to content
+      </a>
+
+      <DesktopRail />
+
+      <div className="flex min-h-screen min-w-0 flex-col">
+        <MobileTopBar />
+        <TopContextBar />
+
+        <main id="main" className="main" ref={mainRef} tabIndex={-1}>
+          {children}
+          <footer className="app-foot">
+            <p>
+              {me?.verifiedOrigin
+                ? `You can load-test ${typeof me.verifiedOrigin === 'string' ? me.verifiedOrigin : me.verifiedOrigin.host} (verified) or the public demo shop.`
+                : 'Demo shop tests work signed out. Own-site tests need a signed-in account and a verified origin.'}
+            </p>
+          </footer>
+        </main>
+      </div>
+
+      <QuickJump />
+
+      <div className="visually-hidden" aria-live="polite" aria-atomic="true">
+        {live}
+      </div>
+    </div>
+  );
 }
 
 export function Shell({
@@ -29,259 +74,13 @@ export function Shell({
   mainRef: React.RefObject<HTMLElement | null>;
   children: ReactNode;
 }) {
-  // Shell renders during boot before AppContext exists; identity is optional then.
-  const ctx = useContext(AppContext);
-  const me = ctx?.me ?? null;
-  const [open, setOpen] = useState(false);
-  const [recent, setRecent] = useState<RecentRun[]>([]);
-  const [activeRun, setActiveRun] = useState<(RecentRun & { status: 'running' | 'queued' }) | null>(null);
-  const menuBtnRef = useRef<HTMLButtonElement>(null);
-  const railId = useId();
-  const key = currentKey(route);
-
-  useEffect(() => {
-    if (!open) return;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setOpen(false);
-        menuBtnRef.current?.focus();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      window.removeEventListener('keydown', onKeyDown);
-    };
-  }, [open]);
-
-  async function onSignOut() {
-    if (!ctx) return;
-    await postSignOut();
-    clearRecentRuns();
-    clearReviewState();
-    setRecent([]);
-    setActiveRun(null);
-    await ctx.refreshMe();
-    ctx.announce('Signed out.');
-    ctx.navigate('/');
-  }
-
-  // Refresh the recent list and close the phone menu on every navigation.
-  useEffect(() => {
-    setOpen(false);
-    if (me === null) {
-      setActiveRun(null);
-      setRecent(loadRecentRuns().slice(0, RECENT_IN_RAIL));
-      return;
-    }
-    const abort = new AbortController();
-    let timer: number | undefined;
-
-    const load = async () => {
-      try {
-        const res = await fetch('/api/account/runs', { credentials: 'same-origin', signal: abort.signal });
-        if (!res.ok || abort.signal.aborted) {
-          if (!abort.signal.aborted) setRecent(loadRecentRuns().slice(0, RECENT_IN_RAIL));
-          return;
-        }
-        const body = (await res.json()) as {
-          runs: { runId: string; kind?: 'run' | 'probe'; startedAt: number; status: RunStatus; title?: string }[];
-        };
-        if (abort.signal.aborted) return;
-        const mapped = body.runs.map((r) => ({
-          id: r.runId,
-          kind: r.kind ?? ('run' as const),
-          name: r.title && r.title.trim() !== '' ? r.title : r.kind === 'probe' ? 'Containment probe' : 'Load test',
-          startedAt: r.startedAt,
-          status: r.status,
-        }));
-        setRecent(mapped.slice(0, RECENT_IN_RAIL));
-        const liveRun = mapped.find((r) => r.status === 'running' || r.status === 'queued') ?? null;
-        setActiveRun(
-          liveRun === null
-            ? null
-            : { id: liveRun.id, kind: liveRun.kind, name: liveRun.name, startedAt: liveRun.startedAt, status: liveRun.status as 'running' | 'queued' },
-        );
-        if (liveRun !== null) {
-          timer = window.setTimeout(() => void load(), 5000);
-        }
-      } catch {
-        if (!abort.signal.aborted) setRecent(loadRecentRuns().slice(0, RECENT_IN_RAIL));
-      }
-    };
-
-    void load();
-    return () => {
-      abort.abort();
-      if (timer !== undefined) window.clearTimeout(timer);
-    };
-  }, [key, me]);
-
-  const item = (href: string, label: ReactNode, active: boolean) => (
-    <li key={href}>
-      <a href={href} className={active ? 'rail__link is-current' : 'rail__link'} aria-current={active ? 'page' : undefined}>
-        {label}
-      </a>
-    </li>
-  );
-
   return (
-    <div className="shell">
-      <a
-        className="skip-link"
-        href="#main"
-        onClick={(e) => {
-          // A bare "#main" would change the hash route.
-          e.preventDefault();
-          mainRef.current?.focus();
-        }}
-      >
-        Skip to content
-      </a>
-
-      <header className="topbar">
-        <a className="wordmark" href="#/">
-          Macro
-        </a>
-        <button
-          ref={menuBtnRef}
-          type="button"
-          className="topbar__menu"
-          aria-expanded={open}
-          aria-controls={railId}
-          onClick={() => setOpen((v) => !v)}
-        >
-          {open ? 'Close menu' : 'Menu'}
-        </button>
-      </header>
-
-      <nav id={railId} className={open ? 'rail is-open' : 'rail'} aria-label="App">
-        <a className="wordmark rail__brand" href="#/">
-          Macro
-        </a>
-        <a className={route.view === 'new' ? 'btn rail__new is-current' : 'btn rail__new'} href="#/" aria-current={route.view === 'new' ? 'page' : undefined}>
-          New test
-        </a>
-        <ul className="rail__list">
-          {item('#/runs', 'Recent runs', route.view === 'runs')}
-          {item('#/probe', 'Containment probe', route.view === 'probe-start' || route.view === 'probe')}
-        </ul>
-
-        {me?.pendingVerification ? (
-          <a className="rail__link" href="#/verify-panel">
-            Finish verifying {me.pendingVerification.host}
-          </a>
-        ) : null}
-
-        {activeRun !== null ? (
-          <div className="rail__recent">
-            <h2 className="rail__heading">In progress</h2>
-            <ul className="rail__list">
-              {item(
-                activeRun.kind === 'probe' ? probeHref(activeRun.id) : runHref(activeRun.id),
-                <>
-                  <span className="rail__name">{activeRun.kind === 'probe' ? 'Containment probe' : activeRun.name}</span>
-                  <StatusBadge status={activeRun.status} />
-                </>,
-                key === `${activeRun.kind}:${activeRun.id}`,
-              )}
-            </ul>
-          </div>
-        ) : null}
-
-        {(() => {
-          const pastRecent = activeRun === null ? recent : recent.filter((r) => r.id !== activeRun.id);
-          return pastRecent.length > 0 ? (
-            <div className="rail__recent">
-              <h2 className="rail__heading">{me !== null ? 'Your runs' : 'In this browser'}</h2>
-              <ul className="rail__list">
-                {pastRecent.map((r) => {
-                  const active = key === `${r.kind}:${r.id}`;
-                  return item(
-                    r.kind === 'probe' ? probeHref(r.id) : runHref(r.id),
-                    <>
-                      <span className="rail__name">{r.kind === 'probe' ? 'Containment probe' : r.name}</span>
-                      <span className="rail__id">{r.id.slice(0, 8)}</span>
-                    </>,
-                    active,
-                  );
-                })}
-              </ul>
-            </div>
-          ) : null;
-        })()}
-
-        <div className="rail__foot">
-          <div className="rail__identity">
-            {me === null ? (
-              <a
-                className="rail__link rail__identity-link"
-                href="#/sign-in"
-                aria-current={route.view === 'sign-in' ? 'page' : undefined}
-              >
-                Sign in
-              </a>
-            ) : (
-              <div className="rail__identity-row">
-                <a
-                  className="rail__identity-account"
-                  href="#/account"
-                  aria-current={route.view === 'account' || route.view === 'sign-in' ? 'page' : undefined}
-                  title="Account"
-                >
-                  <div className="rail__avatar" aria-hidden="true">
-                    {(me.user.githubLogin ?? me.user.email ?? 'U').slice(0, 1).toUpperCase()}
-                  </div>
-                  <div className="rail__identity-meta">
-                    <p className="rail__identity-name">{me.user.githubLogin ?? me.user.email}</p>
-                    {me.verifiedOrigin !== null ? (
-                      <p className="rail__identity-site muted">{me.verifiedOrigin.host}</p>
-                    ) : null}
-                  </div>
-                </a>
-                <button
-                  type="button"
-                  className="rail__identity-out"
-                  onClick={() => void onSignOut()}
-                  title="Sign out"
-                  aria-label="Sign out"
-                >
-                  Sign out
-                </button>
-              </div>
-            )}
-          </div>
-          <ThemeSegmented />
-          <ul className="rail__links">
-            <li>
-              <a href="/">About Macro</a>
-            </li>
-            <li>
-              <a href="/privacy">Privacy</a>
-            </li>
-            <li>
-              <a href="/terms">Terms</a>
-            </li>
-          </ul>
-        </div>
-      </nav>
-
-      <main id="main" className="main" ref={mainRef} tabIndex={-1}>
-        {children}
-        <footer className="app-foot">
-          <p>
-            {me?.verifiedOrigin
-              ? `You can load-test ${typeof me.verifiedOrigin === 'string' ? me.verifiedOrigin : me.verifiedOrigin.host} (verified) or the public demo shop.`
-              : 'Demo shop tests work signed out. Own-site tests need a signed-in account and a verified origin.'}
-          </p>
-        </footer>
-      </main>
-
-      <div className="visually-hidden" aria-live="polite" aria-atomic="true">
-        {live}
-      </div>
-    </div>
+    <TooltipProvider delay={200}>
+      <ShellProvider route={route} mainRef={mainRef}>
+        <ShellLayout live={live} mainRef={mainRef}>
+          {children}
+        </ShellLayout>
+      </ShellProvider>
+    </TooltipProvider>
   );
 }

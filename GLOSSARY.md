@@ -75,9 +75,27 @@ The remote Gemini model invoked automatically when an on-device model is unavail
 _Avoid_: Server fallback, remote model
 
 **Scenario Assistant**:
-The pre-submission helper on the test composer that refines a user's traffic description into a clearer draft without calling the server planner.
+The pre-submission helper in the Test Studio that refines a user's traffic description into a clearer draft without calling the server planner.
 _Avoid_: Prompt optimizer, auto-planner
 
 **Report Q&A**:
 The AI-labelled question-and-answer panel on a completed capacity report, grounded in that run's measured stage and route metrics.
 _Avoid_: Report chat, AI summary
+
+## App Workspace
+
+**Test Studio**:
+The app's home screen (`#/`) where a user picks a target, writes a traffic description, reviews the policy gate verdict and stage preview, and approves the plan to start a run.
+_Avoid_: Composer, new test page, editor
+
+**Runs Table**:
+The filterable list of runs at `#/runs`, sourced from the signed-in account's runs or, when signed out, this browser's recent runs.
+_Avoid_: History, dashboard, run log
+
+**Run Compare**:
+The side-by-side view of two runs' capacity reports at `#/compare/:a/:b`, flagging when the runs used different plans.
+_Avoid_: Diff, benchmark
+
+**Quick Jump**:
+The `Ctrl/Cmd+K` menu that jumps to app routes and recent runs and runs a few global actions.
+_Avoid_: Command palette, search, spotlight

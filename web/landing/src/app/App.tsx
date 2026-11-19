@@ -1,22 +1,16 @@
 /**
- * App root: loads /api/config once, then renders the screen for the hash route.
+ * App root: loads /api/config once, then renders the TanStack Router screen inside Shell.
  * On every navigation after the first: scroll to the top, focus main, announce the title.
  */
-import { Component, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Component, Fragment, type ReactNode, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Outlet, RouterProvider, useRouter, useRouterState } from '@tanstack/react-router';
+import type { ConfigResponse, MeResponse } from '../../../../src/api-types.ts';
 import { getConfig } from './lib/api.ts';
 import { claimRecentBrowserRuns, getMe } from './lib/auth-api.ts';
-import type { ConfigResponse, MeResponse } from '../../../../src/api-types.ts';
 import { Shell } from './components/Shell.tsx';
 import { PageSkeleton } from './components/ui.tsx';
 import { AppContext, type AppContextValue } from './context.tsx';
-import { NewTest } from './pages/NewTest.tsx';
-import { NotFound } from './pages/NotFound.tsx';
-import { ProbePage } from './pages/Probe.tsx';
-import { ProbeStart } from './pages/ProbeStart.tsx';
-import { RecentRunsPage } from './pages/RecentRuns.tsx';
-import { RunPage } from './pages/Run.tsx';
-import { SignIn } from './pages/SignIn.tsx';
-import { parseRoute, type Route, routeTitle } from './router.ts';
+import { createAppRouter, resolveRouterRoute, type Route, routeKey, routeTitle } from './router.ts';
 
 type Boot = { kind: 'loading' } | { kind: 'error' } | { kind: 'ready'; config: ConfigResponse };
 
@@ -44,14 +38,22 @@ class ScreenBoundary extends Component<{ resetKey: string; children: ReactNode }
   }
 }
 
-function routeKey(route: Route): string {
-  return route.view === 'run' || route.view === 'probe' ? `${route.view}:${route.id}` : route.view;
+function isSplitRoute(route: Route): boolean {
+  return route.view === 'new' || route.view === 'run' || route.view === 'probe' || route.view === 'probe-start';
 }
 
-export function App() {
+function RoutePendingFallback() {
+  return <PageSkeleton title="Loading Macro workspace…" />;
+}
+
+function RootLayout() {
+  const router = useRouter();
+  const route = useRouterState({
+    select: resolveRouterRoute,
+    structuralSharing: true,
+  });
   const [boot, setBoot] = useState<Boot>({ kind: 'loading' });
-  const [route, setRoute] = useState<Route>(() => parseRoute(window.location.hash));
-  // Bumped when navigate() targets the current hash, so the screen remounts like a fresh visit.
+  // Bumped when navigate() targets the current route, so the screen remounts like a fresh visit.
   const [visit, setVisit] = useState(0);
   const [live, setLive] = useState('');
   const [me, setMe] = useState<MeResponse | null>(null);
@@ -82,11 +84,7 @@ export function App() {
     void load();
   }, [load]);
 
-  useEffect(() => {
-    const onHash = () => setRoute(parseRoute(window.location.hash));
-    window.addEventListener('hashchange', onHash);
-    return () => window.removeEventListener('hashchange', onHash);
-  }, []);
+  useEffect(() => () => window.clearTimeout(announceTimer.current), []);
 
   const announce = useCallback((message: string) => {
     setLive('');
@@ -94,29 +92,33 @@ export function App() {
     announceTimer.current = window.setTimeout(() => setLive(message), 50);
   }, []);
 
-  const navigate = useCallback((path: string) => {
-    const clean = path.replace(/^#/, '');
-    const target = `#${clean.startsWith('/') ? clean : `/${clean}`}`;
-    if (window.location.hash === target) {
-      setRoute(parseRoute(target));
-      setVisit((v) => v + 1);
-    } else {
-      window.location.hash = target;
-    }
-  }, []);
+  const navigate = useCallback(
+    (path: string) => {
+      const clean = path.replace(/^#/, '');
+      const href = clean.startsWith('/') ? clean : `/${clean}`;
+      const currentHref = router.latestLocation.href;
+      if (currentHref === href || (href === '/' && currentHref === '' && router.latestLocation.pathname === '/')) {
+        setVisit((v) => v + 1);
+        return;
+      }
+      void router.navigate({ href });
+    },
+    [router],
+  );
 
   const key = `${routeKey(route)}#${visit}`;
+  const title = routeTitle(route);
 
   useEffect(() => {
-    document.title = routeTitle(route);
+    document.title = title;
     if (first.current) {
       first.current = false;
       return;
     }
     window.scrollTo(0, 0);
     mainRef.current?.focus({ preventScroll: true });
-    announce(document.title);
-  }, [key, route, announce]);
+    announce(title);
+  }, [key, title, announce]);
 
   const ctx = useMemo<AppContextValue | null>(
     () => (boot.kind === 'ready' ? { config: boot.config, me, refreshMe, navigate, announce } : null),
@@ -125,7 +127,7 @@ export function App() {
 
   let screen: ReactNode;
   if (boot.kind === 'loading') {
-    screen = <PageSkeleton title="Loading Macro workspace…" />;
+    screen = <PageSkeleton title="Loading Macro workspace…" showSplit={isSplitRoute(route)} />;
   } else if (boot.kind === 'error' || !ctx) {
     screen = (
       <section className="page">
@@ -141,29 +143,13 @@ export function App() {
       </section>
     );
   } else {
-    switch (route.view) {
-      case 'new':
-        screen = <NewTest key={key} />;
-        break;
-      case 'run':
-        screen = <RunPage key={key} id={route.id} />;
-        break;
-      case 'probe':
-        screen = <ProbePage key={key} id={route.id} />;
-        break;
-      case 'probe-start':
-        screen = <ProbeStart key={key} />;
-        break;
-      case 'runs':
-        screen = <RecentRunsPage key={key} />;
-        break;
-      case 'sign-in':
-      case 'account':
-        screen = <SignIn key={key} />;
-        break;
-      default:
-        screen = <NotFound />;
-    }
+    screen = (
+      <Suspense fallback={<PageSkeleton title="Loading Macro workspace…" showSplit={isSplitRoute(route)} />}>
+        <Fragment key={key}>
+          <Outlet />
+        </Fragment>
+      </Suspense>
+    );
   }
 
   const body = (
@@ -172,4 +158,14 @@ export function App() {
     </Shell>
   );
   return ctx ? <AppContext.Provider value={ctx}>{body}</AppContext.Provider> : body;
+}
+
+export function App() {
+  const [router] = useState(() =>
+    createAppRouter({
+      rootComponent: RootLayout,
+      pendingComponent: RoutePendingFallback,
+    }),
+  );
+  return <RouterProvider router={router} />;
 }

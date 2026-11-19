@@ -399,3 +399,55 @@ describe('TIGERDATA_URL', () => {
   });
 });
 
+describe('firebase', () => {
+  const FB = {
+    FIREBASE_API_KEY: 'AIzaSyTestKey123',
+    FIREBASE_APP_ID: '1:565002558232:web:27b0355cf83c682da91c6d',
+    FIREBASE_PROJECT_ID: 'macro-c80bc',
+  };
+
+  test('unset means no firebase field (hybrid AI disabled)', () => {
+    const c = ok(parseConfig(env()));
+    expect('firebase' in c).toBe(false);
+    expect(c.firebase).toBeUndefined();
+  });
+
+  test('accepts required fields and optional authDomain, measurementId, appCheckSiteKey', () => {
+    const c = ok(
+      parseConfig(
+        env({
+          ...FB,
+          FIREBASE_AUTH_DOMAIN: 'macro-c80bc.firebaseapp.com',
+          FIREBASE_MEASUREMENT_ID: 'G-TEST1234',
+          FIREBASE_APPCHECK_SITE_KEY: '6LeTestSiteKey',
+        }),
+      ),
+    );
+    expect(c.firebase).toEqual({
+      apiKey: FB.FIREBASE_API_KEY,
+      appId: FB.FIREBASE_APP_ID,
+      projectId: FB.FIREBASE_PROJECT_ID,
+      authDomain: 'macro-c80bc.firebaseapp.com',
+      measurementId: 'G-TEST1234',
+      appCheckSiteKey: '6LeTestSiteKey',
+    });
+  });
+
+  test('accepts required fields with optional fields omitted', () => {
+    const c = ok(parseConfig(env(FB)));
+    expect(c.firebase).toEqual({
+      apiKey: FB.FIREBASE_API_KEY,
+      appId: FB.FIREBASE_APP_ID,
+      projectId: FB.FIREBASE_PROJECT_ID,
+    });
+  });
+
+  test.each(['FIREBASE_API_KEY', 'FIREBASE_APP_ID', 'FIREBASE_PROJECT_ID'])(
+    'partial firebase config missing %s reports that field by name',
+    (missing) => {
+      const patch: Record<string, string | undefined> = { ...FB, [missing]: undefined };
+      expect(settingsOf(parseConfig(env(patch)))).toEqual([missing]);
+    },
+  );
+});
+

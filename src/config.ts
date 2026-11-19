@@ -2,6 +2,7 @@
 // place that reads `process.env`.
 
 import { isAbsolute, join } from 'node:path';
+import type { FirebaseWebConfig } from './api-types.ts';
 
 // Pinned digest of grafana/k6 (k6 v2.3.0, linux/amd64), verified on the macro VM under runsc.
 export const K6_IMAGE_DEFAULT = 'grafana/k6@sha256:3e4186aea62e11a45560bfc51e19eeafe82fc07ce069c78aff44b7ff893d9a5e';
@@ -80,6 +81,11 @@ export interface Config {
     readonly keyId: string;
     readonly privateKey: string;
   };
+  /**
+   * Public Firebase Web SDK config for client-side Hybrid Inference.
+   * Omitted when unset (Hybrid AI UI stays hidden).
+   */
+  readonly firebase?: FirebaseWebConfig;
 }
 
 export interface ConfigError {
@@ -138,6 +144,44 @@ function deepFreeze<T>(obj: T): T {
     for (const v of Object.values(obj as Record<string, unknown>)) deepFreeze(v);
   }
   return obj;
+}
+
+function parseFirebaseConfig(
+  env: Env,
+  fail: (setting: string, reason: string) => void,
+): FirebaseWebConfig | undefined {
+  const requiredKeys = ['FIREBASE_API_KEY', 'FIREBASE_APP_ID', 'FIREBASE_PROJECT_ID'] as const;
+  const required = Object.fromEntries(requiredKeys.map((k) => [k, read(env, k)])) as Record<
+    (typeof requiredKeys)[number],
+    string | undefined
+  >;
+  const authDomain = read(env, 'FIREBASE_AUTH_DOMAIN');
+  const measurementId = read(env, 'FIREBASE_MEASUREMENT_ID');
+  const appCheckSiteKey = read(env, 'FIREBASE_APPCHECK_SITE_KEY');
+  const anySet =
+    requiredKeys.some((k) => required[k] !== undefined) ||
+    authDomain !== undefined ||
+    measurementId !== undefined ||
+    appCheckSiteKey !== undefined;
+  if (!anySet) return undefined;
+
+  let missing = false;
+  for (const k of requiredKeys) {
+    if (required[k] === undefined) {
+      fail(k, 'is required when any FIREBASE_* setting is provided');
+      missing = true;
+    }
+  }
+  if (missing) return undefined;
+
+  return {
+    apiKey: required.FIREBASE_API_KEY as string,
+    appId: required.FIREBASE_APP_ID as string,
+    projectId: required.FIREBASE_PROJECT_ID as string,
+    ...(authDomain !== undefined ? { authDomain } : {}),
+    ...(measurementId !== undefined ? { measurementId } : {}),
+    ...(appCheckSiteKey !== undefined ? { appCheckSiteKey } : {}),
+  };
 }
 
 export function parseConfig(env: Env): ConfigResult {
@@ -265,6 +309,15 @@ export function parseConfig(env: Env): ConfigResult {
     };
   }
 
+  const domainConnectPrivateKey = read(env, 'DOMAIN_CONNECT_PRIVATE_KEY');
+  const domainConnectKeyId = read(env, 'DOMAIN_CONNECT_KEY_ID') ?? 'p1';
+  const domainConnect =
+    domainConnectPrivateKey !== undefined
+      ? { keyId: domainConnectKeyId, privateKey: domainConnectPrivateKey }
+      : undefined;
+
+  const firebase = parseFirebaseConfig(env, fail);
+
   if (
     errors.length > 0 ||
     apiKey === undefined ||
@@ -274,13 +327,6 @@ export function parseConfig(env: Env): ConfigResult {
   ) {
     return { ok: false, errors };
   }
-
-  const domainConnectPrivateKey = read(env, 'DOMAIN_CONNECT_PRIVATE_KEY');
-  const domainConnectKeyId = read(env, 'DOMAIN_CONNECT_KEY_ID') ?? 'p1';
-  const domainConnect =
-    domainConnectPrivateKey !== undefined
-      ? { keyId: domainConnectKeyId, privateKey: domainConnectPrivateKey }
-      : undefined;
 
   const config: Config = {
     inference: { apiKey, baseUrl, model, fallbackModel },
@@ -299,6 +345,7 @@ export function parseConfig(env: Env): ConfigResult {
     ...(vultrApiKey !== undefined ? { vultrApiKey } : {}),
     ...(auth !== undefined ? { auth } : {}),
     ...(domainConnect !== undefined ? { domainConnect } : {}),
+    ...(firebase !== undefined ? { firebase } : {}),
   };
   return { ok: true, config: deepFreeze(config) };
 }

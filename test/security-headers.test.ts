@@ -78,13 +78,50 @@ describe('security headers on every response', () => {
     expect(res.headers.get('content-security-policy')).toBe(CSP);
   });
 
-  test('the CSP allows only self, Cloudflare challenges and Cloudflare insights', () => {
+  test('the CSP allows only self, Cloudflare challenges/insights, and Firebase AI Logic / App Check endpoints', () => {
     expect(CSP).not.toContain('unsafe-inline');
     expect(CSP).not.toContain('unsafe-eval');
     expect(CSP).toContain("default-src 'self'");
     expect(CSP).toContain('script-src');
     expect(CSP).toContain('https://challenges.cloudflare.com');
+    expect(CSP).toContain('https://firebasevertexai.googleapis.com');
+    expect(CSP).toContain('https://content-firebaseappcheck.googleapis.com');
+    expect(CSP).toContain('https://firebaseappcheck.googleapis.com');
     expect(CSP).toContain("frame-ancestors 'none'");
     expect(CSP).toContain("base-uri 'none'");
+  });
+
+  test('GET /api/config returns firebase: null when Firebase is unconfigured', async () => {
+    const res = await fetchPath('/api/config');
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { firebase?: unknown };
+    expect(body.firebase).toBeNull();
+  });
+
+  test('GET /api/config returns public firebase config when configured', async () => {
+    const fb = {
+      apiKey: 'AIzaSyTest',
+      appId: '1:123:web:abc',
+      projectId: 'macro-test',
+      appCheckSiteKey: '6LeSiteKey',
+    };
+    const fbApp = createApp({
+      store,
+      config: { ...config, firebase: fb },
+      verifyTurnstile: () => Promise.resolve({ ok: true }),
+      client: new InferenceClient({
+        config: config.inference,
+        store,
+        fetchImpl: asFetch(() => Promise.resolve(new Response('{}', { status: 500 }))),
+      }),
+      runController: fakeController(),
+      probeController: fakeController(),
+      webDist: webRoot,
+      log: () => {},
+    });
+    const res = await fbApp.fetch(new Request('http://macro.test/api/config', { headers: { 'cf-connecting-ip': '203.0.113.9' } }));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { firebase?: unknown };
+    expect(body.firebase).toEqual(fb);
   });
 });

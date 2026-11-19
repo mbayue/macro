@@ -75,6 +75,15 @@ export interface CatalogRouteView {
   path: string;
 }
 
+export interface FirebaseWebConfig {
+  apiKey: string;
+  appId: string;
+  projectId: string;
+  authDomain?: string;
+  measurementId?: string;
+  appCheckSiteKey?: string;
+}
+
 export interface ConfigResponse {
   webOrigin: string;
   apiOrigin: string;
@@ -87,6 +96,8 @@ export interface ConfigResponse {
   trafficEventMax: 1000;
   /** Most recent completed public demo run ID with a report, if any. */
   sampleRunId?: string | null;
+  /** Public Firebase Web SDK config for client-side Hybrid Inference, or null when unconfigured. */
+  firebase?: FirebaseWebConfig | null;
 }
 
 export interface QuotaResponse {

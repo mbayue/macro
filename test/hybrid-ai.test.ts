@@ -1,0 +1,169 @@
+import { describe, expect, test } from 'bun:test';
+import { InferenceSource } from 'firebase/ai';
+import type { CapacityReport } from '../src/report/build.ts';
+import {
+  buildReportQaPrompt,
+  buildScenarioPrompt,
+  mapInferenceSource,
+  runHybridPrompt,
+  summarizeReportForQa,
+} from '../web/landing/src/app/lib/hybrid-ai.ts';
+
+const SAMPLE_REPORT: CapacityReport = {
+  runId: 'run-123',
+  planHash: 'abc123',
+  planName: 'Campaign spike',
+  target: 'https://yue.macro.my.id',
+  runtime: 'runsc',
+  thresholds: { p95Ms: 1500, errorRatePct: 5 },
+  headline: {
+    status: 'stopped',
+    safeCapacity: 100,
+    breakingPoint: 200,
+    firstDegradedRoute: 'store_home',
+  },
+  noStageMetrics: null,
+  breakingPointNotReached: null,
+  noSafeCapacity: null,
+  noRouteExceeded: null,
+  stages: [
+    {
+      index: 0,
+      displayIndex: 1,
+      vus: 100,
+      durationSec: 60,
+      status: 'done',
+      errorReason: null,
+      verdict: 'pass',
+      overall: {
+        raw: { requests: 1200, rps: 20, errorRatePct: 0.2, http429: 0, p50: 120, p95: 450, p99: 800 },
+        display: {
+          requests: '1,200',
+          rps: '20.0',
+          errorRatePct: '0.20%',
+          http429: '0',
+          p50: '120 ms',
+          p95: '450 ms',
+          p99: '800 ms',
+        },
+      },
+      routes: [
+        {
+          route: 'store_home',
+          exceedsThresholds: false,
+          raw: { requests: 800, rps: 13.3, errorRatePct: 0, http429: 0, p50: 100, p95: 400, p99: 700 },
+          display: {
+            requests: '800',
+            rps: '13.3',
+            errorRatePct: '0.00%',
+            http429: '0',
+            p50: '100 ms',
+            p95: '400 ms',
+            p99: '700 ms',
+          },
+        },
+      ],
+    },
+    {
+      index: 1,
+      displayIndex: 2,
+      vus: 200,
+      durationSec: 60,
+      status: 'done',
+      errorReason: null,
+      verdict: 'fail',
+      overall: {
+        raw: { requests: 1800, rps: 30, errorRatePct: 2.5, http429: 12, p50: 400, p95: 1611, p99: 2400 },
+        display: {
+          requests: '1,800',
+          rps: '30.0',
+          errorRatePct: '2.50%',
+          http429: '12',
+          p50: '400 ms',
+          p95: '1,611 ms',
+          p99: '2,400 ms',
+        },
+      },
+      routes: [
+        {
+          route: 'store_home',
+          exceedsThresholds: true,
+          raw: { requests: 1200, rps: 20, errorRatePct: 2.5, http429: 12, p50: 410, p95: 1611, p99: 2400 },
+          display: {
+            requests: '1,200',
+            rps: '20.0',
+            errorRatePct: '2.50%',
+            http429: '12',
+            p50: '410 ms',
+            p95: '1,611 ms',
+            p99: '2,400 ms',
+          },
+        },
+      ],
+    },
+  ],
+  decisions: [],
+  events: [],
+};
+
+describe('mapInferenceSource', () => {
+  test('maps on_device, in_cloud, and undefined', () => {
+    expect(mapInferenceSource(InferenceSource.ON_DEVICE)).toBe('on-device');
+    expect(mapInferenceSource(InferenceSource.IN_CLOUD)).toBe('cloud');
+    expect(mapInferenceSource(undefined)).toBe('unknown');
+  });
+});
+
+describe('buildScenarioPrompt', () => {
+  test('includes draft, instruction, and available routes', () => {
+    const prompt = buildScenarioPrompt({
+      draft: '500 users browse the shop',
+      instruction: 'Add ramp-up and spike',
+      routes: ['/store', '/api/products'],
+    });
+    expect(prompt).toContain('500 users browse the shop');
+    expect(prompt).toContain('Add ramp-up and spike');
+    expect(prompt).toContain('/store');
+    expect(prompt).toContain('/api/products');
+  });
+});
+
+describe('summarizeReportForQa & buildReportQaPrompt', () => {
+  test('includes headline metrics, thresholds, and failing stage/route numbers', () => {
+    const summary = summarizeReportForQa(SAMPLE_REPORT);
+    expect(summary).toContain('Campaign spike');
+    expect(summary).toContain('Safe capacity: 100 VUs');
+    expect(summary).toContain('Breaking point: 200 VUs');
+    expect(summary).toContain('First degraded route: store_home');
+    expect(summary).toContain('1,611 ms');
+
+    const prompt = buildReportQaPrompt(SAMPLE_REPORT, 'Why did stage 2 fail?');
+    expect(prompt).toContain('Why did stage 2 fail?');
+    expect(prompt).toContain('1,611 ms');
+  });
+});
+
+describe('runHybridPrompt', () => {
+  test('returns trimmed reply and origin on success', async () => {
+    const res = await runHybridPrompt(
+      async () => ({ text: '  Refined traffic description.  ', origin: 'on-device' }),
+      'prompt',
+    );
+    expect(res).toEqual({
+      ok: true,
+      reply: { text: 'Refined traffic description.', origin: 'on-device' },
+    });
+  });
+
+  test('returns error when model returns empty text', async () => {
+    const res = await runHybridPrompt(async () => ({ text: '   ', origin: 'cloud' }), 'prompt');
+    expect(res.ok).toBe(false);
+  });
+
+  test('catches runner errors cleanly', async () => {
+    const res = await runHybridPrompt(async () => {
+      throw new Error('Model unavailable');
+    }, 'prompt');
+    expect(res).toEqual({ ok: false, error: 'Model unavailable' });
+  });
+});

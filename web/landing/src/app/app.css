@@ -1170,7 +1170,9 @@ a { text-underline-offset: 0.2em; }
   .run-head,
   .report__export,
   .board,
-  .report .btn {
+  .report .btn,
+  .report-qa .examples,
+  .report-qa form {
     display: none !important;
   }
 
@@ -1216,4 +1218,44 @@ a { text-underline-offset: 0.2em; }
   .table .num,
   .table .idx,
   .table .code { white-space: normal; overflow-wrap: anywhere; }
+}
+
+/* ---- Hybrid AI (Scenario Assistant & Report Q&A) ---- */
+.hybrid-assist {
+  display: grid;
+  gap: 10px;
+}
+.hybrid-assist__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.hybrid-assist__box,
+.hybrid-assist__result,
+.report-qa__answer {
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--bar);
+  border-radius: var(--radius);
+}
+.hybrid-assist__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.hybrid-assist__row input[type="text"] {
+  flex: 1 1 240px;
+  width: auto;
+}
+.hybrid-assist__head,
+.hybrid-assist__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.report-qa {
+  display: grid;
+  gap: 12px;
 }

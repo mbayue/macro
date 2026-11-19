@@ -11,6 +11,7 @@ import { headlineItems, reportNotices } from '../lib/report-view.ts';
 import type { CapacityReport, StageView as ReportStageView } from '../../../../../src/report/build.ts';
 import { Feed } from '../components/run/Feed.tsx';
 import { AiSection, ReportExport, ReportMeta, ReportNotices, ReportStages, RunsPanel } from '../components/run/Report.tsx';
+import { ReportQa } from '../components/run/ReportQa.tsx';
 import { RouteChart } from '../components/run/RouteChart.tsx';
 import { SecondChart } from '../components/run/SecondChart.tsx';
 import { ModelCalls } from '../components/ModelCalls.tsx';
@@ -169,6 +170,7 @@ export function RunPage({ id }: { id: string }) {
           <ReportStages report={report} />
           <DuringTheStage stages={model.stages} routes={model.routes} />
           <AiSection report={report} />
+          <ReportQa report={report} />
           <ModelCalls calls={model.modelCalls} />
           <RunsPanel report={report} />
         </article>

@@ -29,6 +29,7 @@ import { GateRules } from '../components/GateRules.tsx';
 import { ModelCalls } from '../components/ModelCalls.tsx';
 import { NextUp } from '../components/NextUp.tsx';
 import { StageProfile } from '../components/StageProfile.tsx';
+import { ScenarioAssistant } from '../components/ScenarioAssistant.tsx';
 import { TurnstileBox, useTurnstile } from '../components/Turnstile.tsx';
 import { AlertRegion, Badge, Busy, ConfirmButton, KeyValues, Panel, TableWrap, ViolationsTable } from '../components/ui.tsx';
 import { VerifyPanel } from '../components/VerifyPanel.tsx';
@@ -375,6 +376,17 @@ export function NewTest() {
                   ))}
                 </div>
               ) : null}
+
+              <ScenarioAssistant
+                draft={text}
+                routes={targetMode === 'demo' ? config.catalog.map((r) => `${r.method} ${r.path}`) : []}
+                disabled={!idle}
+                onApply={(nextDraft) => {
+                  setText(nextDraft);
+                  setLastEditedAt(Date.now());
+                  textarea.current?.focus();
+                }}
+              />
 
               <div className="compose__target" role="group" aria-labelledby="target-heading">
                 <div className="compose__target-header">

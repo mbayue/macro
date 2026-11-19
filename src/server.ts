@@ -121,7 +121,7 @@ export const TRAFFIC_EVENT_MIN = 10;
 export const TRAFFIC_EVENT_MAX = 1000;
 
 export const CSP =
-  "default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com; frame-src https://challenges.cloudflare.com; connect-src 'self' https://cloudflareinsights.com; style-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'";
+  "default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; frame-src https://challenges.cloudflare.com https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/; connect-src 'self' https://cloudflareinsights.com https://firebasevertexai.googleapis.com https://content-firebaseappcheck.googleapis.com https://firebaseappcheck.googleapis.com https://www.google.com; style-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'";
 
 export const SSE_POLL_MS = 5000;
 export const SSE_HEARTBEAT_MS = 3000;
@@ -984,6 +984,7 @@ export function createApp(deps: AppDeps): App {
       trafficEventMin: 10,
       trafficEventMax: 1000,
       sampleRunId: store.getLatestPublicCompletedRunId(),
+      firebase: config.firebase ?? null,
     };
     return json(200, body, { 'cache-control': 'no-cache' });
   };

@@ -110,6 +110,7 @@ Main settings (full list in [`.env.example`](.env.example) and [`src/config.ts`]
 | `K6_IMAGE` | Must be pinned by `@sha256:` digest. |
 | `TIGERDATA_URL` | Optional, secret. `postgres://` connection string of a Tiger Cloud service: public-run per-second samples are mirrored there best effort (SQLite stays the source of truth). Unset disables the mirror. |
 | Auth block (all or nothing) | `SESSION_SECRET`, `PUBLIC_BASE_URL`, `RESEND_API_KEY`, `RESEND_FROM`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_REDIRECT_URI`. Omit all to disable sign-in; set every one to enable accounts. |
+| Firebase Hybrid AI (optional) | `FIREBASE_API_KEY`, `FIREBASE_APP_ID`, `FIREBASE_PROJECT_ID` (plus optional `FIREBASE_AUTH_DOMAIN`, `FIREBASE_MEASUREMENT_ID`, `FIREBASE_APPCHECK_SITE_KEY`). Enables client-side Scenario Assistant & Report Q&A via `firebase/ai` (`PREFER_ON_DEVICE`); unset hides them. |
 
 If a sandbox prerequisite is missing (Docker, gVisor, the proxy image), the API still starts but refuses every run, and `GET /api/config` names the problem.
 

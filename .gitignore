@@ -18,5 +18,7 @@ data/
 .impeccable
 .kiro
 .superpowers
+.agents/
+skills-lock.json
 
 docs/superpowers/

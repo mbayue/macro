@@ -30,7 +30,7 @@ flowchart LR
 | k6 & Sandbox | `src/k6/`, `src/sandbox/`, `proxy/` | Fixed k6 script rendering (`script.ts`), `probe.js`, Docker/gVisor `runner.ts`, egress allowlist proxy (`proxy/ip.ts`, `proxy/proxy.ts`) |
 | Run Execution | `src/run/` | Concurrency admission, stage controller, stop/verdict rules (`decide.ts`, `verdict.ts`), quotas/limits, containment probes |
 | Capacity Report | `src/report/` | Deterministic report builder (`build.ts`), run comparison (`compare.ts`), CSV/JSON export (`export.ts`), `number-guard.ts` |
-| Auth & Own-Site | `src/auth/`, `src/security/` | GitHub OAuth, magic-link email, signed sessions, origin verification (`verify-origin.ts`, `domain-connect.ts`), Turnstile & client IP checks |
+| Auth & Own-Site | `src/auth/`, `src/security/` | GitHub & Google OAuth, magic-link email, signed sessions, origin verification (`verify-origin.ts`, `domain-connect.ts`), Turnstile & client IP checks |
 | Persistence | `src/store/db.ts`, `src/metrics/tiger.ts` | SQLite source of truth (`DATA_DIR`), optional best-effort Tiger Cloud per-second sample mirror |
 | Web Frontend | `web/landing/` | Prerendered landing/legal pages (`src/`) + client-rendered React 19 planner app at `/app/` (`src/app/`) |
 | Hybrid AI (Client) | `web/landing/src/app/lib/hybrid-ai.ts`, `ScenarioAssistant.tsx`, `ReportQa.tsx` | Optional client-side Firebase AI Logic (`PREFER_ON_DEVICE`: on-device Gemini Nano with cloud Gemini fallback) |

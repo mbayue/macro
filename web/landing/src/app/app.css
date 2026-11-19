@@ -1259,3 +1259,8 @@ a { text-underline-offset: 0.2em; }
   display: grid;
   gap: 12px;
 }
+.hybrid-assist__result .prose,
+.report-qa__answer .prose {
+  max-width: none;
+  white-space: pre-wrap;
+}

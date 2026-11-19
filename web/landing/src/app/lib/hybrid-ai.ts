@@ -83,6 +83,7 @@ export function summarizeReportForQa(report: CapacityReport): string {
 export function buildReportQaPrompt(report: CapacityReport, question: string): string {
   return [
     'You are Macro Report Q&A. Answer the user question concisely using ONLY the measured metrics below.',
+    'Reply in plain text only (no markdown, no **bold** or bullet formatting).',
     'Never invent numbers, routes, or causes that are not supported by the metrics. If a value is missing, say so.',
     '',
     summarizeReportForQa(report),

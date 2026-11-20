@@ -95,7 +95,7 @@ export interface Plan {
 
 /**
  * Launch pricing, not shown while Macro is free in early access (the page renders
- * components/FreeAccess.tsx instead; components/Pricing.tsx renders these plans).
+ * components/FreePlans.tsx instead; components/Pricing.tsx renders these plans).
  * One run costs Macro about 2 cents on Vultr: about 9,000 input and 2,500
  * output tokens on Serverless Inference ($0.55 and $2.75 per million), plus about five minutes
  * of a $10-a-month VM. The paid tiers cover larger generator VMs for higher user counts.

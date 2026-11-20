@@ -1,7 +1,7 @@
 /**
  * Test Studio (`#/`): pick a target (`Demo Target` or `Own Site`), describe the traffic,
  * draft a plan, review it against the Policy Gate, and approve or cancel.
- * Nothing reaches the target until "Approve and run".
+ * Nothing reaches the target until "Approve & Run".
  */
 import { useEffect, useRef, useState } from 'react';
 import type { AccountDraft, DemoTrendsResponse, PlanResponse, QuotaResponse } from '../../../../../src/api-types.ts';

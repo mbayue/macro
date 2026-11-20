@@ -465,7 +465,7 @@ export const RunsPanel = memo(function RunsPanel({ report }: { report: CapacityR
               <PlayIcon data-icon="inline-start" />
               Run this plan again
             </Button>
-            {rerunBusy ? <Busy>Starting the run.</Busy> : null}
+            {rerunBusy ? <Busy>Starting the run…</Busy> : null}
           </div>
           <AlertRegion error={rerunError} />
         </div>

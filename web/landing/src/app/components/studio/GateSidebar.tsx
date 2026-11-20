@@ -380,7 +380,7 @@ function ApprovePanel({
           onClick={() => void approve()}
           className="w-full"
         >
-          Approve and run
+          Approve & Run
         </Button>
 
         <div className="flex flex-wrap items-center gap-2.5">
@@ -394,7 +394,7 @@ function ApprovePanel({
             disabled={!idle}
             onConfirm={onCancel}
           />
-          {busy === 'approving' ? <Busy className="text-accent-ink-soft">Starting the run.</Busy> : null}
+          {busy === 'approving' ? <Busy className="text-accent-ink-soft">Starting the run…</Busy> : null}
         </div>
       </div>
 
@@ -429,7 +429,7 @@ export function ApproveBar({
     <div
       className="fixed inset-x-0 bottom-0 z-20 flex flex-wrap items-center justify-between gap-3 border-t border-primary-foreground/20 bg-primary px-4 py-3 text-primary-foreground min-[861px]:left-[var(--rail)] min-[861px]:px-10 min-[1180px]:hidden"
       role="region"
-      aria-label="Approve and run"
+      aria-label="Approve & Run"
     >
       <p className="m-0 text-sm text-primary-foreground">
         <span className="font-mono font-medium tabular-nums">{fmt(maxVus)}</span> VUs at most,{' '}
@@ -442,7 +442,7 @@ export function ApproveBar({
         onClick={onApprove}
         className="flex-1 sm:flex-none"
       >
-        Approve and run
+        Approve & Run
       </Button>
     </div>
   );

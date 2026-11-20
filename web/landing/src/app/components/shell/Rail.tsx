@@ -365,7 +365,7 @@ export function MobileTopBar() {
                     {state.target.badgeLabel}
                   </Badge>
                 </div>
-                <p className="truncate font-mono text-xs text-foreground">{state.target.host ?? 'Demo shop'}</p>
+                <p className="truncate font-mono text-xs text-foreground">{state.target.host ?? 'Demo Target'}</p>
                 {state.target.pendingHost !== null ? (
                   <a
                     href="#/verify-panel"

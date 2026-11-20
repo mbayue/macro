@@ -42,7 +42,7 @@ export function TopContextBar() {
               className="max-w-[240px] truncate font-mono text-xs text-foreground sm:max-w-xs"
               title={state.target.host ?? undefined}
             >
-              {state.target.host ?? 'Demo shop'}
+              {state.target.host ?? 'Demo Target'}
             </span>
             <Badge variant={state.target.kind === 'verified' ? 'ok' : 'outline'}>
               {state.target.badgeLabel}

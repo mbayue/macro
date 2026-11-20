@@ -89,7 +89,7 @@ export function TrafficComposer({
             Traffic description
           </label>
           <p id="traffic-event-hint" className="text-sm text-muted-foreground">
-            Describe the traffic you expect — say who arrives, when, and what they do.{' '}
+            Describe the traffic you expect: say who arrives, when, and what they do.{' '}
             <span className="font-mono text-xs tabular-nums">{min}</span> to{' '}
             <span className="font-mono text-xs tabular-nums">{fmt(max)}</span> characters. Press{' '}
             <kbd className="rounded-sm border border-bar bg-background px-1.5 py-0.5 font-mono text-[11px] text-foreground">

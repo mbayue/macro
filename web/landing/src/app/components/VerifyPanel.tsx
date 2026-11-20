@@ -91,7 +91,7 @@ function VerifyHostForm({
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" disabled={busy}>
-          {starting ? <Busy>Starting</Busy> : 'Start verification'}
+          {starting ? <Busy>Starting…</Busy> : 'Start verification'}
         </Button>
       </div>
     </form>
@@ -248,7 +248,7 @@ export function VerifyPanel({
           <span className="min-w-0 font-mono break-all text-foreground">{verified.host}</span>
           {busy === 'clear' ? (
             <Button type="button" variant="secondary" size="sm" disabled>
-              <Busy>Clearing</Busy>
+              <Busy>Clearing…</Busy>
             </Button>
           ) : (
             <ConfirmButton
@@ -394,11 +394,11 @@ export function VerifyPanel({
 
           <div className="flex flex-wrap items-center gap-2.5">
             <Button type="button" disabled={busy !== null} onClick={() => void onCheck()}>
-              {busy === 'check' ? <Busy>Checking</Busy> : 'I added the proof — check'}
+              {busy === 'check' ? <Busy>Checking…</Busy> : 'I added the proof — check'}
             </Button>
             {busy === 'cancel' ? (
               <Button type="button" variant="secondary" disabled>
-                <Busy>Resetting</Busy>
+                <Busy>Resetting…</Busy>
               </Button>
             ) : (
               <ConfirmButton

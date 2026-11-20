@@ -126,7 +126,7 @@ export function EmailLinkPanel({
         <div className="flex flex-wrap items-center gap-2.5">
           <Button type="submit" disabled={busy || wait > 0}>
             {busy ? (
-              <Busy>Sending</Busy>
+              <Busy>Sending…</Busy>
             ) : wait > 0 ? (
               <span className="font-mono tabular-nums">{`Wait ${wait}s`}</span>
             ) : (

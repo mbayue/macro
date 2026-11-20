@@ -111,7 +111,7 @@ export function ProbeStart() {
               Run containment probe
             </Button>
 
-            {busy ? <Busy>Starting the probe.</Busy> : null}
+            {busy ? <Busy>Starting the probe…</Busy> : null}
 
             <div
               role="alert"

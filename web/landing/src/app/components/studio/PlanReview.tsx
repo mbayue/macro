@@ -444,7 +444,7 @@ function JourneyChecks({
 
   // A revised plan returns a new routes list; re-sync the checkboxes to its
   // defaultOn flags, or the stale selection keeps checksDiffer true forever
-  // and "Approve and run" stays disabled.
+  // and "Approve & Run" stays disabled.
   useEffect(() => {
     setChecked(new Set(routes.filter((row) => row.defaultOn === true).map((row) => row.id)));
   }, [routes]);

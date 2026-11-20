@@ -9,12 +9,12 @@ export interface QuotaReadoutView {
   scopeLabel: 'per IP' | null;
 }
 
-/** Formats `/api/quota` counters as `used/limit` strings for monospace display. */
+/** Formats `/api/quota` counters as `remaining of limit` strings ("left" framing) for monospace display. */
 export function formatQuotaReadout(quota: QuotaResponse | null): QuotaReadoutView | null {
   if (quota === null) return null;
   return {
-    planning: `${quota.planning.used}/${quota.planning.limit}`,
-    dailyRuns: `${quota.dailyRuns.used}/${quota.dailyRuns.limit}`,
+    planning: `${quota.planning.remaining} of ${quota.planning.limit}`,
+    dailyRuns: `${quota.dailyRuns.remaining} of ${quota.dailyRuns.limit}`,
     scopeLabel: quota.scope === 'ip' ? 'per IP' : null,
   };
 }

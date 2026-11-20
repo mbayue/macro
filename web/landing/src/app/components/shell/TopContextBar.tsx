@@ -58,24 +58,30 @@ export function TopContextBar() {
           </div>
 
           <div
+            role="group"
+            aria-label="Usage quota"
             className="hidden min-[861px]:inline-flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1 text-xs"
-            aria-label="Quota"
           >
             {quota !== null ? (
               <>
-                <span className="text-muted-foreground">Plans</span>
+                <span className="text-muted-foreground">Plans left</span>
                 <span className="font-mono text-foreground tabular-nums">{quota.planning}</span>
                 <span className="text-muted-foreground" aria-hidden="true">
                   ·
                 </span>
-                <span className="text-muted-foreground">Runs</span>
+                <span className="text-muted-foreground">Runs left</span>
                 <span className="font-mono text-foreground tabular-nums">{quota.dailyRuns}</span>
                 {quota.scopeLabel !== null ? (
-                  <span className="text-muted-foreground">{quota.scopeLabel}</span>
+                  <>
+                    <span className="text-muted-foreground" aria-hidden="true">
+                      ·
+                    </span>
+                    <span className="text-muted-foreground">{quota.scopeLabel}</span>
+                  </>
                 ) : null}
               </>
             ) : state.quotaLoading ? (
-              <span className="font-mono text-muted-foreground tabular-nums">Quota …</span>
+              <span className="text-muted-foreground">Loading quota…</span>
             ) : null}
           </div>
         </div>

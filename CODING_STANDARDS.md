@@ -12,7 +12,7 @@ Review-time engineering standards for Macro. Mechanical syntax bans are enforced
 These apply to the workspace under `web/landing/src/app/`. Landing pages (home, privacy, terms, 404) follow `docs/landing.md` instead.
 
 - **Source attribution:** Every KPI tile and **KPI Strip** cell must name its source (for example `"from stage N"` or threshold limit notes).
-- **Monospace telemetry:** Numerical readouts, quotas (`used/limit`), IDs, hostnames, durations, latencies, UTC timestamps, and SVG chart axis ticks/labels use `font-mono` with `tabular-nums`.
+- **Monospace telemetry:** Numerical readouts, quotas (`N of M` left), IDs, hostnames, durations, latencies, UTC timestamps, and SVG chart axis ticks/labels use `font-mono` with `tabular-nums`.
 - **The One Live Thing Rule:** Spring green (`#00ed64`) marks only the live running stage or primary action on screen (**Approve & Run**, passed **Containment Probe** banner, live **Safe Capacity** reading).
 - **The Forest Swap Rule:** Use `--accent-text` (`spring` in dark mode, `forest` in light mode) whenever the accent appears as text, chart stroke, or focus ring.
 

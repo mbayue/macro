@@ -8,6 +8,7 @@ import { cn, reducedMotion } from '@/lib/utils';
 import { useApp } from '../../context.tsx';
 import { type ApiError, postApprove, VERIFICATION_ERROR } from '../../lib/api.ts';
 import { GateRules } from '../GateRules.tsx';
+import { formatQuotaReadout } from '../shell/shell-view.ts';
 import { StageProfile } from '../StageProfile.tsx';
 import { TurnstileBox, useTurnstile } from '../Turnstile.tsx';
 import { AlertRegion, Busy, ConfirmButton } from '../ui.tsx';
@@ -149,11 +150,11 @@ export function GateSidebar({
               <dl className="m-0 grid grid-cols-[max-content_minmax(0,1fr)] gap-x-6 gap-y-1.5 text-sm">
                 <dt className="text-muted-foreground">Plans left (1h)</dt>
                 <dd className="m-0 font-mono text-foreground tabular-nums">
-                  {quota.planning.remaining} of {quota.planning.limit}
+                  {formatQuotaReadout(quota)?.planning}
                 </dd>
                 <dt className="text-muted-foreground">Runs left (today)</dt>
                 <dd className="m-0 font-mono text-foreground tabular-nums">
-                  {quota.dailyRuns.remaining} of {quota.dailyRuns.limit}
+                  {formatQuotaReadout(quota)?.dailyRuns}
                 </dd>
                 <dt className="text-muted-foreground">Scope</dt>
                 <dd className="m-0 text-foreground">{quota.scope === 'account' ? 'Your account' : 'This IP'}</dd>

@@ -17,6 +17,11 @@ import { asFetch, testConfig } from './arb-agents.ts';
 
 const NOW = Date.UTC(2026, 0, 15, 12, 0, 0);
 
+/** Stub DNS resolver that fails fast, so no test does a real network lookup. */
+async function noDns(): Promise<never> {
+  throw new Error('ENOTFOUND');
+}
+
 function fakeController(): RunStarter {
   return { start: () => {}, stop: () => false, isRunning: () => false };
 }
@@ -98,13 +103,15 @@ describe('checkDnsTxt / checkWellKnown', () => {
 });
 
 describe('detectDnsProvider', () => {
+  const NO_DC = { resolveTxt: noDns, resolveCname: noDns };
+
   test('identifies Cloudflare nameservers on apex domain', async () => {
     const res = await detectDnsProvider('example.com', async (host) => {
       if (host === 'example.com') {
         return ['ashley.ns.cloudflare.com', 'bob.ns.cloudflare.com'];
       }
       throw new Error('not found');
-    });
+    }, NO_DC);
     expect(res.isCloudflare).toBe(true);
     expect(res.apexHost).toBe('example.com');
     expect(res.cloudFlareDirectUrl).toBe('https://dash.cloudflare.com');
@@ -119,7 +126,7 @@ describe('detectDnsProvider', () => {
         return ['dina.ns.cloudflare.com', 'ed.ns.cloudflare.com'];
       }
       throw new Error('NXDOMAIN');
-    });
+    }, NO_DC);
     expect(res.isCloudflare).toBe(true);
     expect(res.apexHost).toBe('example.com');
   });
@@ -127,14 +134,14 @@ describe('detectDnsProvider', () => {
   test('returns isCloudflare=false for other DNS providers', async () => {
     const res = await detectDnsProvider('example.com', async () => {
       return ['ns1.digitalocean.com', 'ns2.digitalocean.com'];
-    });
+    }, NO_DC);
     expect(res.isCloudflare).toBe(false);
   });
 
   test('gracefully returns isCloudflare=false on DNS errors or timeouts', async () => {
     const res = await detectDnsProvider('error.com', async () => {
       throw new Error('DNS timeout');
-    });
+    }, NO_DC);
     expect(res.isCloudflare).toBe(false);
     expect(res.nameservers).toEqual([]);
   });
@@ -165,6 +172,7 @@ describe('detectDnsProvider', () => {
 
     const res = await detectDnsProvider('shop.example.com', mockNs, {
       resolveTxt: mockTxt,
+      resolveCname: noDns,
       fetchFn: mockFetch,
       verifyToken: 'tok-sub-123',
     });
@@ -202,6 +210,7 @@ describe('detectDnsProvider', () => {
 
     const res = await detectDnsProvider('mybrand.org', mockNs, {
       resolveTxt: mockTxt,
+      resolveCname: noDns,
       fetchFn: mockFetch,
       verifyToken: 'tok-apex-789',
     });
@@ -250,6 +259,7 @@ describe('verify routes', () => {
       mailer: mailerA,
       resolveTxt: async () => [[pendingToken]],
       resolveNs: async () => ['alex.ns.cloudflare.com', 'bob.ns.cloudflare.com'],
+      resolveCname: noDns,
       fetchImpl: async () => new Response('no', { status: 404 }),
     });
 
@@ -310,6 +320,8 @@ describe('verify routes', () => {
       log: () => {},
       mailer: mailerB,
       resolveTxt: async () => [[pendingToken]],
+      resolveNs: noDns,
+      resolveCname: noDns,
       fetchImpl: async () => new Response(pendingToken, { status: 200 }),
     });
     const cookieB = await signIn(appB, sentB, 'b@example.com');
@@ -371,6 +383,8 @@ describe('verify routes', () => {
       resolveTxt: async () => {
         throw new Error('NXDOMAIN');
       },
+      resolveNs: noDns,
+      resolveCname: noDns,
       fetchImpl: async () => new Response(token, { status: 200 }),
     });
     const cookie = await signIn(app, sent);
@@ -425,6 +439,8 @@ describe('pending verification restore', () => {
       log: () => {},
       mailer,
       resolveNs: async () => ['alex.ns.cloudflare.com'],
+      resolveTxt: noDns,
+      resolveCname: noDns,
     });
     const cookie = await signIn(app, sent);
     const start = await app.fetch(

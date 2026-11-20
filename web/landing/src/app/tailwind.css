@@ -2,6 +2,8 @@
 @import "../tokens.css" layer(base);
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+@custom-variant data-horizontal (&:where([data-orientation="horizontal"], [data-horizontal]));
+@custom-variant data-vertical (&:where([data-orientation="vertical"], [data-vertical]));
 
 @font-face {
   font-family: "Geist Mono";
@@ -92,6 +94,7 @@
 @layer base {
   :root {
     --warn: #7a4e00;
+    --rail: 240px;
     --background: var(--bg);
     --foreground: var(--ink);
     --card: var(--surface);
@@ -129,5 +132,408 @@
 
   :root[data-theme="dark"] {
     --warn: #f2c46d;
+  }
+
+  body {
+    font-size: 0.9375rem;
+  }
+
+  [tabindex="-1"]:focus {
+    outline: none;
+  }
+
+  a {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
+  * {
+    scrollbar-color: var(--bar) transparent;
+    scrollbar-width: thin;
+  }
+}
+
+@layer components {
+  /* ---- Pre-React HTML boot placeholder ---- */
+  .boot-screen {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    color: var(--ink);
+    padding: 24px;
+    box-sizing: border-box;
+  }
+
+  .boot-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 32px 40px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    animation: bootFadeIn 180ms ease-out forwards;
+  }
+
+  @keyframes bootFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .boot-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .boot-brand {
+    font-family: var(--display);
+    font-size: 1.375rem;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+
+  .boot-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--muted);
+    font-size: 0.75rem;
+  }
+
+  .boot-text {
+    font-size: 0.75rem;
+  }
+
+  .boot-noscript {
+    color: var(--bad);
+    font-size: 0.8125rem;
+    margin-top: 12px;
+  }
+
+  .spinner {
+    width: 14px;
+    height: 14px;
+    flex: none;
+    border-radius: 50%;
+    border: 2px solid var(--bar);
+    border-top-color: var(--accent-text);
+    animation: spin 800ms linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .turnstile:empty {
+    display: none;
+  }
+
+  /* ---- Data tables ---- */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+  }
+
+  .data-table caption {
+    text-align: left;
+    color: var(--muted);
+    padding: 0 0 8px;
+    font-size: 0.75rem;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 9px 12px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--surface-2);
+  }
+
+  .data-table th:first-child,
+  .data-table td:first-child {
+    padding-left: 0;
+  }
+
+  .data-table th:last-child,
+  .data-table td:last-child {
+    padding-right: 0;
+  }
+
+  .data-table thead th {
+    color: var(--muted);
+    font-weight: 500;
+    white-space: nowrap;
+    vertical-align: bottom;
+  }
+
+  .data-table tbody th {
+    font-weight: 500;
+  }
+
+  .data-table .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .data-table .idx {
+    text-align: left;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .data-table .end {
+    text-align: right;
+    padding-right: 0;
+  }
+
+  .data-table tr:last-child th,
+  .data-table tr:last-child td {
+    border-bottom: 0;
+  }
+
+  /* ---- Load profile (bars on a baseline driven by CSSOM custom properties) ---- */
+  .profile {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 150px;
+    padding-bottom: 44px;
+    position: relative;
+  }
+
+  .profile--compact {
+    height: 92px;
+    padding-bottom: 28px;
+  }
+
+  .profile__stage {
+    flex: var(--w, 1) 1 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-width: 0;
+    position: relative;
+  }
+
+  .profile__bar {
+    display: block;
+    height: calc(var(--h, 0.1) * 100%);
+    background: var(--bar);
+    border-radius: 4px 4px 0 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .profile__label {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    margin-top: 6px;
+    font-size: 0.75rem;
+    color: var(--muted);
+    display: grid;
+    gap: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .profile__label b {
+    color: var(--ink);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .profile__stage--planned .profile__bar {
+    background: transparent;
+    outline: 1px dashed var(--bar);
+    outline-offset: -1px;
+  }
+
+  .profile__stage--running .profile__bar {
+    background: var(--surface-2);
+    outline: 1px solid var(--accent-text);
+    outline-offset: -1px;
+  }
+
+  .profile__fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: calc(var(--p, 0) * 100%);
+    background: var(--accent);
+    transition: width 900ms linear;
+  }
+
+  .profile__stage--fail .profile__bar,
+  .profile__stage--error .profile__bar {
+    background: var(--bad);
+  }
+
+  .profile__stage--skipped .profile__bar {
+    background: transparent;
+    outline: 1px solid var(--surface-2);
+    outline-offset: -1px;
+  }
+
+  .profile__stage--skipped .profile__label {
+    opacity: 0.6;
+  }
+
+  @media (max-width: 860px) {
+    .data-table--journey thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .data-table--journey,
+    .data-table--journey tbody {
+      display: block;
+    }
+
+    .data-table--journey tr {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 8px 16px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--surface-2);
+    }
+
+    .data-table--journey tr:first-child {
+      padding-top: 0;
+    }
+
+    .data-table--journey tr:last-child {
+      border-bottom: 0;
+    }
+
+    .data-table--journey tbody th,
+    .data-table--journey td {
+      display: grid;
+      gap: 1px;
+      align-content: start;
+      padding: 0;
+      border: 0;
+    }
+
+    .data-table--journey tbody th {
+      grid-column: 1 / -1;
+      font-size: 0.9375rem;
+    }
+
+    .data-table--journey td[colspan] {
+      grid-column: 1 / -1;
+    }
+
+    .data-table--journey td.num {
+      text-align: left;
+    }
+
+    .data-table--journey td[data-label]::before {
+      content: attr(data-label);
+      color: var(--muted);
+      font: 400 0.75rem/1.4 var(--text);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .boot-card {
+      animation: none;
+    }
+
+    .spinner {
+      animation: none;
+      border-top-color: var(--bar);
+    }
+
+    .profile__fill {
+      transition: none;
+    }
+  }
+
+  /* ---- Print: Capacity Report deliverable in light Cream palette ---- */
+  @media print {
+    :root,
+    :root[data-theme="dark"] {
+      color-scheme: light;
+      --bg: #fdfff5;
+      --surface: #f1f5eb;
+      --surface-2: #e4e8e0;
+      --ink: #001e2b;
+      --muted: #404f54;
+      --accent-text: #00684a;
+      --bar-accent: #00684a;
+      --bar-accent-ink: #ffffff;
+      --ok: #00684a;
+      --warn: #7a4e00;
+      --bad: #b3261e;
+      --placeholder: #616c6d;
+      --thumb-edge: #001e2b;
+    }
+
+    a[href]::after {
+      content: none;
+    }
+
+    tr,
+    td,
+    th {
+      break-inside: avoid;
+    }
+
+    .data-table {
+      table-layout: auto;
+      min-width: 0;
+      width: 100%;
+      font-size: 9pt;
+      break-inside: avoid-page;
+    }
+
+    .data-table th,
+    .data-table td {
+      border: 1px solid var(--surface-2);
+      padding: 4px 6px;
+    }
+
+    .data-table th:first-child,
+    .data-table td:first-child {
+      padding-left: 0;
+    }
+
+    .data-table th:last-child,
+    .data-table td:last-child {
+      padding-right: 0;
+    }
+
+    .data-table thead th {
+      white-space: normal;
+    }
+
+    .data-table .num,
+    .data-table .idx {
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
   }
 }

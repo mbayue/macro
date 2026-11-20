@@ -44,7 +44,7 @@ function useNavItems(): NavItem[] {
   const { state } = useShell();
   return [
     { id: 'new', label: 'Test Studio', href: '#/', icon: SlidersHorizontalIcon },
-    { id: 'runs', label: 'Runs', href: '#/runs', icon: TablePropertiesIcon },
+    { id: 'runs', label: 'Runs Table', href: '#/runs', icon: TablePropertiesIcon },
     { id: 'probe', label: 'Containment Probe', href: '#/probe', icon: ShieldCheckIcon },
     { id: 'account', label: 'Account', href: state.me !== null ? '#/account' : '#/sign-in', icon: UserIcon },
   ];
@@ -70,7 +70,7 @@ export function DesktopRail() {
     <aside
       data-slot="shell-rail"
       className={cn(
-        'hidden min-[861px]:flex sticky top-0 h-screen shrink-0 flex-col border-r border-border bg-surface transition-[width] duration-150 motion-reduce:transition-none',
+        'hidden min-[861px]:flex sticky top-0 h-screen shrink-0 flex-col border-r border-border bg-surface transition-[width] duration-150 motion-reduce:transition-none print:hidden',
         collapsed ? 'w-16 items-center px-3 py-4' : 'w-[240px] px-3.5 py-5',
       )}
     >
@@ -266,7 +266,7 @@ export function MobileTopBar() {
   return (
     <header
       data-slot="shell-mobile-bar"
-      className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-border bg-surface px-4 py-2.5 min-[861px]:hidden"
+      className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-border bg-surface px-4 py-2.5 min-[861px]:hidden print:hidden"
     >
       <a
         href="#/"

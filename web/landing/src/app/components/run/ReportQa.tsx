@@ -35,7 +35,7 @@ export const ReportQa = memo(function ReportQa({ report }: { report: CapacityRep
   }
 
   return (
-    <TelemetryPanel ticks="bar" aria-labelledby={headingId} className="report-qa">
+    <TelemetryPanel ticks="bar" aria-labelledby={headingId}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id={headingId} className="m-0 flex items-center gap-2 font-sans text-[1.0625rem] font-medium text-foreground">
           <span>Report Q&amp;A</span>
@@ -47,7 +47,7 @@ export const ReportQa = memo(function ReportQa({ report }: { report: CapacityRep
         Ask follow-up questions about these measured stage and route metrics. Prefers on-device Gemini Nano with cloud Gemini fallback.
       </p>
 
-      <div className="examples flex flex-wrap items-center gap-2 print:hidden" role="group" aria-label="Suggested report questions">
+      <div className="flex flex-wrap items-center gap-2 print:hidden" role="group" aria-label="Suggested report questions">
         {QUICK_QUESTIONS.map((q) => (
           <Button
             key={q}

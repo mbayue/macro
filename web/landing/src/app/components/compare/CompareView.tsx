@@ -225,7 +225,7 @@ export const CompareView = memo(function CompareView({
           <span className="text-xs text-muted-foreground">From each capacity report headline</span>
         </div>
         <TableWrap label="Headline comparison">
-          <table className="table w-full min-w-[520px]">
+          <table className="data-table w-full min-w-[520px]">
             <caption className="sr-only">Headline values</caption>
             <thead>
               <tr>
@@ -290,7 +290,7 @@ export const CompareView = memo(function CompareView({
                 </span>
               </div>
               <TableWrap label={`Stage ${st.displayIndex} comparison`}>
-                <table className="table w-full min-w-[680px]">
+                <table className="data-table w-full min-w-[680px]">
                   <caption className="sr-only">
                     Stage {st.displayIndex} ({st.vus} VUs)
                   </caption>

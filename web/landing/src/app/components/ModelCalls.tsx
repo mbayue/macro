@@ -36,7 +36,7 @@ export const ModelCalls = memo(function ModelCalls({ calls }: { calls: readonly 
           <p className="m-0 text-sm text-muted-foreground">No model calls were recorded.</p>
         ) : (
           <TableWrap label="Model calls">
-            <table className="table w-full min-w-[820px] table-fixed print:min-w-0 print:table-auto">
+            <table className="data-table w-full min-w-[820px] table-fixed print:min-w-0 print:table-auto">
               <colgroup>
                 <col className="w-12" />
                 <col className="w-[13%]" />

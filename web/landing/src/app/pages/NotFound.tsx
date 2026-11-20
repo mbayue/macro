@@ -6,7 +6,7 @@ import { TelemetryPanel } from '../components/studio/TelemetryFrame.tsx';
 /** Fallback view (`*`) when the hash route does not match any app screen. */
 export function NotFound() {
   return (
-    <section className="mx-auto grid w-full max-w-[1600px] gap-6" aria-labelledby="not-found-heading">
+    <section className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6" aria-labelledby="not-found-heading">
       <header className="grid gap-2">
         <h1
           id="not-found-heading"
@@ -39,7 +39,7 @@ export function NotFound() {
             className="border border-bar-hover"
           >
             <TablePropertiesIcon data-icon="inline-start" />
-            Open recent runs
+            Open Runs Table
           </Button>
         </div>
       </TelemetryPanel>

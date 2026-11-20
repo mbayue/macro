@@ -145,7 +145,7 @@ export function ProbePage({ id }: { id: string }) {
   }, [id, attempt, announce, navigate]);
 
   return (
-    <div className="mx-auto grid w-full max-w-[1600px] gap-6">
+    <div className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6">
       <header className="grid gap-2">
         <h1
           ref={heading}
@@ -388,7 +388,7 @@ export function ProbeBody({
             </div>
 
             <TableWrap label="Probe actions">
-              <table className="table w-full min-w-[600px]">
+              <table className="data-table w-full min-w-[600px]">
                 <caption className="sr-only">The five probe actions, in the order they run</caption>
                 <thead>
                   <tr>

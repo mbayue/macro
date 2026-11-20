@@ -180,10 +180,12 @@ export function RecentRunsPage() {
   );
 
   return (
-    <div className="page">
-      <header className="page__head">
-        <h1 className="page__title">Runs Table</h1>
-        <p className="page__lead">
+    <div className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6">
+      <header className="grid gap-2">
+        <h1 className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] text-balance text-foreground max-[860px]:text-[1.75rem]">
+          Runs Table
+        </h1>
+        <p className="m-0 max-w-[64ch] text-muted-foreground">
           {source === 'account'
             ? 'Runs attached to your Macro account, newest first (up to 50).'
             : 'Runs and probes opened in this browser (up to 10). The list stays on this device until you sign in.'}
@@ -412,7 +414,7 @@ export function RecentRunsPage() {
           ) : (
             <TelemetryPanel ticks="bar" aria-label="Runs Table results">
               <TableWrap label="Runs Table">
-                <table className="table w-full min-w-[900px]">
+                <table className="data-table w-full min-w-[900px]">
                   <caption className="sr-only">
                     {source === 'account' ? 'Account runs' : 'Browser recent runs'}
                   </caption>

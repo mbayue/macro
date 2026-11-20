@@ -4,10 +4,14 @@
  */
 import { Component, Fragment, type ReactNode, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Outlet, RouterProvider, useRouter, useRouterState } from '@tanstack/react-router';
+import { RotateCcwIcon } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import type { ConfigResponse, MeResponse } from '../../../../src/api-types.ts';
 import { getConfig } from './lib/api.ts';
 import { claimRecentBrowserRuns, getMe } from './lib/auth-api.ts';
 import { Shell } from './components/Shell.tsx';
+import { TelemetryPanel } from './components/studio/TelemetryFrame.tsx';
 import { PageSkeleton } from './components/ui.tsx';
 import { AppContext, type AppContextValue } from './context.tsx';
 import { createAppRouter, resolveRouterRoute, type Route, routeKey, routeTitle } from './router.ts';
@@ -26,11 +30,16 @@ class ScreenBoundary extends Component<{ resetKey: string; children: ReactNode }
   override render() {
     if (this.state.failed) {
       return (
-        <section className="page">
-          <h1 className="page__title">Something went wrong</h1>
-          <div className="alert" role="alert">
-            <p>This page failed to load. Reload the page to try again.</p>
-          </div>
+        <section className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6">
+          <h1 className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] text-balance text-foreground max-[860px]:text-[1.75rem]">
+            Something went wrong
+          </h1>
+          <TelemetryPanel tone="bad" ticks="bad" role="alert" className="gap-3 bg-card">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="destructive">Screen error</Badge>
+            </div>
+            <p className="m-0 text-sm text-foreground">This page failed to load. Reload the page to try again.</p>
+          </TelemetryPanel>
         </section>
       );
     }
@@ -130,16 +139,24 @@ function RootLayout() {
     screen = <PageSkeleton title="Loading Macro workspace…" showSplit={isSplitRoute(route)} />;
   } else if (boot.kind === 'error' || !ctx) {
     screen = (
-      <section className="page">
-        <h1 className="page__title">Something went wrong</h1>
-        <div className="alert" role="alert">
-          <p>Macro could not load its settings from the server. Check your connection and try again.</p>
-        </div>
-        <div className="row">
-          <button type="button" className="btn btn--quiet" onClick={() => void load()}>
-            Try again
-          </button>
-        </div>
+      <section className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6">
+        <h1 className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] text-balance text-foreground max-[860px]:text-[1.75rem]">
+          Something went wrong
+        </h1>
+        <TelemetryPanel tone="bad" ticks="bad" role="alert" className="gap-4 bg-card">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="destructive">Connection error</Badge>
+          </div>
+          <p className="m-0 text-sm text-foreground">
+            Macro could not load its settings from the server. Check your connection and try again.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" variant="secondary" className="border border-bar-hover" onClick={() => void load()}>
+              <RotateCcwIcon data-icon="inline-start" />
+              Try again
+            </Button>
+          </div>
+        </TelemetryPanel>
       </section>
     );
   } else {

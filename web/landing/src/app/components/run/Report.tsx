@@ -4,16 +4,21 @@
  * Wording and states follow lib/report-view.ts, whose view models are reused.
  */
 import { memo, useEffect, useRef, useState } from 'react';
-import { ChevronDownIcon, DownloadIcon, GitCompareIcon, PlayIcon, PrinterIcon } from 'lucide-react';
+import { ChevronDownIcon, DownloadIcon, ExternalLinkIcon, GitCompareIcon, PlayIcon, PrinterIcon, XIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import type { CapacityReport, MetricsView, RouteRowView, StageView } from '../../../../../../src/report/build.ts';
+import type { Comparison } from '../../../../../../src/report/compare.ts';
 import { reportCsvFilename, reportToCsv } from '../../../../../../src/report/export.ts';
 import { useApp } from '../../context.tsx';
 import { type ApiError, getRunsForPlan, postRun, VERIFICATION_ERROR } from '../../lib/api.ts';
 import { downloadText } from '../../lib/export.ts';
 import { aiModel, canRerun, MAX_LISTED_RUNS, reportNotices, type RunListRow, runListRows } from '../../lib/report-view.ts';
 import { compareHref, runHref } from '../../router.ts';
+import { CompareView, type CompareViewError } from '../compare/CompareView.tsx';
+import { togglePickedRun } from '../compare/runs-table-view.ts';
+import { useRunComparison } from '../compare/useRunComparison.ts';
 import { TelemetryPanel } from '../studio/TelemetryFrame.tsx';
 import { TurnstileBox, useTurnstile } from '../Turnstile.tsx';
 import { AlertRegion, Busy, StatusBadge, TableWrap } from '../ui.tsx';
@@ -65,7 +70,7 @@ export const ReportStages = memo(function ReportStages({ report }: { report: Cap
         </span>
       </div>
       <TableWrap label="Stages">
-        <table className="table w-full min-w-[860px] table-fixed print:min-w-0 print:table-auto">
+        <table className="data-table w-full min-w-[860px] table-fixed print:min-w-0 print:table-auto">
           <caption className="sr-only">Stages</caption>
           <colgroup>
             <col className="w-16" />
@@ -145,7 +150,7 @@ export const ReportStages = memo(function ReportStages({ report }: { report: Cap
 function RouteTable({ stage }: { stage: StageView }) {
   return (
     <TableWrap label={`Stage ${stage.displayIndex} routes`}>
-      <table className="table w-full min-w-[860px] table-fixed print:min-w-0 print:table-auto">
+      <table className="data-table w-full min-w-[860px] table-fixed print:min-w-0 print:table-auto">
         <colgroup>
           <col className="w-[16%]" />
           {METRIC_HEADS.map((h) => (
@@ -237,7 +242,7 @@ export const AiSection = memo(function AiSection({ report }: { report: CapacityR
 
 /**
  * The two export buttons for the report: the measured CSV file and the browser's
- * print dialog (save as PDF). Print opens every closed disclosure inside `.report`
+ * print dialog (save as PDF). Print opens every closed disclosure inside `[data-report-root="true"]`
  * and afterprint restores only those that were closed.
  */
 export const ReportExport = memo(function ReportExport({ report }: { report: CapacityReport }) {
@@ -246,7 +251,7 @@ export const ReportExport = memo(function ReportExport({ report }: { report: Cap
   useEffect(() => {
     let wereClosed: HTMLDetailsElement[] = [];
     const before = (): void => {
-      wereClosed = Array.from(document.querySelectorAll<HTMLDetailsElement>('.report details:not([open])'));
+      wereClosed = Array.from(document.querySelectorAll<HTMLDetailsElement>('[data-report-root="true"] details:not([open])'));
       for (const d of wereClosed) d.open = true;
     };
     const after = (): void => {
@@ -267,7 +272,7 @@ export const ReportExport = memo(function ReportExport({ report }: { report: Cap
   };
 
   return (
-    <div className="report__export flex flex-wrap items-center gap-2.5 print:hidden">
+    <div className="flex flex-wrap items-center gap-2.5 print:hidden">
       <Button type="button" variant="secondary" className="border border-bar-hover" onClick={downloadCsv}>
         <DownloadIcon data-icon="inline-start" />
         Download CSV
@@ -313,16 +318,71 @@ export const ReportMeta = memo(function ReportMeta({ report }: { report: Capacit
   );
 });
 
-/** Re-run the same approved plan, list its runs, and navigate to `#/compare/:a/:b` when two runs are selected. */
+export interface InlineRunComparisonProps {
+  a: string;
+  b: string;
+  loading: boolean;
+  error: CompareViewError | null;
+  comparison: Comparison | null;
+  onRetry: () => void;
+  onClose: () => void;
+}
+
+/** Inline Run Compare view rendered inside `RunsPanel`, reusing `CompareView` with a link to `#/compare/:a/:b`. */
+export function InlineRunComparison({
+  a,
+  b,
+  loading,
+  error,
+  comparison,
+  onRetry,
+  onClose,
+}: InlineRunComparisonProps) {
+  return (
+    <div className="flex flex-col gap-3 border-t border-border pt-4 print:border-t-0 print:pt-0">
+      <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
+        <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+          <h3 className="m-0 font-sans text-[0.9375rem] font-medium text-foreground">Run comparison</h3>
+          <span className="font-mono text-xs text-muted-foreground">
+            {a} vs {b}
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            render={<a href={compareHref(a, b)} />}
+            nativeButton={false}
+            variant="outline"
+            size="sm"
+            className="border-bar"
+          >
+            Open full compare view
+            <ExternalLinkIcon data-icon="inline-end" />
+          </Button>
+          <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+            <XIcon data-icon="inline-start" />
+            Close comparison
+          </Button>
+        </div>
+      </div>
+
+      <CompareView a={a} b={b} loading={loading} error={error} comparison={comparison} onRetry={onRetry} />
+    </div>
+  );
+}
+
+/** Re-run the same approved plan, list its runs, and compare two runs inline via `CompareView`. */
 export const RunsPanel = memo(function RunsPanel({ report }: { report: CapacityReport }) {
   const { navigate, announce } = useApp();
   const turnstile = useTurnstile();
   const [rows, setRows] = useState<RunListRow[] | null>(null);
   const [listError, setListError] = useState<ApiError | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
+  const [comparePair, setComparePair] = useState<{ a: string; b: string } | null>(null);
   const [rerunBusy, setRerunBusy] = useState(false);
   const [rerunError, setRerunError] = useState<ApiError | null>(null);
   const alive = useRef(true);
+
+  const { loading: compareLoading, error: compareError, comparison, retry: retryCompare } = useRunComparison(comparePair);
 
   useEffect(() => {
     alive.current = true;
@@ -365,22 +425,36 @@ export const RunsPanel = memo(function RunsPanel({ report }: { report: CapacityR
     announce(result.error.message);
   }
 
-  const toggle = (id: string, on: boolean) =>
-    setPicked((p) => (on ? [...p, id].slice(0, 2) : p.filter((x) => x !== id)));
+  const toggle = (id: string, on: boolean) => setPicked((p) => togglePickedRun(p, id, on));
 
   const canCompare = picked.length === 2;
-  const compareTarget = canCompare ? compareHref(picked[0]!, picked[1]!) : null;
+
+  const startCompare = () => {
+    if (!canCompare) return;
+    const next = { a: picked[0]!, b: picked[1]! };
+    if (comparePair?.a === next.a && comparePair.b === next.b) {
+      retryCompare();
+      return;
+    }
+    setComparePair(next);
+  };
 
   return (
-    <TelemetryPanel ticks="bar" aria-labelledby="report-runs-heading" className="panel--runs print:hidden">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
+    <TelemetryPanel
+      ticks="bar"
+      aria-labelledby="report-runs-heading"
+      className={cn(
+        comparePair === null ? 'print:hidden' : 'print:border-0 print:bg-transparent print:p-0',
+      )}
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-2 print:hidden">
         <h2 id="report-runs-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
           Run again and compare
         </h2>
       </div>
 
       {canRerun(report.headline.status) ? (
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-2.5 print:hidden">
           <p className="m-0 text-sm text-muted-foreground">
             Start a new run of this same approved plan. The plan is not changed.
           </p>
@@ -396,7 +470,7 @@ export const RunsPanel = memo(function RunsPanel({ report }: { report: CapacityR
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 print:hidden">
         <h3 className="m-0 font-sans text-[0.8125rem] font-medium text-muted-foreground">Runs of this plan</h3>
         {listError ? (
           <AlertRegion error={listError} />
@@ -408,17 +482,17 @@ export const RunsPanel = memo(function RunsPanel({ report }: { report: CapacityR
           <p className="m-0 text-sm text-muted-foreground">No runs of this plan were found.</p>
         ) : (
           <TableWrap label="Runs of this plan">
-            <table className="table table--runs w-full">
+            <table className="data-table w-full min-w-[720px]">
               <caption className="sr-only">
                 Most recent runs of this plan, newest first (up to {MAX_LISTED_RUNS})
               </caption>
               <colgroup>
-                <col className="w-check" />
+                <col className="w-11" />
                 <col />
-                <col className="w-started" />
-                <col className="w-status" />
-                <col className="w-num" />
-                <col className="w-num" />
+                <col className="w-[190px]" />
+                <col className="w-[140px]" />
+                <col className="w-[130px]" />
+                <col className="w-[130px]" />
               </colgroup>
               <thead>
                 <tr>
@@ -440,15 +514,15 @@ export const RunsPanel = memo(function RunsPanel({ report }: { report: CapacityR
                 {rows.map((r) => {
                   const on = picked.includes(r.runId);
                   return (
-                    <tr key={r.runId}>
-                      <td>
+                    <tr key={r.runId} className={on ? 'bg-surface-2' : undefined}>
+                      <td className="align-middle">
                         <input
                           type="checkbox"
-                          className="check"
                           checked={on}
                           disabled={picked.length >= 2 && !on}
                           aria-label={`Select run ${r.runId}`}
                           onChange={(e) => toggle(r.runId, e.target.checked)}
+                          className="size-[18px] cursor-pointer rounded-sm align-middle accent-[var(--accent-text)] focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-45"
                         />
                       </td>
                       <th scope="row" className="font-mono text-xs">
@@ -474,25 +548,36 @@ export const RunsPanel = memo(function RunsPanel({ report }: { report: CapacityR
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        {compareTarget !== null ? (
-          <Button
-            render={<a href={compareTarget} />}
-            nativeButton={false}
-            variant="secondary"
-            className="border border-bar-hover"
-          >
-            <GitCompareIcon data-icon="inline-start" />
-            Compare selected runs
+      <div className="flex flex-wrap items-center gap-3 print:hidden">
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={!canCompare}
+          className="border border-bar-hover"
+          onClick={startCompare}
+        >
+          <GitCompareIcon data-icon="inline-start" />
+          Compare selected runs
+        </Button>
+        {picked.length > 0 ? (
+          <Button type="button" variant="outline" size="sm" className="border-bar" onClick={() => setPicked([])}>
+            Clear selection
           </Button>
-        ) : (
-          <Button type="button" variant="secondary" disabled className="border border-bar-hover">
-            <GitCompareIcon data-icon="inline-start" />
-            Compare selected runs
-          </Button>
-        )}
+        ) : null}
         <span className="text-xs text-muted-foreground">Select two runs to compare them side by side.</span>
       </div>
+
+      {comparePair !== null ? (
+        <InlineRunComparison
+          a={comparePair.a}
+          b={comparePair.b}
+          loading={compareLoading}
+          error={compareError}
+          comparison={comparison}
+          onRetry={retryCompare}
+          onClose={() => setComparePair(null)}
+        />
+      ) : null}
     </TelemetryPanel>
   );
 });

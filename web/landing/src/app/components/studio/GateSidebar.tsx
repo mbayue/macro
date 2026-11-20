@@ -397,11 +397,7 @@ function ApprovePanel({
             disabled={!idle}
             onConfirm={onCancel}
           />
-          {busy === 'approving' ? (
-            <span className="[&_.busy]:text-accent-ink-soft">
-              <Busy>Starting the run.</Busy>
-            </span>
-          ) : null}
+          {busy === 'approving' ? <Busy className="text-accent-ink-soft">Starting the run.</Busy> : null}
         </div>
       </div>
 
@@ -409,9 +405,10 @@ function ApprovePanel({
         <p className="text-sm font-medium text-primary-foreground">Revise the plan to use these checks.</p>
       ) : null}
 
-      <div className="[&_.alert]:border-destructive [&_.alert]:bg-background [&_.alert]:text-foreground">
-        <AlertRegion error={error} />
-      </div>
+      <AlertRegion
+        error={error}
+        className={error ? 'border-destructive bg-background text-foreground' : undefined}
+      />
     </section>
   );
 }

@@ -32,7 +32,7 @@ export function TopContextBar() {
   return (
     <div
       data-slot="shell-context-bar"
-      className="border-b border-border bg-surface px-4 py-2 min-[861px]:sticky min-[861px]:top-0 min-[861px]:z-20 min-[861px]:px-10 min-[861px]:py-2.5"
+      className="border-b border-border bg-surface px-4 py-2 min-[861px]:sticky min-[861px]:top-0 min-[861px]:z-20 min-[861px]:px-10 min-[861px]:py-2.5 print:hidden"
     >
       <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-4">
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">

@@ -170,7 +170,7 @@ export function AccountPanel({
   const identity = me.user.githubLogin ?? me.user.email;
 
   return (
-    <section className="mx-auto grid w-full max-w-[1600px] gap-6" aria-labelledby="account-heading">
+    <section className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6" aria-labelledby="account-heading">
       <header className="grid gap-2">
         <h1
           id="account-heading"
@@ -389,7 +389,7 @@ export function SignIn() {
   }
 
   return (
-    <section className="mx-auto grid w-full max-w-[1600px] gap-6" aria-labelledby="signin-heading">
+    <section className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6" aria-labelledby="signin-heading">
       <header className="grid gap-2">
         <h1
           id="signin-heading"

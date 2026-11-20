@@ -136,12 +136,14 @@ export function RunPage({ id }: { id: string }) {
   }
   if (state.kind === 'error') {
     return (
-      <section className="page">
-        <h1 className="page__title">Run</h1>
-        <div className="alert" role="alert">
+      <section className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6">
+        <h1 className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] text-balance text-foreground max-[860px]:text-[1.75rem]">
+          Run
+        </h1>
+        <TelemetryPanel tone="bad" ticks="bad" role="alert" className="gap-3 bg-card">
           <ApiErrorText error={state.error} />
-        </div>
-        <div className="row">
+        </TelemetryPanel>
+        <div className="flex flex-wrap items-center gap-3">
           <Button type="button" variant="secondary" className="border border-bar-hover" onClick={retry}>
             Try again
           </Button>
@@ -161,10 +163,12 @@ export function RunPage({ id }: { id: string }) {
   const showStickyStrip = activeTab !== 'overview' || (!queued && !tilesInView);
 
   return (
-    <div className="page">
-      <header className="run-head flex flex-col justify-between gap-6 min-[861px]:flex-row min-[861px]:items-start print:hidden">
+    <div className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6 print:max-w-none">
+      <header className="flex flex-col justify-between gap-6 min-[861px]:flex-row min-[861px]:items-start print:hidden">
         <div className="flex min-w-0 flex-col gap-2">
-          <h1 className="page__title">{model.plan?.name ?? report?.planName ?? 'Load test'}</h1>
+          <h1 className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] text-balance text-foreground max-[860px]:text-[1.75rem]">
+            {model.plan?.name ?? report?.planName ?? 'Load test'}
+          </h1>
           <p className="m-0 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-muted-foreground">
             <span className="inline-flex flex-wrap items-center gap-2">
               <StatusBadge status={model.run.status} />
@@ -228,9 +232,9 @@ export function RunPage({ id }: { id: string }) {
 
       {ended && reason && !report ? (
         (model.run.status === 'failed' || model.run.status === 'interrupted') && model.report === null ? (
-          <div className="alert" role="alert">
-            <p className="alert__message">Run {model.run.status.replace(/_/g, ' ')}</p>
-            <p>{reason}</p>
+          <div className="grid gap-1.5 rounded-md border border-bad px-3.5 py-3 text-[0.8125rem] text-foreground" role="alert">
+            <p className="m-0 font-medium">Run {model.run.status.replace(/_/g, ' ')}</p>
+            <p className="m-0">{reason}</p>
           </div>
         ) : (
           <p className="m-0 text-sm text-muted-foreground">{reason}</p>
@@ -245,7 +249,7 @@ export function RunPage({ id }: { id: string }) {
 
       {showStickyStrip ? <KpiStrip items={kpiItems} /> : null}
 
-      <div className={report ? 'report flex flex-col gap-4' : 'flex flex-col gap-4'}>
+      <div data-report-root={report ? 'true' : undefined} className="flex min-w-0 flex-col gap-4">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="gap-4">
           <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
             <TabsList
@@ -276,7 +280,7 @@ export function RunPage({ id }: { id: string }) {
             ) : null}
           </div>
 
-          <TabsContent value="overview" className="flex flex-col gap-4 outline-none">
+          <TabsContent value="overview" className="flex min-w-0 flex-col gap-4 outline-none">
             {activeTab === 'overview' ? (
               <>
                 {queued ? (
@@ -301,7 +305,7 @@ export function RunPage({ id }: { id: string }) {
                       </div>
                     ) : null}
 
-                    <div className="board grid grid-cols-1 gap-2 min-[1180px]:grid-cols-[minmax(0,1fr)_minmax(300px,400px)] min-[1180px]:items-stretch print:hidden">
+                    <div className="grid grid-cols-1 gap-2 min-[1180px]:grid-cols-[minmax(0,1fr)_minmax(300px,400px)] min-[1180px]:items-stretch print:hidden">
                       <TelemetryPanel ticks="bar" aria-labelledby="route-chart-heading">
                         <div className="flex flex-wrap items-baseline justify-between gap-2">
                           <h2 id="route-chart-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
@@ -329,7 +333,7 @@ export function RunPage({ id }: { id: string }) {
                 )}
 
                 {report ? (
-                  <div className="flex flex-col gap-4">
+                  <div className="flex min-w-0 flex-col gap-4">
                     <div className="flex flex-col gap-3 pt-2">
                       <h2
                         id="report-heading"
@@ -349,7 +353,7 @@ export function RunPage({ id }: { id: string }) {
             ) : null}
           </TabsContent>
 
-          <TabsContent value="stages" className="flex flex-col gap-4 outline-none">
+          <TabsContent value="stages" className="flex min-w-0 flex-col gap-4 outline-none">
             {activeTab === 'stages' ? (
               report ? (
                 <>
@@ -370,7 +374,7 @@ export function RunPage({ id }: { id: string }) {
             ) : null}
           </TabsContent>
 
-          <TabsContent value="ai" className="flex flex-col gap-4 outline-none">
+          <TabsContent value="ai" className="flex min-w-0 flex-col gap-4 outline-none">
             {activeTab === 'ai' && report ? (
               <>
                 <AiSection report={report} />
@@ -379,7 +383,7 @@ export function RunPage({ id }: { id: string }) {
             ) : null}
           </TabsContent>
 
-          <TabsContent value="audit" className="flex flex-col gap-4 outline-none">
+          <TabsContent value="audit" className="flex min-w-0 flex-col gap-4 outline-none">
             {activeTab === 'audit' ? <AuditLog model={model} revision={auditVersion} /> : null}
           </TabsContent>
         </Tabs>
@@ -472,7 +476,7 @@ const LiveStages = memo(function LiveStages({
         <p className="m-0 text-sm text-muted-foreground">No Stage has started yet.</p>
       ) : (
         <TableWrap label="Stages">
-          <table className="table w-full min-w-[860px] table-fixed print:min-w-0 print:table-auto">
+          <table className="data-table w-full min-w-[860px] table-fixed print:min-w-0 print:table-auto">
             <caption className="sr-only">Stages</caption>
             <colgroup>
               <col className="w-16" />
@@ -551,7 +555,7 @@ const LiveStages = memo(function LiveStages({
                 );
               })}
               {unstarted.map((p) => (
-                <tr key={`p${p.index}`} className="is-pending">
+                <tr key={`p${p.index}`} className="text-muted-foreground">
                   <th scope="row" className="idx font-mono tabular-nums">
                     {p.index + 1}
                   </th>

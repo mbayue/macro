@@ -126,7 +126,7 @@ export const AuditLog = memo(function AuditLog({
           <p className="m-0 text-sm text-muted-foreground">No containment events have been recorded yet.</p>
         ) : (
           <TableWrap label="Containment events">
-            <table className="table w-full min-w-[640px] print:min-w-0 print:table-auto">
+            <table className="data-table w-full min-w-[640px] print:min-w-0 print:table-auto">
               <caption className="sr-only">Containment events in chronological UTC order</caption>
               <thead>
                 <tr>

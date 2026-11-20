@@ -1,11 +1,12 @@
 import { describe, expect, test } from 'bun:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import type { RunListItem, RunSnapshot } from '../src/api-types.ts';
+import type { ConfigResponse, RunListItem, RunSnapshot } from '../src/api-types.ts';
 import { buildReport } from '../src/report/build.ts';
 import { compareRuns, DIFFERENT_PLAN_MESSAGE } from '../src/report/compare.ts';
 import type { StageMetrics, TestPlan } from '../src/types.ts';
 import { CompareView } from '../web/landing/src/app/components/compare/CompareView.tsx';
+import { fetchComparison } from '../web/landing/src/app/components/compare/useRunComparison.ts';
 import {
   canComparePickedRuns,
   compareSelectionHint,
@@ -21,6 +22,8 @@ import {
   STATUS_FILTER_OPTIONS,
   togglePickedRun,
 } from '../web/landing/src/app/components/compare/runs-table-view.ts';
+import { InlineRunComparison, RunsPanel } from '../web/landing/src/app/components/run/Report.tsx';
+import { AppContext, type AppContextValue } from '../web/landing/src/app/context.tsx';
 
 function makePlan(name = 'Checkout spike'): TestPlan {
   return {
@@ -563,5 +566,157 @@ describe('CompareView component states', () => {
       }),
     );
     expect(emptyHtml).toContain('Neither run has stage metrics to compare.');
+  });
+});
+
+function makeAppContext(): AppContextValue {
+  const config: ConfigResponse = {
+    webOrigin: 'https://yue.macro.my.id',
+    apiOrigin: 'https://api.macro.my.id',
+    turnstileSiteKey: '1x00000000000000000000AA',
+    runtime: 'runsc',
+    runtimeError: null,
+    examples: [],
+    catalog: [],
+    trafficEventMin: 10,
+    trafficEventMax: 1000,
+    sampleRunId: null,
+    firebase: null,
+    googleSignIn: false,
+  };
+  return {
+    config,
+    me: null,
+    refreshMe: async () => {},
+    navigate: () => {},
+    announce: () => {},
+  };
+}
+
+describe('In-report CompareView reuse and fetchComparison', () => {
+  test('fetchComparison fetches /api/compare, parses valid comparisons, and returns API or unreadable errors', async () => {
+    const plan = makePlan();
+    const reportA = buildReport({
+      runId: 'run_1',
+      planHash: 'hash_shared',
+      status: 'completed',
+      runtime: 'runc',
+      plan,
+      stages: [{ index: 0, vus: 25, durationSec: 30, status: 'done', metrics: makeMetrics(220, 0.1), verdict: 'pass' }],
+      decisions: [],
+      events: [],
+    });
+    const reportB = buildReport({
+      runId: 'run_2',
+      planHash: 'hash_shared',
+      status: 'completed',
+      runtime: 'runc',
+      plan,
+      stages: [{ index: 0, vus: 25, durationSec: 30, status: 'done', metrics: makeMetrics(260, 0.2), verdict: 'pass' }],
+      decisions: [],
+      events: [],
+    });
+    const expected = compareRuns(
+      { runId: 'run_1', planHash: 'hash_shared', startedAt: 1000, report: reportA },
+      { runId: 'run_2', planHash: 'hash_shared', startedAt: 2000, report: reportB },
+    );
+
+    const prevFetch = globalThis.fetch;
+    try {
+      let seenUrl = '';
+      globalThis.fetch = (async (input: RequestInfo | URL) => {
+        seenUrl = String(input);
+        return new Response(JSON.stringify({ result: expected }), { status: 200 });
+      }) as unknown as typeof fetch;
+
+      const okRes = await fetchComparison('run_1', 'run_2');
+      expect(seenUrl).toBe('/api/compare?a=run_1&b=run_2');
+      expect(okRes).toEqual({ ok: true, comparison: expected });
+
+      globalThis.fetch = (async () =>
+        new Response(JSON.stringify({ bogus: true }), { status: 200 })) as unknown as typeof fetch;
+      const unreadableRes = await fetchComparison('run_1', 'run_2');
+      expect(unreadableRes).toEqual({ ok: false, error: 'unreadable' });
+
+      globalThis.fetch = (async () =>
+        new Response(JSON.stringify({ error: { code: 'not_found', message: 'Run not found.' } }), { status: 404 })) as unknown as typeof fetch;
+      const errRes = await fetchComparison('run_1', 'run_missing');
+      expect(errRes).toEqual({ ok: false, error: { code: 'not_found', message: 'Run not found.' } });
+    } finally {
+      globalThis.fetch = prevFetch;
+    }
+  });
+
+  test('InlineRunComparison renders CompareView inline alongside an Open full compare view link and zero style= attributes', () => {
+    const plan = makePlan();
+    const reportA = buildReport({
+      runId: 'run_a',
+      planHash: 'hash_shared',
+      status: 'completed',
+      runtime: 'runc',
+      plan,
+      stages: [{ index: 0, vus: 25, durationSec: 30, status: 'done', metrics: makeMetrics(240, 0.2), verdict: 'pass' }],
+      decisions: [],
+      events: [],
+    });
+    const reportB = buildReport({
+      runId: 'run_b',
+      planHash: 'hash_shared',
+      status: 'completed',
+      runtime: 'runc',
+      plan,
+      stages: [{ index: 0, vus: 25, durationSec: 30, status: 'done', metrics: makeMetrics(300, 0.4), verdict: 'pass' }],
+      decisions: [],
+      events: [],
+    });
+    const comparison = compareRuns(
+      { runId: 'run_a', planHash: 'hash_shared', startedAt: 1000, report: reportA },
+      { runId: 'run_b', planHash: 'hash_shared', startedAt: 2000, report: reportB },
+    );
+
+    const html = renderToStaticMarkup(
+      createElement(InlineRunComparison, {
+        a: 'run_a',
+        b: 'run_b',
+        loading: false,
+        error: null,
+        comparison,
+        onRetry: () => {},
+        onClose: () => {},
+      }),
+    );
+
+    expect(html).toContain('Open full compare view');
+    expect(html).toContain('href="#/compare/run_a/run_b"');
+    expect(html).toContain('Close comparison');
+    expect(html).toContain('Baseline (earlier run)');
+    expect(html).toContain('Headline comparison');
+    expect(html).not.toMatch(/\sstyle=/i);
+  });
+
+  test('RunsPanel renders Compare selected runs button cleanly without legacy width or style= attributes', () => {
+    const plan = makePlan();
+    const report = buildReport({
+      runId: 'run_self',
+      planHash: 'hash_shared',
+      status: 'completed',
+      runtime: 'runc',
+      plan,
+      stages: [{ index: 0, vus: 25, durationSec: 30, status: 'done', metrics: makeMetrics(240, 0.2), verdict: 'pass' }],
+      decisions: [],
+      events: [],
+    });
+
+    const html = renderToStaticMarkup(
+      createElement(AppContext.Provider, { value: makeAppContext() }, createElement(RunsPanel, { report })),
+    );
+
+    expect(html).toContain('Run again and compare');
+    expect(html).toContain('Compare selected runs');
+    expect(html).not.toContain('w-check');
+    expect(html).not.toContain('w-started');
+    expect(html).not.toContain('w-status');
+    expect(html).not.toContain('w-num');
+    expect(html).not.toMatch(/\sstyle=/i);
   });
 });

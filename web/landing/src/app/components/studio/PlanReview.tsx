@@ -255,7 +255,7 @@ function PlanDetails({
           </summary>
           <div className="max-w-[520px]">
             <TableWrap label="Stages">
-              <table className="table">
+              <table className="data-table">
                 <caption className="sr-only">Stages</caption>
                 <thead>
                   <tr>
@@ -289,7 +289,7 @@ function PlanDetails({
         <h3 className="m-0 font-sans text-[0.8125rem] font-medium text-muted-foreground">Journey</h3>
         <TableWrap label="Journey">
           {/* Explicit roles: on phones the rows are laid out as cards, which can drop table semantics. */}
-          <table className="table table--journey" role="table">
+          <table className="data-table data-table--journey" role="table">
             <caption className="sr-only">Journey</caption>
             <thead role="rowgroup">
               <tr role="row">
@@ -316,20 +316,20 @@ function PlanDetails({
                   routes.length > 0 ? routes.find((r) => r.id === step.route) : catalog.get(step.route);
                 return (
                   <tr key={`${step.route}-${i}`} role="row">
-                    <th scope="row" role="rowheader" className="code">
+                    <th scope="row" role="rowheader" className="font-mono text-xs break-all">
                       {step.route}
                     </th>
                     {route ? (
                       <>
-                        <td className="code" role="cell" data-label="Method">
+                        <td className="font-mono text-xs break-all" role="cell" data-label="Method">
                           {route.method}
                         </td>
-                        <td className="code" role="cell" data-label="Path">
+                        <td className="font-mono text-xs break-all" role="cell" data-label="Path">
                           {route.path}
                         </td>
                       </>
                     ) : (
-                      <td className="muted" role="cell" colSpan={2}>
+                      <td className="text-muted-foreground" role="cell" colSpan={2}>
                         Not in the route catalog
                       </td>
                     )}

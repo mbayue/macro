@@ -55,7 +55,7 @@ export function ScenarioAssistant({ draft, routes, disabled, onApply }: Props) {
           onClick={() => setOpen((v) => !v)}
         >
           <SparklesIcon data-icon="inline-start" />
-          {open ? 'Hide Scenario Assistant' : 'Refine with Hybrid AI'}
+          {open ? 'Hide Scenario Assistant' : 'Scenario Assistant'}
         </Button>
         <span className="text-xs text-muted-foreground">
           Runs on-device when supported; does not use server planning quota.

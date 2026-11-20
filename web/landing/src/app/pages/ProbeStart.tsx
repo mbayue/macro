@@ -46,7 +46,7 @@ export function ProbeStart() {
   const allowedHost = `${config.webOrigin.replace(/^https:\/\//, '')}:443`;
 
   return (
-    <div className="mx-auto grid w-full max-w-[1600px] gap-6">
+    <div className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6">
       <header className="grid gap-2">
         <h1 className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] text-balance text-foreground max-[860px]:text-[1.75rem]">
           Containment Probe

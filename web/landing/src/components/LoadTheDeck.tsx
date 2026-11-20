@@ -16,7 +16,7 @@ const STAGES = [
   {
     users: 25,
     clause: '25 users on the deck',
-    line: 'Stage 1 runs in a fresh gVisor sandbox. The supervisor reads the numbers before anything heavier starts.',
+    line: 'Stage 1 runs in a fresh gVisor sandbox. The Supervisor reads the numbers before anything heavier starts.',
   },
   { users: 50, clause: '50 users on the deck', line: 'Stage 2 doubles the load in a new sandbox. The last one is already gone.' },
   {
@@ -27,7 +27,7 @@ const STAGES = [
   {
     users: 200,
     clause: '200 users, still standing',
-    line: 'Stage 4. Safe capacity is 200 users and the breaking point was not reached on this run.',
+    line: 'Stage 4. Safe Capacity is 200 users and the Breaking Point was not reached on this run.',
   },
 ] as const;
 const LAST = STAGES.length - 1;

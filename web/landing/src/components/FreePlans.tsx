@@ -9,7 +9,7 @@ import { StageBand } from './StageBand.tsx';
 const PLANS = [
   {
     name: 'Self-host',
-    facts: ['MIT License, all of the code', 'The same policy gate and sandbox', 'You pay only your server and inference, about 2 cents a run on Vultr'],
+    facts: ['MIT License, all of the code', 'The same Policy Gate and sandbox', 'You pay only your server and inference, about 2 cents a run on Vultr'],
     action: { label: 'View on GitHub', href: 'https://github.com/mbayue/macro' },
     high: false,
   },
@@ -18,7 +18,7 @@ const PLANS = [
     facts: [
       'Sign in to test your own verified site',
       'Or try the demo shop signed out',
-      'Up to 500 virtual users per stage',
+      'Up to 500 virtual users per Stage',
       'Containment Probe and a FIFO run queue',
     ],
     action: { label: 'Try the live demo', href: '/app/' },

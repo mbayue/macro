@@ -40,8 +40,8 @@ export function WhyMeasured() {
           Measured, then opened
         </h2>
         <p className="mt-6 mb-7 max-w-[42ch] text-lg">
-          Before a bridge opens, engineers park loaded trucks on it and read their instruments. Macro does that to your site: one stage,
-          one fresh sandbox, then the numbers decide whether the next stage starts.
+          Before a bridge opens, engineers park loaded trucks on it and read their instruments. Macro does that to your site: one Stage,
+          one fresh sandbox, then the numbers decide whether the next Stage starts.
         </p>
         <ul className="m-0 grid list-none gap-2.5 p-0 text-lg">
           {POINTS.map((point) => (

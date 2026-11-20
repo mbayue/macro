@@ -10,7 +10,7 @@
 import { useState } from 'react';
 
 const ANSWERS = {
-  own: 'Target https://yue.macro.my.id is verified. 25, 50, 100, 200 users, 240 s in total, ready to Approve and run.',
+  own: 'Target https://yue.macro.my.id is verified. 25, 50, 100, 200 users, 240 s in total, ready to Approve & Run.',
   other: 'Rule 4.2: target origin https://shop.example.com is not verified. 0 requests sent, and there is no approve button.',
 } as const;
 

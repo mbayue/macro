@@ -33,7 +33,7 @@ export function Close() {
         <h2 id="close-title" className="text-[clamp(36px,3.4vw,56px)] leading-none tracking-[-0.03em]">
           Load your own deck
         </h2>
-        <p className="max-w-[44ch] text-lg">Verify your site with a DNS TXT record and run the same four stages against it, privately.</p>
+        <p className="max-w-[44ch] text-lg">Verify your site with a DNS TXT record and run the same four Stages against it, privately.</p>
         <a className="site-btn site-btn--ink focus-visible:outline-accent-ink" href="/app/">
           Try the live demo
         </a>

@@ -91,7 +91,7 @@ export const PLAN_ROWS: readonly { label: string; key: keyof Pick<Plan, 'sites' 
   { label: 'Peak virtual users', key: 'vus' },
   { label: 'Runs per month', key: 'runs' },
   { label: 'Run history', key: 'history' },
-  { label: 'Containment probe', key: 'probe' },
+  { label: 'Containment Probe', key: 'probe' },
   { label: 'Support', key: 'support' },
 ];
 
@@ -102,11 +102,11 @@ export const FAQ: readonly { q: string; a: string }[] = [
   },
   {
     q: 'What stops someone using it as a DDoS tool?',
-    a: 'The target must match a verified site (or the demo shop) exactly, and the policy gate caps users and duration in code. The sandbox network has no route out except a proxy that allows HTTPS to that one host, and concurrent runs queue FIFO.',
+    a: 'The target must match a verified site (or the demo shop) exactly, and the Policy Gate caps users and duration in code. The sandbox network has no route out except a proxy that allows HTTPS to that one host, and concurrent runs queue FIFO.',
   },
   {
     q: 'What does the AI decide, and what does code decide?',
-    a: 'The AI drafts the plan, suggests whether to continue after each stage, and writes the explanation. The target, limits, script, sandbox settings and stop-on-failure rule are fixed code.',
+    a: 'The AI drafts the plan, suggests whether to continue after each Stage, and writes the explanation. The target, limits, script, sandbox settings and stop-on-failure rule are fixed code.',
   },
   {
     q: 'Can the AI make up numbers in the report?',
@@ -118,7 +118,7 @@ export const FAQ: readonly { q: string; a: string }[] = [
   },
   {
     q: 'What runs inside the sandbox?',
-    a: 'k6, pinned by digest, under gVisor, as a non-root user with a read-only filesystem, 1 GiB of memory, one CPU and no secrets. Each stage gets a fresh sandbox that is removed afterwards.',
+    a: 'k6, pinned by digest, under gVisor, as a non-root user with a read-only filesystem, 1 GiB of memory, one CPU and no secrets. Each Stage gets a fresh sandbox that is removed afterwards.',
   },
   {
     q: 'Where does the traffic come from?',

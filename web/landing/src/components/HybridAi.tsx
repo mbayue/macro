@@ -28,9 +28,9 @@ const LANES = [
     fill: 'bg-surface-2 text-ink [&_strong]:text-accent-text',
   },
   {
-    when: 'Any other browser',
+    when: 'When Gemini Nano is not ready',
     term: 'Cloud Fallback.',
-    what: 'The same prompt goes to Gemini in the cloud instead. You do not have to switch anything.',
+    what: 'Whenever the On-Device Model is not available, the same prompt goes to Gemini in the cloud instead. You do not have to switch anything.',
     fill: 'bg-bg text-ink',
   },
 ] as const;
@@ -106,7 +106,7 @@ export function HybridAi() {
       <div className="split:col-span-5 split:mt-12" data-reveal data-i="3">
         <h3 className="text-xl font-medium">Report Q&amp;A</h3>
         <p className="mt-2 max-w-[44ch]">
-          On the AI tab of a finished Capacity Report. It answers your questions from that run&apos;s measured stage and route metrics
+          On the AI tab of a finished Capacity Report. It answers your questions from that run&apos;s measured Stage and route metrics
           only.
         </p>
         <Fragment badge="Cloud · Gemini" items={QUESTIONS} onDevice={false} />
@@ -116,7 +116,7 @@ export function HybridAi() {
         <a className="site-btn" href="/app/">
           Try it in the Test Studio
         </a>
-        <p className="text-muted">Every answer is labelled with where it ran.</p>
+        <p className="text-muted">Answers show where they ran when the browser reports it.</p>
       </div>
     </section>
   );

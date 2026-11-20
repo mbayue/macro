@@ -4,6 +4,8 @@
  * components or class names.
  */
 import { describe, expect, test } from 'bun:test';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 import { Pricing } from '../web/landing/src/components/Pricing.tsx';
@@ -50,6 +52,7 @@ const href = (f: Found) => decode(f.attrs.get('href') ?? '');
 const PAGES: PageName[] = ['home', 'privacy', 'terms', 'not-found'];
 const home = render('home');
 const HERO = 'section[aria-labelledby="hero-title"]';
+const PUBLIC_DIR = join(import.meta.dir, '..', 'web', 'landing', 'public');
 
 describe('home page hero', () => {
   test('leads with the one headline "Find your breaking point"', async () => {
@@ -227,6 +230,32 @@ describe('every landing page', () => {
     const anchors = (await select(home, 'a[href^="#"]')).map(href);
     expect(anchors.length).toBeGreaterThan(0);
     for (const a of anchors) expect([a, ids.has(a.slice(1))]).toEqual([a, true]);
+  });
+
+  test.each(PAGES)('%s: every link goes to an external URL, a known route or an id on the page', async (page) => {
+    const html = render(page);
+    const ids = new Set((await select(html, '[id]')).map((e) => e.attrs.get('id')));
+    const links = (await select(html, 'a[href]')).map(href);
+    expect(links.length).toBeGreaterThan(0);
+    const ok = (to: string) =>
+      /^https:\/\//.test(to) ||
+      /^mailto:/.test(to) ||
+      ['/', '/privacy', '/terms'].includes(to) ||
+      /^\/app\/(#\/[\w-]+)?$/.test(to) ||
+      (to.startsWith('#') && ids.has(to.slice(1)));
+    for (const to of links) expect([to, ok(to)]).toEqual([to, true]);
+  });
+
+  test.each(PAGES)('%s: every image it shows exists in the public folder', async (page) => {
+    const html = render(page);
+    const urls = new Set<string>();
+    for (const img of await select(html, 'img')) {
+      urls.add(decode(img.attrs.get('src') ?? ''));
+      for (const part of decode(img.attrs.get('srcset') ?? '').split(',')) if (part.trim()) urls.add(part.trim().split(/\s+/)[0]!);
+    }
+    for (const url of urls) {
+      expect([url, existsSync(join(PUBLIC_DIR, ...url.split('/').filter(Boolean)))]).toEqual([url, true]);
+    }
   });
 
   test('home: no em dash characters in visible text', () => {

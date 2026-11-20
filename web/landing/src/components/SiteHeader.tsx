@@ -3,7 +3,7 @@
  * link, the theme toggle and the one action. A filled bar inside the 12 px page margin, like the
  * hero card. These pages are not hydrated: theme.ts bindThemeToggle() wires the toggle by hand.
  */
-import { ThemeToggle } from './Chrome.tsx';
+import { ThemeToggle } from './ThemeToggle.tsx';
 
 export function SiteHeader() {
   return (

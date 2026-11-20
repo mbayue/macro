@@ -9,7 +9,7 @@
  */
 import { useEffect, useState } from 'react';
 import { sanokSrc, sanokSrcSet, SANOK_PHOTOS, SANOK_SIZE } from '../sanok.ts';
-import { ThemeToggle } from './Chrome.tsx';
+import { ThemeToggle } from './ThemeToggle.tsx';
 import { StageBand } from './StageBand.tsx';
 
 /** How long each photograph stays fully shown; the fade itself is 1.6 s (.crossfade in landing.css). */

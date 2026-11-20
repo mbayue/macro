@@ -47,7 +47,7 @@ export function Gate() {
         data-ui
         role="group"
         aria-label="Where the plan points"
-        className="absolute bottom-[8%] -left-[4%] flex gap-[0.08em] rounded-[0.14em] bg-[#001e2b] p-[0.08em] text-[15vw] split:right-[-8%] split:bottom-[10%] split:left-auto split:text-[clamp(56px,8.5vw,150px)]"
+        className="absolute bottom-[8%] -left-[3%] flex flex-col items-stretch gap-[0.08em] rounded-[0.14em] bg-[#001e2b] p-[0.08em] text-[13vw] split:right-[-8%] split:flex-row split:bottom-[10%] split:left-auto split:text-[clamp(56px,8.5vw,150px)]"
       >
         <button type="button" aria-pressed={own} className={`${OPTION} ${own ? ON : OFF}`} onClick={() => setOwn(true)}>
           Your site

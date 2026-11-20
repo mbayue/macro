@@ -17,7 +17,7 @@ const ESCAPES = [
   { name: 'Over 1 GiB', note: 'Memory past the sandbox cap' },
 ] as const;
 
-const SHOT_ALT = "Macro's probe result: 5 of 5 actions contained, with the attempts each marked contained.";
+const SHOT_ALT = "Macro's probe result: 5 of 5 actions contained, probe passed.";
 const SHOT_IMG = 'h-full w-full object-cover object-left-top';
 
 export function Containment() {
@@ -45,8 +45,8 @@ export function Containment() {
       >
         <img
           src="/landing/img/ui-probe-dark.png"
-          width={742}
-          height={464}
+          width={816}
+          height={624}
           loading="lazy"
           decoding="async"
           alt={SHOT_ALT}
@@ -54,8 +54,8 @@ export function Containment() {
         />
         <img
           src="/landing/img/ui-probe-light.png"
-          width={742}
-          height={464}
+          width={816}
+          height={624}
           loading="lazy"
           decoding="async"
           alt={SHOT_ALT}
@@ -65,11 +65,11 @@ export function Containment() {
       {ESCAPES.map((e, i) => (
         <div
           key={e.name}
-          className="flex min-h-[180px] flex-col gap-2.5 rounded bg-surface p-[18px] last-of-type:col-span-2 split:min-h-[280px] split:p-7 split:last-of-type:col-span-1"
+          className="flex min-h-[180px] flex-col gap-2.5 rounded bg-surface p-4 last-of-type:col-span-2 split:min-h-[280px] split:p-7 split:last-of-type:col-span-1"
           data-reveal
           data-i={String(i + 2)}
         >
-          <span className="text-xl leading-[1.15] font-medium [overflow-wrap:anywhere] split:text-[clamp(22px,1.9vw,30px)]">{e.name}</span>
+          <span className="text-lg leading-[1.15] font-medium [overflow-wrap:anywhere] split:text-[clamp(22px,1.9vw,30px)]">{e.name}</span>
           <span className="text-base text-muted">{e.note}</span>
           <span className="mt-auto font-medium text-accent-text">Contained</span>
         </div>

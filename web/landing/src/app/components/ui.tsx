@@ -30,7 +30,7 @@ export function statusTone(status: RunStatus | string): Tone {
       return 'live';
     case 'completed':
       return 'ok';
-    case 'halted':
+    // A Supervisor halt is a deliberate decision, not a failure: neutral tone, the word and the reason carry it.
     case 'stopped':
     case 'timed_out':
       return 'warn';

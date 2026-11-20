@@ -38,7 +38,7 @@ export function statusBadgeKind(status: RunStatus): BadgeKind {
   switch (status) {
     case 'completed':
       return 'ok';
-    case 'halted':
+    // A Supervisor halt is a deliberate decision, not a failure: neutral tone, the word and the reason carry it.
     case 'stopped':
     case 'timed_out':
       return 'warn';

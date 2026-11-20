@@ -138,3 +138,17 @@ describe('every landing page', () => {
     expect(text).not.toContain('\u2014');
   });
 });
+
+describe('home page containment and gate (#16)', () => {
+  const PROOF = 'section#containment';
+
+  test('Containment lists the five escape attempts the probe blocks, each contained', async () => {
+    const section = (await select(home, PROOF))[0]?.text ?? '';
+    expect(section).toContain('Five escapes, five blocked');
+    expect(section).toContain('Containment Probe');
+    for (const name of ['example.com', '169.254.169.254', 'macro-api:3000', 'KEY, SECRET, TOKEN', 'Over 1 GiB']) {
+      expect(section).toContain(name);
+    }
+    expect(section.match(/Contained/g)?.length).toBe(5);
+  });
+});

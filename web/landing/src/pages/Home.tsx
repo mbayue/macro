@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { ApproveSwitch } from '../components/ApproveSwitch.tsx';
+import { Containment } from '../components/Containment.tsx';
 import { Hero } from '../components/Hero.tsx';
 import { SiteFooter } from '../components/SiteFooter.tsx';
 import { HowItWorks } from '../components/HowItWorks.tsx';
@@ -7,15 +7,6 @@ import { LatencyBars } from '../components/LatencyBars.tsx';
 import { FreeAccess } from '../components/FreeAccess.tsx';
 import { Waitlist } from '../components/Waitlist.tsx';
 import { FAQ } from '../data.ts';
-
-const TILES: readonly { name: string; note: string; result: string }[] = [
-  { name: 'example.com', note: 'HTTPS to a site outside the allowlist', result: 'Contained' },
-  { name: '169.254.169.254', note: 'The cloud metadata address', result: 'Contained' },
-  { name: 'macro-api:3000', note: "Macro's own API, from inside", result: 'Contained' },
-  { name: 'KEY, SECRET, TOKEN', note: 'Secret names in the environment', result: 'Contained' },
-  { name: 'Over 1 GiB', note: 'Memory past the sandbox cap', result: 'Contained' },
-  { name: 'gVisor runsc', note: 'Every stage gets a fresh sandbox, removed after', result: 'Confirmed gone' },
-];
 
 /**
  * Scroll reveals and the bridge photo drift. The hero is not part of this: it has a CSS-only entrance
@@ -117,40 +108,9 @@ export function Home() {
           </div>
         </section>
 
-        <ApproveSwitch />
         <HowItWorks />
 
-        <section className="proof" id="containment" aria-labelledby="proof-title">
-          <div className="wrap">
-            <div className="board">
-              <div className="tile tile--head" data-reveal>
-                <h2 id="proof-title">Five escapes, five blocked</h2>
-                <p>
-                  The containment probe runs a hostile script inside a real sandbox whenever you ask it to. This is the live result from
-                  the demo.
-                </p>
-              </div>
-              <div className="tile tile--shot" data-reveal data-i="1">
-                <img
-                  src="/landing/img/ui-probe.png"
-                  width={742}
-                  height={464}
-                  loading="lazy"
-                  alt="Macro's probe result: 5 of 5 actions contained, with a table of the five attempts each marked contained."
-                />
-              </div>
-              {TILES.map((t, i) => (
-                <div className="tile" data-reveal data-i={String(i + 2)} key={t.name}>
-                  <span className="tile__name">{t.name}</span>
-                  <span className="tile__note">
-                    {t.note}
-                    <b>{t.result}</b>
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+        <Containment />
 
         <LatencyBars />
         <FreeAccess />

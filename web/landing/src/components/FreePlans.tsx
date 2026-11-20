@@ -45,7 +45,7 @@ export function FreePlans() {
     >
       <h2
         id="pricing-title"
-        className="section-title max-w-[10ch] pb-5 split:col-start-1 split:row-start-1 split:self-start split:px-7 split:pb-8"
+        className="section-title max-w-[14ch] pb-5 split:col-start-1 split:row-start-1 split:self-start split:px-7 split:pb-8"
         data-reveal
       >
         Free while in early access

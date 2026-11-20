@@ -14,7 +14,7 @@ export function Close() {
       aria-labelledby="close-title"
     >
       <img
-        className="h-[120px] w-full rounded object-cover split:h-[380px] split:rounded-l-[0]"
+        className="h-[120px] w-full rounded object-cover split:h-[380px] split:rounded-l-none"
         src={sanokSrc('span', 800)}
         srcSet={sanokSrcSet('span')}
         sizes="(min-width: 53.75rem) 17vw, 50vw"
@@ -38,7 +38,7 @@ export function Close() {
           Try the live demo
         </a>
       </div>
-      <div className="h-[120px] rounded bg-surface-2 split:h-[380px] split:rounded-r-[0]" aria-hidden="true" data-reveal data-i="2" />
+      <div className="h-[120px] rounded bg-surface-2 split:h-[380px] split:rounded-r-none" aria-hidden="true" data-reveal data-i="2" />
       <Island name="waitlist" />
     </section>
   );

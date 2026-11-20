@@ -56,6 +56,10 @@ function inspectHtmlTags(html: string): { hasStyleAttr: boolean; hasInlineScript
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx']);
 const JSX_STYLE_PROP_RE = /\bstyle\s*=\s*\{/;
 const LEGACY_REACT_API_RE = /\b(useContext|forwardRef)\s*(?:<[^>]+>)?\s*\(/;
+/** Landing pages (everything outside app/) use theme colour tokens and the one radius; see docs/landing.md. */
+const LANDING_RAW_HEX_RE = /-\[(#[0-9a-fA-F]{3,8})\]/;
+const LANDING_ARBITRARY_RADIUS_RE = /\brounded(?:-[a-z]+)?-\[/;
+const EM_DASH = '\u2014';
 
 function stripComments(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
@@ -75,7 +79,7 @@ async function collectFiles(dir: string, root: string, matcher: (name: string) =
   return files;
 }
 
-/** Validates frontend `.ts`/`.tsx` sources against inline JSX `style={...}` props and legacy React `useContext`/`forwardRef` APIs. */
+/** Validates frontend sources: no JSX `style={...}` props or legacy React APIs anywhere; on landing pages (outside `app/`) also no raw hex colours, arbitrary radii or em dashes. */
 export async function validateWebSource(srcDir: string): Promise<string[]> {
   if (!existsSync(srcDir)) return [];
   const errors: string[] = [];
@@ -90,6 +94,17 @@ export async function validateWebSource(srcDir: string): Promise<string[]> {
     const legacyMatch = LEGACY_REACT_API_RE.exec(code);
     if (legacyMatch !== null) {
       errors.push(`${relPath} calls legacy React API ${legacyMatch[1]}(); use React 19 use() or ref-as-prop instead.`);
+    }
+    if (relPath.startsWith('app/')) continue;
+    const hex = LANDING_RAW_HEX_RE.exec(code);
+    if (hex !== null) {
+      errors.push(`${relPath} uses a raw colour ${hex[1]} in a class; use a theme colour token (docs/landing.md).`);
+    }
+    if (LANDING_ARBITRARY_RADIUS_RE.test(code)) {
+      errors.push(`${relPath} uses an arbitrary rounded-[...] radius; landing pages use plain \`rounded\` (docs/landing.md).`);
+    }
+    if (relPath.endsWith('.tsx') && code.includes(EM_DASH)) {
+      errors.push(`${relPath} contains an em dash; landing copy uses commas, colons or full stops (docs/landing.md).`);
     }
   }
 
@@ -155,6 +170,18 @@ export async function validateWebDist(outDir: string, budget: WeightBudget = WEI
       }
       if (/geist-mono/i.test(link.href)) {
         errors.push(`${page} references app font (${link.href}), which must only preload/load in /app/.`);
+      }
+    }
+  }
+
+  const homeHtml = htmlByPath.get('index.html');
+  if (homeHtml !== undefined) {
+    for (const link of extractLinkTags(homeHtml)) {
+      if (!link.rel.split(/\s+/).includes('stylesheet')) continue;
+      const cssPath = join(outDir, link.href.replace(/^\//, ''));
+      if (!existsSync(cssPath)) continue;
+      if (!/\.rounded\s*\{/.test(await readFile(cssPath, 'utf8'))) {
+        errors.push(`index.html stylesheet ${link.href} has no .rounded utility, so every landing corner renders square.`);
       }
     }
   }

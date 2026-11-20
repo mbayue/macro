@@ -1994,10 +1994,12 @@ export function createApp(deps: AppDeps): App {
       return apiError(500, 'internal', MSG.internal);
     }
     const detection = await detectDnsProvider(norm.host, deps.resolveNs, {
+      // Pass the injected resolvers even while Domain Connect is off, so discovery
+      // never falls back to real DNS when a caller (tests) supplied stubs.
+      resolveTxt: deps.resolveTxt,
+      resolveCname: deps.resolveCname,
       ...(DOMAIN_CONNECT_ENABLED
         ? {
-            resolveTxt: deps.resolveTxt,
-            resolveCname: deps.resolveCname,
             fetchFn: deps.fetchImpl as typeof fetch | undefined,
             verifyToken: token,
             redirectUri: config.auth ? `${config.auth.publicBaseUrl}/app/#/verify?domainConnect=done` : undefined,
@@ -2032,10 +2034,12 @@ export function createApp(deps: AppDeps): App {
     const pending = store.getPendingOriginVerification(auth.user.id);
     if (pending === null) return apiError(404, 'not_found', MSG.notFound);
     const detection = await detectDnsProvider(pending.host, deps.resolveNs, {
+      // Pass the injected resolvers even while Domain Connect is off, so discovery
+      // never falls back to real DNS when a caller (tests) supplied stubs.
+      resolveTxt: deps.resolveTxt,
+      resolveCname: deps.resolveCname,
       ...(DOMAIN_CONNECT_ENABLED
         ? {
-            resolveTxt: deps.resolveTxt,
-            resolveCname: deps.resolveCname,
             fetchFn: deps.fetchImpl as typeof fetch | undefined,
             verifyToken: pending.token,
             redirectUri: config.auth ? `${config.auth.publicBaseUrl}/app/#/verify?domainConnect=done` : undefined,

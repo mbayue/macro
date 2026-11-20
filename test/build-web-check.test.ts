@@ -139,7 +139,9 @@ describe('validateWebDist', () => {
 function writeBytes(dir: string, path: string, bytes: number): void {
   const full = join(dir, path);
   mkdirSync(join(full, '..'), { recursive: true });
-  writeFileSync(full, 'x'.repeat(bytes));
+  // Built landing CSS always carries the .rounded utility (validateWebDist checks it).
+  const head = path.endsWith('.css') ? '.rounded{}' : '';
+  writeFileSync(full, head + 'x'.repeat(Math.max(0, bytes - head.length)));
 }
 
 describe('measureWeightBudget', () => {
@@ -229,5 +231,38 @@ describe('validateWebSource', () => {
     expect(errors.some((e) => e.includes('BadStyle.tsx') && e.includes('style={...}'))).toBe(true);
     expect(errors.some((e) => e.includes('BadHook.ts') && e.includes('useContext()'))).toBe(true);
     expect(errors.some((e) => e.includes('BadRef.tsx') && e.includes('forwardRef()'))).toBe(true);
+  });
+
+  test('rejects raw hex colours, arbitrary radii and em dashes in landing sources, but not in /app/', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'macro-src-landing-'));
+    dirs.push(dir);
+    mkdirSync(join(dir, 'components'), { recursive: true });
+    mkdirSync(join(dir, 'app', 'components'), { recursive: true });
+    writeFileSync(join(dir, 'components', 'Hex.tsx'), 'export const Hex = () => <div className="bg-[#00ed64] p-4" />;\n');
+    writeFileSync(join(dir, 'components', 'Radius.tsx'), 'export const R = () => <div className="rounded-[2px]" />;\n');
+    writeFileSync(join(dir, 'components', 'Dash.tsx'), 'export const D = () => <p>Fast \u2014 and safe</p>;\n');
+    writeFileSync(join(dir, 'components', 'Ok.tsx'), '// bg-[#00ed64] in a comment is fine \u2014 really\nexport const Ok = () => <div className="rounded bg-accent text-ink" />;\n');
+    writeFileSync(join(dir, 'app', 'components', 'AppHex.tsx'), 'export const A = () => <div className="bg-[#00ed64] rounded-[2px]" />;\n');
+
+    const errors = await validateWebSource(dir);
+    expect(errors.some((e) => e.includes('components/Hex.tsx') && e.includes('#00ed64'))).toBe(true);
+    expect(errors.some((e) => e.includes('components/Radius.tsx') && e.includes('rounded-['))).toBe(true);
+    expect(errors.some((e) => e.includes('components/Dash.tsx') && e.includes('em dash'))).toBe(true);
+    expect(errors.some((e) => e.includes('Ok.tsx'))).toBe(false);
+    expect(errors.some((e) => e.includes('AppHex.tsx'))).toBe(false);
+  });
+});
+
+describe('landing CSS has the one radius', () => {
+  test('fails when the home page stylesheet lacks the plain rounded utility, passes when present', async () => {
+    const dir = makeValidDist();
+    mkdirSync(join(dir, 'landing', 'assets'), { recursive: true });
+    writeFileSync(join(dir, 'landing', 'assets', 'styles-abc.css'), '.p-4{padding:1rem}');
+    let errors = await validateWebDist(dir);
+    expect(errors.some((e) => e.includes('rounded'))).toBe(true);
+
+    writeFileSync(join(dir, 'landing', 'assets', 'styles-abc.css'), '.p-4{padding:1rem}.rounded{border-radius:var(--radius)}');
+    errors = await validateWebDist(dir);
+    expect(errors.some((e) => e.includes('rounded'))).toBe(false);
   });
 });

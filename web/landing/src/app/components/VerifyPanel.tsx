@@ -394,7 +394,7 @@ export function VerifyPanel({
 
           <div className="flex flex-wrap items-center gap-2.5">
             <Button type="button" disabled={busy !== null} onClick={() => void onCheck()}>
-              {busy === 'check' ? <Busy>Checking…</Busy> : 'I added the proof — check'}
+              {busy === 'check' ? <Busy>Checking…</Busy> : 'Check my proof'}
             </Button>
             {busy === 'cancel' ? (
               <Button type="button" variant="secondary" disabled>

@@ -10,7 +10,7 @@ import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { build as viteBuild } from 'vite';
-import { validateWebDist, validateWebSource } from './build-web-check.ts';
+import { measureWeightBudget, validateWebDist, validateWebSource } from './build-web-check.ts';
 
 const root = resolve(import.meta.dir, '..');
 const webDir = join(root, 'web');
@@ -64,7 +64,9 @@ for (const [file, page] of [
   await writeFile(path, html.replace('<!--app-->', server.render(page)));
 }
 
-// ---- 2. sanity checks ----
+// ---- 2. sanity checks (CSP, asset isolation and the weight budget, see build-web-check.ts) ----
+const weight = await measureWeightBudget(outDir);
+for (const p of weight.pages) console.log(`  ${p.page}: ${p.jsBytes} B landing JS, ${p.cssBytes} B CSS`);
 const errors = [...(await validateWebSource(join(landingDir, 'src'))), ...(await validateWebDist(outDir))];
 if (errors.length > 0) fail(errors.join('\n'));
 

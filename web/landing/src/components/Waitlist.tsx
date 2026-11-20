@@ -33,8 +33,13 @@ async function errorMessage(res: Response): Promise<string> {
   return 'Something went wrong. Please try again.';
 }
 
-/** The closing sentence; the blank in it is the form. Posts to /api/waitlist with a Turnstile token. */
-export function Waitlist() {
+/**
+ * The waitlist tile in the close of the page: an email field and a submit button at thumb size, the
+ * Turnstile container (empty unless Cloudflare needs the visitor), and one polite status line that
+ * carries the idle note, progress, success or the error. Posts to /api/waitlist with a Turnstile token.
+ * `className` places the tile in its parent's grid.
+ */
+export function Waitlist({ className = '' }: { className?: string }) {
   const [email, setEmail] = useState('');
   const [state, setState] = useState<State>({ kind: 'idle' });
   const box = useRef<HTMLDivElement>(null);
@@ -78,46 +83,51 @@ export function Waitlist() {
         : state.kind === 'sending'
           ? 'Adding you to the list.'
           : IDLE_NOTE;
+  const sending = state.kind === 'sending';
 
   return (
-    <section className="cta" id="waitlist" aria-labelledby="cta-title">
-      <div className="wrap">
-        <form noValidate onSubmit={(e) => void submit(e)}>
-          <h2 id="cta-title" data-reveal>
-            <label htmlFor="cta-email">Add</label>{' '}
-            <input
-              id="cta-email"
-              type="email"
-              name="email"
-              aria-label="Email address"
-              placeholder="you@shop.com"
-              autoComplete="email"
-              spellCheck={false}
-              required
-              aria-invalid={state.kind === 'error'}
-              aria-describedby="cta-note"
-              value={email}
-              disabled={state.kind === 'sending'}
-              onChange={(e) => setEmail(e.target.value)}
-            />{' '}
-            to the{' '}
-            <button type="submit" disabled={state.kind === 'sending'}>
-              waitlist
-            </button>
-          </h2>
-          <div className="cta__turnstile" ref={box} />
-          {/* The reveal sits on a wrapper: React rewriting the note's className (for the error style)
-              would otherwise remove the "in" class that useMotion adds, and the note would fade out. */}
-          <div data-reveal data-i="1">
-            <p id="cta-note" className={state.kind === 'error' ? 'cta__note cta__note--bad' : 'cta__note'} aria-live="polite">
-              {note}
-            </p>
-          </div>
-          <p className="cta__fine">
-            We store only your email and the time you signed up. See the <a href="/privacy">privacy policy</a>.
-          </p>
-        </form>
-      </div>
-    </section>
+    <div id="waitlist" className={`rounded bg-surface p-7 split:p-10 ${className}`} data-reveal data-i="1">
+      <form noValidate aria-labelledby="waitlist-title" onSubmit={(e) => void submit(e)}>
+        <h3 id="waitlist-title" className="text-[clamp(28px,2.4vw,40px)] leading-none tracking-[-0.03em]">
+          Hear first if paid plans launch
+        </h3>
+        <div className="mt-7 flex flex-col gap-2 split:flex-row">
+          <input
+            id="waitlist-email"
+            type="email"
+            name="email"
+            aria-label="Email address"
+            placeholder="you@shop.com"
+            autoComplete="email"
+            spellCheck={false}
+            required
+            aria-invalid={state.kind === 'error'}
+            aria-describedby="waitlist-note"
+            value={email}
+            disabled={sending}
+            onChange={(e) => setEmail(e.target.value)}
+            className="min-h-[52px] w-full min-w-0 flex-1 rounded border-0 bg-bg px-4 font-text text-[17px] text-ink placeholder:text-muted disabled:cursor-progress disabled:opacity-60 aria-invalid:outline-2 aria-invalid:outline-offset-2 aria-invalid:outline-bad"
+          />
+          <button type="submit" className="site-btn disabled:cursor-progress disabled:opacity-60" disabled={sending}>
+            Join the waitlist
+          </button>
+        </div>
+        <div className="mt-5 empty:hidden" ref={box} />
+        <p
+          id="waitlist-note"
+          className={`mt-5 min-h-[1.5em] text-base ${state.kind === 'error' ? 'text-bad' : 'text-ink'}`}
+          aria-live="polite"
+        >
+          {note}
+        </p>
+        <p className="mt-2 text-[15px] text-muted">
+          We store only your email and the time you signed up. See the{' '}
+          <a className="text-ink" href="/privacy">
+            privacy policy
+          </a>
+          .
+        </p>
+      </form>
+    </div>
   );
 }

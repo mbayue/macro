@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
-import { Footer, Nav } from '../components/Chrome.tsx';
+import { SiteFooter } from '../components/SiteFooter.tsx';
+import { SiteHeader } from '../components/SiteHeader.tsx';
+import { StageBand } from '../components/StageBand.tsx';
 
 const UPDATED = '14 November 2026';
 const CONTACT = 'hello@macro.my.id';
@@ -7,40 +9,64 @@ const CONTACT = 'hello@macro.my.id';
 type Section = { id: string; title: string; body: ReactNode };
 type Fact = { term: string; detail: ReactNode };
 
+/** Styles for the section bodies, which are plain p, ul, li, strong and code elements. */
+const PROSE =
+  '[&_p]:mt-3.5 [&_p]:max-w-[64ch] [&_li]:mt-3.5 [&_li]:max-w-[64ch] [&_ul]:m-0 [&_ul]:list-disc [&_ul]:pl-[1.2em] [&_li]:marker:text-accent-text [&_strong]:font-medium [&_code]:font-text [&_code]:text-[0.95em] [&_a]:underline';
+
 /**
- * One legal page: the text on the left, and on wide screens a sticky panel on the right with the
- * key facts and an index of the sections. web/landing/src/legal-spy.ts highlights the section in view.
+ * One legal page: the text on the left, and on screens 1100 px and wider (min-[68.75rem], the layout's
+ * width before the redesign, wider than `split`) a sticky panel on the right with the
+ * key facts and an index of the sections. web/landing/src/legal-spy.ts marks the section in view
+ * (aria-current on its index link, shown as the miniature stage band).
  */
 function Page({ title, lead, facts, sections }: { title: string; lead: string; facts: Fact[]; sections: Section[] }) {
   return (
     <>
-      <Nav home={false} />
-      <main className="legal wrap" id="top">
-        <header className="legal__head">
-          <h1>{title}</h1>
-          <p className="legal__updated">Last updated {UPDATED}</p>
-          <p className="legal__lead">{lead}</p>
+      <SiteHeader />
+      <main
+        id="top"
+        data-legal
+        className={`grid px-7 pt-12 split:px-8 split:pt-16 min-[68.75rem]:grid-cols-[minmax(0,760px)_minmax(0,340px)] min-[68.75rem]:justify-center min-[68.75rem]:gap-x-24`}
+      >
+        <StageBand size="strip" className="mb-12 split:mb-16" />
+        <header>
+          <h1 className="text-(length:--step-head)">{title}</h1>
+          <p className="mt-3 text-(length:--step-small) text-muted">Last updated {UPDATED}</p>
+          <p className="mt-7 max-w-[40ch] text-(length:--step-lead) leading-[1.4]">{lead}</p>
         </header>
 
-        <aside className="legal__side" aria-label="Summary">
-          <div className="legal__panel">
-            <section className="legal__facts" aria-labelledby="in-short">
-              <h2 id="in-short">In short</h2>
-              <dl>
+        <aside className={`mt-10 min-[68.75rem]:col-start-2 min-[68.75rem]:row-span-3 min-[68.75rem]:row-start-1 min-[68.75rem]:mt-0`} aria-label="Summary">
+          <div
+            className={`grid gap-10 min-[68.75rem]:sticky min-[68.75rem]:top-8 min-[68.75rem]:max-h-[calc(100vh-64px)] min-[68.75rem]:overflow-y-auto min-[68.75rem]:overscroll-contain min-[68.75rem]:[scrollbar-width:thin]`}
+          >
+            <section className="rounded bg-surface p-5 split:p-6" aria-labelledby="in-short">
+              <h2 id="in-short" className="font-text text-(length:--step-body) leading-[1.2] font-medium tracking-normal text-accent-text">
+                In short
+              </h2>
+              <dl className="mt-[18px] mb-0 grid gap-4">
                 {facts.map((f) => (
                   <div key={f.term}>
-                    <dt>{f.term}</dt>
-                    <dd>{f.detail}</dd>
+                    <dt className="text-(length:--step-small) text-muted">{f.term}</dt>
+                    <dd className="m-0 mt-0.5 text-(length:--step-small) leading-[1.45] [overflow-wrap:anywhere] [&_a]:underline">{f.detail}</dd>
                   </div>
                 ))}
               </dl>
             </section>
-            <nav className="legal__toc" aria-label="On this page">
-              <p className="legal__toc-title">On this page</p>
-              <ol>
+            <nav className={`hidden min-[68.75rem]:block`} aria-label="On this page" data-legal-toc>
+              <p className="text-(length:--step-small) text-muted">On this page</p>
+              <ol className="m-0 mt-3 grid list-none p-0 text-(length:--step-small)">
                 {sections.map((s) => (
                   <li key={s.id}>
-                    <a href={`#${s.id}`}>{s.title}</a>
+                    <a
+                      href={`#${s.id}`}
+                      className="group flex min-h-9 items-center gap-3 py-1.5 text-muted no-underline press aria-[current=true]:text-ink pointer-fine:hover:text-ink"
+                    >
+                      <StageBand
+                        size="bullet"
+                        className="shrink-0 opacity-0 transition-opacity duration-150 group-aria-[current=true]:opacity-100"
+                      />
+                      {s.title}
+                    </a>
                   </li>
                 ))}
               </ol>
@@ -48,16 +74,16 @@ function Page({ title, lead, facts, sections }: { title: string; lead: string; f
           </div>
         </aside>
 
-        <div className="legal__body">
+        <div className={`${PROSE} min-[68.75rem]:col-start-1 min-[68.75rem]:row-start-3`} data-legal-body>
           {sections.map((s) => (
-            <section key={s.id} id={s.id}>
-              <h2>{s.title}</h2>
+            <section key={s.id} id={s.id} className="mt-10 scroll-mt-8 split:mt-14">
+              <h2 className="font-text text-(length:--step-lead) font-medium tracking-[-0.01em]">{s.title}</h2>
               {s.body}
             </section>
           ))}
         </div>
       </main>
-      <Footer />
+      <SiteFooter />
     </>
   );
 }

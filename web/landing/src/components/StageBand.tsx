@@ -1,0 +1,54 @@
+/**
+ * The stage band, the page's one ornament: four segments sized 1 : 2 : 4 : 8 like the four Stages
+ * (25, 50, 100, 200 users) with 4 px gaps. Segments up to and including the Stage index `upTo` (0 to 3,
+ * 0 = first Stage only) take the accent, the rest the surface tone. Decorative only (aria-hidden); say the Stage in text nearby.
+ *
+ * Sizes: `strip` (the hero card's top strip), `track` (slider track, run fragment progress) and
+ * `bullet` (a miniature for list bullets). Inside a `data-ui` product fragment, pass `tone="ui"` for
+ * the fragment's fixed dark colours; on an accent field, pass `tone="ink"` (dark segments).
+ */
+export type StageBandSize = 'strip' | 'track' | 'bullet';
+
+const HEIGHT: Record<StageBandSize, string> = {
+  strip: 'h-10 split:h-14',
+  track: 'h-3.5',
+  bullet: 'h-2 w-3.5',
+};
+
+/**
+ * The four Stages' weights (1 : 2 : 4 : 8, like 25, 50, 100, 200 users), with the flex class that sizes
+ * each segment to its weight. Load the deck lays its Stage labels and slider stops out on the same weights.
+ */
+export const STAGE_SEGMENTS = [
+  { weight: 1, flex: 'flex-[1_1_0]' },
+  { weight: 2, flex: 'flex-[2_1_0]' },
+  { weight: 4, flex: 'flex-[4_1_0]' },
+  { weight: 8, flex: 'flex-[8_1_0]' },
+] as const;
+
+export function StageBand({
+  upTo = 3,
+  size = 'track',
+  tone = 'page',
+  className = '',
+}: {
+  upTo?: number;
+  size?: StageBandSize;
+  tone?: 'page' | 'ui' | 'ink';
+  className?: string;
+}) {
+  // Spring green is a fill; as a small marker on the light page it needs the darker accent-text (tokens.css).
+  const on = tone === 'ink' ? 'bg-accent-ink' : size === 'bullet' && tone === 'page' ? 'bg-accent-text' : 'bg-accent';
+  const off = tone === 'ui' ? 'bg-ui-line' : tone === 'ink' ? 'bg-accent-ink/30' : 'bg-surface-2';
+  const gap = size === 'bullet' ? 'gap-px' : 'gap-1';
+  return (
+    <span className={`flex ${gap} ${size === 'bullet' ? '' : 'w-full'} ${HEIGHT[size]} ${className}`} aria-hidden="true">
+      {STAGE_SEGMENTS.map(({ flex }, i) => (
+        <span
+          key={flex}
+          className={`block h-full ${flex} ${i <= upTo ? on : off}`}
+        />
+      ))}
+    </span>
+  );
+}

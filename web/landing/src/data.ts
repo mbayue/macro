@@ -1,54 +1,5 @@
 /** Content for the landing page. Numbers here are real (run d28cacd6) or decided prices. */
 
-export interface HowStep {
-  name: string;
-  title: string;
-  text: string;
-  img: string;
-  width: number;
-  height: number;
-  alt: string;
-}
-
-export const HOW_STEPS: readonly HowStep[] = [
-  {
-    name: 'Describe',
-    title: 'First, describe the traffic',
-    text: 'Write what you expect in plain words: who arrives, when, and what they do. For your own verified site, Macro auto-discovers safe routes before the AI drafts a staged k6 plan.',
-    img: '/landing/img/ui-describe.png',
-    width: 956,
-    height: 548,
-    alt: "Macro's planner: a text box for describing the expected traffic, three example prompts, and the Demo shop / My site target selector.",
-  },
-  {
-    name: 'Check',
-    title: 'Then the gate checks it',
-    text: 'Fixed code checks the target, the routes, the users and the duration. A rejected plan has no approve button, and nothing is sent.',
-    img: '/landing/img/ui-gate.png',
-    width: 742,
-    height: 840,
-    alt: 'A plan aimed at another website, rejected by the policy gate with rule 4.2 on the target field and 0 requests sent.',
-  },
-  {
-    name: 'Run',
-    title: 'Each stage runs sandboxed',
-    text: 'Stages of 25, 50, 100 and 200 users run in fresh gVisor sandboxes. After each one, the supervisor decides whether to go on.',
-    img: '/landing/img/ui-run.png',
-    width: 1156,
-    height: 785,
-    alt: 'A running test: stage 1 of 4 at 25 users, with stages 2 to 4 pending and a Stop run button.',
-  },
-  {
-    name: 'Report',
-    title: 'Finally, read the report',
-    text: 'Safe capacity, breaking point and the first route to slow down, all from measured numbers. The AI explanation sits in its own section.',
-    img: '/landing/img/ui-report.png',
-    width: 1146,
-    height: 880,
-    alt: 'The capacity report: safe capacity 200 users, breaking point not reached, first degraded route store_home, and a p95 chart.',
-  },
-];
-
 /** p95 latency (ms) per route and stage, from run d28cacd6 on the demo shop. */
 export interface Bar {
   route: string;
@@ -71,13 +22,6 @@ export const BARS: readonly Bar[] = [
   { route: 'catalog_list', stage: 4, vus: 200, p95: 618 },
   { route: 'product_detail', stage: 4, vus: 200, p95: 794 },
 ];
-export const BAR_MAX = 1611;
-/** The bar the section is about. */
-export const BAR_ACCENT = 9;
-/** Bars that print their value. */
-export const BAR_LABELLED: readonly number[] = [6, 9, 11];
-/** On a phone, eight bars at most, worst first. */
-export const BAR_PHONE_ORDER: readonly number[] = [9, 6, 11, 10, 0, 3, 7, 8];
 
 export interface Plan {
   name: string;
@@ -95,7 +39,7 @@ export interface Plan {
 
 /**
  * Launch pricing, not shown while Macro is free in early access (the page renders
- * components/FreeAccess.tsx instead; components/Pricing.tsx renders these plans).
+ * components/FreePlans.tsx instead; components/Pricing.tsx renders these plans).
  * One run costs Macro about 2 cents on Vultr: about 9,000 input and 2,500
  * output tokens on Serverless Inference ($0.55 and $2.75 per million), plus about five minutes
  * of a $10-a-month VM. The paid tiers cover larger generator VMs for higher user counts.
@@ -147,7 +91,7 @@ export const PLAN_ROWS: readonly { label: string; key: keyof Pick<Plan, 'sites' 
   { label: 'Peak virtual users', key: 'vus' },
   { label: 'Runs per month', key: 'runs' },
   { label: 'Run history', key: 'history' },
-  { label: 'Containment probe', key: 'probe' },
+  { label: 'Containment Probe', key: 'probe' },
   { label: 'Support', key: 'support' },
 ];
 
@@ -158,11 +102,11 @@ export const FAQ: readonly { q: string; a: string }[] = [
   },
   {
     q: 'What stops someone using it as a DDoS tool?',
-    a: 'The target must match a verified site (or the demo shop) exactly, and the policy gate caps users and duration in code. The sandbox network has no route out except a proxy that allows HTTPS to that one host, and concurrent runs queue FIFO.',
+    a: 'The target must match a verified site (or the demo shop) exactly, and the Policy Gate caps users and duration in code. The sandbox network has no route out except a proxy that allows HTTPS to that one host, and concurrent runs queue FIFO.',
   },
   {
     q: 'What does the AI decide, and what does code decide?',
-    a: 'The AI drafts the plan, suggests whether to continue after each stage, and writes the explanation. The target, limits, script, sandbox settings and stop-on-failure rule are fixed code.',
+    a: 'The AI drafts the plan, suggests whether to continue after each Stage, and writes the explanation. The target, limits, script, sandbox settings and stop-on-failure rule are fixed code.',
   },
   {
     q: 'Can the AI make up numbers in the report?',
@@ -174,7 +118,7 @@ export const FAQ: readonly { q: string; a: string }[] = [
   },
   {
     q: 'What runs inside the sandbox?',
-    a: 'k6, pinned by digest, under gVisor, as a non-root user with a read-only filesystem, 1 GiB of memory, one CPU and no secrets. Each stage gets a fresh sandbox that is removed afterwards.',
+    a: 'k6, pinned by digest, under gVisor, as a non-root user with a read-only filesystem, 1 GiB of memory, one CPU and no secrets. Each Stage gets a fresh sandbox that is removed afterwards.',
   },
   {
     q: 'Where does the traffic come from?',

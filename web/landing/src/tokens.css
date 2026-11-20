@@ -1,6 +1,6 @@
 /*
  * Shared by the landing site, the legal pages and the app: fonts, colour tokens for both themes,
- * base element styles, the button shape, the skip link and the theme toggle.
+ * base element styles, the skip link and the theme toggle. The landing button is .site-btn in landing.css.
  * Fonts: Stack Sans (OFL, see public/landing/fonts/OFL.txt).
  */
 @font-face { font-family: "Stack Sans Headline"; src: url("/landing/fonts/stack-sans-headline-300.woff2") format("woff2"); font-weight: 300; font-style: normal; font-display: swap; }
@@ -92,21 +92,6 @@ a { color: inherit; }
 ::selection { background: var(--accent); color: var(--accent-ink); }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 
-/* ---- Buttons: one shape on the whole page ---- */
-.btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  min-height: 48px; padding: 0 22px;
-  border: 0; border-radius: var(--radius);
-  background: var(--accent); color: var(--accent-ink);
-  font: 500 var(--step-body)/1 var(--text);
-  text-decoration: none; cursor: pointer;
-  transition: transform 140ms var(--ease), background-color 160ms ease;
-}
-.btn:active { transform: scale(0.97); }
-@media (hover: hover) and (pointer: fine) { .btn:hover { background: var(--accent-hover); } }
-.btn--ink { background: var(--field-1-ink); color: var(--field-1); }
-@media (hover: hover) and (pointer: fine) { .btn--ink:hover { background: #023430; } }
-
 /* Skip link: off screen until focused with the keyboard, then shown above the nav. */
 .skip-link {
   position: absolute; left: var(--margin); top: 12px; z-index: 10; transform: translateY(-200%);
@@ -120,7 +105,7 @@ a { color: inherit; }
   transition: background-color 150ms ease, transform 140ms var(--ease);
 }
 .theme-toggle:active { transform: scale(0.97); }
-@media (hover: hover) and (pointer: fine) { .theme-toggle:hover { background: var(--surface); } }
+@media (hover: hover) and (pointer: fine) { .theme-toggle:hover { background: var(--surface-2); } }
 .theme-toggle__sun { display: none; }
 :root[data-theme="dark"] .theme-toggle__sun { display: block; }
 :root[data-theme="dark"] .theme-toggle__moon { display: none; }

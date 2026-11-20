@@ -4,7 +4,7 @@ import { Hero } from '../components/Hero.tsx';
 import { SiteFooter } from '../components/SiteFooter.tsx';
 import { HowItWorks } from '../components/HowItWorks.tsx';
 import { LatencyBars } from '../components/LatencyBars.tsx';
-import { FreeAccess } from '../components/FreeAccess.tsx';
+import { FreePlans } from '../components/FreePlans.tsx';
 import { Waitlist } from '../components/Waitlist.tsx';
 import { FAQ } from '../data.ts';
 
@@ -153,7 +153,7 @@ export function Home() {
         </section>
 
         <LatencyBars />
-        <FreeAccess />
+        <FreePlans />
 
         <section className="faq wrap" aria-labelledby="faq-title">
           <h2 id="faq-title">Before you ask</h2>

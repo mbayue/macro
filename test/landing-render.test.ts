@@ -138,3 +138,23 @@ describe('every landing page', () => {
     expect(text).not.toContain('\u2014');
   });
 });
+
+describe('home page pricing', () => {
+  const PRICING = 'section[id="pricing"]';
+
+  test('says "Free while in early access" under the pricing anchor the hero links to', async () => {
+    const sections = await select(home, PRICING);
+    expect(sections.length).toBe(1);
+    expect((await select(home, `${PRICING} h2`)).map((h) => h.text)).toEqual(['Free while in early access']);
+  });
+
+  test('offers Self-host then Hosted early access, both $0, each ending in its action', async () => {
+    expect((await select(home, `${PRICING} article h3`)).map((h) => h.text)).toEqual(['Self-host', 'Hosted early access']);
+    for (const p of await select(home, `${PRICING} article`)) expect(p.text).toContain('$0');
+    const links = (await select(home, `${PRICING} article a`)).map((a) => [a.text, href(a)]);
+    expect(links).toEqual([
+      ['View on GitHub', 'https://github.com/mbayue/macro'],
+      ['Try the live demo', '/app/'],
+    ]);
+  });
+});

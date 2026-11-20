@@ -47,15 +47,12 @@ function Chips({ items }: { items: readonly string[] }) {
   );
 }
 
-function Fragment({ title, badge, items, onDevice }: { title: string; badge: string; items: readonly string[]; onDevice: boolean }) {
+function Fragment({ badge, items, onDevice }: { badge: string; items: readonly string[]; onDevice: boolean }) {
   return (
     <span data-ui className="mt-5 flex flex-col gap-4 rounded bg-ui-bg p-4 text-white split:p-5" aria-hidden="true">
-      <span className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-[15px] font-medium">{title}</span>
-        <span className={`rounded px-2 py-1 text-[13px] leading-none ${onDevice ? 'bg-accent text-accent-ink' : 'bg-ui-line text-white'}`}>
+        <span className={`self-start rounded px-2 py-1 text-[13px] leading-none ${onDevice ? 'bg-accent text-accent-ink' : 'bg-ui-line text-white'}`}>
           {badge}
         </span>
-      </span>
       <Chips items={items} />
     </span>
   );
@@ -98,15 +95,15 @@ export function HybridAi() {
           In the Test Studio, before you submit. It rewrites your traffic description into a clearer draft with user counts, a traffic
           shape and what the users do. Nothing changes until you apply it.
         </p>
-        <Fragment title="Scenario Assistant" badge="On-device · Gemini Nano" items={PRESETS} onDevice />
+        <Fragment badge="On-device · Gemini Nano" items={PRESETS} onDevice />
       </div>
-      <div className="split:col-span-5 split:mt-20">
+      <div className="split:col-span-5 split:mt-12">
         <h3 className="text-xl font-medium">Report Q&amp;A</h3>
         <p className="mt-2 max-w-[44ch]">
           On the AI tab of a finished Capacity Report. It answers your questions from that run&apos;s measured stage and route metrics
           only.
         </p>
-        <Fragment title="Report Q&A" badge="Cloud · Gemini" items={QUESTIONS} onDevice={false} />
+        <Fragment badge="Cloud · Gemini" items={QUESTIONS} onDevice={false} />
       </div>
 
       <div className="flex flex-wrap items-center gap-x-8 gap-y-5 split:col-span-12">

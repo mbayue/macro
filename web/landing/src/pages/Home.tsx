@@ -6,6 +6,7 @@ import { HowItWorks } from '../components/HowItWorks.tsx';
 import { LatencyBars } from '../components/LatencyBars.tsx';
 import { FreeAccess } from '../components/FreeAccess.tsx';
 import { Waitlist } from '../components/Waitlist.tsx';
+import { WhyMeasured } from '../components/WhyMeasured.tsx';
 import { FAQ } from '../data.ts';
 
 const TILES: readonly { name: string; note: string; result: string }[] = [
@@ -95,27 +96,7 @@ export function Home() {
       <main id="top">
         <Hero />
 
-        <section className="bridge" id="bridge" aria-label="Why staged load tests">
-          <figure id="bridge-figure">
-            <div className="bridge__frame" id="bridge-frame">
-              <img
-                src="/landing/img/bridge-load-test-sanok.jpg"
-                width={1920}
-                height={1280}
-                alt="Two heavy trucks parked on a new cable-stayed bridge in Sanok, Poland, while engineers in hard hats measure it during a load test."
-              />
-            </div>
-            <figcaption>
-              Test trucks on the new bridge in Sanok before it opened. Photo:{' '}
-              <a href="https://commons.wikimedia.org/w/index.php?curid=192922764">Marsilar</a>, CC BY-SA 4.0, via Wikimedia Commons.
-            </figcaption>
-          </figure>
-          <div className="bridge__text">
-            <p data-reveal>
-              Before a bridge opens, engineers park loaded trucks on it and measure. Macro does that to your site, one stage at a time.
-            </p>
-          </div>
-        </section>
+        <WhyMeasured />
 
         <ApproveSwitch />
         <HowItWorks />

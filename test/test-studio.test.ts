@@ -18,6 +18,7 @@ import {
 } from '../web/landing/src/app/components/studio/studio-view.ts';
 import { TrafficComposer, type TrafficComposerProps } from '../web/landing/src/app/components/studio/TrafficComposer.tsx';
 import { AppContext, type AppContextValue } from '../web/landing/src/app/context.tsx';
+import { TargetPicker, type TargetPickerProps } from '../web/landing/src/app/components/studio/TargetPicker.tsx';
 
 function makePlan(overrides?: Partial<TestPlan>): TestPlan {
   return {
@@ -349,5 +350,44 @@ describe('TrafficComposer draft button', () => {
   test('is disabled only while a request is in flight', () => {
     expect(draftButton(render({ busy: 'planning' }))).toContain(' disabled="');
     expect(draftButton(render({ busy: 'approving' }))).toContain(' disabled="');
+  });
+});
+describe('TargetPicker verified own site', () => {
+  function render(overrides: Partial<TargetPickerProps>): string {
+    const props: TargetPickerProps = {
+      targetMode: 'own',
+      webOrigin: 'https://yue.macro.my.id',
+      me: {
+        user: { id: 'u_1', email: 'dev@example.com', githubLogin: null },
+        verifiedOrigin: { origin: 'https://shop.example.com', host: 'shop.example.com' },
+        pendingVerification: null,
+      },
+      verifiedOrigin: { origin: 'https://shop.example.com', host: 'shop.example.com' },
+      showVerify: false,
+      disabled: false,
+      clearing: false,
+      clearError: null,
+      onChooseTarget: () => {},
+      onClearVerifiedOrigin: () => {},
+      ...overrides,
+    };
+    return renderToStaticMarkup(createElement(TargetPicker, props));
+  }
+
+  test('names the clear action for what it does instead of "Change"', () => {
+    const html = render({});
+    expect(html).toContain('>Use another site<');
+    expect(html).not.toContain('>Change<');
+  });
+
+  test('shows a busy line while the verified site is being removed', () => {
+    const html = render({ clearing: true });
+    expect(html).toContain('Removing the verified site…');
+    expect(html).not.toContain('>Use another site<');
+  });
+
+  test('shows a failed removal in an alert region', () => {
+    const html = render({ clearError: { code: 'internal', message: 'Something went wrong on our side.' } });
+    expect(html).toMatch(/role="alert"[^>]*>.*Something went wrong on our side\./);
   });
 });

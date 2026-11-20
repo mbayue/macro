@@ -1,6 +1,6 @@
 /**
  * "The gate says yes / no": the Policy Gate as one control blown up. A two-option segmented control
- * (aria-pressed on each option) at poster size, cropped by the section's edge, on a full-bleed field
+ * (aria-pressed on each option) at poster size, sized to fit inside the page margins at every width, on a full-bleed field
  * that is spring green for the accepted plan and the bad red for the rejected one. The field keeps
  * these fixed colours in both themes, like a product fragment.
  *
@@ -49,7 +49,7 @@ export function Gate() {
         data-i="1"
         role="group"
         aria-label="Where the plan points"
-        className="absolute bottom-[8%] -left-[3%] flex flex-col items-stretch gap-[0.08em] rounded bg-ui-bg p-[0.08em] text-[13vw] split:right-[-8%] split:flex-row split:bottom-[10%] split:left-auto split:text-[clamp(56px,8.5vw,150px)]"
+        className="absolute bottom-[8%] left-5 flex flex-col items-start gap-[0.08em] rounded bg-ui-bg p-[0.08em] text-[clamp(40px,11vw,88px)] split:right-10 split:left-auto split:flex-row split:bottom-[10%] split:text-[min(150px,calc((100vw-80px)/13.5))]"
       >
         <button type="button" aria-pressed={own} className={`${OPTION} ${own ? ON : OFF}`} onClick={() => setOwn(true)}>
           Your site

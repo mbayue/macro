@@ -26,7 +26,7 @@ function Page({ title, lead, facts, sections }: { title: string; lead: string; f
       <main
         id="top"
         data-legal
-        className={`grid px-7 pt-12 split:px-8 split:pt-16 min-[68.75rem]:grid-cols-[minmax(0,760px)_minmax(0,320px)] min-[68.75rem]:justify-between min-[68.75rem]:gap-x-16`}
+        className={`grid px-7 pt-12 split:px-8 split:pt-16 min-[68.75rem]:grid-cols-[minmax(0,760px)_minmax(0,340px)] min-[68.75rem]:justify-center min-[68.75rem]:gap-x-24`}
       >
         <StageBand size="strip" className="mb-12 split:mb-16" />
         <header>

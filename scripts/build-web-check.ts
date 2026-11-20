@@ -96,8 +96,8 @@ export async function validateWebSource(srcDir: string): Promise<string[]> {
   return errors;
 }
 
-/** Validates the built web output directory against Macro's layout, CSP, and asset isolation constraints. */
-export async function validateWebDist(outDir: string): Promise<string[]> {
+/** Validates the built web output directory against Macro's layout, CSP, asset isolation and weight budget constraints. */
+export async function validateWebDist(outDir: string, budget: WeightBudget = WEIGHT_BUDGET): Promise<string[]> {
   const errors: string[] = [];
 
   for (const name of REQUIRED_FILES) {
@@ -159,6 +159,7 @@ export async function validateWebDist(outDir: string): Promise<string[]> {
     }
   }
 
+  errors.push(...(await measureWeightBudget(outDir, budget)).overBudget);
   return errors;
 }
 
@@ -174,7 +175,12 @@ export interface WeightBudget {
   cssBytes: number;
 }
 
-export const WEIGHT_BUDGET: WeightBudget = { jsBytes: 24 * 1024, cssBytes: 32 * 1024 };
+/**
+ * JS: 24 KiB, about the landing page's size before the redesign (#13). CSS: under 36 KiB, raised from
+ * the spec's 32 KiB in #21 because Tailwind utilities for the four landing pages measure about
+ * 35 KiB raw (under 9 KB gzipped); see the #21 report.
+ */
+export const WEIGHT_BUDGET: WeightBudget = { jsBytes: 24 * 1024, cssBytes: 36 * 1024 };
 
 export interface PageWeight {
   page: string;

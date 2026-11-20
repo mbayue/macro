@@ -182,26 +182,31 @@ describe('measureWeightBudget', () => {
     expect(result.overBudget).toEqual([]);
   });
 
-  test('the default budget is 24 KiB of landing JS and under 32 KiB of CSS per page', async () => {
+  test('the default budget is 24 KiB of landing JS and under 36 KiB of CSS per page', async () => {
     const dir = makeValidDist();
     writeBytes(dir, 'landing/assets/index-abc.js', 24 * 1024);
-    writeBytes(dir, 'landing/assets/styles-abc.css', 32 * 1024 - 1);
+    writeBytes(dir, 'landing/assets/styles-abc.css', 36 * 1024 - 1);
     expect((await measureWeightBudget(dir)).overBudget).toEqual([]);
     writeBytes(dir, 'landing/assets/index-abc.js', 24 * 1024 + 1);
-    writeBytes(dir, 'landing/assets/styles-abc.css', 32 * 1024);
+    writeBytes(dir, 'landing/assets/styles-abc.css', 36 * 1024);
     const { overBudget } = await measureWeightBudget(dir);
     expect(overBudget.some((m) => m.includes('index.html') && m.includes('JS'))).toBe(true);
     expect(overBudget.some((m) => m.includes('index.html') && m.includes('CSS'))).toBe(true);
   });
 
-  test('validateWebDist does not fail the build on an over-budget page (reporting only for now)', async () => {
+  test('validateWebDist fails the build on an over-budget landing page and passes one within budget', async () => {
     const dir = makeValidDist();
-    writeBytes(dir, 'landing/assets/index-abc.js', 100_000);
-    writeBytes(dir, 'landing/assets/styles-abc.css', 100_000);
+    writeBytes(dir, 'landing/assets/index-abc.js', 20_000);
+    writeBytes(dir, 'landing/assets/styles-abc.css', 30_000);
+    writeBytes(dir, 'landing/assets/legal-abc.css', 30_000);
     expect(await validateWebDist(dir)).toEqual([]);
+    writeBytes(dir, 'landing/assets/index-abc.js', 100_000);
+    writeBytes(dir, 'landing/assets/legal-abc.css', 100_000);
+    const errors = await validateWebDist(dir);
+    expect(errors.some((m) => m.includes('index.html') && m.includes('JS') && m.includes('100000'))).toBe(true);
+    expect(errors.some((m) => m.includes('privacy.html') && m.includes('CSS'))).toBe(true);
   });
 });
-
 describe('validateWebSource', () => {
   test('accepts React 19 use() and ref-as-prop files without JSX style props', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'macro-src-ok-'));

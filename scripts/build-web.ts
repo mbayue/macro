@@ -64,13 +64,10 @@ for (const [file, page] of [
   await writeFile(path, html.replace('<!--app-->', server.render(page)));
 }
 
-// ---- 2. sanity checks ----
-const errors = [...(await validateWebSource(join(landingDir, 'src'))), ...(await validateWebDist(outDir))];
-if (errors.length > 0) fail(errors.join('\n'));
-
-// Weight budget: reported only for now; the landing redesign's finish ticket (#21) makes it fail the build.
+// ---- 2. sanity checks (CSP, asset isolation and the weight budget, see build-web-check.ts) ----
 const weight = await measureWeightBudget(outDir);
 for (const p of weight.pages) console.log(`  ${p.page}: ${p.jsBytes} B landing JS, ${p.cssBytes} B CSS`);
-for (const message of weight.overBudget) console.warn(`Weight budget (not enforced yet): ${message}`);
+const errors = [...(await validateWebSource(join(landingDir, 'src'))), ...(await validateWebDist(outDir))];
+if (errors.length > 0) fail(errors.join('\n'));
 
 console.log('Built web/dist: the planner app at /app/ and the prerendered landing site.');

@@ -69,6 +69,10 @@
 
 @layer base {
   a { text-underline-offset: 0.2em; }
+  /* Legal pages: the "On this page" index scrolls to its section smoothly. */
+  @media (prefers-reduced-motion: no-preference) {
+    html:has([data-legal]) { scroll-behavior: smooth; }
+  }
 }
 
 @layer components {

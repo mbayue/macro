@@ -62,6 +62,9 @@
   --color-ui-field: var(--ui-field);
   --color-white: #ffffff;
 
+  /* Bare `rounded` reads the theme's --radius; inline, it resolves to the token (tokens.css, 6px). */
+  --radius: var(--radius);
+
   --font-display: var(--display);
   --font-text: var(--text);
 }

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Containment } from '../components/Containment.tsx';
+import { Gate } from '../components/Gate.tsx';
 import { Hero } from '../components/Hero.tsx';
 import { SiteFooter } from '../components/SiteFooter.tsx';
 import { HowItWorks } from '../components/HowItWorks.tsx';
@@ -111,6 +112,7 @@ export function Home() {
         <HowItWorks />
 
         <Containment />
+        <Gate />
 
         <LatencyBars />
         <FreeAccess />

@@ -64,6 +64,7 @@
 
   --font-display: var(--display);
   --font-text: var(--text);
+  --radius: var(--radius); /* makes plain `rounded` exist; the value stays in tokens.css (base layer wins) */
 }
 /* The one radius is `rounded` (border-radius: var(--radius) from tokens.css); no other radius keys exist. */
 

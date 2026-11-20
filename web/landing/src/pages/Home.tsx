@@ -2,8 +2,7 @@ import { useEffect } from 'react';
 import { ApproveSwitch } from '../components/ApproveSwitch.tsx';
 import { Hero } from '../components/Hero.tsx';
 import { SiteFooter } from '../components/SiteFooter.tsx';
-import { HowItWorks } from '../components/HowItWorks.tsx';
-import { LatencyBars } from '../components/LatencyBars.tsx';
+import { LoadTheDeck } from '../components/LoadTheDeck.tsx';
 import { FreeAccess } from '../components/FreeAccess.tsx';
 import { Waitlist } from '../components/Waitlist.tsx';
 import { FAQ } from '../data.ts';
@@ -94,6 +93,7 @@ export function Home() {
       </a>
       <main id="top">
         <Hero />
+        <LoadTheDeck />
 
         <section className="bridge" id="bridge" aria-label="Why staged load tests">
           <figure id="bridge-figure">
@@ -118,7 +118,6 @@ export function Home() {
         </section>
 
         <ApproveSwitch />
-        <HowItWorks />
 
         <section className="proof" id="containment" aria-labelledby="proof-title">
           <div className="wrap">
@@ -152,7 +151,6 @@ export function Home() {
           </div>
         </section>
 
-        <LatencyBars />
         <FreeAccess />
 
         <section className="faq wrap" aria-labelledby="faq-title">

@@ -160,6 +160,25 @@ describe('privacy, terms and 404 pages', () => {
     const main = (await select(html, 'main[id]'))[0]?.attrs.get('id');
     expect(skip && href(skip)).toBe(`#${main}`);
   });
+
+  test('not-found offers the Containment Probe, the Runs Table and sign-in at their /app/ routes', async () => {
+    const links = (await select(render('not-found'), 'main a')).map((a) => [a.text, href(a)]);
+    const shortcuts = links.filter(([, to]) => to?.startsWith('/app/#/'));
+    const names = ['Containment Probe', 'Runs Table', 'Sign in'];
+    expect(shortcuts.length).toBe(3);
+    shortcuts.forEach(([text], i) => expect(text?.startsWith(names[i]!)).toBe(true));
+    expect(shortcuts.map(([, to]) => to)).toEqual(['/app/#/probe', '/app/#/runs', '/app/#/sign-in']);
+  });
+
+  test('not-found says the page does not exist and links home', async () => {
+    const html = render('not-found');
+    expect((await select(html, 'h1'))[0]?.text).toBe('Nothing lives at this URL');
+    expect((await select(html, 'main a')).map(href)).toContain('/');
+  });
+
+  test.each(OTHER)('%s has no em dash characters in visible text', (page) => {
+    expect(render(page).replace(/<[^>]*>/g, ' ')).not.toContain('\u2014');
+  });
 });
 
 describe('every landing page', () => {

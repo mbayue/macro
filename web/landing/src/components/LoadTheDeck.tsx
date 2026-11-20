@@ -101,15 +101,15 @@ function RunFragment({ stage }: { stage: number }) {
                   {r.route}
                 </th>
                 <td className="w-full py-2.5">
-                  <span className="flex items-center gap-3">
+                  <span className="flex flex-wrap items-center gap-x-3 gap-y-2 split:flex-nowrap">
                     <span
                       ref={(el) => {
                         bars.current[i] = el;
                       }}
-                      className={`h-2 flex-1 origin-left scale-x-[var(--v,0)] rounded-[2px] transition-[scale] duration-[400ms] ease-(--ease) motion-reduce:transition-none ${slowest ? 'bg-accent' : 'bg-bar'}`}
+                      className={`order-last h-2 basis-full origin-left split:order-none split:flex-1 split:basis-auto scale-x-[var(--v,0)] rounded-[2px] transition-[scale] duration-[400ms] ease-(--ease) motion-reduce:transition-none ${slowest ? 'bg-accent' : 'bg-bar'}`}
                     />
-                    <b className="min-w-[72px] text-right font-medium tabular-nums">{r.p95.toLocaleString('en')} ms</b>
-                    <span className={`w-14 text-[13px] ${slowest ? 'text-accent' : ''}`}>{slowest ? 'Slowest' : ''}</span>
+                    <b className="font-medium tabular-nums split:min-w-[72px] split:text-right">{r.p95.toLocaleString('en')} ms</b>
+                    <span className={`text-[13px] split:w-14 ${slowest ? 'text-accent' : ''}`}>{slowest ? 'Slowest' : ''}</span>
                   </span>
                 </td>
               </tr>

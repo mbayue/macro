@@ -53,18 +53,47 @@ function inspectHtmlTags(html: string): { hasStyleAttr: boolean; hasInlineScript
   return { hasStyleAttr, hasInlineScript };
 }
 
-async function collectHtmlFiles(dir: string, root: string): Promise<string[]> {
+const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx']);
+const JSX_STYLE_PROP_RE = /\bstyle\s*=\s*\{/;
+const LEGACY_REACT_API_RE = /\b(useContext|forwardRef)\s*(?:<[^>]+>)?\s*\(/;
+
+function stripComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+}
+
+async function collectFiles(dir: string, root: string, matcher: (name: string) => boolean): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
   const files: string[] = [];
   for (const entry of entries) {
     const fullPath = join(dir, entry.name);
     if (entry.isDirectory()) {
-      files.push(...(await collectHtmlFiles(fullPath, root)));
-    } else if (entry.isFile() && entry.name.endsWith('.html')) {
+      files.push(...(await collectFiles(fullPath, root, matcher)));
+    } else if (entry.isFile() && matcher(entry.name)) {
       files.push(relative(root, fullPath).replace(/\\/g, '/'));
     }
   }
   return files;
+}
+
+/** Validates frontend `.ts`/`.tsx` sources against inline JSX `style={...}` props and legacy React `useContext`/`forwardRef` APIs. */
+export async function validateWebSource(srcDir: string): Promise<string[]> {
+  if (!existsSync(srcDir)) return [];
+  const errors: string[] = [];
+  const sourceFiles = await collectFiles(srcDir, srcDir, (name) => SOURCE_EXTENSIONS.has(name.slice(name.lastIndexOf('.'))));
+
+  for (const relPath of sourceFiles) {
+    const raw = await readFile(join(srcDir, relPath), 'utf8');
+    const code = stripComments(raw);
+    if (relPath.endsWith('.tsx') && JSX_STYLE_PROP_RE.test(code)) {
+      errors.push(`${relPath} contains a JSX style={...} prop, which the CSP blocks.`);
+    }
+    const legacyMatch = LEGACY_REACT_API_RE.exec(code);
+    if (legacyMatch !== null) {
+      errors.push(`${relPath} calls legacy React API ${legacyMatch[1]}(); use React 19 use() or ref-as-prop instead.`);
+    }
+  }
+
+  return errors;
 }
 
 /** Validates the built web output directory against Macro's layout, CSP, and asset isolation constraints. */
@@ -84,7 +113,7 @@ export async function validateWebDist(outDir: string): Promise<string[]> {
   if (!existsSync(outDir)) return errors;
 
   const htmlByPath = new Map<string, string>();
-  const htmlFiles = await collectHtmlFiles(outDir, outDir);
+  const htmlFiles = await collectFiles(outDir, outDir, (name) => name.endsWith('.html'));
   for (const relPath of htmlFiles) {
     const html = await readFile(join(outDir, relPath), 'utf8');
     htmlByPath.set(relPath, html);

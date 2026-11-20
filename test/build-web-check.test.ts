@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { validateWebDist } from '../scripts/build-web-check.ts';
+import { validateWebDist, validateWebSource } from '../scripts/build-web-check.ts';
 
 const dirs: string[] = [];
 
@@ -133,5 +133,30 @@ describe('validateWebDist', () => {
     );
     const errors = await validateWebDist(dir);
     expect(errors.some((e) => e.includes('app/index.html') && e.includes('geist-mono'))).toBe(true);
+  });
+});
+
+describe('validateWebSource', () => {
+  test('accepts React 19 use() and ref-as-prop files without JSX style props', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'macro-src-ok-'));
+    dirs.push(dir);
+    writeFileSync(
+      join(dir, 'App.tsx'),
+      'import { use } from "react";\nexport function Box({ ref }: { ref?: React.Ref<HTMLDivElement> }) { return <div ref={ref} />; }\nexport function useVal(c: React.Context<string>) { return use(c); }\n',
+    );
+    expect(await validateWebSource(dir)).toEqual([]);
+  });
+
+  test('rejects JSX style={...}, useContext(), and forwardRef()', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'macro-src-bad-'));
+    dirs.push(dir);
+    writeFileSync(join(dir, 'BadStyle.tsx'), 'export function BadStyle() { return <div style={{ width: 10 }} />; }\n');
+    writeFileSync(join(dir, 'BadHook.ts'), 'import { useContext } from "react";\nexport const read = (c: any) => useContext(c);\n');
+    writeFileSync(join(dir, 'BadRef.tsx'), 'import { forwardRef } from "react";\nexport const Wrap = forwardRef<HTMLDivElement>((_p, ref) => <div ref={ref} />);\n');
+
+    const errors = await validateWebSource(dir);
+    expect(errors.some((e) => e.includes('BadStyle.tsx') && e.includes('style={...}'))).toBe(true);
+    expect(errors.some((e) => e.includes('BadHook.ts') && e.includes('useContext()'))).toBe(true);
+    expect(errors.some((e) => e.includes('BadRef.tsx') && e.includes('forwardRef()'))).toBe(true);
   });
 });

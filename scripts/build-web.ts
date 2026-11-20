@@ -10,7 +10,7 @@ import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { build as viteBuild } from 'vite';
-import { validateWebDist } from './build-web-check.ts';
+import { validateWebDist, validateWebSource } from './build-web-check.ts';
 
 const root = resolve(import.meta.dir, '..');
 const webDir = join(root, 'web');
@@ -65,7 +65,7 @@ for (const [file, page] of [
 }
 
 // ---- 2. sanity checks ----
-const errors = await validateWebDist(outDir);
+const errors = [...(await validateWebSource(join(landingDir, 'src'))), ...(await validateWebDist(outDir))];
 if (errors.length > 0) fail(errors.join('\n'));
 
 console.log('Built web/dist: the planner app at /app/ and the prerendered landing site.');

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import fc from 'fast-check';
-import { K6_IMAGE_DEFAULT, parseConfig } from '../src/config.ts';
+import { DEFAULTS, K6_IMAGE_DEFAULT, parseConfig } from '../src/config.ts';
 import type { Config } from '../src/config.ts';
 import type {
   ContainerCreateBody,
@@ -620,7 +620,7 @@ describe('Egress_Proxy create body and Run network (6.5, 6.15)', () => {
         networkName: NET_NAME,
         proxyDir: `${RUN_DIR}/proxy`,
         allowHosts: ['yue.macro.my.id', 'api.yue.macro.my.id'],
-        blockIps: ['45.77.37.116'],
+        blockIps: [DEFAULTS.macroVmIp],
       }),
     );
     const body = proxyCall?.[1] as ContainerCreateBody;
@@ -634,7 +634,7 @@ describe('Egress_Proxy create body and Run network (6.5, 6.15)', () => {
       NetworkMode: NET_NAME,
     });
     expect(body.Env).toContain('ALLOW_HOSTS=yue.macro.my.id,api.yue.macro.my.id');
-    expect(body.Env).toContain('BLOCK_IPS=45.77.37.116');
+    expect(body.Env).toContain(`BLOCK_IPS=${DEFAULTS.macroVmIp}`);
     expect(body.Labels).toMatchObject({ macro: '1', 'macro.run': RUN_ID });
 
     const proxyId = net.proxyContainerId;

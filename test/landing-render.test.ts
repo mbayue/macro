@@ -5,6 +5,8 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { render, type PageName } from '../web/landing/src/entry-server.tsx';
+import LEGAL_TEXT from './fixtures/legal-text.json';
+import { LEGAL_PAGES, mainText } from './legal-text.ts';
 
 interface Found {
   attrs: Map<string, string>;
@@ -118,6 +120,12 @@ describe('home page footer', () => {
       expect(links).toContain(`https://commons.wikimedia.org/w/index.php?curid=${curid}`);
     }
     expect(links).toContain('https://creativecommons.org/licenses/by-sa/4.0/');
+  });
+});
+
+describe('privacy, terms and 404 pages', () => {
+  test.each(LEGAL_PAGES)('%s keeps its legal wording word for word', (page) => {
+    expect(mainText(render(page))).toBe(LEGAL_TEXT[page]);
   });
 });
 

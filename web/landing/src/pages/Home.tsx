@@ -4,9 +4,9 @@ import { Hero } from '../components/Hero.tsx';
 import { SiteFooter } from '../components/SiteFooter.tsx';
 import { HowItWorks } from '../components/HowItWorks.tsx';
 import { LatencyBars } from '../components/LatencyBars.tsx';
+import { Faq } from '../components/Faq.tsx';
 import { FreePlans } from '../components/FreePlans.tsx';
 import { Waitlist } from '../components/Waitlist.tsx';
-import { FAQ } from '../data.ts';
 
 const TILES: readonly { name: string; note: string; result: string }[] = [
   { name: 'example.com', note: 'HTTPS to a site outside the allowlist', result: 'Contained' },
@@ -155,20 +155,7 @@ export function Home() {
         <LatencyBars />
         <FreePlans />
 
-        <section className="faq wrap" aria-labelledby="faq-title">
-          <h2 id="faq-title">Before you ask</h2>
-          <div className="faq__list">
-            {FAQ.map((item) => (
-              <details name="faq" key={item.q}>
-                <summary>
-                  {item.q}
-                  <span className="plus" aria-hidden="true" />
-                </summary>
-                <p>{item.a}</p>
-              </details>
-            ))}
-          </div>
-        </section>
+        <Faq />
 
         <Waitlist />
       </main>

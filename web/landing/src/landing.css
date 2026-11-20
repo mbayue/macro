@@ -1,7 +1,7 @@
 /*
  * Landing-only Tailwind v4 entry, on the shared tokens (tokens.css). Used by the home page now and by
- * the legal and 404 pages once they move over (#20). It never declares the app's Geist Mono font face
- * and has no monospace font at all: the landing page uses none (DESIGN.md, tasteskill house rules).
+ * the legal and 404 pages once they move over (#20). It never declares the app's code font face
+ * and has no code font at all: the landing page uses none (DESIGN.md, tasteskill house rules).
  *
  * The theme below is the whole vocabulary: token colours only (no default palette), two fonts, one
  * radius, and the `split` breakpoint (860 px) where the landing layouts go from one column to two.
@@ -29,7 +29,7 @@
   --radius-*: initial;
   --shadow-*: initial;
   --inset-shadow-*: initial;
-  --drop-shadow-*: initial;
+  --drop-shadow-*: initial; /* taste-skill-ignore: removes the shadow utilities */
   --breakpoint-split: 53.75rem;
 
   --animate-rise: rise 700ms var(--ease) both;

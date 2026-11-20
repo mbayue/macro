@@ -1,10 +1,12 @@
 /**
  * The footer shared by the landing pages: MACRO built from five blocks of rising height (the last in
  * the accent, like the stage band's last segment), the footer links, and the photo credits.
+ * The letters hang from the top of their blocks and are sized from the mark's own height and width
+ * (container units), so even the shortest block holds its whole letter at every width.
  */
 import { SANOK_AUTHOR, SANOK_LICENCE, SANOK_PHOTOS } from '../sanok.ts';
 
-const BLOCK_HEIGHT = ['h-[42%]', 'h-[56%]', 'h-[70%]', 'h-[85%]', 'h-full'] as const;
+const BLOCK_HEIGHT = ['h-1/2', 'h-[62%]', 'h-3/4', 'h-[87%]', 'h-full'] as const;
 
 const LINKS = [
   { href: '/app/', label: 'Live demo' },
@@ -26,7 +28,7 @@ export function SiteFooter() {
           <span
             key={i}
             aria-hidden="true"
-            className={`${BLOCK_HEIGHT[i]} flex flex-1 justify-center overflow-hidden rounded pt-[0.06em] font-display text-[min(52cqh,21cqw)] leading-none font-light ${
+            className={`${BLOCK_HEIGHT[i]} flex flex-1 justify-center overflow-hidden rounded pt-[0.06em] font-display text-[min(44cqh,21cqw)] leading-none font-light ${
               i === 4 ? 'bg-accent text-accent-ink' : 'bg-surface-2 text-bg'
             }`}
           >

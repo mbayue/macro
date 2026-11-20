@@ -5,6 +5,7 @@
  * tiles beneath it as a pair.
  */
 import { sanokSrc, sanokSrcSet, SANOK_SIZE } from '../sanok.ts';
+import { Waitlist } from './Waitlist.tsx';
 
 export function Close() {
   return (
@@ -36,6 +37,7 @@ export function Close() {
         </a>
       </div>
       <div className="h-[120px] rounded bg-surface-2 split:h-[380px] split:rounded-r-[0]" aria-hidden="true" />
+      <Waitlist className="col-span-2 split:col-span-1 split:col-start-2" />
     </section>
   );
 }

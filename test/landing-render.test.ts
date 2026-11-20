@@ -150,4 +150,18 @@ describe('home page close', () => {
     const toApp = (await select(home, `${CLOSE} a`)).filter((a) => href(a) === '/app/');
     expect(toApp.map((a) => a.text)).toEqual(['Try the live demo']);
   });
+
+  test('holds the waitlist form at #waitlist: a labelled email field, a submit button and a polite status line', async () => {
+    const ids = (await select(home, `${CLOSE} [id="waitlist"]`)).length;
+    expect(ids).toBe(1);
+    const field = await select(home, `${CLOSE} #waitlist form input[type="email"]`);
+    expect(field.length).toBe(1);
+    expect(field[0]?.attrs.get('aria-label') ?? '').toMatch(/email/i);
+    const submit = await select(home, `${CLOSE} #waitlist form button[type="submit"]`);
+    expect(submit.map((b) => b.text)).toEqual(['Join the waitlist']);
+    const status = await select(home, `${CLOSE} #waitlist [aria-live="polite"]`);
+    expect(status[0]?.text).toContain('paid plans');
+    const links = (await select(home, `${CLOSE} #waitlist a`)).map(href);
+    expect(links).toContain('/privacy');
+  });
 });

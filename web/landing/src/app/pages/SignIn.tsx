@@ -9,9 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { TelemetryPanel } from '../components/studio/TelemetryFrame.tsx';
+import { useOptionalShell } from '../components/shell/ShellContext.tsx';
 import { Busy, ConfirmButton } from '../components/ui.tsx';
 import { useApp } from '../context.tsx';
-import { clearReviewState, deleteAccount, githubStartHref, googleStartHref, postMagicLink, postSignOut } from '../lib/auth-api.ts';
+import { clearReviewState, deleteAccount, githubStartHref, googleStartHref, postMagicLink } from '../lib/auth-api.ts';
 import { clearRecentRuns } from '../lib/recent-runs.ts';
 
 export interface EmailLinkPanelProps {
@@ -266,14 +267,15 @@ export function AccountPanel({
 
 export function SignIn() {
   const { config, me, navigate, announce, refreshMe } = useApp();
+  const shell = useOptionalShell();
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
   const [wait, setWait] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [signingOut, setSigningOut] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const signingOut = shell?.state.signingOut ?? false;
 
   useEffect(() => {
     if (wait <= 0) return;
@@ -295,16 +297,7 @@ export function SignIn() {
         deleteError={deleteError}
         onBack={() => navigate('/')}
         onSignOut={() => {
-          if (signingOut || deleting) return;
-          void (async () => {
-            setSigningOut(true);
-            await postSignOut();
-            clearRecentRuns();
-            clearReviewState();
-            await refreshMe();
-            setSigningOut(false);
-            announce('Signed out.');
-          })();
+          if (!signingOut && !deleting) void shell?.actions.signOut();
         }}
         onDelete={() => {
           if (deleting || signingOut) return;

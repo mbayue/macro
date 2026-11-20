@@ -2,7 +2,8 @@
  * Runs Table (`#/runs`): signed-in account runs (up to 50) when available; otherwise browser-local runs (up to 10).
  * Filterable by kind, status, and search query, with two-row selection for Run Compare.
  */
-import { useCallback, useDeferredValue, useEffect, useId, useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { getRouteApi } from '@tanstack/react-router';
 import { GitCompareIcon, RotateCcwIcon, SearchIcon, XIcon } from 'lucide-react';
 import type { AccountRunsResponse } from '../../../../../src/api-types.ts';
 import { Badge } from '@/components/ui/badge';
@@ -18,8 +19,6 @@ import {
   mapAccountRunRow,
   mapBrowserRunRow,
   prunePickedRuns,
-  type RunsKindFilter,
-  type RunsStatusFilter,
   type RunsTableRow,
   STATUS_FILTER_OPTIONS,
   togglePickedRun,
@@ -29,9 +28,15 @@ import { StatusBadge, TableWrap } from '../components/ui.tsx';
 import { useApp } from '../context.tsx';
 import { getRun } from '../lib/api.ts';
 import { forgetRun, loadRecentRuns } from '../lib/recent-runs.ts';
-import { compareHref, probeHref, runHref } from '../router.ts';
+import { compareHref, DEFAULT_RUNS_SEARCH, probeHref, runHref, type RunsSearch } from '../router.ts';
 
 const MAX_ACCOUNT_RUNS = 50;
+const runsRouteApi = getRouteApi('/runs');
+
+function isoOrUndefined(ms: number): string | undefined {
+  const d = new Date(ms);
+  return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
+}
 
 export function RecentRunsPage() {
   const { config, me, navigate } = useApp();
@@ -46,9 +51,36 @@ export function RecentRunsPage() {
   const [loading, setLoading] = useState<boolean>(() => me !== null);
   const [error, setError] = useState<string | null>(null);
 
-  const [kindFilter, setKindFilter] = useState<RunsKindFilter>('all');
-  const [statusFilter, setStatusFilter] = useState<RunsStatusFilter>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  // Filters live in the URL (`?type=&status=&q=`) so back, reload and shared links keep them.
+  const search = runsRouteApi.useSearch();
+  const navigateRuns = runsRouteApi.useNavigate();
+  const kindFilter = search.type;
+  const statusFilter = search.status;
+  const updateSearch = useCallback(
+    (patch: Partial<RunsSearch>) => {
+      void navigateRuns({ search: (prev) => ({ ...prev, ...patch }), replace: true });
+    },
+    [navigateRuns],
+  );
+  // The box keeps its own state so typing never waits on the router; URL changes made elsewhere
+  // (back, forward, a pasted link) flow back in.
+  const [searchQuery, setSearchQueryState] = useState(search.q);
+  const lastWrittenQuery = useRef(search.q);
+  useEffect(() => {
+    if (search.q === lastWrittenQuery.current) return;
+    lastWrittenQuery.current = search.q;
+    setSearchQueryState(search.q);
+  }, [search.q]);
+  const setSearchQuery = useCallback(
+    (q: string) => {
+      setSearchQueryState(q);
+      lastWrittenQuery.current = q;
+      updateSearch({ q });
+    },
+    [updateSearch],
+  );
+  const setKindFilter = (type: RunsSearch['type']) => updateSearch({ type });
+  const setStatusFilter = (status: RunsSearch['status']) => updateSearch({ status });
   const deferredQuery = useDeferredValue(searchQuery);
   const [picked, setPicked] = useState<string[]>([]);
 
@@ -156,10 +188,10 @@ export function RecentRunsPage() {
   const hasActiveFilters = kindFilter !== 'all' || statusFilter !== 'all' || searchQuery.trim() !== '';
 
   const clearFilters = useCallback(() => {
-    setKindFilter('all');
-    setStatusFilter('all');
-    setSearchQuery('');
-  }, []);
+    setSearchQueryState('');
+    lastWrittenQuery.current = '';
+    updateSearch(DEFAULT_RUNS_SEARCH);
+  }, [updateSearch]);
 
   const onToggleRow = useCallback((runId: string, on: boolean) => {
     setPicked((prev) => togglePickedRun(prev, runId, on));
@@ -460,7 +492,11 @@ export function RecentRunsPage() {
                           <td className="font-mono text-xs whitespace-nowrap text-muted-foreground tabular-nums">
                             {row.runId}
                           </td>
-                          <td className="idx font-mono text-xs text-foreground tabular-nums">{row.startedUtc}</td>
+                          <td className="idx font-mono text-xs whitespace-nowrap text-foreground tabular-nums">
+                            <time dateTime={isoOrUndefined(row.startedAt)} title={row.startedUtc}>
+                              {row.startedUtcLabel}
+                            </time>
+                          </td>
                           <td>
                             {row.status === 'checking' ? (
                               <Badge variant="outline">checking</Badge>

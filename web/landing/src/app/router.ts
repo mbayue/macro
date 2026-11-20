@@ -20,6 +20,19 @@ export const ID_PATTERN = /^[A-Za-z0-9._~-]{1,100}$/;
 export const RUN_TABS = ['overview', 'stages', 'ai', 'audit'] as const;
 export type RunTab = (typeof RUN_TABS)[number];
 
+/** Runs Table (`#/runs`) filters kept in the URL: `?type=`, `?status=`, `?q=`. */
+export const RUNS_KIND_FILTERS = ['all', 'run', 'probe'] as const;
+export const RUNS_STATUS_FILTERS = ['all', 'completed', 'running', 'stopped_halted', 'failed'] as const;
+export type RunsKindFilter = (typeof RUNS_KIND_FILTERS)[number];
+export type RunsStatusFilter = (typeof RUNS_STATUS_FILTERS)[number];
+export interface RunsSearch {
+  type: RunsKindFilter;
+  status: RunsStatusFilter;
+  q: string;
+}
+export const DEFAULT_RUNS_SEARCH: RunsSearch = { type: 'all', status: 'all', q: '' };
+const RUNS_QUERY_MAX = 200;
+
 export type Route =
   | { view: 'new' }
   | { view: 'run'; id: string; tab: RunTab }
@@ -70,6 +83,25 @@ function CompareScreen() {
 export function parseRunTab(raw: unknown): RunTab {
   if (typeof raw !== 'string') return 'overview';
   return (RUN_TABS as readonly string[]).includes(raw) ? (raw as RunTab) : 'overview';
+}
+
+function pick<T extends string>(allowed: readonly T[], raw: unknown, fallback: T): T {
+  return typeof raw === 'string' && (allowed as readonly string[]).includes(raw) ? (raw as T) : fallback;
+}
+
+/** Validates `#/runs` search params; unknown or wrong-typed values fall back to the defaults. */
+export function parseRunsSearch(search: Record<string, unknown>): RunsSearch {
+  const q = search['q'];
+  return {
+    type: pick(RUNS_KIND_FILTERS, search['type'], DEFAULT_RUNS_SEARCH.type),
+    status: pick(RUNS_STATUS_FILTERS, search['status'], DEFAULT_RUNS_SEARCH.status),
+    q:
+      typeof q === 'string'
+        ? q.slice(0, RUNS_QUERY_MAX)
+        : typeof q === 'number' && Number.isFinite(q)
+          ? String(q)
+          : DEFAULT_RUNS_SEARCH.q,
+  };
 }
 
 function decodeValidId(raw: string): string | null {
@@ -231,6 +263,10 @@ function buildRouteTree(options?: CreateAppRouterOptions) {
   const runsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/runs',
+    validateSearch: parseRunsSearch,
+    search: {
+      middlewares: [stripSearchParams<RunsSearch>(DEFAULT_RUNS_SEARCH)],
+    },
     component: RecentRunsScreen,
   });
 

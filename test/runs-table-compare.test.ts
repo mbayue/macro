@@ -97,6 +97,7 @@ describe('Runs Table mapping and capacity formatting', () => {
       title: 'Flash sale',
       startedAt: Date.UTC(2026, 4, 21, 14, 3, 7),
       startedUtc: '2026-05-21 14:03:07 UTC',
+      startedUtcLabel: '2026-05-21 14:03',
       status: 'halted',
       safeCapacity: 50,
       breakingPoint: 100,
@@ -152,6 +153,7 @@ describe('Runs Table mapping and capacity formatting', () => {
     };
 
     const checking = mapBrowserRunRow(entry);
+    expect(checking.startedUtcLabel).toBe('2026-05-21 14:03');
     expect(checking.status).toBe('checking');
     expect(checking.hasReport).toBe(false);
     expect(checking.safeCapacity).toBeNull();

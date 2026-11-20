@@ -7,18 +7,21 @@ import { displayBreakingPoint, displaySafeCapacity } from '../../../../../../src
 import type { RunKind, RunStatus } from '../../../../../../src/types.ts';
 import { fmtUtc } from '../../lib/format.ts';
 import type { RecentRun } from '../../lib/recent-runs.ts';
+import type { RunsKindFilter, RunsStatusFilter } from '../../router.ts';
 import { reportExpected } from '../../lib/run-view.ts';
 
 export type RunsRowStatus = RunStatus | 'checking' | 'unknown';
-export type RunsStatusFilter = 'all' | 'completed' | 'running' | 'stopped_halted' | 'failed';
-export type RunsKindFilter = 'all' | 'run' | 'probe';
+export type { RunsKindFilter, RunsStatusFilter };
 
 export interface RunsTableRow {
   runId: string;
   kind: RunKind;
   title: string;
   startedAt: number;
+  /** Full timestamp with seconds and the UTC suffix (hover text). */
   startedUtc: string;
+  /** Minute-precision UTC for the Started (UTC) column, which already names the zone. */
+  startedUtcLabel: string;
   status: RunsRowStatus;
   safeCapacity: number | null;
   breakingPoint: number | null;
@@ -45,6 +48,11 @@ export const KIND_FILTER_OPTIONS: readonly { value: RunsKindFilter; label: strin
   { value: 'probe', label: 'Probes' },
 ];
 
+function utcLabel(ms: number): string {
+  const d = new Date(ms);
+  return Number.isNaN(d.getTime()) ? 'unknown' : d.toISOString().slice(0, 16).replace('T', ' ');
+}
+
 function normalizeTitle(rawTitle: string | undefined, kind: RunKind): string {
   const trimmed = rawTitle?.trim() ?? '';
   if (trimmed !== '') return trimmed;
@@ -62,6 +70,7 @@ export function mapAccountRunRow(item: RunListItem): RunsTableRow {
     title: normalizeTitle(item.title, kind),
     startedAt: item.startedAt,
     startedUtc: fmtUtc(item.startedAt),
+    startedUtcLabel: utcLabel(item.startedAt),
     status: item.status,
     safeCapacity: item.safeCapacity,
     breakingPoint: item.breakingPoint,
@@ -85,6 +94,7 @@ export function mapBrowserRunRow(
       title,
       startedAt,
       startedUtc: fmtUtc(startedAt),
+      startedUtcLabel: utcLabel(startedAt),
       status: snapshot.run.status,
       safeCapacity: snapshot.report?.headline.safeCapacity ?? null,
       breakingPoint: snapshot.report?.headline.breakingPoint ?? null,
@@ -97,6 +107,7 @@ export function mapBrowserRunRow(
     title,
     startedAt,
     startedUtc: fmtUtc(startedAt),
+    startedUtcLabel: utcLabel(startedAt),
     status: fallbackStatus,
     safeCapacity: null,
     breakingPoint: null,

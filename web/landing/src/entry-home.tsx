@@ -1,7 +1,11 @@
 import { hydrateRoot } from 'react-dom/client';
 import './landing.css';
-import { Home } from './pages/Home.tsx';
+import { ISLANDS, islandId } from './islands.tsx';
 import { startReveal } from './reveal.ts';
 
-hydrateRoot(document.getElementById('root')!, <Home />);
+// Only the interactive parts are hydrated; the rest of the prerendered page stays static HTML.
+for (const [name, island] of Object.entries(ISLANDS)) {
+  const root = document.getElementById(islandId(name));
+  if (root) hydrateRoot(root, island());
+}
 startReveal();

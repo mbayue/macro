@@ -5,12 +5,12 @@ import { FreePlans } from '../components/FreePlans.tsx';
 import { HybridAi } from '../components/HybridAi.tsx';
 import { SiteFooter } from '../components/SiteFooter.tsx';
 import { WhyMeasured } from '../components/WhyMeasured.tsx';
-import { Gate } from '../components/Gate.tsx';
-import { Hero } from '../components/Hero.tsx';
-import { LoadTheDeck } from '../components/LoadTheDeck.tsx';
+import { Island } from '../islands.tsx';
 
 /**
- * The home page, prerendered at build time and hydrated (entry-home.tsx). Sections below the hero enter with the scroll reveal (data-reveal, reveal.ts); the hero has its own CSS-only
+ * The home page, prerendered at build time. The hero, Load the deck, the gate switch and the waitlist
+ * are islands (islands.tsx), hydrated by entry-home.tsx; everything else stays static HTML. Sections
+ * below the hero enter with the scroll reveal (data-reveal, reveal.ts); the hero has its own CSS-only
  * entrance so the first screen never waits for the script.
  */
 export function Home() {
@@ -20,10 +20,10 @@ export function Home() {
         Skip to content
       </a>
       <main id="top">
-        <Hero />
-        <LoadTheDeck />
+        <Island name="hero" />
+        <Island name="load" />
         <Containment />
-        <Gate />
+        <Island name="gate" />
         <WhyMeasured />
         <HybridAi />
         <FreePlans />

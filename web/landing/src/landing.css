@@ -12,6 +12,7 @@
 @import "tailwindcss" source(none);
 @source "./components";
 @source "./pages";
+@source "./islands.tsx";
 @import "./tokens.css" layer(base);
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));

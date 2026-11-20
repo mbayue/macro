@@ -8,7 +8,7 @@
     "start": "bun src/main.ts",
     "dev": "bun --watch src/main.ts",
     "test": "bun test",
-    "test:web": "bun test test/build-web-check.test.ts test/router.test.ts test/shell-view.test.ts test/test-studio.test.ts test/report-tabs-audit.test.ts test/runs-table-compare.test.ts test/probe-auth-views.test.ts test/landing-render.test.ts",
+    "test:web": "bun test test/build-web-check.test.ts test/router.test.ts test/shell-view.test.ts test/test-studio.test.ts test/report-tabs-audit.test.ts test/runs-table-compare.test.ts test/probe-auth-views.test.ts test/landing/",
     "test:vm": "MACRO_VM_TEST=1 bun test test/vm/",
     "build:web": "bun run scripts/build-web.ts",
     "dev:landing": "vite --config web/landing/vite.config.ts",

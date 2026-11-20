@@ -196,7 +196,7 @@ function PlanDetails({
 
   return (
     <TelemetryPanel ticks="bar" className="gap-4.5">
-      <p className="m-0 font-display text-[1.625rem] leading-[1.15] font-light tracking-[-0.015em] text-foreground">
+      <p className="m-0 min-w-0 font-display text-[1.625rem] leading-[1.15] font-light tracking-[-0.015em] break-words text-foreground">
         {plan.name}
       </p>
 

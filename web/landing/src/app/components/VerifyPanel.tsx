@@ -245,7 +245,7 @@ export function VerifyPanel({
       {verified !== null ? (
         <div className="flex flex-wrap items-center gap-2.5 text-sm" role="status">
           <Badge variant="ok">Verified</Badge>
-          <span className="font-mono text-foreground">{verified.host}</span>
+          <span className="min-w-0 font-mono break-all text-foreground">{verified.host}</span>
           {busy === 'clear' ? (
             <Button type="button" variant="secondary" size="sm" disabled>
               <Busy>Clearing</Busy>

@@ -178,7 +178,7 @@ export function AccountPanel({
           Account
         </h1>
         <p className="m-0 max-w-[64ch] text-muted-foreground">
-          You are signed in as <strong className="font-medium text-foreground">{identity}</strong>.
+          You are signed in as <strong className="font-medium break-all text-foreground">{identity}</strong>.
         </p>
       </header>
 

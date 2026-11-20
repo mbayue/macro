@@ -38,7 +38,10 @@ export function TopContextBar() {
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
             <span className="text-xs text-muted-foreground">Target</span>
-            <span className="max-w-[240px] truncate font-mono text-xs text-foreground sm:max-w-xs">
+            <span
+              className="max-w-[240px] truncate font-mono text-xs text-foreground sm:max-w-xs"
+              title={state.target.host ?? undefined}
+            >
               {state.target.host ?? 'Demo shop'}
             </span>
             <Badge variant={state.target.kind === 'verified' ? 'ok' : 'outline'}>
@@ -50,7 +53,7 @@ export function TopContextBar() {
                 className="inline-flex min-w-0 items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs font-medium text-warn underline underline-offset-4 hover:opacity-85 focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-ring"
               >
                 <AlertCircleIcon className="size-3.5 shrink-0" aria-hidden="true" />
-                <span className="truncate">
+                <span className="truncate" title={state.target.pendingHost}>
                   Finish verifying <span className="font-mono">{state.target.pendingHost}</span>
                 </span>
               </a>
@@ -149,7 +152,10 @@ export function TopContextBar() {
                   <DropdownMenuLabel className="font-normal">
                     <span className="block truncate font-medium text-foreground">{state.identityLabel}</span>
                     {state.me.verifiedOrigin ? (
-                      <span className="block truncate font-mono text-[11px] text-muted-foreground">
+                      <span
+                        className="block truncate font-mono text-[11px] text-muted-foreground"
+                        title={state.me.verifiedOrigin.host}
+                      >
                         {state.me.verifiedOrigin.host}
                       </span>
                     ) : null}

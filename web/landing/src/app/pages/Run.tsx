@@ -162,7 +162,7 @@ export function RunPage({ id }: { id: string }) {
     <div className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6 print:max-w-none">
       <header className="flex flex-col justify-between gap-6 min-[861px]:flex-row min-[861px]:items-start print:hidden">
         <div className="flex min-w-0 flex-col gap-2">
-          <h1 className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] text-balance text-foreground max-[860px]:text-[1.75rem]">
+          <h1 className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] break-words text-balance text-foreground max-[860px]:text-[1.75rem]">
             {model.plan?.name ?? report?.planName ?? 'Load test'}
           </h1>
           <p className="m-0 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-muted-foreground">
@@ -175,7 +175,7 @@ export function RunPage({ id }: { id: string }) {
             </span>
             {model.plan ? (
               <span>
-                on <span className="font-mono text-xs text-foreground">{model.plan.target}</span>
+                on <span className="font-mono text-xs break-all text-foreground">{model.plan.target}</span>
               </span>
             ) : null}
             <span>

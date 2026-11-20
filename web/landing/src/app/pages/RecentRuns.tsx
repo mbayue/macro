@@ -478,11 +478,11 @@ export function RecentRunsPage() {
                               className="size-[18px] cursor-pointer rounded-sm align-middle accent-[var(--accent-text)] focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-45"
                             />
                           </td>
-                          <th scope="row" className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
+                          <th scope="row" className="min-w-56">
+                            <div className="flex min-w-0 flex-wrap items-center gap-2">
                               <a
                                 href={href}
-                                className="font-medium text-foreground underline decoration-bar underline-offset-4 hover:text-accent-text hover:decoration-accent-text"
+                                className="min-w-0 font-medium wrap-anywhere text-foreground underline decoration-bar underline-offset-4 hover:text-accent-text hover:decoration-accent-text"
                               >
                                 {row.title}
                               </a>

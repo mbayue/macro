@@ -453,3 +453,33 @@ describe('VerifyPanel view', () => {
     assertValidHostForm(verifiedHtml);
   });
 });
+
+describe('submit buttons stay enabled until a request starts', () => {
+  const submitTag = (html: string): string => html.match(/<button[^>]*type="submit"[^>]*>/)?.[0] ?? '';
+
+  test('EmailLinkPanel send button is enabled with an empty email and disabled while sending', () => {
+    const base = {
+      email: '',
+      busy: false,
+      sent: false,
+      wait: 0,
+      error: null,
+      onEmailChange: () => {},
+      onSubmit: () => {},
+      onBack: () => {},
+    };
+    expect(submitTag(renderToStaticMarkup(createElement(EmailLinkPanel, base)))).not.toContain(' disabled="');
+    expect(submitTag(renderToStaticMarkup(createElement(EmailLinkPanel, { ...base, busy: true })))).toContain(' disabled="');
+  });
+
+  test('VerifyPanel start button is enabled with an empty host', () => {
+    const html = renderWithApp(createElement(VerifyPanel), {
+      me: {
+        user: { id: 'u_1', email: 'dev@example.com', githubLogin: null },
+        verifiedOrigin: null,
+        pendingVerification: null,
+      },
+    });
+    expect(submitTag(html)).not.toContain(' disabled="');
+  });
+});

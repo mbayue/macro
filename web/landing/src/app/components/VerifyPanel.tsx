@@ -1,7 +1,7 @@
 /**
  * Inline own-site verification: start a token, show DNS + well-known instructions, check, or clear.
  */
-import { useEffect, useId, useRef, useState } from 'react';
+import { type Ref, useEffect, useId, useRef, useState } from 'react';
 import { CheckIcon, CloudIcon, CopyIcon, ExternalLinkIcon, ZapIcon } from 'lucide-react';
 import type { VerifyStartResponse } from '../../../../../src/api-types.ts';
 import { Badge } from '@/components/ui/badge';
@@ -47,6 +47,7 @@ function VerifyHostForm({
   helpId,
   errorId,
   className,
+  inputRef,
   onHostChange,
   onSubmit,
 }: {
@@ -57,6 +58,7 @@ function VerifyHostForm({
   helpId: string;
   errorId: string;
   className?: string | undefined;
+  inputRef: Ref<HTMLInputElement>;
   onHostChange: (value: string) => void;
   onSubmit: (e: React.FormEvent) => void;
 }) {
@@ -69,6 +71,7 @@ function VerifyHostForm({
           Host or https origin
         </label>
         <input
+          ref={inputRef}
           id={inputId}
           type="text"
           name="host"
@@ -87,7 +90,7 @@ function VerifyHostForm({
         />
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="submit" disabled={busy || host.trim() === ''}>
+        <Button type="submit" disabled={busy}>
           {starting ? <Busy>Starting</Busy> : 'Start verification'}
         </Button>
       </div>
@@ -111,6 +114,7 @@ export function VerifyPanel({
   const [busy, setBusy] = useState<'start' | 'check' | 'clear' | 'cancel' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const restoreGen = useRef(0);
+  const hostInput = useRef<HTMLInputElement>(null);
   const verifyHelpId = useId();
   const verifyErrorId = useId();
 
@@ -149,6 +153,7 @@ export function VerifyPanel({
       const msg = 'Enter a host or https origin.';
       setError(msg);
       announce(msg);
+      hostInput.current?.focus();
       return;
     }
     setBusy('start');
@@ -277,6 +282,7 @@ export function VerifyPanel({
               hasError={Boolean(error)}
               helpId={verifyHelpId}
               errorId={verifyErrorId}
+              inputRef={hostInput}
               className="mt-3"
               onHostChange={onHostChange}
               onSubmit={(e) => void onStart(e)}
@@ -290,6 +296,7 @@ export function VerifyPanel({
             hasError={Boolean(error)}
             helpId={verifyHelpId}
             errorId={verifyErrorId}
+            inputRef={hostInput}
             onHostChange={onHostChange}
             onSubmit={(e) => void onStart(e)}
           />

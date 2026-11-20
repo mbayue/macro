@@ -48,6 +48,13 @@ export function validateTrafficLength(
   return { count, inRange, problem };
 }
 
+/** The inline error to show when the user submits this Traffic Description; empty when it can be drafted. */
+export function trafficSubmitProblem(text: string, min: number, max: number): string {
+  const { count, inRange, problem } = validateTrafficLength(text, min, max);
+  if (inRange) return '';
+  return count === 0 ? `Needs at least ${min} characters.` : problem;
+}
+
 /** Splits a route path into its trailing filename and shared directory prefix when applicable. */
 export function pathFace(path: string): { name: string; dir: string | null } {
   const slash = path.lastIndexOf('/');

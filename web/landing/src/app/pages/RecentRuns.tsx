@@ -208,12 +208,7 @@ export function RecentRunsPage() {
           </div>
           <p className="m-0 text-sm text-foreground">{error}</p>
           <div className="flex flex-wrap items-center gap-2.5">
-            <Button
-              type="button"
-              variant="secondary"
-              className="border border-bar-hover"
-              onClick={() => setReloadTick((t) => t + 1)}
-            >
+            <Button type="button" variant="secondary" onClick={() => setReloadTick((t) => t + 1)}>
               <RotateCcwIcon data-icon="inline-start" />
               Try again
             </Button>
@@ -241,12 +236,7 @@ export function RecentRunsPage() {
               Start a new test
             </Button>
             {config.sampleRunId ? (
-              <Button
-                render={<a href={runHref(config.sampleRunId)} />}
-                nativeButton={false}
-                variant="secondary"
-                className="border border-bar-hover"
-              >
+              <Button render={<a href={runHref(config.sampleRunId)} />} nativeButton={false} variant="secondary">
                 View sample report
               </Button>
             ) : null}
@@ -370,7 +360,6 @@ export function RecentRunsPage() {
               <Button
                 type="button"
                 variant={canCompare ? 'default' : 'secondary'}
-                className={canCompare ? undefined : 'border border-bar-hover'}
                 disabled={!canCompare}
                 onClick={onCompare}
               >
@@ -401,12 +390,7 @@ export function RecentRunsPage() {
             <TelemetryPanel ticks="bar" className="gap-3">
               <p className="m-0 text-sm text-foreground">No runs match your current filters.</p>
               <div className="flex flex-wrap items-center gap-2.5">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="border border-bar-hover"
-                  onClick={clearFilters}
-                >
+                <Button type="button" variant="secondary" onClick={clearFilters}>
                   Clear filters
                 </Button>
               </div>
@@ -451,7 +435,7 @@ export function RecentRunsPage() {
                       const href = row.kind === 'probe' ? probeHref(row.runId) : runHref(row.runId);
 
                       return (
-                        <tr key={row.runId} className={selected ? 'bg-surface-2' : undefined}>
+                        <tr key={row.runId} className={cn(selected && 'bg-surface-2')}>
                           <td className="align-middle">
                             <input
                               type="checkbox"

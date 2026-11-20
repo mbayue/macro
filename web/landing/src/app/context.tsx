@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react';
+import { createContext, use } from 'react';
 import type { ConfigResponse, MeResponse } from '../../../../src/api-types.ts';
 
 export interface AppContextValue {
@@ -16,7 +16,7 @@ export interface AppContextValue {
 export const AppContext = createContext<AppContextValue | null>(null);
 
 export function useApp(): AppContextValue {
-  const ctx = useContext(AppContext);
+  const ctx = use(AppContext);
   if (!ctx) throw new Error('useApp outside <AppContext>');
   return ctx;
 }

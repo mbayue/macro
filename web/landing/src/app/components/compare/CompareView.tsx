@@ -35,10 +35,10 @@ function isMutedCompareValue(text: string | null): boolean {
 function CompareNavigationLinks({ a, b }: { a: string; b: string }) {
   return (
     <div className="flex flex-wrap items-center gap-2.5">
-      <Button render={<a href={runHref(a)} />} nativeButton={false} variant="secondary" className="border border-bar-hover">
+      <Button render={<a href={runHref(a)} />} nativeButton={false} variant="secondary">
         Open run {a}
       </Button>
-      <Button render={<a href={runHref(b)} />} nativeButton={false} variant="secondary" className="border border-bar-hover">
+      <Button render={<a href={runHref(b)} />} nativeButton={false} variant="secondary">
         Open run {b}
       </Button>
       <Button render={<a href="#/runs" />} nativeButton={false} variant="outline" className="border-bar">
@@ -108,7 +108,7 @@ export const CompareView = memo(function CompareView({
         <ApiErrorText error={resolvedError} />
         <div className="flex flex-wrap items-center gap-2.5">
           {onRetry ? (
-            <Button type="button" variant="secondary" className="border border-bar-hover" onClick={onRetry}>
+            <Button type="button" variant="secondary" onClick={onRetry}>
               <RotateCcwIcon data-icon="inline-start" />
               Try again
             </Button>
@@ -125,7 +125,7 @@ export const CompareView = memo(function CompareView({
         <p className="m-0 text-sm text-muted-foreground">No comparison data is available for these runs.</p>
         <div className="flex flex-wrap items-center gap-2.5">
           {onRetry ? (
-            <Button type="button" variant="secondary" className="border border-bar-hover" onClick={onRetry}>
+            <Button type="button" variant="secondary" onClick={onRetry}>
               <RotateCcwIcon data-icon="inline-start" />
               Try again
             </Button>

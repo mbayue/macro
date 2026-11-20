@@ -39,6 +39,62 @@ function CopyButton({ text, onAnnounce }: { text: string; onAnnounce?: ((msg: st
   );
 }
 
+function VerifyHostForm({
+  host,
+  busy,
+  starting,
+  hasError,
+  helpId,
+  errorId,
+  className,
+  onHostChange,
+  onSubmit,
+}: {
+  host: string;
+  busy: boolean;
+  starting: boolean;
+  hasError: boolean;
+  helpId: string;
+  errorId: string;
+  className?: string | undefined;
+  onHostChange: (value: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+}) {
+  const inputId = useId();
+  const describedBy = [helpId, errorId].join(' ');
+  return (
+    <form onSubmit={onSubmit} noValidate className={cn('flex flex-col gap-3', className)}>
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor={inputId} className="text-xs font-medium text-muted-foreground">
+          Host or https origin
+        </label>
+        <input
+          id={inputId}
+          type="text"
+          name="host"
+          autoComplete="url"
+          required
+          placeholder="shop.example.com"
+          value={host}
+          onChange={(e) => onHostChange(e.target.value)}
+          disabled={busy}
+          aria-invalid={hasError}
+          aria-describedby={describedBy}
+          className={cn(
+            'h-10 w-full rounded-md border bg-background px-3 font-mono text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-[2px] focus-visible:outline-offset-[1px] focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60',
+            hasError ? 'border-bad' : 'border-bar',
+          )}
+        />
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="submit" disabled={busy || host.trim() === ''}>
+          {starting ? <Busy>Starting</Busy> : 'Start verification'}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 export function VerifyPanel({
   initialHost = '',
   onVerified,
@@ -55,8 +111,8 @@ export function VerifyPanel({
   const [busy, setBusy] = useState<'start' | 'check' | 'clear' | 'cancel' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const restoreGen = useRef(0);
-  const hostInputId = useId();
-  const reverifyHostInputId = useId();
+  const verifyHelpId = useId();
+  const verifyErrorId = useId();
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -88,9 +144,16 @@ export function VerifyPanel({
   async function onStart(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
+    const trimmed = host.trim();
+    if (trimmed === '') {
+      const msg = 'Enter a host or https origin.';
+      setError(msg);
+      announce(msg);
+      return;
+    }
     setBusy('start');
     setError(null);
-    const res = await postVerifyStart(host.trim());
+    const res = await postVerifyStart(trimmed);
     setBusy(null);
     if (!res.ok) {
       setError(res.error.message);
@@ -154,8 +217,13 @@ export function VerifyPanel({
     announce('Verified site cleared.');
   }
 
-  const quietBtn = cn(buttonVariants({ variant: 'secondary', size: 'sm' }), 'border border-bar-hover');
-  const dangerBtn = cn(buttonVariants({ variant: 'destructive', size: 'sm' }));
+  const quietBtn = buttonVariants({ variant: 'secondary', size: 'sm' });
+  const dangerBtn = buttonVariants({ variant: 'destructive', size: 'sm' });
+
+  const onHostChange = (value: string) => {
+    setHost(value);
+    if (error) setError(null);
+  };
 
   return (
     <TelemetryPanel ticks="bar" aria-labelledby="verify-panel-heading" className="bg-background">
@@ -163,7 +231,7 @@ export function VerifyPanel({
         <h3 id="verify-panel-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
           Verify your site
         </h3>
-        <p className="text-sm text-muted-foreground">
+        <p id={verifyHelpId} className="text-sm text-muted-foreground">
           Macro needs proof you control one HTTPS origin. Add either a DNS TXT record or a{' '}
           <code className="font-mono text-[0.92em] text-foreground">/.well-known/macro-site-verification</code> file with the token below, then check.
         </p>
@@ -192,11 +260,9 @@ export function VerifyPanel({
         </div>
       ) : null}
 
-      {error ? (
-        <AlertRegion>
-          <p>{error}</p>
-        </AlertRegion>
-      ) : null}
+      <AlertRegion id={verifyErrorId} className={cn(!error && 'sr-only')}>
+        {error ? <p>{error}</p> : null}
+      </AlertRegion>
 
       {pending === null ? (
         verified !== null ? (
@@ -204,56 +270,29 @@ export function VerifyPanel({
             <summary className="cursor-pointer text-sm font-medium text-foreground focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-ring">
               Verify a different host
             </summary>
-            <form onSubmit={onStart} className="mt-3 flex flex-col gap-3">
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor={reverifyHostInputId} className="text-xs font-medium text-muted-foreground">
-                  Host or https origin
-                </label>
-                <input
-                  id={reverifyHostInputId}
-                  type="text"
-                  name="host"
-                  autoComplete="url"
-                  required
-                  placeholder="shop.example.com"
-                  value={host}
-                  onChange={(e) => setHost(e.target.value)}
-                  disabled={busy !== null}
-                  className="h-10 w-full rounded-md border border-bar bg-background px-3 font-mono text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-[2px] focus-visible:outline-offset-[1px] focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60"
-                />
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button type="submit" disabled={busy !== null || host.trim() === ''}>
-                  {busy === 'start' ? <Busy>Starting</Busy> : 'Start verification'}
-                </Button>
-              </div>
-            </form>
+            <VerifyHostForm
+              host={host}
+              busy={busy !== null}
+              starting={busy === 'start'}
+              hasError={Boolean(error)}
+              helpId={verifyHelpId}
+              errorId={verifyErrorId}
+              className="mt-3"
+              onHostChange={onHostChange}
+              onSubmit={(e) => void onStart(e)}
+            />
           </details>
         ) : (
-          <form onSubmit={onStart} className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor={hostInputId} className="text-xs font-medium text-muted-foreground">
-                Host or https origin
-              </label>
-              <input
-                id={hostInputId}
-                type="text"
-                name="host"
-                autoComplete="url"
-                required
-                placeholder="shop.example.com"
-                value={host}
-                onChange={(e) => setHost(e.target.value)}
-                disabled={busy !== null}
-                className="h-10 w-full rounded-md border border-bar bg-background px-3 font-mono text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-[2px] focus-visible:outline-offset-[1px] focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60"
-              />
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button type="submit" disabled={busy !== null || host.trim() === ''}>
-                {busy === 'start' ? <Busy>Starting</Busy> : 'Start verification'}
-              </Button>
-            </div>
-          </form>
+          <VerifyHostForm
+            host={host}
+            busy={busy !== null}
+            starting={busy === 'start'}
+            hasError={Boolean(error)}
+            helpId={verifyHelpId}
+            errorId={verifyErrorId}
+            onHostChange={onHostChange}
+            onSubmit={(e) => void onStart(e)}
+          />
         )
       ) : (
         <div className="flex flex-col gap-3">
@@ -359,9 +398,9 @@ export function VerifyPanel({
                 label="Start over"
                 confirmLabel="Reset token"
                 cancelLabel="Keep"
-                className={cn(buttonVariants({ variant: 'secondary' }), 'border border-bar-hover')}
+                className={buttonVariants({ variant: 'secondary' })}
                 confirmClassName={buttonVariants({ variant: 'destructive' })}
-                cancelClassName={cn(buttonVariants({ variant: 'secondary' }), 'border border-bar-hover')}
+                cancelClassName={buttonVariants({ variant: 'secondary' })}
                 disabled={busy !== null}
                 onConfirm={() => void onStartOver()}
               />

@@ -52,7 +52,7 @@ export function TargetPicker({
       </div>
 
       <div
-        className="inline-grid w-full max-w-[300px] grid-cols-2 gap-0.5 rounded-md border border-border bg-secondary p-0.5"
+        className="inline-grid w-full max-w-[300px] grid-cols-2 gap-0.5 rounded-md border border-bar-hover bg-secondary p-0.5"
         role="radiogroup"
         aria-labelledby="target-heading"
       >
@@ -112,9 +112,9 @@ export function TargetPicker({
               label="Change"
               confirmLabel="Clear verified site"
               cancelLabel="Keep"
-              className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }), 'border border-bar-hover')}
+              className={buttonVariants({ variant: 'secondary', size: 'sm' })}
               confirmClassName={buttonVariants({ variant: 'destructive', size: 'sm' })}
-              cancelClassName={cn(buttonVariants({ variant: 'secondary', size: 'sm' }), 'border border-bar-hover')}
+              cancelClassName={buttonVariants({ variant: 'secondary', size: 'sm' })}
               disabled={disabled}
               onConfirm={onClearVerifiedOrigin}
             />

@@ -1,4 +1,7 @@
 import { describe, expect, test } from 'bun:test';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { useOptionalShell } from '../web/landing/src/app/components/shell/ShellContext.tsx';
 import {
   formatIdentityLabel,
   formatQuotaReadout,
@@ -59,6 +62,57 @@ describe('resolveContextTarget', () => {
   test('falls back safely when webOrigin is empty during boot', () => {
     expect(resolveContextTarget({ me: null, webOrigin: '' })).toEqual({
       host: null,
+      kind: 'demo',
+      badgeLabel: 'Demo',
+      pendingHost: null,
+    });
+  });
+
+  test('honors targetMode override: demo forces Demo Target even when account has verifiedOrigin, own uses verifiedOrigin', () => {
+    const verifiedMe = {
+      user: { id: 'u1', email: 'a@example.com', githubLogin: 'bayu' },
+      verifiedOrigin: { origin: 'https://shop.example.org:8443', host: 'shop.example.org:8443' },
+      pendingVerification: { origin: 'https://next.example.org', host: 'next.example.org' },
+    };
+
+    expect(
+      resolveContextTarget({
+        me: verifiedMe,
+        webOrigin: 'https://yue.macro.my.id',
+        targetMode: 'demo',
+      }),
+    ).toEqual({
+      host: 'yue.macro.my.id',
+      kind: 'demo',
+      badgeLabel: 'Demo',
+      pendingHost: 'next.example.org',
+    });
+
+    expect(
+      resolveContextTarget({
+        me: verifiedMe,
+        webOrigin: 'https://yue.macro.my.id',
+        targetMode: 'own',
+      }),
+    ).toEqual({
+      host: 'shop.example.org:8443',
+      kind: 'verified',
+      badgeLabel: 'Verified',
+      pendingHost: 'next.example.org',
+    });
+
+    expect(
+      resolveContextTarget({
+        me: {
+          user: { id: 'u1', email: 'a@example.com', githubLogin: null },
+          verifiedOrigin: null,
+          pendingVerification: null,
+        },
+        webOrigin: 'https://yue.macro.my.id',
+        targetMode: 'own',
+      }),
+    ).toEqual({
+      host: 'yue.macro.my.id',
       kind: 'demo',
       badgeLabel: 'Demo',
       pendingHost: null,
@@ -264,5 +318,15 @@ describe('shell navigation and identity helpers', () => {
   test('formatShortcutHint switches between Apple and non-Apple labels', () => {
     expect(formatShortcutHint(true)).toBe('⌘K');
     expect(formatShortcutHint(false)).toBe('Ctrl+K');
+  });
+});
+
+describe('useOptionalShell', () => {
+  test('returns null safely when rendered outside ShellProvider', () => {
+    function Probe() {
+      const shell = useOptionalShell();
+      return createElement('span', null, shell === null ? 'no-shell' : 'has-shell');
+    }
+    expect(renderToStaticMarkup(createElement(Probe))).toBe('<span>no-shell</span>');
   });
 });

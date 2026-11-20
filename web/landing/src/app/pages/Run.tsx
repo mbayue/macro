@@ -144,7 +144,7 @@ export function RunPage({ id }: { id: string }) {
           <ApiErrorText error={state.error} />
         </TelemetryPanel>
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="button" variant="secondary" className="border border-bar-hover" onClick={retry}>
+          <Button type="button" variant="secondary" onClick={retry}>
             Try again
           </Button>
           <Button render={<a href="#/" />} nativeButton={false} variant="outline" className="border-bar">
@@ -160,7 +160,6 @@ export function RunPage({ id }: { id: string }) {
   const queuePos = model.run.queuePosition ?? null;
   const limit = model.plan?.stopThresholds ?? report?.thresholds ?? null;
   const reason = model.run.statusReason === null ? null : plainReason(model.run.statusReason);
-  const showStickyStrip = activeTab !== 'overview' || (!queued && !tilesInView);
 
   return (
     <div className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6 print:max-w-none">
@@ -223,7 +222,7 @@ export function RunPage({ id }: { id: string }) {
           </div>
         ) : report ? (
           <div className="flex shrink-0 flex-col items-start gap-1.5 min-[861px]:items-end">
-            <Button type="button" variant="secondary" className="border border-bar-hover" onClick={goToRunsPanel}>
+            <Button type="button" variant="secondary" onClick={goToRunsPanel}>
               Run again and compare
             </Button>
           </div>
@@ -247,40 +246,51 @@ export function RunPage({ id }: { id: string }) {
         </p>
       ) : null}
 
-      {showStickyStrip ? <KpiStrip items={kpiItems} /> : null}
-
-      <div data-report-root={report ? 'true' : undefined} className="flex min-w-0 flex-col gap-4">
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
-            <TabsList
-              aria-label="Capacity Report sections"
-              className="flex h-auto w-full flex-wrap justify-start gap-1 border border-border bg-surface p-1 sm:w-fit"
-            >
-              {RUN_TAB_ITEMS.map((tab) => {
-                const disabled = tab.id === 'ai' && !hasReport;
-                return (
-                  <TabsTrigger
-                    key={tab.id}
-                    value={tab.id}
-                    disabled={disabled}
-                    aria-describedby={disabled ? aiDisabledNoteId : undefined}
-                    title={disabled ? `${tab.label} — ${AI_TAB_DISABLED_REASON}` : undefined}
-                    className="min-h-9 flex-none border border-transparent px-3 py-1.5 data-active:border-bar-hover data-active:bg-background data-active:text-foreground"
-                  >
-                    {tab.label}
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
-
-            {!hasReport ? (
-              <p id={aiDisabledNoteId} className="m-0 text-xs text-muted-foreground">
-                AI Insights &amp; Report Q&amp;A: {AI_TAB_DISABLED_REASON}.
-              </p>
-            ) : null}
+      <div className="min-w-0">
+        {activeTab === 'overview' ? (
+          !queued && !tilesInView ? (
+            <div className="sticky top-[61px] z-20 h-0 overflow-visible min-[861px]:top-[53px] print:hidden">
+              <KpiStrip items={kpiItems} />
+            </div>
+          ) : null
+        ) : (
+          <div className="sticky top-[61px] z-20 mb-4 min-[861px]:top-[53px] print:hidden">
+            <KpiStrip items={kpiItems} />
           </div>
+        )}
 
-          <TabsContent value="overview" className="flex min-w-0 flex-col gap-4 outline-none">
+        <div data-report-root={report ? 'true' : undefined} className="flex min-w-0 flex-col gap-4">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
+              <TabsList
+                aria-label="Capacity Report sections"
+                className="flex h-auto w-full flex-wrap justify-start gap-1 border border-border bg-surface p-1 sm:w-fit"
+              >
+                {RUN_TAB_ITEMS.map((tab) => {
+                  const disabled = tab.id === 'ai' && !hasReport;
+                  return (
+                    <TabsTrigger
+                      key={tab.id}
+                      value={tab.id}
+                      disabled={disabled}
+                      aria-describedby={disabled ? aiDisabledNoteId : undefined}
+                      title={disabled ? `${tab.label} — ${AI_TAB_DISABLED_REASON}` : undefined}
+                      className="min-h-9 flex-none border border-transparent px-3 py-1.5 data-active:border-bar-hover data-active:bg-background data-active:text-foreground"
+                    >
+                      {tab.label}
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+
+              {!hasReport ? (
+                <p id={aiDisabledNoteId} className="m-0 text-xs text-muted-foreground">
+                  AI Insights &amp; Report Q&amp;A: {AI_TAB_DISABLED_REASON}.
+                </p>
+              ) : null}
+            </div>
+
+            <TabsContent value="overview" className="flex min-w-0 flex-col gap-4">
             {activeTab === 'overview' ? (
               <>
                 {queued ? (
@@ -353,7 +363,7 @@ export function RunPage({ id }: { id: string }) {
             ) : null}
           </TabsContent>
 
-          <TabsContent value="stages" className="flex min-w-0 flex-col gap-4 outline-none">
+          <TabsContent value="stages" className="flex min-w-0 flex-col gap-4">
             {activeTab === 'stages' ? (
               report ? (
                 <>
@@ -374,7 +384,7 @@ export function RunPage({ id }: { id: string }) {
             ) : null}
           </TabsContent>
 
-          <TabsContent value="ai" className="flex min-w-0 flex-col gap-4 outline-none">
+          <TabsContent value="ai" className="flex min-w-0 flex-col gap-4">
             {activeTab === 'ai' && report ? (
               <>
                 <AiSection report={report} />
@@ -383,10 +393,11 @@ export function RunPage({ id }: { id: string }) {
             ) : null}
           </TabsContent>
 
-          <TabsContent value="audit" className="flex min-w-0 flex-col gap-4 outline-none">
+          <TabsContent value="audit" className="flex min-w-0 flex-col gap-4">
             {activeTab === 'audit' ? <AuditLog model={model} revision={auditVersion} /> : null}
           </TabsContent>
         </Tabs>
+        </div>
       </div>
     </div>
   );

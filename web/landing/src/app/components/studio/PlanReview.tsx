@@ -6,6 +6,7 @@ import { journeyGroups, journeyLabel, type JourneyRow } from '../../../../../../
 import type { TestPlan } from '../../../../../../src/types.ts';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { useApp } from '../../context.tsx';
 import { parseErrorText } from '../../lib/format.ts';
@@ -48,7 +49,6 @@ export function PlanBrief({
           type="button"
           variant="secondary"
           size="sm"
-          className="border border-bar-hover"
           disabled={disabled}
           onClick={onEdit}
         >
@@ -104,7 +104,6 @@ export function PlanReview({
       <Button
         type="button"
         variant="secondary"
-        className="border border-bar-hover"
         disabled={busy !== null}
         onClick={onEdit}
       >
@@ -507,7 +506,7 @@ function JourneyChecks({
                   type="button"
                   variant="secondary"
                   size="sm"
-                  className="ml-auto border border-bar-hover"
+                  className="ml-auto"
                   disabled={disabled}
                   onClick={() => setGroup(rows, !rows.every((row) => checked.has(row.id)))}
                 >
@@ -561,24 +560,26 @@ function JourneyChecks({
       ) : null}
 
       {differ ? (
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border pt-3">
-          <p className="m-0 flex-1 text-sm text-foreground" aria-live="polite">
-            Revise the plan to use these checks.
-          </p>
-          <Button
-            type="button"
-            variant="secondary"
-            className="border border-bar-hover"
-            disabled={disabled}
-            onClick={() =>
-              onRevise([
-                'r1',
-                ...routes.filter((row) => row.path !== '/' && checked.has(row.id)).map((row) => row.id),
-              ])
-            }
-          >
-            Revise the plan
-          </Button>
+        <div className="flex flex-col gap-3 pt-1">
+          <Separator />
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <p className="m-0 flex-1 text-sm text-foreground" aria-live="polite">
+              Revise the plan to use these checks.
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={disabled}
+              onClick={() =>
+                onRevise([
+                  'r1',
+                  ...routes.filter((row) => row.path !== '/' && checked.has(row.id)).map((row) => row.id),
+                ])
+              }
+            >
+              Revise the plan
+            </Button>
+          </div>
         </div>
       ) : null}
     </TelemetryPanel>

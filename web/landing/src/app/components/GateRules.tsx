@@ -6,6 +6,7 @@
  */
 import { ChevronDownIcon } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 import { useApp } from '../context.tsx';
 import { TelemetryPanel } from './studio/TelemetryFrame.tsx';
 
@@ -31,11 +32,10 @@ function Rules({ targetOrigin }: { targetOrigin?: string | null | undefined }) {
           <div key={row.label} className="contents">
             <dt className="text-muted-foreground">{row.label}</dt>
             <dd
-              className={
-                row.mono
-                  ? 'm-0 min-w-0 font-mono text-[0.8125rem] break-all text-foreground tabular-nums'
-                  : 'm-0 min-w-0 text-[0.8125rem] text-foreground'
-              }
+              className={cn(
+                'm-0 min-w-0 text-[0.8125rem] text-foreground',
+                row.mono && 'font-mono break-all tabular-nums',
+              )}
             >
               {row.value}
             </dd>

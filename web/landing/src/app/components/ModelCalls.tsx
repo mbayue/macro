@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { ChevronDownIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import type { ModelCallView } from '../../../../../src/api-types.ts';
 import { modelCallRows } from '../lib/report-view.ts';
 import { TableWrap } from './ui.tsx';
@@ -82,13 +83,14 @@ export const ModelCalls = memo(function ModelCalls({ calls }: { calls: readonly 
                         <Badge variant={outcomeVariant(r.outcome)}>{r.outcome}</Badge>
                       </td>
                       <td className="num font-mono tabular-nums">{r.latency}</td>
-                      <td className={c.promptTokens === null ? 'num text-muted-foreground' : 'num font-mono tabular-nums'}>
+                      <td className={cn('num', c.promptTokens === null ? 'text-muted-foreground' : 'font-mono tabular-nums')}>
                         {tokenText(c.promptTokens)}
                       </td>
                       <td
-                        className={
-                          c.completionTokens === null ? 'num text-muted-foreground' : 'num font-mono tabular-nums'
-                        }
+                        className={cn(
+                          'num',
+                          c.completionTokens === null ? 'text-muted-foreground' : 'font-mono tabular-nums',
+                        )}
                       >
                         {tokenText(c.completionTokens)}
                       </td>

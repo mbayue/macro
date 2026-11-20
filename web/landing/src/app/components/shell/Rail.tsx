@@ -297,7 +297,6 @@ export function MobileTopBar() {
                 size="sm"
                 aria-label="Open navigation menu"
                 aria-expanded={state.mobileOpen}
-                className="border border-bar-hover"
               />
             }
           >

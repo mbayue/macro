@@ -7,6 +7,7 @@ import { memo, useEffect, useRef, useState } from 'react';
 import { ChevronDownIcon, DownloadIcon, ExternalLinkIcon, GitCompareIcon, PlayIcon, PrinterIcon, XIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import type { CapacityReport, MetricsView, RouteRowView, StageView } from '../../../../../../src/report/build.ts';
 import type { Comparison } from '../../../../../../src/report/compare.ts';
@@ -273,11 +274,11 @@ export const ReportExport = memo(function ReportExport({ report }: { report: Cap
 
   return (
     <div className="flex flex-wrap items-center gap-2.5 print:hidden">
-      <Button type="button" variant="secondary" className="border border-bar-hover" onClick={downloadCsv}>
+      <Button type="button" variant="secondary" onClick={downloadCsv}>
         <DownloadIcon data-icon="inline-start" />
         Download CSV
       </Button>
-      <Button type="button" variant="secondary" className="border border-bar-hover" onClick={() => window.print()}>
+      <Button type="button" variant="secondary" onClick={() => window.print()}>
         <PrinterIcon data-icon="inline-start" />
         Print / save as PDF
       </Button>
@@ -304,11 +305,10 @@ export const ReportMeta = memo(function ReportMeta({ report }: { report: Capacit
       {items.map(([k, v, wide]) => (
         <div
           key={k}
-          className={
-            wide
-              ? 'flex min-w-0 flex-col gap-0.5 bg-surface px-4 py-3 sm:col-span-2 lg:col-span-4'
-              : 'flex min-w-0 flex-col gap-0.5 bg-surface px-4 py-3'
-          }
+          className={cn(
+            'flex min-w-0 flex-col gap-0.5 bg-surface px-4 py-3',
+            wide && 'sm:col-span-2 lg:col-span-4',
+          )}
         >
           <dt className="text-xs text-muted-foreground">{k}</dt>
           <dd className="m-0 min-w-0">{v}</dd>
@@ -339,7 +339,8 @@ export function InlineRunComparison({
   onClose,
 }: InlineRunComparisonProps) {
   return (
-    <div className="flex flex-col gap-3 border-t border-border pt-4 print:border-t-0 print:pt-0">
+    <div className="flex flex-col gap-3 pt-1 print:pt-0">
+      <Separator className="print:hidden" />
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
           <h3 className="m-0 font-sans text-[0.9375rem] font-medium text-foreground">Run comparison</h3>
@@ -514,7 +515,7 @@ export const RunsPanel = memo(function RunsPanel({ report }: { report: CapacityR
                 {rows.map((r) => {
                   const on = picked.includes(r.runId);
                   return (
-                    <tr key={r.runId} className={on ? 'bg-surface-2' : undefined}>
+                    <tr key={r.runId} className={cn(on && 'bg-surface-2')}>
                       <td className="align-middle">
                         <input
                           type="checkbox"
@@ -553,7 +554,6 @@ export const RunsPanel = memo(function RunsPanel({ report }: { report: CapacityR
           type="button"
           variant="secondary"
           disabled={!canCompare}
-          className="border border-bar-hover"
           onClick={startCompare}
         >
           <GitCompareIcon data-icon="inline-start" />

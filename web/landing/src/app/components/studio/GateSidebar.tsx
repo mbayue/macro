@@ -138,7 +138,6 @@ export function GateSidebar({
                   render={<a href={`#/run/${sampleRunId}`} />}
                   nativeButton={false}
                   variant="secondary"
-                  className="border border-bar-hover"
                 >
                   View sample report
                 </Button>
@@ -379,9 +378,10 @@ function ApprovePanel({
       <div className="flex flex-col gap-2.5">
         <Button
           type="button"
+          variant="ink"
           disabled={!idle || checksDiffer}
           onClick={() => void approve()}
-          className="w-full bg-[var(--field-1-ink)] text-[var(--field-1)] hover:opacity-90 focus-visible:outline-primary-foreground disabled:bg-[var(--field-1-ink)]/50 disabled:text-[var(--field-1)]/80"
+          className="w-full"
         >
           Approve and run
         </Button>
@@ -407,7 +407,7 @@ function ApprovePanel({
 
       <AlertRegion
         error={error}
-        className={error ? 'border-destructive bg-background text-foreground' : undefined}
+        className={cn(error && 'border-destructive bg-background text-foreground')}
       />
     </section>
   );
@@ -440,9 +440,10 @@ export function ApproveBar({
       </p>
       <Button
         type="button"
+        variant="ink"
         disabled={disabled}
         onClick={onApprove}
-        className="flex-1 bg-[var(--field-1-ink)] text-[var(--field-1)] hover:opacity-90 focus-visible:outline-primary-foreground sm:flex-none"
+        className="flex-1 sm:flex-none"
       >
         Approve and run
       </Button>

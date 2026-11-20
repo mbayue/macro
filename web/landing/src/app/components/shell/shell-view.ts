@@ -41,12 +41,14 @@ function extractHost(origin: string): string | null {
 export function resolveContextTarget({
   me,
   webOrigin,
+  targetMode,
 }: {
   me: MeResponse | null;
   webOrigin: string;
+  targetMode?: 'demo' | 'own' | undefined;
 }): ContextTargetView {
   const pendingHost = me?.pendingVerification?.host ?? null;
-  if (me?.verifiedOrigin) {
+  if (targetMode !== 'demo' && me?.verifiedOrigin) {
     return {
       host: me.verifiedOrigin.host,
       kind: 'verified',

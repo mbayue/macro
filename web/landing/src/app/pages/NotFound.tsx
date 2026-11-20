@@ -1,5 +1,4 @@
 import { PlusIcon, TablePropertiesIcon } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TelemetryPanel } from '../components/studio/TelemetryFrame.tsx';
 
@@ -20,26 +19,16 @@ export function NotFound() {
       </header>
 
       <TelemetryPanel ticks="bar" className="gap-4">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <Badge variant="outline" className="font-mono tabular-nums">
-            404
-          </Badge>
-          <p className="m-0 text-sm text-muted-foreground">Choose where to go next.</p>
-        </div>
+        <p className="m-0 text-sm text-muted-foreground">Choose where to go next.</p>
 
         <div className="flex flex-wrap items-center gap-2.5">
           <Button render={<a href="#/" />} nativeButton={false}>
             <PlusIcon data-icon="inline-start" />
-            Start a new test
+            Test Studio
           </Button>
-          <Button
-            render={<a href="#/runs" />}
-            nativeButton={false}
-            variant="secondary"
-            className="border border-bar-hover"
-          >
+          <Button render={<a href="#/runs" />} nativeButton={false} variant="secondary">
             <TablePropertiesIcon data-icon="inline-start" />
-            Open Runs Table
+            Runs Table
           </Button>
         </div>
       </TelemetryPanel>

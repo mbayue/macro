@@ -82,7 +82,7 @@ export const ReportQa = memo(function ReportQa({ report }: { report: CapacityRep
           onChange={(e) => setQuestion(e.target.value)}
           className="min-h-10 min-w-[240px] flex-1 rounded-md border border-bar bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-accent-text focus-visible:outline-[2px] focus-visible:outline-offset-[1px] focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60"
         />
-        <Button type="submit" variant="secondary" className="border border-bar-hover" disabled={busy || question.trim() === ''}>
+        <Button type="submit" variant="secondary" disabled={busy || question.trim() === ''}>
           Ask
         </Button>
       </form>

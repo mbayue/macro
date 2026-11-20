@@ -117,7 +117,6 @@ export function ScenarioAssistant({ draft, routes, disabled, onApply }: Props) {
               type="button"
               variant="secondary"
               disabled={busy || disabled}
-              className="border border-bar-hover"
               onClick={() => void refine(instruction)}
             >
               Draft suggestion

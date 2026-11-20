@@ -4,6 +4,7 @@ import { ShieldCheckIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 import { TelemetryPanel } from '../components/studio/TelemetryFrame.tsx';
 import { TurnstileBox, useTurnstile } from '../components/Turnstile.tsx';
 import { ApiErrorText, Busy } from '../components/ui.tsx';
@@ -114,11 +115,11 @@ export function ProbeStart() {
 
             <div
               role="alert"
-              className={
+              className={cn(
                 error
                   ? 'flex flex-col gap-2 rounded-md border border-destructive bg-background px-3.5 py-3 text-sm text-foreground'
-                  : 'sr-only'
-              }
+                  : 'sr-only',
+              )}
             >
               {error ? (
                 <>

@@ -7,7 +7,6 @@ import { ArrowLeftIcon, LogOutIcon, MailIcon, TablePropertiesIcon } from 'lucide
 import type { MeResponse } from '../../../../../src/api-types.ts';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { TelemetryPanel } from '../components/studio/TelemetryFrame.tsx';
 import { Busy, ConfirmButton } from '../components/ui.tsx';
@@ -86,11 +85,11 @@ export function EmailLinkPanel({
         <div
           id={emailErrorId}
           role="alert"
-          className={
+          className={cn(
             error
               ? 'flex max-w-[420px] flex-col gap-1.5 rounded-md border border-bad bg-background px-3.5 py-2.5 text-sm text-foreground'
-              : 'sr-only'
-          }
+              : 'sr-only',
+          )}
         >
           {error ? (
             <>
@@ -105,11 +104,11 @@ export function EmailLinkPanel({
         <div
           id={emailStatusId}
           role="status"
-          className={
+          className={cn(
             sent
               ? 'flex max-w-[420px] flex-wrap items-center gap-2 rounded-md border border-ok bg-background px-3.5 py-2.5 text-sm text-foreground'
-              : 'sr-only'
-          }
+              : 'sr-only',
+          )}
         >
           {sent ? (
             <>
@@ -132,14 +131,9 @@ export function EmailLinkPanel({
               </>
             )}
           </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            className="border border-bar-hover"
-            onClick={onBack}
-          >
+          <Button type="button" variant="secondary" onClick={onBack}>
             <ArrowLeftIcon data-icon="inline-start" />
-            Back to new test
+            Back to Test Studio
           </Button>
         </div>
       </form>
@@ -185,49 +179,22 @@ export function AccountPanel({
 
       <div className="flex flex-col gap-4">
         <TelemetryPanel ticks="bar" aria-labelledby="session-active-heading" className="gap-4 bg-card">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 id="session-active-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
-              Session active
-            </h2>
-            <Badge variant="ok">Signed in</Badge>
-          </div>
+          <h2 id="session-active-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+            Session active
+          </h2>
 
           <p className="m-0 max-w-[72ch] text-sm text-muted-foreground">
             Your account can run private load tests against your verified origin.
           </p>
 
-          <dl className="m-0 grid grid-cols-1 gap-px overflow-hidden rounded-sm border border-border bg-border sm:grid-cols-3">
-            <div className="flex min-w-0 flex-col gap-0.5 bg-background px-3.5 py-2.5">
-              <dt className="text-xs text-muted-foreground">Account</dt>
-              <dd className="m-0 font-mono text-xs break-all text-foreground">{identity}</dd>
-            </div>
-            <div className="flex min-w-0 flex-col gap-0.5 bg-background px-3.5 py-2.5">
-              <dt className="text-xs text-muted-foreground">Email</dt>
-              <dd className="m-0 font-mono text-xs break-all text-foreground">{me.user.email}</dd>
-            </div>
-            <div className="flex min-w-0 flex-col gap-0.5 bg-background px-3.5 py-2.5">
-              <dt className="text-xs text-muted-foreground">Verified origin</dt>
-              <dd className="m-0 font-mono text-xs break-all text-foreground">
-                {me.verifiedOrigin ? me.verifiedOrigin.host : 'None verified'}
-              </dd>
-            </div>
-          </dl>
-
-          <Separator />
-
           <div className="flex flex-wrap items-center gap-2.5">
             <Button type="button" onClick={onBack}>
               <ArrowLeftIcon data-icon="inline-start" />
-              Back to new test
+              Back to Test Studio
             </Button>
-            <Button
-              render={<a href="#/runs" />}
-              nativeButton={false}
-              variant="secondary"
-              className="border border-bar-hover"
-            >
+            <Button render={<a href="#/runs" />} nativeButton={false} variant="secondary">
               <TablePropertiesIcon data-icon="inline-start" />
-              View your runs
+              View Runs Table
             </Button>
             <Button
               type="button"
@@ -262,11 +229,11 @@ export function AccountPanel({
 
           <div
             role="alert"
-            className={
+            className={cn(
               deleteError
                 ? 'flex flex-col gap-1.5 rounded-md border border-bad bg-background px-3.5 py-2.5 text-sm text-foreground'
-                : 'sr-only'
-            }
+                : 'sr-only',
+            )}
           >
             {deleteError ? (
               <>
@@ -283,9 +250,9 @@ export function AccountPanel({
               label={deleting ? 'Deleting…' : 'Delete account'}
               confirmLabel="Confirm delete"
               cancelLabel="Keep account"
-              className={cn(buttonVariants({ variant: 'secondary' }), 'border border-bar-hover')}
+              className={buttonVariants({ variant: 'secondary' })}
               confirmClassName={buttonVariants({ variant: 'destructive' })}
-              cancelClassName={cn(buttonVariants({ variant: 'secondary' }), 'border border-bar-hover')}
+              cancelClassName={buttonVariants({ variant: 'secondary' })}
               disabled={deleting || signingOut}
               onConfirm={onDelete}
             />

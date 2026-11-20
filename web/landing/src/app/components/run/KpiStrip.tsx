@@ -93,36 +93,49 @@ export function SignatureTiles({
   );
 }
 
+function compactStripSource(sourceNote: string): string {
+  const stageMatch = /\bfrom stage \d+\b/i.exec(sourceNote);
+  if (stageMatch) return stageMatch[0].toLowerCase();
+  if (sourceNote.includes('after stage 1 ends')) return 'after stage 1 ends';
+  if (sourceNote.startsWith('no stage stayed')) return 'no stage passed';
+  if (sourceNote.startsWith('every stage stayed')) return 'within thresholds';
+  if (sourceNote.startsWith('no single route')) return 'within limits';
+  return sourceNote;
+}
+
 /** Sticky one-line KPI strip shown above tabs when Overview tiles scroll out of view or on non-Overview tabs. */
 export const KpiStrip = memo(function KpiStrip({ items }: { items: readonly KpiStripItem[] }) {
   return (
     <section
       aria-label="Key metrics summary"
-      className="sticky top-[61px] z-10 rounded-md border border-bar bg-surface text-foreground min-[861px]:top-[53px] print:hidden"
+      className="relative rounded-md border border-bar bg-surface text-foreground"
     >
       <CornerTicks tone="bar" />
-      <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 min-[1180px]:grid-cols-4 min-[1180px]:divide-x min-[1180px]:divide-y-0">
+      <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 min-[1180px]:flex min-[1180px]:divide-x min-[1180px]:divide-y-0">
         {items.map((item, idx) => {
           const isLive = item.tone === 'live';
           const readout = item.unit ? `${item.value} ${item.unit}` : item.value;
+          const compactSource = compactStripSource(item.sourceNote);
           return (
             <div
               key={item.id}
               className={cn(
-                'flex min-w-0 flex-col gap-0.5 px-3.5 py-2',
+                'flex min-w-0 flex-wrap items-baseline justify-between gap-x-1.5 gap-y-0.5 px-2 py-2 min-[1180px]:flex-auto min-[1180px]:flex-nowrap',
                 idx % 2 === 1 && 'sm:border-l sm:border-border min-[1180px]:border-l-0',
                 idx >= 2 && 'sm:border-t sm:border-border min-[1180px]:border-t-0',
                 isLive && 'border-l-2 border-l-accent-text',
               )}
             >
-              <div className="flex min-w-0 items-baseline justify-between gap-2">
-                <span className="truncate text-xs text-muted-foreground">{item.label}</span>
-                <span className={cn('shrink-0 font-mono text-sm font-medium tabular-nums', VALUE_TONE_CLASS[item.tone])}>
+              <span className="min-w-0 truncate text-xs text-muted-foreground" title={item.label}>
+                {item.label}
+              </span>
+              <span className="inline-flex shrink-0 flex-wrap items-baseline gap-x-1.5 font-mono tabular-nums">
+                <span className={cn('text-xs font-medium', VALUE_TONE_CLASS[item.tone])}>
                   {readout}
                 </span>
-              </div>
-              <span className="font-mono text-[11px] leading-snug text-muted-foreground tabular-nums break-words">
-                {item.sourceNote}
+                <span className="text-[11px] text-muted-foreground" title={item.sourceNote}>
+                  {compactSource}
+                </span>
               </span>
             </div>
           );

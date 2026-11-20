@@ -163,7 +163,7 @@ export function TrafficComposer({
             </Button>
           ) : null}
           {showRetry ? (
-            <Button type="button" variant="secondary" className="border border-bar-hover" disabled={!idle} onClick={onRetry}>
+            <Button type="button" variant="secondary" disabled={!idle} onClick={onRetry}>
               Retry planning
             </Button>
           ) : null}

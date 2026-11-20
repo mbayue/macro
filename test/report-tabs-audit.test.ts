@@ -1,7 +1,10 @@
 import { describe, expect, test } from 'bun:test';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import type { RunSnapshot } from '../src/api-types.ts';
 import { buildReport } from '../src/report/build.ts';
 import type { StageMetrics, TestPlan } from '../src/types.ts';
+import { KpiStrip, SignatureTiles } from '../web/landing/src/app/components/run/KpiStrip.tsx';
 import { AI_WITHHELD_NOTE } from '../web/landing/src/app/lib/report-view.ts';
 import { applyEvent, modelFromSnapshot } from '../web/landing/src/app/lib/run-view.ts';
 import {
@@ -572,5 +575,66 @@ describe('plainReason, verdictLine, and revision keys', () => {
     expect(stagesRevisionKey(model)).toBe(s0);
     expect(feedRevisionKey(model)).not.toBe(f0);
     expect(auditRevisionKey(model)).not.toBe(a0);
+  });
+});
+
+describe('KpiStrip and SignatureTiles rendering', () => {
+  test('KpiStrip delegates sticky positioning to its wrapper, renders single-line flex cells with preserved from stage N notes, and emits zero style= attributes', () => {
+    const plan = makePlan();
+    const s1 = makeMetrics(280, 0.1);
+    const s2 = makeMetrics(620, 0.5);
+    const s3 = makeMetrics(1510, 1.2, {
+      store_home: { p95: 800, errorRatePct: 0.4 },
+      store_checkout: { p95: 1850, errorRatePct: 1.9 },
+    });
+    const report = buildReport({
+      runId: 'run_kpi_1',
+      planHash: 'hash_plan_01',
+      status: 'halted',
+      runtime: 'runc',
+      plan,
+      stages: [
+        { index: 0, vus: 25, durationSec: 30, status: 'done', metrics: s1, verdict: 'pass' },
+        { index: 1, vus: 50, durationSec: 30, status: 'done', metrics: s2, verdict: 'pass' },
+        { index: 2, vus: 100, durationSec: 30, status: 'done', metrics: s3, verdict: 'fail' },
+      ],
+      decisions: [],
+      events: [],
+      routeOrder: ['store_home', 'store_checkout'],
+    });
+    const model = modelFromSnapshot(
+      makeSnapshot({
+        run: {
+          id: 'run_kpi_1',
+          kind: 'run',
+          planHash: 'hash_plan_01',
+          status: 'halted',
+          statusReason: null,
+          runtime: 'runc',
+          startedAt: 1_700_000_000_000,
+          endedAt: 1_700_000_095_000,
+          visibility: 'public',
+          probeResult: null,
+        },
+        plan,
+        report,
+      }),
+    );
+    const items = buildKpiStripItems(model, 1_700_000_120_000);
+
+    const stripHtml = renderToStaticMarkup(createElement(KpiStrip, { items }));
+    expect(stripHtml).not.toContain('sticky');
+    expect(stripHtml).toContain('border-bar');
+    expect(stripHtml).toContain('flex-wrap');
+    expect(stripHtml).toContain('Safe capacity (VUs)');
+    expect(stripHtml).toContain('50 VUs');
+    expect(stripHtml).toContain('from stage 2');
+    expect(stripHtml).toContain('from stage 3');
+    expect(stripHtml).not.toMatch(/\sstyle=/i);
+
+    const tilesHtml = renderToStaticMarkup(createElement(SignatureTiles, { items, reportMode: true }));
+    expect(tilesHtml).toContain('Safe capacity (VUs)');
+    expect(tilesHtml).toContain('from stage 2');
+    expect(tilesHtml).not.toMatch(/\sstyle=/i);
   });
 });

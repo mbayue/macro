@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, use, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, type ReactNode, use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AccountRunsResponse, MeResponse, QuotaResponse } from '../../../../../../src/api-types.ts';
 import { currentTheme, setTheme, type Theme } from '../../../theme.ts';
 import { AppContext } from '../../context.tsx';
@@ -19,6 +19,8 @@ import {
   writeRailCollapsed,
 } from './shell-view.ts';
 
+export type ShellTargetMode = 'demo' | 'own' | null;
+
 export interface ShellState {
   route: Route;
   railCollapsed: boolean;
@@ -32,6 +34,7 @@ export interface ShellState {
   signingOut: boolean;
   me: MeResponse | null;
   target: ContextTargetView;
+  targetModeOverride: ShellTargetMode;
   identityLabel: string | null;
 }
 
@@ -43,6 +46,7 @@ export interface ShellActions {
   toggleTheme: () => void;
   signOut: () => Promise<void>;
   navigateTo: (pathOrHash: string) => void;
+  setTargetModeOverride: (mode: ShellTargetMode) => void;
 }
 
 export interface ShellMeta {
@@ -74,7 +78,7 @@ export function ShellProvider({
   children: ReactNode;
 }) {
   // Shell renders during boot before AppContext exists; identity and config are optional then.
-  const ctx = useContext(AppContext);
+  const ctx = use(AppContext);
   const me = ctx?.me ?? null;
   const webOrigin = ctx?.config.webOrigin ?? '';
   const activeRouteKey = routeKey(route);
@@ -82,6 +86,7 @@ export function ShellProvider({
   const [railCollapsed, setRailCollapsed] = useState<boolean>(() => readRailCollapsed());
   const [mobileOpen, setMobileOpen] = useState(false);
   const [quickJumpOpen, setQuickJumpOpenState] = useState(false);
+  const [targetModeOverride, setTargetModeOverride] = useState<ShellTargetMode>(null);
   const [theme, setThemeState] = useState<Theme>(() =>
     typeof document !== 'undefined' && currentTheme() === 'light' ? 'light' : 'dark',
   );
@@ -100,6 +105,11 @@ export function ShellProvider({
     setShortcutHint(formatShortcutHint(detectApplePlatform()));
     setThemeState(currentTheme());
   }, []);
+
+  // Reset target mode override when signed out.
+  useEffect(() => {
+    if (me === null) setTargetModeOverride(null);
+  }, [me]);
 
   // Close mobile navigation sheet whenever the route changes.
   useEffect(() => {
@@ -222,6 +232,7 @@ export function ShellProvider({
       clearRecentRuns();
       clearReviewState();
       setRecentRuns([]);
+      setTargetModeOverride(null);
       setMobileOpen(false);
       setQuickJumpOpenState(false);
       await ctx?.refreshMe();
@@ -233,7 +244,15 @@ export function ShellProvider({
     }
   }, [ctx, signingOut]);
 
-  const target = useMemo(() => resolveContextTarget({ me, webOrigin }), [me, webOrigin]);
+  const target = useMemo(
+    () =>
+      resolveContextTarget({
+        me,
+        webOrigin,
+        targetMode: targetModeOverride ?? undefined,
+      }),
+    [me, webOrigin, targetModeOverride],
+  );
   const identityLabel = useMemo(() => formatIdentityLabel(me), [me]);
 
   const value = useMemo<ShellContextValue>(
@@ -251,6 +270,7 @@ export function ShellProvider({
         signingOut,
         me,
         target,
+        targetModeOverride,
         identityLabel,
       },
       actions: {
@@ -261,6 +281,7 @@ export function ShellProvider({
         toggleTheme,
         signOut,
         navigateTo,
+        setTargetModeOverride,
       },
       meta: {
         shortcutHint,
@@ -281,6 +302,7 @@ export function ShellProvider({
       signingOut,
       me,
       target,
+      targetModeOverride,
       identityLabel,
       toggleRailCollapsed,
       setQuickJumpOpen,
@@ -294,6 +316,11 @@ export function ShellProvider({
   );
 
   return <ShellContext.Provider value={value}>{children}</ShellContext.Provider>;
+}
+
+/** Reads ShellContext when inside `<ShellProvider>`, or returns `null` in standalone renders/tests. */
+export function useOptionalShell(): ShellContextValue | null {
+  return use(ShellContext);
 }
 
 export function useShell(): ShellContextValue {

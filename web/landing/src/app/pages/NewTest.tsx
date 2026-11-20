@@ -21,6 +21,7 @@ import { TurnstileBox, useTurnstile } from '../components/Turnstile.tsx';
 import { VerifyPanel } from '../components/VerifyPanel.tsx';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useOptionalShell } from '../components/shell/ShellContext.tsx';
 import { useApp } from '../context.tsx';
 import { ApproveBar, GateSidebar } from '../components/studio/GateSidebar.tsx';
 import { PlanBrief, PlanReview } from '../components/studio/PlanReview.tsx';
@@ -39,6 +40,8 @@ const reducedMotion = (): boolean => window.matchMedia('(prefers-reduced-motion:
 
 export function NewTest() {
   const { config, me, refreshMe, navigate, announce } = useApp();
+  const shell = useOptionalShell();
+  const setTargetModeOverride = shell?.actions.setTargetModeOverride;
   const min = config.trafficEventMin;
   const max = config.trafficEventMax;
 
@@ -64,6 +67,11 @@ export function NewTest() {
   const [checksDiffer, setChecksDiffer] = useState(false);
 
   useEffect(() => () => void (alive.current = false), []);
+
+  useEffect(() => {
+    setTargetModeOverride?.(targetMode);
+    return () => setTargetModeOverride?.(null);
+  }, [setTargetModeOverride, targetMode]);
 
   useEffect(() => {
     const abort = new AbortController();

@@ -177,12 +177,7 @@ export function ProbePage({ id }: { id: string }) {
               <ApiErrorText error={state.error} />
               {state.error.code !== 'not_found' ? (
                 <div className="flex flex-wrap items-center gap-2.5">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="border border-bar-hover"
-                    onClick={() => setAttempt((a) => a + 1)}
-                  >
+                  <Button type="button" variant="secondary" onClick={() => setAttempt((a) => a + 1)}>
                     <RotateCcwIcon data-icon="inline-start" />
                     Try again
                   </Button>
@@ -353,11 +348,7 @@ export function ProbeBody({
                         ? 'destructive'
                         : 'warn'
                   }
-                  className={
-                    wording.verdict === 'passed'
-                      ? 'border-primary-foreground text-primary-foreground'
-                      : undefined
-                  }
+                  className={cn(wording.verdict === 'passed' && 'border-primary-foreground text-primary-foreground')}
                 >
                   {wording.badge}
                 </Badge>

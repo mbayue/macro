@@ -151,7 +151,7 @@ function RootLayout() {
             Macro could not load its settings from the server. Check your connection and try again.
           </p>
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="button" variant="secondary" className="border border-bar-hover" onClick={() => void load()}>
+            <Button type="button" variant="secondary" onClick={() => void load()}>
               <RotateCcwIcon data-icon="inline-start" />
               Try again
             </Button>

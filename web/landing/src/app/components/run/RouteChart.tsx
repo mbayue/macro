@@ -4,6 +4,7 @@
  * Metrics only exist for finished stages, so a running stage shows no point yet.
  */
 import { memo } from 'react';
+import { cn } from '@/lib/utils';
 import type { StageView } from '../../../../../../src/api-types.ts';
 import { fmtMs } from '../../../../../../src/run/format.ts';
 import type { TestPlan } from '../../../../../../src/types.ts';
@@ -93,7 +94,7 @@ export const RouteChart = memo(function RouteChart({
         {maxY.ticks.map((t) => (
           <g key={t}>
             <line
-              className={t === 0 ? 'stroke-bar' : 'stroke-border'}
+              className={cn(t === 0 ? 'stroke-bar' : 'stroke-border')}
               strokeWidth={1}
               x1={M.left}
               x2={M.left + pw}
@@ -154,7 +155,7 @@ export const RouteChart = memo(function RouteChart({
             return (
               <g key={s.route}>
                 <path
-                  className={isLead ? 'fill-none stroke-accent-text' : 'fill-none stroke-bar'}
+                  className={cn('fill-none', isLead ? 'stroke-accent-text' : 'stroke-bar')}
                   strokeWidth={isLead ? 2.5 : 1.75}
                   strokeLinejoin="round"
                   d={d}
@@ -163,7 +164,7 @@ export const RouteChart = memo(function RouteChart({
                 {s.points.map((p) => (
                   <circle
                     key={p.stage}
-                    className={isLead ? 'fill-accent-text' : 'fill-bar'}
+                    className={cn(isLead ? 'fill-accent-text' : 'fill-bar')}
                     cx={x(p.stage)}
                     cy={y(p.p95)}
                     r={isLead ? 4 : 3}
@@ -183,7 +184,7 @@ export const RouteChart = memo(function RouteChart({
                 <path className="fill-none stroke-bar" strokeWidth={1} d={`M${l.x + 5} ${l.at} L${l.x + 10} ${ly}`} />
               ) : null}
               <line
-                className={l.lead ? 'stroke-accent-text' : 'stroke-bar'}
+                className={cn(l.lead ? 'stroke-accent-text' : 'stroke-bar')}
                 strokeWidth={l.lead ? 2.5 : 1.75}
                 x1={l.x + 12}
                 x2={l.x + 30}
@@ -192,11 +193,10 @@ export const RouteChart = memo(function RouteChart({
                 strokeDasharray={dash}
               />
               <text
-                className={
-                  l.lead
-                    ? 'fill-foreground font-mono text-[11px] font-medium'
-                    : 'fill-muted-foreground font-mono text-[11px]'
-                }
+                className={cn(
+                  'font-mono text-[11px]',
+                  l.lead ? 'fill-foreground font-medium' : 'fill-muted-foreground',
+                )}
                 x={l.x + 35}
                 y={l.y}
               >

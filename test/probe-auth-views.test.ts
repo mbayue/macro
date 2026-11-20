@@ -8,6 +8,7 @@ import { NotFound } from '../web/landing/src/app/pages/NotFound.tsx';
 import { ProbeBody, ProbePage } from '../web/landing/src/app/pages/Probe.tsx';
 import { ProbeStart } from '../web/landing/src/app/pages/ProbeStart.tsx';
 import { AccountPanel, EmailLinkPanel, SignIn } from '../web/landing/src/app/pages/SignIn.tsx';
+import { VerifyPanel } from '../web/landing/src/app/components/VerifyPanel.tsx';
 
 function assertNoInlineStyle(html: string): void {
   expect(html).not.toMatch(/\sstyle=/i);
@@ -49,17 +50,18 @@ function renderWithApp(node: ReactNode, ctxOverrides?: { config?: Partial<Config
 }
 
 describe('NotFound view', () => {
-  test('renders accessible navigation buttons to #/ and #/runs inside telemetry framing with zero style= attributes', () => {
+  test('renders clean Test Studio and Runs Table links without an eyebrow 404 badge or style= attributes', () => {
     const html = renderToStaticMarkup(createElement(NotFound));
 
     expect(html).toContain('<h1');
     expect(html).toContain('Page not found');
-    expect(html).toContain('404');
+    expect(html).not.toContain('404');
+    expect(html).not.toContain('data-slot="badge"');
     expect(html).toContain('href="#/"');
-    expect(html).toContain('Start a new test');
+    expect(html).toContain('Test Studio');
     expect(html).toContain('href="#/runs"');
+    expect(html).toContain('Runs Table');
     expect(html).toContain('data-slot="button"');
-    expect(html).toContain('data-slot="badge"');
     assertNoInlineStyle(html);
   });
 });
@@ -272,6 +274,8 @@ describe('SignIn view (signed out)', () => {
     }
     expect(html).toContain('role="alert"');
     expect(html).toContain('Send sign-in link');
+    expect(html).toContain('Back to Test Studio');
+    expect(html).not.toContain('Back to new test');
     expect(html).toContain('href="/api/auth/github/start"');
     expect(html).not.toContain('href="/api/auth/google/start"');
     expect(html).toContain('data-slot="button"');
@@ -350,7 +354,7 @@ describe('SignIn view (signed out)', () => {
 });
 
 describe('SignIn view (signed in / Account view)', () => {
-  test('displays signed-in githubLogin or email identity, action buttons/links, Delete account ConfirmButton, and zero style= attributes', () => {
+  test('displays signed-in githubLogin or email identity, original Session active + Delete account layout, Glossary copy, and zero style= attributes', () => {
     const githubUserHtml = renderWithApp(createElement(SignIn), {
       me: {
         user: { id: 'u_1', email: 'bayu@example.com', githubLogin: 'mbayue' },
@@ -361,10 +365,14 @@ describe('SignIn view (signed in / Account view)', () => {
 
     expect(githubUserHtml).toContain('Account');
     expect(githubUserHtml).toContain('mbayue');
-    expect(githubUserHtml).toContain('shop.example.com');
-    expect(githubUserHtml).toContain('Back to new test');
+    expect(githubUserHtml).toContain('Session active');
+    expect(githubUserHtml).not.toContain('Signed in');
+    expect(githubUserHtml).not.toContain('Verified origin');
+    expect(githubUserHtml).not.toContain('shop.example.com');
+    expect(githubUserHtml).toContain('Back to Test Studio');
+    expect(githubUserHtml).not.toContain('Back to new test');
     expect(githubUserHtml).toContain('href="#/runs"');
-    expect(githubUserHtml).toContain('View your runs');
+    expect(githubUserHtml).toContain('View Runs Table');
     expect(githubUserHtml).toContain('Sign out');
     expect(githubUserHtml).toContain('Delete account');
     expect(githubUserHtml).toContain('data-slot="button"');
@@ -402,5 +410,46 @@ describe('SignIn view (signed in / Account view)', () => {
     expect(html).toContain('role="alert"');
     expect(html).toContain('Could not reach the server.');
     assertNoInlineStyle(html);
+  });
+});
+
+describe('VerifyPanel view', () => {
+  function assertValidHostForm(html: string): void {
+    expect(html).toMatch(/<form[^>]*novalidate/i);
+    const forMatch = html.match(/<label[^>]*for="([^"]+)"[^>]*>Host or https origin<\/label>/);
+    expect(forMatch).not.toBeNull();
+    const inputId = forMatch?.[1];
+    expect(inputId).toBeTruthy();
+    expect(html).toContain(`id="${inputId}"`);
+    expect(html).toContain('aria-invalid="false"');
+    const describedMatch = html.match(/aria-describedby="([^"]+)"/);
+    expect(describedMatch).not.toBeNull();
+    const ids = (describedMatch?.[1] ?? '').split(/\s+/).filter(Boolean);
+    expect(ids.length).toBeGreaterThanOrEqual(2);
+    for (const id of ids) {
+      expect(html).toContain(`id="${id}"`);
+    }
+    assertNoInlineStyle(html);
+  }
+
+  test('renders VerifyHostForm with noValidate, label/input wiring, aria-invalid, and aria-describedby in both unverified and verified states', () => {
+    const unverifiedHtml = renderWithApp(createElement(VerifyPanel), {
+      me: {
+        user: { id: 'u_1', email: 'dev@example.com', githubLogin: null },
+        verifiedOrigin: null,
+        pendingVerification: null,
+      },
+    });
+    assertValidHostForm(unverifiedHtml);
+
+    const verifiedHtml = renderWithApp(createElement(VerifyPanel), {
+      me: {
+        user: { id: 'u_1', email: 'dev@example.com', githubLogin: null },
+        verifiedOrigin: { origin: 'https://shop.example.com', host: 'shop.example.com' },
+        pendingVerification: null,
+      },
+    });
+    expect(verifiedHtml).toContain('Verify a different host');
+    assertValidHostForm(verifiedHtml);
   });
 });

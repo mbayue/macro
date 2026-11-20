@@ -186,10 +186,12 @@ export function ApiErrorText({ error }: { error: ApiError }) {
 
 /** An alert region that is always in the DOM, so screen readers hear what lands in it. */
 export function AlertRegion({
+  id,
   error,
   className,
   children,
 }: {
+  id?: string | undefined;
   error?: ApiError | null;
   className?: string | undefined;
   children?: ReactNode;
@@ -197,6 +199,7 @@ export function AlertRegion({
   const has = Boolean(error) || Boolean(children);
   return (
     <div
+      id={id}
       className={cn(
         has ? 'grid gap-1.5 rounded-md border border-bad px-3.5 py-3 text-[0.8125rem] text-foreground' : 'border-0 p-0',
         className,
@@ -216,9 +219,9 @@ export function ConfirmButton({
   confirmLabel,
   cancelLabel = 'Keep',
   disabled = false,
-  className = cn(buttonVariants({ variant: 'secondary' }), 'border border-bar-hover'),
+  className = buttonVariants({ variant: 'secondary' }),
   confirmClassName = buttonVariants({ variant: 'destructive' }),
-  cancelClassName = cn(buttonVariants({ variant: 'secondary' }), 'border border-bar-hover'),
+  cancelClassName = buttonVariants({ variant: 'secondary' }),
   onConfirm,
 }: {
   label: ReactNode;

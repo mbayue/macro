@@ -113,7 +113,7 @@ components:
 
 **Creative North Star: "The Test Bench"**
 
-Macro looks like a well-kept test bench: a dark evergreen field where the instrument readings are the only bright things. The evergreen ground and its two surface steps hold everything; spring green marks the one live or primary thing on a screen, and large light-weight figures carry the numbers people came for. The same token world runs the landing site (persuade) and the legal and 404 pages (read), both on Tailwind CSS v4 in `landing.css`, and the app workspace (operate, Tailwind CSS v4 + shadcn/ui on Base UI in `tailwind.css` mapped onto `tokens.css`).
+Macro looks like a well-kept test bench: a dark evergreen field where the instrument readings are the only bright things. The evergreen ground and its two surface steps hold everything; spring green marks the one live or primary thing on a screen, and large light-weight figures carry the numbers people came for. The same token world runs the landing site (persuade) and the legal and 404 pages (read), both on Tailwind CSS v4 in `landing.css`, and the app workspace (operate, Tailwind CSS v4 + shadcn/ui on Base UI in `tailwind.css` mapped onto `tokens.css`). The rest of this document describes the app workspace; the landing, legal and 404 pages share the tokens but follow their own rules in `docs/landing.md` (no hairlines or monospace, one stage-band motif).
 
 Dark is the default (the HTML ships `data-theme="dark"`); light is a full alternate theme on cream, chosen per person and stored in the browser (`macro-theme`). Every token exists in both, and print styles (`@media print`) lock the Capacity Report deliverable onto the light cream palette.
 

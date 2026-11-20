@@ -14,8 +14,12 @@ Single-context layout (`GLOSSARY.md` and `docs/adr/` at the repo root). See `doc
 
 ### Design system
 
-When building or reviewing `/app/` UI, tokens, typography, or CSP styling, read `DESIGN.md`.
+When building or reviewing `/app/` UI, tokens, typography, or CSP styling, read `DESIGN.md`. For the home, privacy, terms and 404 pages, read `docs/landing.md`.
 
 ### Architecture & coding standards
 
 For module boundaries and commands see `docs/architecture.md`; for review-time UI, telemetry, and React 19 standards see `CODING_STANDARDS.md`.
+
+### Windows, screenshots and deploy
+
+Before running shell commands, worktrees, dev servers, screenshots or a deploy on this Windows PC, read `docs/agents/windows.md`.

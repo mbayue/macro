@@ -54,7 +54,12 @@
   --color-ui-bg: var(--ui-bg);
   --color-ui-line: var(--ui-line);
   --color-ui-field: var(--ui-field);
+  --color-accent-ink-soft: var(--accent-ink-soft);
   --color-white: #ffffff;
+  /* Fixed fields that keep their colour in both themes, like a product fragment: the gate's "no"
+     (the light theme's bad red behind white text) and the forest action strip on an accent tile. */
+  --color-refusal: #b3261e;
+  --color-forest: #00684a;
 
   --font-display: var(--display);
   --font-text: var(--text);
@@ -87,6 +92,17 @@
   @media (hover: hover) and (pointer: fine) {
     .site-btn:hover { background: var(--accent-hover); }
     .site-btn--ink:hover { background: var(--accent-ink-soft); }
+  }
+
+  /* Press feedback for every control that is not a .site-btn: the same 0.97 press, transform only. */
+  .press { transition: transform 140ms var(--ease); }
+  .press:active { transform: scale(0.97); }
+
+  /* The space above each home section, and the one h2 scale of the sections (base h2 sets the face). */
+  .section { margin-top: clamp(120px, 14vw, 200px); }
+  .section-title { font-size: 10vw; line-height: 1; letter-spacing: -0.03em; }
+  @media (width >= 53.75rem) {
+    .section-title { font-size: clamp(36px, 4.2vw, 68px); }
   }
 
   /* The hero photographs crossfade (Hero.tsx): about 1.6 s, opacity only. */

@@ -15,16 +15,16 @@ const ANSWERS = {
 } as const;
 
 const OPTION =
-  'min-h-11 cursor-pointer rounded-[0.1em] border-0 px-[0.42em] py-[0.18em] font-display font-light leading-none tracking-[-0.03em] whitespace-nowrap transition-colors duration-200 focus-visible:outline-[0.05em] focus-visible:outline-offset-[0.04em] focus-visible:outline-white focus-visible:outline-solid active:scale-[0.98]';
-const ON = 'bg-white text-[#001e2b]';
-const OFF = 'bg-transparent text-[#9ea2a1] pointer-fine:hover:text-white';
+  'min-h-11 cursor-pointer rounded border-0 px-[0.42em] py-[0.18em] font-display font-light leading-none tracking-[-0.03em] whitespace-nowrap transition-colors duration-200 focus-visible:outline-[0.05em] focus-visible:outline-offset-[0.04em] focus-visible:outline-white focus-visible:outline-solid active:scale-[0.98]';
+const ON = 'bg-white text-ui-bg';
+const OFF = 'bg-transparent text-muted pointer-fine:hover:text-white';
 
 export function Gate() {
   const [own, setOwn] = useState(true);
   return (
     <section
       className={`relative mt-[clamp(120px,14vw,200px)] min-h-[86svh] overflow-hidden px-5 py-10 transition-colors duration-300 split:min-h-[92svh] split:px-10 split:py-14 ${
-        own ? 'bg-[#00ed64] text-[#001e2b]' : 'bg-[#b3261e] text-white'
+        own ? 'bg-accent text-accent-ink' : 'bg-refusal text-white'
       }`}
       aria-labelledby="gate-title"
     >
@@ -49,7 +49,7 @@ export function Gate() {
         data-i="1"
         role="group"
         aria-label="Where the plan points"
-        className="absolute bottom-[8%] -left-[3%] flex flex-col items-stretch gap-[0.08em] rounded-[0.14em] bg-[#001e2b] p-[0.08em] text-[13vw] split:right-[-8%] split:flex-row split:bottom-[10%] split:left-auto split:text-[clamp(56px,8.5vw,150px)]"
+        className="absolute bottom-[8%] -left-[3%] flex flex-col items-stretch gap-[0.08em] rounded bg-ui-bg p-[0.08em] text-[13vw] split:right-[-8%] split:flex-row split:bottom-[10%] split:left-auto split:text-[clamp(56px,8.5vw,150px)]"
       >
         <button type="button" aria-pressed={own} className={`${OPTION} ${own ? ON : OFF}`} onClick={() => setOwn(true)}>
           Your site

@@ -98,7 +98,7 @@ export function Hero() {
             className={`crossfade absolute inset-0 h-full w-full object-cover ${i === shown ? 'is-shown' : ''}`}
           />
         ))}
-        <figcaption className="absolute bottom-3 left-3 hidden max-w-[40ch] rounded bg-[#001e2b] px-3.5 py-2.5 text-[15px] text-white split:block">
+        <figcaption className="absolute bottom-3 left-3 hidden max-w-[40ch] rounded bg-ui-bg px-3.5 py-2.5 text-[15px] text-white split:block">
           The new bridge in Sanok, load-tested with parked trucks before it opened.
         </figcaption>
       </figure>

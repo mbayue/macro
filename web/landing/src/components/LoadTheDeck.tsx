@@ -72,10 +72,10 @@ function RunFragment({ stage }: { stage: number }) {
     rows.forEach((r, i) => bars.current[i]?.style.setProperty('--v', String(r.p95 / BAR_MAX)));
   });
   return (
-    <div className="w-full max-w-[460px] rounded-[10px] bg-ui-bg p-[22px] text-[15px] text-white" data-ui>
+    <div className="w-full max-w-[460px] rounded bg-ui-bg p-[22px] text-[15px] text-white" data-ui>
       <p className="mb-4 flex justify-between gap-3 font-medium">
         Demo shop, run d28cacd6
-        <span className="font-normal text-[#9ea2a1] tabular-nums">
+        <span className="font-normal text-muted tabular-nums">
           Stage {stage + 1} of {STAGES.length}
         </span>
       </p>
@@ -84,10 +84,10 @@ function RunFragment({ stage }: { stage: number }) {
         <caption className="sr-only">p95 latency per route at {STAGES[stage]?.users} users</caption>
         <thead>
           <tr>
-            <th scope="col" className="py-2.5 text-left text-[13px] font-normal text-[#9ea2a1]">
+            <th scope="col" className="py-2.5 text-left text-[13px] font-normal text-muted">
               Route
             </th>
-            <th scope="col" className="py-2.5 text-left text-[13px] font-normal text-[#9ea2a1]">
+            <th scope="col" className="py-2.5 text-left text-[13px] font-normal text-muted">
               p95
             </th>
           </tr>
@@ -106,7 +106,7 @@ function RunFragment({ stage }: { stage: number }) {
                       ref={(el) => {
                         bars.current[i] = el;
                       }}
-                      className={`order-last h-2 basis-full origin-left split:order-none split:flex-1 split:basis-auto scale-x-[var(--v,0)] rounded-[2px] transition-[scale] duration-[400ms] ease-(--ease) motion-reduce:transition-none ${slowest ? 'bg-accent' : 'bg-bar'}`}
+                      className={`order-last h-2 basis-full origin-left split:order-none split:flex-1 split:basis-auto scale-x-[var(--v,0)] transition-[scale] duration-[400ms] ease-(--ease) motion-reduce:transition-none ${slowest ? 'bg-accent' : 'bg-bar'}`}
                     />
                     <b className="font-medium tabular-nums split:min-w-[72px] split:text-right">{r.p95.toLocaleString('en')} ms</b>
                     <span className={`text-[13px] split:w-14 ${slowest ? 'text-accent' : ''}`}>{slowest ? 'Slowest' : ''}</span>

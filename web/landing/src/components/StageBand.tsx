@@ -37,7 +37,7 @@ export function StageBand({
       {SEGMENT.map((flex, i) => (
         <span
           key={flex}
-          className={`block h-full rounded-[2px] transition-colors duration-[240ms] ${flex} ${i <= upTo ? on : off}`}
+          className={`block h-full ${flex} ${i <= upTo ? on : off}`}
         />
       ))}
     </span>

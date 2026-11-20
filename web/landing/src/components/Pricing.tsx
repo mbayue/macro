@@ -17,7 +17,7 @@ const TILE = {
 
 const STRIP = {
   plain: 'rounded-b bg-surface-2 pointer-fine:hover:bg-bar pointer-fine:hover:text-white',
-  rec: 'rounded-b bg-[#00684a] text-white focus-visible:outline-white pointer-fine:hover:bg-[var(--accent-ink-soft)]',
+  rec: 'rounded-b bg-forest text-white focus-visible:outline-white pointer-fine:hover:bg-accent-ink-soft',
 } as const;
 
 export function Pricing() {

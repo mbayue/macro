@@ -7,7 +7,7 @@ import { SiteFooter } from '../components/SiteFooter.tsx';
 import { LoadTheDeck } from '../components/LoadTheDeck.tsx';
 import { Faq } from '../components/Faq.tsx';
 import { FreePlans } from '../components/FreePlans.tsx';
-import { Waitlist } from '../components/Waitlist.tsx';
+import { Close } from '../components/Close.tsx';
 import { WhyMeasured } from '../components/WhyMeasured.tsx';
 
 /**
@@ -98,7 +98,7 @@ export function Home() {
 
         <Faq />
 
-        <Waitlist />
+        <Close />
       </main>
       <SiteFooter />
     </>

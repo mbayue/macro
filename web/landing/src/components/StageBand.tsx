@@ -28,7 +28,8 @@ export function StageBand({
   tone?: 'page' | 'ui' | 'ink';
   className?: string;
 }) {
-  const on = tone === 'ink' ? 'bg-accent-ink' : 'bg-accent';
+  // Spring green is a fill; as a small marker on the light page it needs the darker accent-text (tokens.css).
+  const on = tone === 'ink' ? 'bg-accent-ink' : size === 'bullet' && tone === 'page' ? 'bg-accent-text' : 'bg-accent';
   const off = tone === 'ui' ? 'bg-ui-line' : tone === 'ink' ? 'bg-accent-ink/30' : 'bg-surface-2';
   const gap = size === 'bullet' ? 'gap-px' : 'gap-1';
   return (

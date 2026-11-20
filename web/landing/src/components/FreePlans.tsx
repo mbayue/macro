@@ -1,6 +1,6 @@
 /**
  * Pricing while Macro is in early access: two $0 plan tiles of stepped height (Self-host lower,
- * Hosted early access taller in the accent), each ending in a full-width action strip.
+ * Hosted early access taller, its action strip in the accent), each ending in a full-width action strip.
  * The paid plans stay in data.ts and components/Pricing.tsx; render <Pricing /> instead of this to
  * show them when paid tiers launch.
  */
@@ -28,12 +28,12 @@ const PLANS = [
 
 const TILE = {
   low: 'bg-surface split:col-start-1 split:row-start-2 split:min-h-[420px]',
-  high: 'bg-accent text-accent-ink split:col-start-2 split:row-span-2 split:row-start-1 split:min-h-[600px]',
+  high: 'bg-surface-2 text-ink split:col-start-2 split:row-span-2 split:row-start-1 split:min-h-[600px]',
 } as const;
 
 const STRIP = {
   low: 'rounded-b bg-surface-2 pointer-fine:hover:bg-bar pointer-fine:hover:text-white',
-  high: 'rounded-b bg-[#00684a] text-white focus-visible:outline-white pointer-fine:hover:bg-[var(--accent-ink-soft)]',
+  high: 'rounded-b bg-accent text-accent-ink pointer-fine:hover:bg-accent-hover',
 } as const;
 
 export function FreePlans() {
@@ -65,7 +65,7 @@ export function FreePlans() {
           <ul className="m-0 grid list-none gap-2.5 p-0">
             {p.facts.map((f) => (
               <li key={f} className="flex items-baseline gap-3">
-                <StageBand size="bullet" tone={p.high ? 'ink' : 'page'} className="shrink-0 translate-y-[-0.1em]" />
+                <StageBand size="bullet" tone="page" className="shrink-0 translate-y-[-0.1em]" />
                 {f}
               </li>
             ))}

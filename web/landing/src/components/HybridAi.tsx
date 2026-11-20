@@ -25,13 +25,13 @@ const LANES = [
     when: 'Chrome with Gemini Nano',
     term: 'On-Device Model.',
     what: 'The model runs inside your browser, so the answer comes back without a network round trip.',
-    fill: 'bg-accent text-accent-ink',
+    fill: 'bg-surface-2 text-ink [&_strong]:text-accent-text',
   },
   {
     when: 'Any other browser',
     term: 'Cloud Fallback.',
     what: 'The same prompt goes to Gemini in the cloud instead. You do not have to switch anything.',
-    fill: 'bg-surface-2 text-ink',
+    fill: 'bg-bg text-ink',
   },
 ] as const;
 

@@ -553,7 +553,34 @@ describe('plainReason, verdictLine, and revision keys', () => {
       routeOrder: ['store_home', 'store_checkout'],
     });
     expect(verdictLine(report, [{ id: 'store_checkout', path: '/checkout' }])).toBe(
-      'Holds 25 VUs. At 50 VUs, p95 latency went over the 1,200 ms limit (1510 ms). store_checkout (/checkout) was the first route over the 1,200 ms p95 limit, at 50 VUs.',
+      'Holds 25 VUs. At 50 VUs, p95 latency went over the 1,200 ms limit (1510 ms). On its own, store_checkout (/checkout) was the first route to go over: p95 1850 ms, over the 1,200 ms limit at 50 VUs.',
+    );
+  });
+
+  test('verdictLine says the limits judge all routes together when one route goes over but every stage holds', () => {
+    const plan = makePlan();
+    const s1 = makeMetrics(280, 0.1);
+    const s2 = makeMetrics(900, 0.2, {
+      store_home: { p95: 1611, errorRatePct: 0 },
+      store_checkout: { p95: 300, errorRatePct: 0 },
+    });
+    const report = buildReport({
+      runId: 'run_verdict_2',
+      planHash: 'hash_v2',
+      status: 'halted',
+      runtime: 'runc',
+      plan,
+      stages: [
+        { index: 0, vus: 25, durationSec: 30, status: 'done', metrics: s1, verdict: 'pass' },
+        { index: 1, vus: 50, durationSec: 30, status: 'done', metrics: s2, verdict: 'pass' },
+      ],
+      decisions: [],
+      events: [],
+      routeOrder: ['store_home', 'store_checkout'],
+    });
+    const line = verdictLine(report, [{ id: 'store_home', path: '/' }]);
+    expect(line).toBe(
+      'Holds 50 VUs, the most this run tested: across all routes, every stage stayed under both stop limits. On its own, store_home (/) was the first route to go over: p95 1611 ms, over the 1,200 ms limit at 50 VUs.',
     );
   });
 

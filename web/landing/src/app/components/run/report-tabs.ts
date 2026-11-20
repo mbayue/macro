@@ -141,7 +141,7 @@ function reportKpiItems(model: RunModel, report: CapacityReport, now: number): K
   const breakNote =
     brk !== null
       ? `${breakStage ? `from stage ${breakStage.displayIndex} · ` : ''}first stage over a limit overall`
-      : 'every stage stayed under both thresholds overall';
+      : 'every stage stayed under both limits, all routes together';
 
   const firstRoute = report.headline.firstDegradedRoute;
   const where = firstRoute
@@ -149,8 +149,8 @@ function reportKpiItems(model: RunModel, report: CapacityReport, now: number): K
     : undefined;
   const routeNote = where?.r
     ? where.r.raw.p95 > th.p95Ms
-      ? `p95 ${where.r.display.p95} ms from stage ${where.s.displayIndex} (${fmtCount(where.s.vus)} VUs), limit ${fmtCount(th.p95Ms)} ms`
-      : `error rate ${where.r.display.errorRatePct} from stage ${where.s.displayIndex} (${fmtCount(where.s.vus)} VUs), limit ${th.errorRatePct}%`
+      ? `this route alone: p95 ${where.r.display.p95} ms from stage ${where.s.displayIndex} (${fmtCount(where.s.vus)} VUs), limit ${fmtCount(th.p95Ms)} ms`
+      : `this route alone: error rate ${where.r.display.errorRatePct} from stage ${where.s.displayIndex} (${fmtCount(where.s.vus)} VUs), limit ${th.errorRatePct}%`
     : firstRoute !== null
       ? `exceeded stop thresholds (${fmtCount(th.p95Ms)} ms p95 / ${th.errorRatePct}% errors)`
       : 'no single route went over a limit';
@@ -316,7 +316,7 @@ export function verdictLine(report: CapacityReport, routes: readonly { id: strin
 
   let line: string;
   if (safe !== null && brk === null) {
-    line = `Holds ${fmtN(top)} VUs, the most this run tested: every stage stayed under both limits overall.`;
+    line = `Holds ${fmtN(top)} VUs, the most this run tested: across all routes, every stage stayed under both stop limits.`;
   } else if (safe !== null && brk !== null) {
     line = `Holds ${fmtN(safe)} VUs. At ${fmtN(brk)} VUs, ${brkStage ? overWhat(brkStage) : 'a stop threshold was crossed'}.`;
   } else if (brk !== null) {
@@ -328,10 +328,15 @@ export function verdictLine(report: CapacityReport, routes: readonly { id: strin
   if (route) {
     const hit = measured.map((s) => ({ s, r: s.routes.find((r) => r.route === route && r.exceedsThresholds) })).find((x) => x.r);
     if (hit?.r) {
-      const what = hit.r.raw.p95 > th.p95Ms ? `the ${fmtN(th.p95Ms)} ms p95 limit` : `the ${th.errorRatePct}% error limit`;
+      // The stop limits judge all routes together; a single route over a limit is a warning, not the
+      // Breaking Point. Say so, with the route's own reading, so the two never read as a contradiction.
+      const overP95 = hit.r.raw.p95 > th.p95Ms;
+      const reading = overP95
+        ? `p95 ${hit.r.display.p95} ms, over the ${fmtN(th.p95Ms)} ms limit`
+        : `${hit.r.display.errorRatePct} errors, over the ${th.errorRatePct}% limit`;
       const path = routes.find((r) => r.id === route)?.path;
       const label = path === undefined ? route : `${route} (${path})`;
-      line += ` ${label} was the first route over ${what}, at ${fmtN(hit.s.vus)} VUs.`;
+      line += ` On its own, ${label} was the first route to go over: ${reading} at ${fmtN(hit.s.vus)} VUs.`;
     }
   }
   return line;

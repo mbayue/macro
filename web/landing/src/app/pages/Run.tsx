@@ -244,14 +244,16 @@ export function RunPage({ id }: { id: string }) {
       ) : null}
 
       <div className="min-w-0">
+        {/* Sticky only from 861px, where the strip is one line. On phones it would stack into four rows
+            under the sticky header and cover about a quarter of the screen, so it scrolls with the page. */}
         {activeTab === 'overview' ? (
           !queued && !tilesInView ? (
-            <div className="sticky top-[61px] z-20 h-0 overflow-visible min-[861px]:top-[53px] print:hidden">
+            <div className="hidden min-[861px]:sticky min-[861px]:top-[53px] min-[861px]:z-20 min-[861px]:block min-[861px]:h-0 min-[861px]:overflow-visible print:hidden">
               <KpiStrip items={kpiItems} />
             </div>
           ) : null
         ) : (
-          <div className="sticky top-[61px] z-20 mb-4 min-[861px]:top-[53px] print:hidden">
+          <div className="mb-4 min-[861px]:sticky min-[861px]:top-[53px] min-[861px]:z-20 print:hidden">
             <KpiStrip items={kpiItems} />
           </div>
         )}

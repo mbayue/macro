@@ -59,7 +59,7 @@ function Page({ title, lead, facts, sections }: { title: string; lead: string; f
                   <li key={s.id}>
                     <a
                       href={`#${s.id}`}
-                      className="group flex min-h-9 items-center gap-3 py-1.5 text-muted no-underline transition-colors duration-150 aria-[current=true]:text-ink pointer-fine:hover:text-ink"
+                      className="group flex min-h-9 items-center gap-3 py-1.5 text-muted no-underline press aria-[current=true]:text-ink pointer-fine:hover:text-ink"
                     >
                       <StageBand
                         size="bullet"

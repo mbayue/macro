@@ -37,7 +37,7 @@ export function NotFoundPage() {
               <a className="site-btn" href="/app/">
                 Open Macro
               </a>
-              <a className="inline-flex min-h-11 items-center text-[17px] no-underline pointer-fine:hover:underline" href="/">
+              <a className="press inline-flex min-h-11 items-center text-[17px] no-underline pointer-fine:hover:underline" href="/">
                 Back to home
               </a>
             </div>
@@ -50,7 +50,7 @@ export function NotFoundPage() {
               <li key={s.href}>
                 <a
                   href={s.href}
-                  className="flex h-full min-h-32 flex-col justify-end gap-2 rounded bg-surface p-5 no-underline transition-[background-color,transform] duration-150 active:scale-[0.99] split:p-7 pointer-fine:hover:bg-surface-2"
+                  className="flex h-full min-h-32 flex-col justify-end gap-2 rounded bg-surface p-5 no-underline transition-transform duration-150 active:scale-[0.99] split:p-7 pointer-fine:hover:bg-surface-2"
                 >
                   <span className="flex items-center gap-3 font-display text-[clamp(28px,3vw,44px)] leading-none font-light tracking-[-0.03em]">
                     <StageBand size="bullet" className="shrink-0" />

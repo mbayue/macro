@@ -13,7 +13,7 @@ export function SiteHeader() {
       </a>
       <header aria-label="Site" className="p-3">
         <div className="flex items-center justify-between gap-3 rounded bg-surface py-2 pr-2 pl-4 split:pl-5">
-          <a href="/" className="inline-flex min-h-11 items-center font-display text-[28px] leading-none font-light tracking-[-0.04em] no-underline split:text-[32px]">
+          <a href="/" className="press inline-flex min-h-11 items-center font-display text-[28px] leading-none font-light tracking-[-0.04em] no-underline split:text-[32px] pointer-fine:hover:text-accent-text">
             Macro
           </a>
           <div className="flex items-center gap-2">

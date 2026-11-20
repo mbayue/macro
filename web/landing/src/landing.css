@@ -85,7 +85,7 @@
     border: 0; border-radius: var(--radius);
     background: var(--accent); color: var(--accent-ink);
     font: 500 17px/1 var(--text); text-decoration: none; cursor: pointer;
-    transition: transform 140ms var(--ease), background-color 160ms ease;
+    transition: transform 140ms var(--ease);
   }
   .site-btn:active { transform: scale(0.97); }
   .site-btn--ink { background: var(--accent-ink); color: #ffffff; }
@@ -132,7 +132,7 @@
     .deck-range::-webkit-slider-thumb { width: 32px; height: 32px; }
     .deck-range::-moz-range-thumb { width: 32px; height: 32px; }
   }
-  .faq-plus { position: relative; flex-shrink: 0; width: 20px; height: 20px; transition: scale 150ms var(--ease), color 150ms ease; }
+  .faq-plus { position: relative; flex-shrink: 0; width: 20px; height: 20px; transition: scale 150ms var(--ease); }
   .faq-plus::before, .faq-plus::after { content: ""; position: absolute; border-radius: 1px; background: currentColor; }
   .faq-plus::before { inset: 9px 0 auto; height: 2px; }
   .faq-plus::after { inset: 0 auto 0 9px; width: 2px; transition: rotate 200ms var(--ease); }

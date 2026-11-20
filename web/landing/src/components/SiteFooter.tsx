@@ -41,7 +41,7 @@ export function SiteFooter() {
       <div className="mt-12 flex flex-wrap justify-between gap-x-8 gap-y-4 text-[15px]">
         <nav aria-label="Footer" className="flex flex-wrap gap-x-6">
           {LINKS.map((l) => (
-            <a key={l.href} href={l.href} className="inline-flex min-h-11 items-center">
+            <a key={l.href} href={l.href} className="press inline-flex min-h-11 items-center pointer-fine:hover:text-accent-text">
               {l.label}
             </a>
           ))}

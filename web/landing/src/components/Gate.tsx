@@ -15,7 +15,7 @@ const ANSWERS = {
 } as const;
 
 const OPTION =
-  'min-h-11 cursor-pointer rounded border-0 px-[0.42em] py-[0.18em] font-display font-light leading-none tracking-[-0.03em] whitespace-nowrap transition-colors duration-200 focus-visible:outline-[0.05em] focus-visible:outline-offset-[0.04em] focus-visible:outline-white focus-visible:outline-solid active:scale-[0.98]';
+  'min-h-11 cursor-pointer rounded border-0 px-[0.42em] py-[0.18em] font-display font-light leading-none tracking-[-0.03em] whitespace-nowrap press focus-visible:outline-[0.05em] focus-visible:outline-offset-[0.04em] focus-visible:outline-white focus-visible:outline-solid';
 const ON = 'bg-white text-ui-bg';
 const OFF = 'bg-transparent text-muted pointer-fine:hover:text-white';
 
@@ -23,7 +23,7 @@ export function Gate() {
   const [own, setOwn] = useState(true);
   return (
     <section
-      className={`relative mt-[clamp(120px,14vw,200px)] min-h-[86svh] overflow-hidden px-5 py-10 transition-colors duration-300 split:min-h-[92svh] split:px-10 split:py-14 ${
+      className={`relative mt-[clamp(120px,14vw,200px)] min-h-[86svh] overflow-hidden px-5 py-10 split:min-h-[92svh] split:px-10 split:py-14 ${
         own ? 'bg-accent text-accent-ink' : 'bg-refusal text-white'
       }`}
       aria-labelledby="gate-title"

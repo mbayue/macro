@@ -175,7 +175,7 @@ export function LoadTheDeck() {
                 type="button"
                 aria-pressed={i === stage}
                 onClick={() => setStage(i)}
-                className={`-mr-2 min-h-11 cursor-pointer rounded bg-transparent px-2 text-[15px] whitespace-nowrap transition-colors split:text-base pointer-fine:hover:text-ink ${i === stage ? 'font-medium text-ink' : 'text-muted'}`}
+                className={`-mr-2 min-h-11 cursor-pointer rounded bg-transparent px-2 text-[15px] whitespace-nowrap press split:text-base pointer-fine:hover:text-ink ${i === stage ? 'font-medium text-ink' : 'text-muted'}`}
               >
                 {i === LAST ? `${s.users} users` : s.users}
               </button>

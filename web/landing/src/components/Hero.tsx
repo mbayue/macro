@@ -74,7 +74,7 @@ export function Hero() {
           aria-label="On this page"
         >
           {LINKS.map((l) => (
-            <a key={l.href} href={l.href} className="inline-flex min-h-11 items-center no-underline pointer-fine:hover:underline">
+            <a key={l.href} href={l.href} className="press inline-flex min-h-11 items-center no-underline pointer-fine:hover:underline">
               {l.label}
             </a>
           ))}

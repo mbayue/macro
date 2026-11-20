@@ -57,7 +57,7 @@ export function Pricing() {
             </dl>
             <a
               href={p.action.href}
-              className={`absolute inset-x-0 bottom-0 flex h-16 items-center px-6 font-medium no-underline transition-colors duration-150 focus-visible:outline-offset-[-6px] split:px-7 ${p.recommended ? STRIP.rec : STRIP.plain}`}
+              className={`absolute inset-x-0 bottom-0 flex h-16 items-center px-6 font-medium no-underline press focus-visible:outline-offset-[-6px] split:px-7 ${p.recommended ? STRIP.rec : STRIP.plain}`}
             >
               {p.action.label}
             </a>

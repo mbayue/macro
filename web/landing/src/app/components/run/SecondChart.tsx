@@ -8,12 +8,11 @@ import { cn } from '@/lib/utils';
 import type { StageView } from '../../../../../../src/api-types.ts';
 import { fmtMs } from '../../../../../../src/run/format.ts';
 import { useWidth } from '../../hooks/useWidth.ts';
-import { niceScale } from '../../lib/chart.ts';
+import { layoutRouteEndLabels, niceScale, routeDash } from '../../lib/chart.ts';
+import { RouteEndLabels } from './RouteEndLabels.tsx';
 
 const H = 240;
 const MIN_W = 320;
-/** Dash patterns for the quiet routes, so each line can be told apart without colour. */
-const DASHES = ['', '7 4', '2 4', '10 3 2 3', '4 3'];
 
 interface Series {
   route: string;
@@ -47,6 +46,7 @@ export const SecondChart = memo(function SecondChart({
     if (top === null) return s;
     return lastOf(s).avgMs > lastOf(top).avgMs ? s : top;
   }, null);
+  const quietSeries = series.filter((s) => s !== lead);
 
   const seconds = samples.map((s) => s.second);
   const xMax = Math.max(1, ...seconds, stage.durationSec - 1);
@@ -69,21 +69,19 @@ export const SecondChart = memo(function SecondChart({
           : '. No request failed during the stage.') +
         '.';
 
-  // End labels, nudged apart from the bottom up so none overlap or drop into the axis labels.
-  const floor = M.top + ph - 4;
-  const labels = series
-    .map((s) => ({
-      route: s.route,
-      at: y(lastOf(s).avgMs),
-      y: Math.min(y(lastOf(s).avgMs) + 4, floor),
-      lead: s === lead,
-      x: x(lastOf(s).second),
-    }))
-    .sort((a, b) => b.y - a.y);
-  for (let i = 1; i < labels.length; i++) {
-    const below = labels[i - 1]!;
-    if (below.y - labels[i]!.y < 15) labels[i]!.y = below.y - 15;
-  }
+  const labels = layoutRouteEndLabels(
+    series.map((s) => {
+      const tip = lastOf(s);
+      return {
+        route: s.route,
+        x: x(tip.second),
+        at: y(tip.avgMs),
+        lead: s === lead,
+        dash: routeDash(quietSeries.indexOf(s), s === lead),
+      };
+    }),
+    M.top + ph - 4,
+  );
 
   const secondTickStep = Math.max(1, Math.ceil(seconds.length > 90 ? 30 : seconds.length > 40 ? 15 : 10));
   const ticks: number[] = [];
@@ -97,7 +95,7 @@ export const SecondChart = memo(function SecondChart({
         role="img"
         aria-labelledby={`second-chart-title-${displayIndex} second-chart-desc-${displayIndex}`}
       >
-        <title id={`second-chart-title-${displayIndex}`}>Average latency per second, stage {displayIndex}</title>
+        <title id={`second-chart-title-${displayIndex}`}>{`Average latency per second, stage ${displayIndex}`}</title>
         <desc id={`second-chart-desc-${displayIndex}`}>{desc}</desc>
         {maxY.ticks.map((t) => (
           <g key={t}>
@@ -150,57 +148,23 @@ export const SecondChart = memo(function SecondChart({
             ticks: seconds with errors
           </text>
         ) : null}
-        {series
-          .filter((s) => s !== lead)
-          .concat(lead ? [lead] : [])
-          .map((s) => {
-            const d = s.points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.second).toFixed(1)} ${y(p.avgMs).toFixed(1)}`).join(' ');
-            const isLead = s === lead;
-            const quiet = series.filter((q) => q !== lead).indexOf(s);
-            const dash = isLead ? undefined : DASHES[quiet % DASHES.length] || undefined;
-            return (
-              <g key={s.route}>
-                <path
-                  className={cn('fill-none', isLead ? 'stroke-accent-text' : 'stroke-bar')}
-                  strokeWidth={isLead ? 2.5 : 1.75}
-                  strokeLinejoin="round"
-                  d={d}
-                  strokeDasharray={dash}
-                />
-              </g>
-            );
-          })}
-        {labels.map((l) => {
-          const quiet = series.filter((q) => q !== lead).findIndex((q) => q.route === l.route);
-          const dash = l.lead ? undefined : DASHES[quiet % DASHES.length] || undefined;
-          const ly = l.y - 4;
+        {quietSeries.concat(lead ? [lead] : []).map((s) => {
+          const d = s.points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.second).toFixed(1)} ${y(p.avgMs).toFixed(1)}`).join(' ');
+          const isLead = s === lead;
+          const dash = routeDash(quietSeries.indexOf(s), isLead);
           return (
-            <g key={l.route}>
-              {Math.abs(ly - l.at) > 2 ? (
-                <path className="fill-none stroke-bar" strokeWidth={1} d={`M${l.x + 5} ${l.at} L${l.x + 10} ${ly}`} />
-              ) : null}
-              <line
-                className={cn(l.lead ? 'stroke-accent-text' : 'stroke-bar')}
-                strokeWidth={l.lead ? 2.5 : 1.75}
-                x1={l.x + 12}
-                x2={l.x + 30}
-                y1={ly}
-                y2={ly}
+            <g key={s.route}>
+              <path
+                className={cn('fill-none', isLead ? 'stroke-accent-text' : 'stroke-bar')}
+                strokeWidth={isLead ? 2.5 : 1.75}
+                strokeLinejoin="round"
+                d={d}
                 strokeDasharray={dash}
               />
-              <text
-                className={cn(
-                  'font-mono text-[11px]',
-                  l.lead ? 'fill-foreground font-medium' : 'fill-muted-foreground',
-                )}
-                x={l.x + 35}
-                y={l.y}
-              >
-                {routes.find((r) => r.id === l.route)?.path ?? l.route}
-              </text>
             </g>
           );
         })}
+        <RouteEndLabels labels={labels} routes={routes} />
         {series.length === 0 ? (
           <text className="fill-muted-foreground font-sans text-sm" x={M.left + pw / 2} y={M.top + ph / 2} textAnchor="middle">
             No per-second samples were stored for this stage.

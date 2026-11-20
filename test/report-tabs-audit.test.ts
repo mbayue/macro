@@ -5,7 +5,10 @@ import type { RunSnapshot } from '../src/api-types.ts';
 import { buildReport } from '../src/report/build.ts';
 import type { StageMetrics, TestPlan } from '../src/types.ts';
 import { KpiStrip, SignatureTiles } from '../web/landing/src/app/components/run/KpiStrip.tsx';
+import { RouteChart } from '../web/landing/src/app/components/run/RouteChart.tsx';
+import { SecondChart } from '../web/landing/src/app/components/run/SecondChart.tsx';
 import { AI_WITHHELD_NOTE } from '../web/landing/src/app/lib/report-view.ts';
+import { layoutRouteEndLabels, ROUTE_DASHES, routeDash } from '../web/landing/src/app/lib/chart.ts';
 import { applyEvent, modelFromSnapshot } from '../web/landing/src/app/lib/run-view.ts';
 import {
   auditRevisionKey,
@@ -636,5 +639,79 @@ describe('KpiStrip and SignatureTiles rendering', () => {
     expect(tilesHtml).toContain('Safe capacity (VUs)');
     expect(tilesHtml).toContain('from stage 2');
     expect(tilesHtml).not.toMatch(/\sstyle=/i);
+  });
+});
+
+describe('RouteChart, SecondChart, and shared route end-label layout', () => {
+  test('routeDash and layoutRouteEndLabels assign dash patterns, clamp to floor, and nudge colliding labels apart', () => {
+    expect(routeDash(0, true)).toBeUndefined();
+    expect(routeDash(-1, false)).toBeUndefined();
+    expect(routeDash(0, false)).toBeUndefined();
+    expect(routeDash(1, false)).toBe(ROUTE_DASHES[1]);
+    expect(routeDash(6, false)).toBe(ROUTE_DASHES[1]);
+
+    const laidOut = layoutRouteEndLabels(
+      [
+        { route: 'r_low', x: 500, at: 240, lead: false, dash: routeDash(0, false) },
+        { route: 'r_mid', x: 500, at: 222, lead: false, dash: routeDash(1, false) },
+        { route: 'r_top', x: 500, at: 215, lead: true, dash: routeDash(-1, true) },
+      ],
+      228,
+    );
+
+    expect(laidOut.map((l) => l.route)).toEqual(['r_low', 'r_mid', 'r_top']);
+    expect(laidOut[0]?.y).toBe(228);
+    expect(laidOut[1]?.y).toBe(213);
+    expect(laidOut[2]?.y).toBe(198);
+    expect(laidOut[1]?.dash).toBe('7 4');
+    expect(laidOut[2]?.dash).toBeUndefined();
+  });
+
+  test('RouteChart and SecondChart share RouteEndLabels SVG rendering with font-mono route labels and zero style= attributes', () => {
+    const plan = makePlan();
+    const s1 = makeMetrics(300, 0.1, {
+      store_home: { p95: 300, errorRatePct: 0.1 },
+      store_checkout: { p95: 305, errorRatePct: 0.1 },
+    });
+    const routes = [
+      { id: 'store_home', path: '/' },
+      { id: 'store_checkout', path: '/checkout' },
+    ];
+    const stageView = {
+      index: 0,
+      vus: 25,
+      durationSec: 30,
+      status: 'done' as const,
+      errorReason: null,
+      verdict: 'pass' as const,
+      metrics: s1,
+      samples: [
+        { second: 0, route: 'store_home', requests: 10, avgMs: 280, maxMs: 390, errors: 0 },
+        { second: 1, route: 'store_home', requests: 12, avgMs: 295, maxMs: 410, errors: 0 },
+        { second: 0, route: 'store_checkout', requests: 8, avgMs: 300, maxMs: 420, errors: 0 },
+        { second: 1, route: 'store_checkout', requests: 9, avgMs: 310, maxMs: 450, errors: 1 },
+      ],
+      startedAt: 1_700_000_000_000,
+      endedAt: 1_700_000_030_000,
+    };
+
+    const routeHtml = renderToStaticMarkup(
+      createElement(RouteChart, { stages: [stageView], plan, limitMs: 1200, routes }),
+    );
+    expect(routeHtml).toContain('p95 latency per route');
+    expect(routeHtml).toContain('font-mono');
+    expect(routeHtml).toContain('>/checkout<');
+    expect(routeHtml).toContain('>/<');
+    expect(routeHtml).not.toMatch(/\sstyle=/i);
+
+    const secondHtml = renderToStaticMarkup(
+      createElement(SecondChart, { stage: stageView, displayIndex: 1, routes }),
+    );
+    expect(secondHtml).toContain('Average latency per second, stage 1');
+    expect(secondHtml).toContain('font-mono');
+    expect(secondHtml).toContain('>/checkout<');
+    expect(secondHtml).toContain('>/<');
+    expect(secondHtml).toContain('ticks: seconds with errors');
+    expect(secondHtml).not.toMatch(/\sstyle=/i);
   });
 });

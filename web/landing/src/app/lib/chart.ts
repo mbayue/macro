@@ -118,6 +118,42 @@ export function niceScale(max: number, maxTicks = 5): { max: number; step: numbe
   return { max: ticks[ticks.length - 1] ?? step, step, ticks };
 }
 
+/** Dash patterns for non-lead routes, so each line stays distinguishable without relying solely on colour. */
+export const ROUTE_DASHES = ['', '7 4', '2 4', '10 3 2 3', '4 3'] as const;
+
+/** Resolves the stroke-dasharray for a route series (`undefined` renders a solid line). */
+export function routeDash(quietIndex: number, isLead: boolean): string | undefined {
+  if (isLead || quietIndex < 0) return undefined;
+  return ROUTE_DASHES[quietIndex % ROUTE_DASHES.length] || undefined;
+}
+
+export interface RouteEndLabelInput {
+  route: string;
+  x: number;
+  at: number;
+  lead: boolean;
+  dash: string | undefined;
+}
+
+export interface RouteEndLabel extends RouteEndLabelInput {
+  y: number;
+}
+
+/**
+ * Places SVG route end-labels from bottom up so adjacent labels never overlap
+ * (at least 15 SVG units apart) or drop below `floor`.
+ */
+export function layoutRouteEndLabels(items: readonly RouteEndLabelInput[], floor: number): RouteEndLabel[] {
+  const labels: RouteEndLabel[] = items
+    .map((item) => ({ ...item, y: Math.min(item.at + 4, floor) }))
+    .sort((a, b) => b.y - a.y);
+  for (let i = 1; i < labels.length; i++) {
+    const below = labels[i - 1]!;
+    if (below.y - labels[i]!.y < 15) labels[i]!.y = below.y - 15;
+  }
+  return labels;
+}
+
 export function buildChartGeometry(input: ChartInput): ChartGeometry {
   const plot = {
     x: MARGIN.left,

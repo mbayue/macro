@@ -10,7 +10,7 @@ import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { build as viteBuild } from 'vite';
-import { validateWebDist, validateWebSource } from './build-web-check.ts';
+import { measureWeightBudget, validateWebDist, validateWebSource } from './build-web-check.ts';
 
 const root = resolve(import.meta.dir, '..');
 const webDir = join(root, 'web');
@@ -67,5 +67,10 @@ for (const [file, page] of [
 // ---- 2. sanity checks ----
 const errors = [...(await validateWebSource(join(landingDir, 'src'))), ...(await validateWebDist(outDir))];
 if (errors.length > 0) fail(errors.join('\n'));
+
+// Weight budget: reported only for now; the landing redesign's finish ticket (#21) makes it fail the build.
+const weight = await measureWeightBudget(outDir);
+for (const p of weight.pages) console.log(`  ${p.page}: ${p.jsBytes} B landing JS, ${p.cssBytes} B CSS`);
+for (const message of weight.overBudget) console.warn(`Weight budget (not enforced yet): ${message}`);
 
 console.log('Built web/dist: the planner app at /app/ and the prerendered landing site.');

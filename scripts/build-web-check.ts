@@ -161,3 +161,78 @@ export async function validateWebDist(outDir: string): Promise<string[]> {
 
   return errors;
 }
+
+/**
+ * Weight budget for the landing pages, in raw bytes of the built files, per page:
+ * JS is every module script and module preload the page loads, minus chunks /app/ also loads
+ * (the shared React runtime); CSS is every stylesheet the page links.
+ */
+export interface WeightBudget {
+  /** Most landing JS a page may load. */
+  jsBytes: number;
+  /** CSS a page links must stay under this. */
+  cssBytes: number;
+}
+
+export const WEIGHT_BUDGET: WeightBudget = { jsBytes: 24 * 1024, cssBytes: 32 * 1024 };
+
+export interface PageWeight {
+  page: string;
+  jsBytes: number;
+  cssBytes: number;
+}
+
+const SCRIPT_TAG_RE = /<script\b((?:"[^"]*"|'[^']*'|[^>"'])*)>/gi;
+const ATTR_SRC_VALUE_RE = /(?:^|\s)src\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i;
+const ASSET_PREFIX = '/landing/assets/';
+
+function pageAssets(html: string): { js: Set<string>; css: Set<string> } {
+  const js = new Set<string>();
+  const css = new Set<string>();
+  for (const match of html.matchAll(SCRIPT_TAG_RE)) {
+    const src = extractAttr(match[1] ?? '', ATTR_SRC_VALUE_RE);
+    if (src?.startsWith(ASSET_PREFIX)) js.add(src);
+  }
+  for (const link of extractLinkTags(html)) {
+    const rels = link.rel.split(/\s+/);
+    if (!link.href.startsWith(ASSET_PREFIX)) continue;
+    if (rels.includes('modulepreload')) js.add(link.href);
+    if (rels.includes('stylesheet')) css.add(link.href);
+  }
+  return { js, css };
+}
+
+async function fileBytes(outDir: string, href: string): Promise<number> {
+  const file = Bun.file(join(outDir, ...href.split('/').filter(Boolean)));
+  return (await file.exists()) ? file.size : 0;
+}
+
+/** Measures each landing page against the weight budget; `overBudget` lists the pages that break it. */
+export async function measureWeightBudget(
+  outDir: string,
+  budget: WeightBudget = WEIGHT_BUDGET,
+): Promise<{ pages: PageWeight[]; overBudget: string[] }> {
+  const appPath = join(outDir, 'app', 'index.html');
+  const appJs = existsSync(appPath) ? pageAssets(await readFile(appPath, 'utf8')).js : new Set<string>();
+  const pages: PageWeight[] = [];
+  const overBudget: string[] = [];
+
+  for (const page of LANDING_PAGES) {
+    const path = join(outDir, page);
+    if (!existsSync(path)) continue;
+    const { js, css } = pageAssets(await readFile(path, 'utf8'));
+    let jsBytes = 0;
+    for (const href of js) if (!appJs.has(href)) jsBytes += await fileBytes(outDir, href);
+    let cssBytes = 0;
+    for (const href of css) cssBytes += await fileBytes(outDir, href);
+    pages.push({ page, jsBytes, cssBytes });
+    if (jsBytes > budget.jsBytes) {
+      overBudget.push(`${page} loads ${jsBytes} bytes of landing JS, over the ${budget.jsBytes}-byte budget.`);
+    }
+    if (cssBytes >= budget.cssBytes) {
+      overBudget.push(`${page} links ${cssBytes} bytes of CSS; the budget is under ${budget.cssBytes} bytes.`);
+    }
+  }
+
+  return { pages, overBudget };
+}

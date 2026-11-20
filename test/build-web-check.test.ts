@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { validateWebDist, validateWebSource } from '../scripts/build-web-check.ts';
+import { measureWeightBudget, validateWebDist, validateWebSource } from '../scripts/build-web-check.ts';
 
 const dirs: string[] = [];
 
@@ -133,6 +133,72 @@ describe('validateWebDist', () => {
     );
     const errors = await validateWebDist(dir);
     expect(errors.some((e) => e.includes('app/index.html') && e.includes('geist-mono'))).toBe(true);
+  });
+});
+
+function writeBytes(dir: string, path: string, bytes: number): void {
+  const full = join(dir, path);
+  mkdirSync(join(full, '..'), { recursive: true });
+  writeFileSync(full, 'x'.repeat(bytes));
+}
+
+describe('measureWeightBudget', () => {
+  const budget = { jsBytes: 1000, cssBytes: 500 };
+
+  test('measures the JS and CSS each landing page loads and reports nothing under budget', async () => {
+    const dir = makeValidDist();
+    writeBytes(dir, 'landing/assets/index-abc.js', 900);
+    writeBytes(dir, 'landing/assets/styles-abc.css', 400);
+    const result = await measureWeightBudget(dir, budget);
+    expect(result.pages.find((p) => p.page === 'index.html')).toEqual({ page: 'index.html', jsBytes: 900, cssBytes: 400 });
+    expect(result.overBudget).toEqual([]);
+  });
+
+  test('reports a landing page whose JS or CSS is over budget', async () => {
+    const dir = makeValidDist();
+    writeBytes(dir, 'landing/assets/index-abc.js', 1001);
+    writeBytes(dir, 'landing/assets/legal-abc.css', 500);
+    const { overBudget } = await measureWeightBudget(dir, budget);
+    expect(overBudget.some((m) => m.includes('index.html') && m.includes('JS') && m.includes('1001'))).toBe(true);
+    expect(overBudget.some((m) => m.includes('privacy.html') && m.includes('CSS'))).toBe(true);
+    expect(overBudget.some((m) => m.includes('terms.html') && m.includes('CSS'))).toBe(true);
+  });
+
+  test('counts module preloads but not chunks the app also loads (shared React runtime)', async () => {
+    const dir = makeValidDist();
+    writeFileSync(
+      join(dir, 'index.html'),
+      '<!doctype html><html><head><link rel="modulepreload" href="/landing/assets/client-abc.js"><link rel="modulepreload" href="/landing/assets/turnstile-abc.js"><link rel="stylesheet" href="/landing/assets/styles-abc.css"></head><body><script type="module" src="/landing/assets/index-abc.js"></script></body></html>',
+    );
+    writeFileSync(
+      join(dir, 'app', 'index.html'),
+      '<!doctype html><html><head><link rel="preload" href="/landing/fonts/geist-mono-400.woff2" as="font" type="font/woff2" crossorigin><link rel="modulepreload" href="/landing/assets/client-abc.js"><link rel="stylesheet" href="/landing/assets/app-abc.css"></head><body><script type="module" src="/landing/assets/app-abc.js"></script></body></html>',
+    );
+    writeBytes(dir, 'landing/assets/index-abc.js', 600);
+    writeBytes(dir, 'landing/assets/turnstile-abc.js', 300);
+    writeBytes(dir, 'landing/assets/client-abc.js', 200_000);
+    const result = await measureWeightBudget(dir, budget);
+    expect(result.pages.find((p) => p.page === 'index.html')?.jsBytes).toBe(900);
+    expect(result.overBudget).toEqual([]);
+  });
+
+  test('the default budget is 24 KiB of landing JS and under 32 KiB of CSS per page', async () => {
+    const dir = makeValidDist();
+    writeBytes(dir, 'landing/assets/index-abc.js', 24 * 1024);
+    writeBytes(dir, 'landing/assets/styles-abc.css', 32 * 1024 - 1);
+    expect((await measureWeightBudget(dir)).overBudget).toEqual([]);
+    writeBytes(dir, 'landing/assets/index-abc.js', 24 * 1024 + 1);
+    writeBytes(dir, 'landing/assets/styles-abc.css', 32 * 1024);
+    const { overBudget } = await measureWeightBudget(dir);
+    expect(overBudget.some((m) => m.includes('index.html') && m.includes('JS'))).toBe(true);
+    expect(overBudget.some((m) => m.includes('index.html') && m.includes('CSS'))).toBe(true);
+  });
+
+  test('validateWebDist does not fail the build on an over-budget page (reporting only for now)', async () => {
+    const dir = makeValidDist();
+    writeBytes(dir, 'landing/assets/index-abc.js', 100_000);
+    writeBytes(dir, 'landing/assets/styles-abc.css', 100_000);
+    expect(await validateWebDist(dir)).toEqual([]);
   });
 });
 

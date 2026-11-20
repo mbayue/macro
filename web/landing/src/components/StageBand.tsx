@@ -5,7 +5,7 @@
  *
  * Sizes: `strip` (the hero card's top strip), `track` (slider track, run fragment progress) and
  * `bullet` (a miniature for list bullets). Inside a `data-ui` product fragment, pass `tone="ui"` for
- * the fragment's fixed dark colours.
+ * the fragment's fixed dark colours; on an accent field, pass `tone="ink"` (dark segments).
  */
 export type StageBandSize = 'strip' | 'track' | 'bullet';
 
@@ -25,17 +25,18 @@ export function StageBand({
 }: {
   upTo?: number;
   size?: StageBandSize;
-  tone?: 'page' | 'ui';
+  tone?: 'page' | 'ui' | 'ink';
   className?: string;
 }) {
-  const off = tone === 'ui' ? 'bg-ui-line' : 'bg-surface-2';
+  const on = tone === 'ink' ? 'bg-accent-ink' : 'bg-accent';
+  const off = tone === 'ui' ? 'bg-ui-line' : tone === 'ink' ? 'bg-accent-ink/30' : 'bg-surface-2';
   const gap = size === 'bullet' ? 'gap-px' : 'gap-1';
   return (
     <span className={`flex ${gap} ${size === 'bullet' ? '' : 'w-full'} ${HEIGHT[size]} ${className}`} aria-hidden="true">
       {SEGMENT.map((flex, i) => (
         <span
           key={flex}
-          className={`block h-full rounded-[2px] transition-colors duration-[240ms] ${flex} ${i <= upTo ? 'bg-accent' : off}`}
+          className={`block h-full rounded-[2px] transition-colors duration-[240ms] ${flex} ${i <= upTo ? on : off}`}
         />
       ))}
     </span>

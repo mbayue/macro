@@ -160,4 +160,20 @@ describe('home page explainers: measured, then opened, and Hybrid AI', () => {
     expect(imgs[0]?.attrs.get('alt')).toMatch(/Sanok bridge/);
     expect(imgs[0]?.attrs.get('srcset')).toContain('800w');
   });
+
+  const AI = 'section[aria-labelledby="hybrid-title"]';
+
+  test('Hybrid AI names the On-Device Model, Cloud Fallback, Scenario Assistant and Report Q&A', async () => {
+    const heading = await select(home, `${AI} h2`);
+    expect(heading.map((h) => h.text)).toEqual(['Hybrid AI']);
+    const text = decode((await select(home, AI))[0]?.text ?? '');
+    for (const term of ['Hybrid Inference', 'On-Device Model', 'Gemini Nano', 'Chrome', 'Cloud Fallback', 'Scenario Assistant', 'Report Q&A']) {
+      expect(text).toContain(term);
+    }
+  });
+
+  test('Hybrid AI links into the app', async () => {
+    const links = (await select(home, `${AI} a`)).map(href);
+    expect(links).toContain('/app/');
+  });
 });

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { ApproveSwitch } from '../components/ApproveSwitch.tsx';
 import { Hero } from '../components/Hero.tsx';
+import { HybridAi } from '../components/HybridAi.tsx';
 import { SiteFooter } from '../components/SiteFooter.tsx';
 import { HowItWorks } from '../components/HowItWorks.tsx';
 import { LatencyBars } from '../components/LatencyBars.tsx';
@@ -97,6 +98,7 @@ export function Home() {
         <Hero />
 
         <WhyMeasured />
+        <HybridAi />
 
         <ApproveSwitch />
         <HowItWorks />

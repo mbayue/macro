@@ -32,16 +32,17 @@ flowchart LR
 | Capacity Report | `src/report/` | Deterministic report builder (`build.ts`), run comparison (`compare.ts`), CSV/JSON export (`export.ts`), `number-guard.ts` |
 | Auth & Own-Site | `src/auth/`, `src/security/` | GitHub & Google OAuth, magic-link email, signed sessions, origin verification (`verify-origin.ts`, `domain-connect.ts`), Turnstile & client IP checks |
 | Persistence | `src/store/db.ts`, `src/metrics/tiger.ts` | SQLite source of truth (`DATA_DIR`), optional best-effort Tiger Cloud per-second sample mirror |
-| Web Frontend | `web/landing/` | Prerendered landing/legal pages (`src/`) + client-rendered React 19 planner app at `/app/` (`src/app/`) |
+| Web Frontend | `web/landing/` | Prerendered landing/legal pages (`src/`) + client-rendered React 19 `/app/` workspace (`src/app/` with TanStack Router hash URLs, Tailwind CSS v4 tokens, shadcn/ui on Base UI, self-hosted Geist Mono) |
 | Hybrid AI (Client) | `web/landing/src/app/lib/hybrid-ai.ts`, `ScenarioAssistant.tsx`, `ReportQa.tsx` | Optional client-side Firebase AI Logic (`PREFER_ON_DEVICE`: on-device Gemini Nano with cloud Gemini fallback) |
-| Build & Scripts | `scripts/` | Web build (`build-web.ts`), E2E & local stage/probe helpers |
+| Build & Scripts | `scripts/` | Web build (`build-web.ts`), CSP/React 19/layout checks (`build-web-check.ts`), E2E & local stage/probe helpers |
 
 ## Development Commands
 
 ```bash
 bun run check        # TypeScript typecheck (tsc --noEmit)
-bun test             # Unit & integration test suite (no Docker required)
-bun run build:web    # Build landing + /app/ into web/dist
+bun run test:web     # Fast frontend router, view, component, and CSP check tests
+bun test             # Full unit & integration test suite (no Docker required)
+bun run build:web    # Build landing + /app/ into web/dist + validate source & dist checks
 bun run dev          # Start Bun API server with watch mode
 bun run dev:landing  # Start Vite dev server (proxies /api to localhost:3000)
 bun run test:vm      # Real-container sandbox tests (requires MACRO_VM_TEST=1 & Docker)

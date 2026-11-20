@@ -99,3 +99,11 @@ _Avoid_: Diff, benchmark
 **Quick Jump**:
 The `Ctrl/Cmd+K` menu that jumps to app routes and recent runs and runs a few global actions.
 _Avoid_: Command palette, search, spotlight
+
+**Top Context Bar**:
+The sticky workspace header displaying the active target host and `Demo` / `Verified` badge, desktop `/api/quota` counters, Quick Jump trigger, theme toggle, and account menu.
+_Avoid_: Navbar, toolbar
+
+**KPI Strip**:
+The compact single-line telemetry summary anchored above tabs when scrolling past the full Capacity Report signature tiles or viewing secondary tabs, preserving source stage and limit notes.
+_Avoid_: Ticker, status bar

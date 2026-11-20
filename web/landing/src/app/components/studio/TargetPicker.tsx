@@ -2,15 +2,11 @@ import { ArrowDownIcon, GlobeIcon, StoreIcon } from 'lucide-react';
 import type { MeResponse } from '../../../../../../src/api-types.ts';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn, reducedMotion } from '@/lib/utils';
 import { ConfirmButton } from '../ui.tsx';
 import { VerifyPanel } from '../VerifyPanel.tsx';
 import type { TargetMode } from './studio-view.ts';
 import { TelemetryPanel } from './TelemetryFrame.tsx';
-
-function reducedMotion(): boolean {
-  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
 
 export interface TargetPickerProps {
   targetMode: TargetMode;

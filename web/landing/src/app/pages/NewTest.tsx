@@ -20,7 +20,7 @@ import { NextUp } from '../components/NextUp.tsx';
 import { TurnstileBox, useTurnstile } from '../components/Turnstile.tsx';
 import { VerifyPanel } from '../components/VerifyPanel.tsx';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { cn, reducedMotion } from '@/lib/utils';
 import { useOptionalShell } from '../components/shell/ShellContext.tsx';
 import { useApp } from '../context.tsx';
 import { ApproveBar, GateSidebar } from '../components/studio/GateSidebar.tsx';
@@ -35,8 +35,6 @@ import {
   type TargetMode,
   validateTrafficLength,
 } from '../components/studio/studio-view.ts';
-
-const reducedMotion = (): boolean => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export function NewTest() {
   const { config, me, refreshMe, navigate, announce } = useApp();

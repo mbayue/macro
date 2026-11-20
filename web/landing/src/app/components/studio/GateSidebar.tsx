@@ -4,7 +4,7 @@ import type { TestPlan } from '../../../../../../src/types.ts';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { cn } from '@/lib/utils';
+import { cn, reducedMotion } from '@/lib/utils';
 import { useApp } from '../../context.tsx';
 import { type ApiError, postApprove, VERIFICATION_ERROR } from '../../lib/api.ts';
 import { GateRules } from '../GateRules.tsx';
@@ -21,10 +21,6 @@ import {
 import { CornerTicks, TelemetryPanel } from './TelemetryFrame.tsx';
 
 const fmt = (n: number): string => n.toLocaleString('en-US');
-
-function reducedMotion(): boolean {
-  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
 
 export interface GateSidebarProps {
   review: PlanResponse | null;

@@ -9,6 +9,7 @@ import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from '
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { reducedMotion } from '@/lib/utils';
 import type { StageView } from '../../../../../src/api-types.ts';
 import { fmtCount, fmtMs, fmtPct, fmtRps } from '../../../../../src/run/format.ts';
 import { Feed } from '../components/run/Feed.tsx';
@@ -40,10 +41,6 @@ import { elapsedMs, formatElapsed, isTerminal, reportExpected, type RunModel } f
 import { runHref, type RunTab, useRunTab } from '../router.ts';
 
 export { plainReason, verdictLine };
-
-function reducedMotion(): boolean {
-  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
 
 function focusRunsPanel() {
   const el = document.getElementById('report-runs-heading');

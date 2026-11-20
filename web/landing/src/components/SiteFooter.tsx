@@ -7,7 +7,7 @@
  */
 import { SANOK_AUTHOR, SANOK_LICENCE, SANOK_PHOTOS } from '../sanok.ts';
 
-const BLOCK_HEIGHT = ['h-1/2', 'h-[62%]', 'h-3/4', 'h-[87%]', 'h-full'] as const;
+const BLOCK_HEIGHT = ['h-[60%]', 'h-[70%]', 'h-[80%]', 'h-[90%]', 'h-full'] as const;
 
 const LINKS = [
   { href: '/app/', label: 'Live demo' },
@@ -31,7 +31,7 @@ export function SiteFooter() {
             aria-hidden="true"
             data-reveal
             data-i={String(i)}
-            className={`${BLOCK_HEIGHT[i]} flex flex-1 items-end justify-center overflow-hidden rounded pb-[0.04em] font-display text-[min(44cqh,21cqw)] leading-none font-light ${
+            className={`${BLOCK_HEIGHT[i]} flex flex-1 items-end justify-center overflow-hidden rounded pb-[0.1em] font-display text-[min(46cqh,23cqw)] leading-none font-light ${
               i === 4 ? 'bg-accent text-accent-ink' : 'bg-surface-2 text-ink'
             }`}
           >

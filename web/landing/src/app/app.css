@@ -302,12 +302,6 @@
  * Fixed column grids. One rule for every data table: columns holding labels, dates or badges are
  * sized to their content, and the number columns share what is left evenly.
  */
-/* Runs of this plan: the run ID (left-aligned text) takes the spare width; the two numbers are equal. */
-.table--runs { table-layout: fixed; min-width: 1040px; }
-.table--runs .w-check { width: 48px; }
-.table--runs .w-started { width: 230px; }
-.table--runs .w-status { width: 150px; }
-.table--runs .w-num { width: 200px; }
 .table tr.is-pending td, .table tr.is-pending th { color: var(--muted); }
 .table tr:last-child th, .table tr:last-child td { border-bottom: 0; }
 .check { width: 18px; height: 18px; accent-color: var(--accent-text); }
@@ -368,16 +362,6 @@
 .attempts { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .attempts li { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; background: var(--surface); border-radius: var(--radius); padding: 14px 18px; font-size: var(--fs-sm); }
 .attempts__label { font-weight: 500; margin-bottom: 2px; }
-.runs { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.runs__item {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; align-items: center;
-  padding: 14px 18px; border-radius: var(--radius); background: var(--surface); color: var(--ink); text-decoration: none;
-  transition: background-color 150ms ease;
-}
-@media (hover: hover) and (pointer: fine) { .runs__item:hover { background: var(--surface-2); } }
-.runs__name { font-weight: 500; }
-.runs__meta { grid-column: 1; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: var(--fs-xs); }
-.runs__status { grid-column: 2; grid-row: 1 / span 2; }
 .empty { background: var(--surface); border-radius: var(--radius); padding: 24px; display: grid; gap: 16px; }
 
 /* ---- Narrower screens ---- */
@@ -388,7 +372,6 @@
 @media (max-width: 860px) {
   .shell { grid-template-columns: minmax(0, 1fr); }
   .main { padding: 24px 16px 0; }
-  .table--runs { table-layout: auto; min-width: 0; }
   .shell .page__title { font-size: 1.75rem; }
   .panel { padding: 16px; }
   .probe-result { grid-template-columns: minmax(0, 1fr); gap: 12px; }
@@ -479,7 +462,6 @@
   .table,
   .table--stages,
   .table--routes,
-  .table--runs,
   .table--calls {
     table-layout: auto;
     min-width: 0;

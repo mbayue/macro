@@ -102,6 +102,9 @@ try {
     for (const width of values.widths.split(',').map(Number)) {
       const height = width <= 500 ? 844 : width >= 1900 ? 1080 : 900;
       await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: width <= 500 });
+      // Reset first: navigating to the same hash URL again leaves a hash router on a stale route.
+      await send('Page.navigate', { url: 'about:blank' });
+      await Bun.sleep(200);
       await send('Page.navigate', { url });
       await Bun.sleep(1500);
       await evaluate(

@@ -1,27 +1,135 @@
-import { useEffect, useRef } from 'react';
 /**
- * Run (`#/run/<id>`): the live board. While the test runs, the spring-green tile is the stage in progress
- * and the other tiles name the stage their numbers came from (metrics exist per finished stage).
- * When the run ends the same tiles become the report's headline, and the report follows below.
+ * Run (`#/run/<id>`): tabbed live telemetry board and completed Capacity Report.
+ * While running, Overview shows the full-size four-tile board (spring green marks the
+ * active stage), Stages & Routes and Audit Log fill in live, and AI Insights & Report Q&A
+ * unlocks when the report is ready. Scrolling past the full tiles or switching tabs reveals
+ * the sticky one-line KPI strip above the tabs.
  */
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { StageView } from '../../../../../src/api-types.ts';
 import { fmtCount, fmtMs, fmtPct, fmtRps } from '../../../../../src/run/format.ts';
-import { currentStage, elapsedMs, formatElapsed, isTerminal, type RunModel } from '../lib/run-view.ts';
-import { headlineItems, reportNotices } from '../lib/report-view.ts';
-import type { CapacityReport, StageView as ReportStageView } from '../../../../../src/report/build.ts';
 import { Feed } from '../components/run/Feed.tsx';
+import { AuditLog } from '../components/run/AuditLog.tsx';
+import { KpiStrip, SignatureTiles } from '../components/run/KpiStrip.tsx';
 import { AiSection, ReportExport, ReportMeta, ReportNotices, ReportStages, RunsPanel } from '../components/run/Report.tsx';
 import { ReportQa } from '../components/run/ReportQa.tsx';
 import { RouteChart } from '../components/run/RouteChart.tsx';
 import { SecondChart } from '../components/run/SecondChart.tsx';
-import { ModelCalls } from '../components/ModelCalls.tsx';
+import {
+  AI_TAB_DISABLED_REASON,
+  auditRevisionKey,
+  buildKpiStripItems,
+  feedRevisionKey,
+  plainReason,
+  resolveActiveRunTab,
+  RUN_TAB_ITEMS,
+  stagesRevisionKey,
+  verdictLine,
+} from '../components/run/report-tabs.ts';
 import { type ProfileStage, StageProfile } from '../components/StageProfile.tsx';
+import { TelemetryPanel } from '../components/studio/TelemetryFrame.tsx';
 import { TurnstileBox } from '../components/Turnstile.tsx';
-import { AlertRegion, ApiErrorText, Badge, ConfirmButton, DASH, KeyValues, PageSkeleton, Panel, StatusBadge, TableWrap } from '../components/ui.tsx';
+import { AlertRegion, ApiErrorText, ConfirmButton, DASH, KeyValues, PageSkeleton, StatusBadge, TableWrap } from '../components/ui.tsx';
+import { useApp } from '../context.tsx';
 import { useRun } from '../hooks/useRun.ts';
+import { reportNotices } from '../lib/report-view.ts';
+import { elapsedMs, formatElapsed, isTerminal, reportExpected, type RunModel } from '../lib/run-view.ts';
+import { runHref, type RunTab, useRunTab } from '../router.ts';
+
+export { plainReason, verdictLine };
+
+function reducedMotion(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function focusRunsPanel() {
+  const el = document.getElementById('report-runs-heading');
+  if (!el) return;
+  el.setAttribute('tabindex', '-1');
+  el.scrollIntoView({ block: 'start', behavior: reducedMotion() ? 'auto' : 'smooth' });
+  el.focus({ preventScroll: true });
+}
 
 export function RunPage({ id }: { id: string }) {
+  const { navigate } = useApp();
+  const requestedTab = useRunTab();
   const { state, stop, stopPending, stopError, turnstileBox, retry } = useRun(id);
+  const tilesRef = useRef<HTMLDivElement>(null);
+  const [tilesInView, setTilesInView] = useState(true);
+  const pendingRunsScroll = useRef(false);
+  const aiDisabledNoteId = useId();
+
+  const ready = state.kind === 'ready' ? state : null;
+  const ended = ready !== null && isTerminal(ready.model.run.status);
+  const report = ended && ready !== null ? ready.model.report : null;
+  const hasReport = report !== null;
+  const activeTab = resolveActiveRunTab(requestedTab, hasReport);
+  const queued = ready !== null && ready.model.run.status === 'queued';
+
+  useEffect(() => {
+    if (ready === null || activeTab !== 'overview' || queued) {
+      setTilesInView(true);
+      return;
+    }
+    const el = tilesRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setTilesInView(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      ([entry]) => setTilesInView(entry?.isIntersecting ?? true),
+      { rootMargin: '-56px 0px 0px 0px', threshold: 0.05 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [ready !== null, activeTab, queued, hasReport]);
+
+  useEffect(() => {
+    if (activeTab === 'overview' && pendingRunsScroll.current && hasReport) {
+      pendingRunsScroll.current = false;
+      requestAnimationFrame(focusRunsPanel);
+    }
+  }, [activeTab, hasReport]);
+
+  const handleTabChange = useCallback(
+    (nextValue: unknown) => {
+      if (typeof nextValue !== 'string') return;
+      const candidate = nextValue as RunTab;
+      if (candidate === 'ai' && !hasReport) return;
+      if (candidate === activeTab) return;
+      navigate(runHref(id, candidate).replace(/^#/, ''));
+    },
+    [activeTab, hasReport, id, navigate],
+  );
+
+  const goToRunsPanel = useCallback(() => {
+    if (activeTab !== 'overview') {
+      pendingRunsScroll.current = true;
+      navigate(runHref(id, 'overview').replace(/^#/, ''));
+      return;
+    }
+    focusRunsPanel();
+  }, [activeTab, id, navigate]);
+
+  const kpiItems = useMemo(
+    () => (ready ? buildKpiStripItems(ready.model, ready.now) : []),
+    [ready],
+  );
+
+  const stagesVersion = ready ? stagesRevisionKey(ready.model) : '';
+  const feedVersion = ready ? feedRevisionKey(ready.model) : '';
+  const auditVersion = ready ? auditRevisionKey(ready.model) : '';
+
+  // Copy arrays only when underlying events/snapshots advance, so 1s clock ticks don't re-render charts/feed.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const stagesMemo = useMemo(() => (ready ? [...ready.model.stages] : []), [stagesVersion, id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const decisionsMemo = useMemo(() => (ready ? [...ready.model.decisions] : []), [feedVersion, id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const containmentMemo = useMemo(() => (ready ? [...ready.model.containment] : []), [feedVersion, id]);
 
   if (state.kind === 'loading') {
     return <PageSkeleton title="Loading run…" />;
@@ -34,67 +142,72 @@ export function RunPage({ id }: { id: string }) {
           <ApiErrorText error={state.error} />
         </div>
         <div className="row">
-          <button type="button" className="btn btn--quiet" onClick={retry}>
+          <Button type="button" variant="secondary" className="border border-bar-hover" onClick={retry}>
             Try again
-          </button>
-          <a href="#/">Start a new test</a>
+          </Button>
+          <Button render={<a href="#/" />} nativeButton={false} variant="outline" className="border-bar">
+            Start a new test
+          </Button>
         </div>
       </section>
     );
   }
 
   const { model, now, stale } = state;
-  const queued = model.run.status === 'queued';
   const running = model.run.status === 'running';
-  const ended = isTerminal(model.run.status);
   const queuePos = model.run.queuePosition ?? null;
-  const report = ended ? model.report : null;
   const limit = model.plan?.stopThresholds ?? report?.thresholds ?? null;
   const reason = model.run.statusReason === null ? null : plainReason(model.run.statusReason);
+  const showStickyStrip = activeTab !== 'overview' || (!queued && !tilesInView);
 
   return (
     <div className="page">
-      <header className="run-head">
-        <div className="run-head__text">
+      <header className="run-head flex flex-col justify-between gap-6 min-[861px]:flex-row min-[861px]:items-start print:hidden">
+        <div className="flex min-w-0 flex-col gap-2">
           <h1 className="page__title">{model.plan?.name ?? report?.planName ?? 'Load test'}</h1>
-          <p className="muted run-head__meta">
-            <span className="run-head__status">
+          <p className="m-0 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-muted-foreground">
+            <span className="inline-flex flex-wrap items-center gap-2">
               <StatusBadge status={model.run.status} />
-              {running && stale ? <Badge tone="warn">Progress may be out of date</Badge> : null}
+              {running && stale ? <Badge variant="warn">Progress may be out of date</Badge> : null}
             </span>
             <span>
-              Run <span className="code">{model.run.id}</span>
+              Run <span className="font-mono text-xs text-foreground">{model.run.id}</span>
             </span>
             {model.plan ? (
               <span>
-                on <span className="code">{model.plan.target}</span>
+                on <span className="font-mono text-xs text-foreground">{model.plan.target}</span>
               </span>
             ) : null}
             <span>
-              {running ? 'Elapsed' : 'Total time'} <span className="num">{formatElapsed(elapsedMs(model.run, now))}</span>
+              {running ? 'Elapsed' : 'Total time'}{' '}
+              <span className="font-mono text-xs text-foreground tabular-nums">
+                {formatElapsed(elapsedMs(model.run, now))}
+              </span>
             </span>
             <span>
-              Sandbox <span className="code">{model.run.runtime}</span>
+              Sandbox <span className="font-mono text-xs text-foreground">{model.run.runtime}</span>
             </span>
           </p>
         </div>
+
         {queued || running ? (
-          <div className="run-head__actions">
+          <div className="flex max-w-none flex-col items-start gap-1.5 text-left min-[861px]:max-w-[260px] min-[861px]:items-end min-[861px]:text-right">
             {stopPending ? (
-              <button type="button" className="btn btn--danger" disabled>
+              <Button type="button" variant="destructive" disabled>
                 Stopping{'\u2026'}
-              </button>
+              </Button>
             ) : (
               <ConfirmButton
                 label={queued ? 'Cancel queued run' : 'Stop run'}
                 confirmLabel={queued ? 'Confirm cancel' : 'Confirm stop'}
                 cancelLabel={queued ? 'Keep queued' : 'Keep running'}
-                className="btn btn--danger"
-                confirmClassName="btn btn--danger"
+                className={buttonVariants({ variant: 'destructive' })}
+                confirmClassName={buttonVariants({ variant: 'destructive' })}
+                cancelClassName={buttonVariants({ variant: 'secondary' })}
                 onConfirm={stop}
               />
             )}
-            <p className="muted">
+            <p className="m-0 text-xs text-muted-foreground">
               {queued
                 ? queuePos !== null
                   ? `Queued (#${queuePos} in line): starts automatically when the active run finishes.`
@@ -105,10 +218,10 @@ export function RunPage({ id }: { id: string }) {
             <TurnstileBox boxRef={turnstileBox} />
           </div>
         ) : report ? (
-          <div className="run-head__actions">
-            <button type="button" className="btn btn--quiet" onClick={goToRunsPanel}>
+          <div className="flex shrink-0 flex-col items-start gap-1.5 min-[861px]:items-end">
+            <Button type="button" variant="secondary" className="border border-bar-hover" onClick={goToRunsPanel}>
               Run again and compare
-            </button>
+            </Button>
           </div>
         ) : null}
       </header>
@@ -120,252 +233,156 @@ export function RunPage({ id }: { id: string }) {
             <p>{reason}</p>
           </div>
         ) : (
-          <p className="muted">{reason}</p>
+          <p className="m-0 text-sm text-muted-foreground">{reason}</p>
         )
       ) : null}
 
-      {report ? <p className="verdict">{verdictLine(report, model.routes)}</p> : null}
-      {queued ? (
-        <Panel title="Waiting in queue">
-          <p className="muted">
-            {queuePos !== null
-              ? `Position #${queuePos} in line. This run will start automatically as soon as the active run finishes.`
-              : 'This run is queued and will start automatically as soon as the active run finishes.'}
-          </p>
-        </Panel>
-      ) : (
-        <>
-          {report ? <ReportTiles model={model} now={now} /> : <LiveTiles model={model} now={now} />}
-          {report && (reason || reportNotices(report).length > 0) ? (
-            <div className="report-notes">
-              {reason ? <p>{reason}</p> : null}
-              <ReportNotices report={report} />
-            </div>
-          ) : null}
-
-          <div className="board">
-            <section className="panel board__chart" aria-labelledby="route-chart-heading">
-              <div className="panel__head">
-                <h2 id="route-chart-heading">p95 latency per route</h2>
-                <span className="muted">After each finished stage</span>
-              </div>
-              <TableWrap label="Chart of p95 latency per route">
-                <RouteChart stages={model.stages} plan={model.plan} limitMs={limit?.p95Ms ?? 1500} routes={model.routes} />
-              </TableWrap>
-            </section>
-            <Feed stages={model.stages} decisions={model.decisions} containment={model.containment} total={model.plan?.stages.length ?? null} />
-          </div>
-        </>
-      )}
-
-      {report ? null : <StageProfile stages={profile(model, now)} compact />}
-
       {report ? (
-        <article className="report" aria-labelledby="report-heading">
-          <div className="report__head">
-            <h2 id="report-heading">Capacity report</h2>
-            <ReportMeta report={report} />
+        <p className="m-0 max-w-[64ch] text-[1.0625rem] leading-[1.4] text-pretty text-foreground min-[861px]:text-[1.375rem]">
+          {verdictLine(report, model.routes)}
+        </p>
+      ) : null}
+
+      {showStickyStrip ? <KpiStrip items={kpiItems} /> : null}
+
+      <div className={report ? 'report flex flex-col gap-4' : 'flex flex-col gap-4'}>
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
+            <TabsList
+              aria-label="Capacity Report sections"
+              className="flex h-auto w-full flex-wrap justify-start gap-1 border border-border bg-surface p-1 sm:w-fit"
+            >
+              {RUN_TAB_ITEMS.map((tab) => {
+                const disabled = tab.id === 'ai' && !hasReport;
+                return (
+                  <TabsTrigger
+                    key={tab.id}
+                    value={tab.id}
+                    disabled={disabled}
+                    aria-describedby={disabled ? aiDisabledNoteId : undefined}
+                    title={disabled ? `${tab.label} — ${AI_TAB_DISABLED_REASON}` : undefined}
+                    className="min-h-9 flex-none border border-transparent px-3 py-1.5 data-active:border-bar-hover data-active:bg-background data-active:text-foreground"
+                  >
+                    {tab.label}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+
+            {!hasReport ? (
+              <p id={aiDisabledNoteId} className="m-0 text-xs text-muted-foreground">
+                AI Insights &amp; Report Q&amp;A: {AI_TAB_DISABLED_REASON}.
+              </p>
+            ) : null}
           </div>
-          <ReportExport report={report} />
-          <ReportStages report={report} />
-          <DuringTheStage stages={model.stages} routes={model.routes} />
-          <AiSection report={report} />
-          <ReportQa report={report} />
-          <ModelCalls calls={model.modelCalls} />
-          <RunsPanel report={report} />
-        </article>
-      ) : (
-        <>
-          <LiveStages model={model} />
-          {ended &&
-          model.report === null &&
-          (model.run.status === 'completed' ||
-            model.run.status === 'halted' ||
-            model.run.status === 'stopped' ||
-            model.run.status === 'timed_out') ? (
-            <p className="muted" role="status">
-              Building the capacity report.
-            </p>
-          ) : null}
-          {model.modelCalls.length > 0 ? <ModelCalls calls={model.modelCalls} /> : null}
-        </>
-      )}
-    </div>
-  );
-}
 
-/**
- * Status reasons are written by the server with requirement terms (Supervisor_Agent, Stage_Verdict,
- * Stop_Thresholds). Say them in plain words on screen.
- */
-export function plainReason(text: string): string {
-  return text
-    .replace(/the Supervisor_Agent's decision/g, 'the supervisor (AI) decision')
-    .replace(/Supervisor_Agent/g, 'supervisor (AI)')
-    .replace(/Stop_Thresholds?/g, 'stop thresholds')
-    .replace(/Stage_Verdicts?/g, 'stage verdict')
-    .replace(/\b([A-Z][a-z]+)_([A-Z][a-z]+)\b/g, (_m, a: string, b: string) => `${a.toLowerCase()} ${b.toLowerCase()}`)
-    .replace(/\bStage (\d)/g, 'stage $1');
-}
+          <TabsContent value="overview" className="flex flex-col gap-4 outline-none">
+            {activeTab === 'overview' ? (
+              <>
+                {queued ? (
+                  <TelemetryPanel ticks="bar" aria-labelledby="queue-wait-heading">
+                    <h2 id="queue-wait-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+                      Waiting in queue
+                    </h2>
+                    <p className="m-0 text-sm text-muted-foreground">
+                      {queuePos !== null
+                        ? `Position #${queuePos} in line. This run will start automatically as soon as the active run finishes.`
+                        : 'This run is queued and will start automatically as soon as the active run finishes.'}
+                    </p>
+                  </TelemetryPanel>
+                ) : (
+                  <>
+                    <SignatureTiles ref={tilesRef} items={kpiItems} reportMode={report !== null} />
 
-/** Bring the "Run again and compare" panel into view and put focus on its heading. */
-function goToRunsPanel() {
-  const el = document.getElementById('report-runs-heading');
-  if (!el) return;
-  el.setAttribute('tabindex', '-1');
-  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  el.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
-  el.focus({ preventScroll: true });
-}
+                    {report && (reason || reportNotices(report).length > 0) ? (
+                      <div className="flex flex-col gap-1.5 text-sm text-muted-foreground">
+                        {reason ? <p className="m-0">{reason}</p> : null}
+                        <ReportNotices report={report} />
+                      </div>
+                    ) : null}
 
-const fmtN = (n: number): string => n.toLocaleString('en-US');
+                    <div className="board grid grid-cols-1 gap-2 min-[1180px]:grid-cols-[minmax(0,1fr)_minmax(300px,400px)] min-[1180px]:items-stretch print:hidden">
+                      <TelemetryPanel ticks="bar" aria-labelledby="route-chart-heading">
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <h2 id="route-chart-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+                            p95 latency per route
+                          </h2>
+                          <span className="text-xs text-muted-foreground">After each finished stage</span>
+                        </div>
+                        <TableWrap label="Chart of p95 latency per route">
+                          <RouteChart
+                            stages={stagesMemo}
+                            plan={model.plan}
+                            limitMs={limit?.p95Ms ?? 1500}
+                            routes={model.routes}
+                          />
+                        </TableWrap>
+                      </TelemetryPanel>
+                      <Feed
+                        stages={stagesMemo}
+                        decisions={decisionsMemo}
+                        containment={containmentMemo}
+                        total={model.plan?.stages.length ?? null}
+                      />
+                    </div>
+                  </>
+                )}
 
-/** Which overall limit a failing stage went over, in words, from the stored numbers. */
-function overWhat(s: ReportStageView, th: CapacityReport['thresholds']): string {
-  const m = s.overall;
-  if (m === null) return 'a stop threshold';
-  const p95 = m.raw.p95 > th.p95Ms;
-  const err = m.raw.errorRatePct > th.errorRatePct;
-  if (p95 && err) return `p95 latency (${m.display.p95} ms) and error rate (${m.display.errorRatePct}) went over their limits`;
-  if (p95) return `p95 latency went over the ${fmtN(th.p95Ms)} ms limit (${m.display.p95} ms)`;
-  if (err) return `error rate went over the ${th.errorRatePct}% limit (${m.display.errorRatePct})`;
-  return 'a stop threshold was crossed';
-}
+                {report ? (
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-3 pt-2">
+                      <h2
+                        id="report-heading"
+                        className="m-0 font-display text-[1.75rem] leading-[1.1] font-light tracking-[-0.02em] text-foreground"
+                      >
+                        Capacity report
+                      </h2>
+                      <ReportMeta report={report} />
+                    </div>
+                    <ReportExport report={report} />
+                    <RunsPanel report={report} />
+                  </div>
+                ) : (
+                  <StageProfile stages={profile(model, now)} compact />
+                )}
+              </>
+            ) : null}
+          </TabsContent>
 
-/**
- * The report's answer in one sentence, built only from the headline values and stage rows
- * (never from AI text): how much load held, where it broke, and the first route to go over.
- */
-export function verdictLine(report: CapacityReport, routes: readonly { id: string; path: string }[] = []): string {
-  const { safeCapacity: safe, breakingPoint: brk, firstDegradedRoute: route } = report.headline;
-  const th = report.thresholds;
-  const measured = report.stages.filter((s) => s.overall !== null);
-  if (measured.length === 0) return 'No stage produced metrics, so this run has no capacity answer.';
-  const top = Math.max(...measured.map((s) => s.vus));
-  const brkStage = brk === null ? undefined : measured.find((s) => s.vus === brk && s.verdict === 'fail');
+          <TabsContent value="stages" className="flex flex-col gap-4 outline-none">
+            {activeTab === 'stages' ? (
+              report ? (
+                <>
+                  <ReportStages report={report} />
+                  <DuringTheStage stages={stagesMemo} routes={model.routes} />
+                </>
+              ) : (
+                <>
+                  <LiveStages model={model} revision={stagesVersion} />
+                  {ended && model.report === null && reportExpected(model.run.status) ? (
+                    <p className="m-0 text-sm text-muted-foreground" role="status">
+                      Building the capacity report.
+                    </p>
+                  ) : null}
+                  <DuringTheStage stages={stagesMemo} routes={model.routes} />
+                </>
+              )
+            ) : null}
+          </TabsContent>
 
-  let line: string;
-  if (safe !== null && brk === null) {
-    line = `Holds ${fmtN(top)} VUs, the most this run tested: every stage stayed under both limits overall.`;
-  } else if (safe !== null && brk !== null) {
-    line = `Holds ${fmtN(safe)} VUs. At ${fmtN(brk)} VUs, ${brkStage ? overWhat(brkStage, th) : 'a stop threshold was crossed'}.`;
-  } else if (brk !== null) {
-    line = `No stage held: at ${fmtN(brk)} VUs, the first stage measured, ${brkStage ? overWhat(brkStage, th) : 'a stop threshold was crossed'}.`;
-  } else {
-    line = `Tested up to ${fmtN(top)} VUs.`;
-  }
+          <TabsContent value="ai" className="flex flex-col gap-4 outline-none">
+            {activeTab === 'ai' && report ? (
+              <>
+                <AiSection report={report} />
+                <ReportQa report={report} />
+              </>
+            ) : null}
+          </TabsContent>
 
-  if (route) {
-    const hit = measured.map((s) => ({ s, r: s.routes.find((r) => r.route === route && r.exceedsThresholds) })).find((x) => x.r);
-    if (hit?.r) {
-      const what = hit.r.raw.p95 > th.p95Ms ? `the ${fmtN(th.p95Ms)} ms p95 limit` : `the ${th.errorRatePct}% error limit`;
-      const path = routes.find((r) => r.id === route)?.path;
-      const label = path === undefined ? route : `${route} (${path})`;
-      line += ` ${label} was the first route over ${what}, at ${fmtN(hit.s.vus)} VUs.`;
-    }
-  }
-  return line;
-}
-
-function lastDone(stages: readonly StageView[]): StageView | null {
-  let top: StageView | null = null;
-  for (const s of stages) if (s.status === 'done' && s.metrics !== null && (top === null || s.index > top.index)) top = s;
-  return top;
-}
-
-function safeSoFar(stages: readonly StageView[]): number | null {
-  let best: number | null = null;
-  for (const s of stages) if (s.status === 'done' && s.verdict === 'pass' && (best === null || s.vus > best)) best = s.vus;
-  return best;
-}
-
-function LiveTiles({ model, now }: { model: RunModel; now: number }) {
-  const cur = currentStage(model);
-  const running = model.run.status === 'running';
-  const top = model.stages.find((s) => s.index === (cur?.position ?? 0) - 1) ?? null;
-  const stageSec = top?.startedAt != null && top.status === 'running' ? Math.max(0, Math.round((now - top.startedAt) / 1000)) : null;
-  const done = lastDone(model.stages);
-  const m = done?.metrics?.overall ?? null;
-  const limit = model.plan?.stopThresholds ?? null;
-  const safe = safeSoFar(model.stages);
-  return (
-    <div className="tiles" role="group" aria-label="Live numbers">
-      <div className={running ? 'tile tile--live' : 'tile'}>
-        <span className="tile__label">
-          {cur ? (cur.total !== null ? `Stage ${cur.position} of ${cur.total}` : `Stage ${cur.position}`) : 'Starting'}
-        </span>
-        <span className="tile__value">{cur ? cur.vus : DASH}</span>
-        <span className="tile__sub">
-          {cur ? 'VUs' : 'preparing the first sandbox'}
-          {stageSec !== null && top ? `, ${Math.min(stageSec, top.durationSec)}\u00a0s of ${top.durationSec}\u00a0s` : ''}
-        </span>
-        {stageSec !== null && top ? <TileProgress value={Math.min(1, stageSec / Math.max(1, top.durationSec))} /> : null}
-      </div>
-      <div className="tile">
-        <span className="tile__label">{done ? `p95 at stage ${done.index + 1}` : 'p95 latency'}</span>
-        <span className="tile__value">{m ? `${fmtMs(m.p95)} ms` : DASH}</span>
-        <span className="tile__sub">
-          {limit ? `limit ${fmtMs(limit.p95Ms)} ms` : ''}
-          {m ? '' : limit ? ', after stage 1 ends' : 'after stage 1 ends'}
-        </span>
-      </div>
-      <div className="tile">
-        <span className="tile__label">{done ? `Error rate at stage ${done.index + 1}` : 'Error rate'}</span>
-        <span className="tile__value">{m ? fmtPct(m.errorRatePct) : DASH}</span>
-        <span className="tile__sub">{limit ? `limit ${limit.errorRatePct}%` : ''}</span>
-      </div>
-      <div className="tile">
-        <span className="tile__label">Safe capacity so far</span>
-        <span className="tile__value">{safe ?? DASH}</span>
-        <span className="tile__sub">{safe !== null ? 'VUs, highest stage that passed' : 'no stage has passed yet'}</span>
-      </div>
-    </div>
-  );
-}
-
-/** The same four places as the live tiles, now holding the report's answers. */
-function ReportTiles({ model, now }: { model: RunModel; now: number }) {
-  const report = model.report!;
-  const items = headlineItems(report);
-  const [safe, breaking, route] = items;
-  const th = report.thresholds;
-  const ran = report.stages;
-  const planned = Math.max(model.plan?.stages.length ?? 0, ran.length);
-  // Where the first degraded route went over: its stage and p95, from the same stored rows.
-  const firstRoute = report.headline.firstDegradedRoute;
-  const where = firstRoute
-    ? report.stages.map((s) => ({ s, r: s.routes.find((r) => r.route === firstRoute && r.exceedsThresholds) })).find((x) => x.r)
-    : undefined;
-  const safeSub =
-    report.headline.safeCapacity !== null
-      ? `VUs, the highest stage whose overall p95 stayed under ${th.p95Ms} ms and errors under ${th.errorRatePct}%`
-      : 'no stage stayed under both limits';
-  const breakSub =
-    report.headline.breakingPoint !== null
-      ? 'VUs, the first stage over a limit overall'
-      : 'every stage stayed under both thresholds overall';
-  const routeSub = where?.r
-    ? `p95 ${where.r.display.p95} ms at stage ${where.s.displayIndex} (${where.s.vus} VUs), over the ${th.p95Ms} ms limit`
-    : 'no single route went over a limit';
-  const tile = (it: (typeof items)[number] | undefined, lead: boolean, sub: string) =>
-    it ? (
-      <div className={lead ? 'tile tile--live' : `tile tile--${it.tone ?? 'neutral'}`}>
-        <span className="tile__label">{it.label}</span>
-        <span className={it.value.length > 9 ? 'tile__value tile__value--text' : 'tile__value'}>{it.value}</span>
-        <span className="tile__sub">{sub}</span>
-      </div>
-    ) : null;
-  return (
-    <div className="tiles tiles--report" role="group" aria-label="Headline values">
-      {tile(safe, true, safeSub)}
-      {tile(breaking, false, breakSub)}
-      {tile(route, false, routeSub)}
-      <div className="tile">
-        <span className="tile__label">Tested up to</span>
-        <span className="tile__value">{ran.length > 0 ? fmtN(Math.max(...ran.map((s) => s.vus))) : DASH}</span>
-        <span className="tile__sub">
-          VUs, {ran.length} of {planned} {planned === 1 ? 'stage' : 'stages'} run, {formatElapsed(elapsedMs(model.run, now))} in total
-        </span>
+          <TabsContent value="audit" className="flex flex-col gap-4 outline-none">
+            {activeTab === 'audit' ? <AuditLog model={model} revision={auditVersion} /> : null}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
@@ -390,24 +407,11 @@ function profile(model: RunModel, now: number): ProfileStage[] {
   });
 }
 
-/** Progress through the running stage, drawn along the bottom of the spring-green tile. */
-function TileProgress({ value }: { value: number }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    ref.current?.style.setProperty('--p', String(value));
-  }, [value]);
-  return (
-    <span className="tile__progress" aria-hidden="true">
-      <span ref={ref} />
-    </span>
-  );
-}
-
 /**
  * "During the stage": one per-second chart per stage that carries samples, drawn
  * from the stored rows. Stages without samples (older runs) render nothing.
  */
-function DuringTheStage({
+const DuringTheStage = memo(function DuringTheStage({
   stages,
   routes,
 }: {
@@ -417,50 +421,67 @@ function DuringTheStage({
   const withSamples = stages.filter((s) => (s.samples?.length ?? 0) > 0);
   if (withSamples.length === 0) return null;
   return (
-    <Panel title="During the stage" id="during-stage-heading" note="Average latency per second, measured while each stage ran.">
-      {withSamples.map((s) => (
-        <div key={s.index} className="during-stage">
-          <h3 className="h-small">
-            Stage {s.index + 1} ({s.vus} VUs)
-          </h3>
-          <TableWrap label={`Chart of average latency per second for stage ${s.index + 1}`}>
-            <SecondChart stage={s} displayIndex={s.index + 1} routes={routes} />
-          </TableWrap>
-        </div>
-      ))}
-    </Panel>
+    <TelemetryPanel ticks="bar" aria-labelledby="during-stage-heading">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="during-stage-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+          During the stage
+        </h2>
+        <span className="text-xs text-muted-foreground">Average latency per second, measured while each stage ran.</span>
+      </div>
+      <div className="flex flex-col divide-y divide-border">
+        {withSamples.map((s) => (
+          <div key={s.index} className="flex flex-col gap-2.5 py-3.5 first:pt-0 last:pb-0">
+            <h3 className="m-0 font-sans text-[0.8125rem] font-medium text-muted-foreground">
+              Stage <span className="font-mono text-foreground tabular-nums">{s.index + 1}</span> (
+              <span className="font-mono tabular-nums">{s.vus}</span> VUs)
+            </h3>
+            <TableWrap label={`Chart of average latency per second for stage ${s.index + 1}`}>
+              <SecondChart stage={s} displayIndex={s.index + 1} routes={routes} />
+            </TableWrap>
+          </div>
+        ))}
+      </div>
+    </TelemetryPanel>
   );
-}
+});
 
 /** Live stage table, including planned stages not started yet ("pending", or "not run" after an early end). */
-function LiveStages({ model }: { model: RunModel }) {
+const LiveStages = memo(function LiveStages({
+  model,
+  revision: _revision,
+}: {
+  model: RunModel;
+  revision: string;
+}) {
   const started = new Set(model.stages.map((s) => s.index));
   const unstarted = (model.plan?.stages ?? []).map((p, index) => ({ index, ...p })).filter((p) => !started.has(p.index));
   const pending = model.run.status === 'running' || model.run.status === 'queued' ? 'pending' : 'not run';
   const dash = Array.from({ length: 7 }, (_, i) => (
-    <td key={i} className="num">
+    <td key={i} className="num font-mono tabular-nums">
       {DASH}
     </td>
   ));
   return (
-    <section className="panel" aria-labelledby="live-stages-heading">
-      <div className="panel__head">
-        <h2 id="live-stages-heading">Stages</h2>
+    <TelemetryPanel ticks="bar" aria-labelledby="live-stages-heading">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="live-stages-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+          Stages
+        </h2>
       </div>
       {model.stages.length === 0 && unstarted.length === 0 ? (
-        <p className="muted">No Stage has started yet.</p>
+        <p className="m-0 text-sm text-muted-foreground">No Stage has started yet.</p>
       ) : (
         <TableWrap label="Stages">
-          <table className="table table--stages">
-            <caption className="visually-hidden">Stages</caption>
+          <table className="table w-full min-w-[860px] table-fixed print:min-w-0 print:table-auto">
+            <caption className="sr-only">Stages</caption>
             <colgroup>
-              <col className="w-stage" />
-              <col className="w-vus" />
-              <col className="w-dur" />
+              <col className="w-16" />
+              <col className="w-20" />
+              <col className="w-24" />
               {Array.from({ length: 7 }, (_, i) => (
                 <col key={i} />
               ))}
-              <col className="w-verdict" />
+              <col className="w-24" />
             </colgroup>
             <thead>
               <tr>
@@ -472,7 +493,7 @@ function LiveStages({ model }: { model: RunModel }) {
                   Duration
                 </th>
                 {['Requests', 'Requests/s', 'Error rate', 'HTTP 429', 'p50 (ms)', 'p95 (ms)', 'p99 (ms)'].map((h) => (
-                  <th key={h} scope="col" className="num">
+                  <th key={h} scope="col" className="num whitespace-normal">
                     {h}
                   </th>
                 ))}
@@ -486,16 +507,16 @@ function LiveStages({ model }: { model: RunModel }) {
                 const m = s.status === 'done' ? (s.metrics?.overall ?? null) : null;
                 return (
                   <tr key={s.index}>
-                    <th scope="row" className="idx">
+                    <th scope="row" className="idx font-mono tabular-nums">
                       {s.index + 1}
                     </th>
-                    <td className="num">{s.vus}</td>
-                    <td className="num">{s.durationSec} s</td>
+                    <td className="num font-mono tabular-nums">{s.vus}</td>
+                    <td className="num font-mono tabular-nums">{s.durationSec} s</td>
                     {s.status === 'error' ? (
                       <>
                         <td colSpan={7}>{s.errorReason ?? 'No reason was recorded.'}</td>
                         <td className="end">
-                          <Badge tone="bad">error</Badge>
+                          <Badge variant="destructive">error</Badge>
                         </td>
                       </>
                     ) : (
@@ -510,16 +531,16 @@ function LiveStages({ model }: { model: RunModel }) {
                               fmtMs(m.p95),
                               fmtMs(m.p99),
                             ].map((v, i) => (
-                              <td key={i} className="num">
+                              <td key={i} className="num font-mono tabular-nums">
                                 {v}
                               </td>
                             ))
                           : dash}
                         <td className="end">
                           {s.status === 'running' ? (
-                            <Badge tone="live">running</Badge>
+                            <Badge variant="live">running</Badge>
                           ) : s.verdict ? (
-                            <Badge tone={s.verdict === 'pass' ? 'ok' : 'bad'}>{s.verdict}</Badge>
+                            <Badge variant={s.verdict === 'pass' ? 'ok' : 'destructive'}>{s.verdict}</Badge>
                           ) : (
                             DASH
                           )}
@@ -531,14 +552,14 @@ function LiveStages({ model }: { model: RunModel }) {
               })}
               {unstarted.map((p) => (
                 <tr key={`p${p.index}`} className="is-pending">
-                  <th scope="row" className="idx">
+                  <th scope="row" className="idx font-mono tabular-nums">
                     {p.index + 1}
                   </th>
-                  <td className="num">{p.vus}</td>
-                  <td className="num">{p.durationSec} s</td>
+                  <td className="num font-mono tabular-nums">{p.vus}</td>
+                  <td className="num font-mono tabular-nums">{p.durationSec} s</td>
                   {dash}
                   <td className="end">
-                    <Badge>{pending}</Badge>
+                    <Badge variant="outline">{pending}</Badge>
                   </td>
                 </tr>
               ))}
@@ -551,13 +572,13 @@ function LiveStages({ model }: { model: RunModel }) {
           model.plan
             ? [
                 'Stop thresholds',
-                <span className="num">
+                <span className="font-mono text-xs tabular-nums">
                   p95 {fmtMs(model.plan.stopThresholds.p95Ms)} ms, error rate {model.plan.stopThresholds.errorRatePct}%
                 </span>,
               ]
             : null,
         ]}
       />
-    </section>
+    </TelemetryPanel>
   );
-}
+});

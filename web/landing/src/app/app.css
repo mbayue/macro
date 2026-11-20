@@ -296,36 +296,18 @@
 .table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 /* Index and date columns: left under their header, digits of equal width. */
 .table .idx { text-align: left; font-variant-numeric: tabular-nums; white-space: nowrap; }
-/* Every per-stage route table shares one fixed column grid, so columns line up from table to table.
-   Thresholds is sized to its badge; the seven metric columns share the rest evenly. */
-.table--routes { table-layout: fixed; min-width: 860px; }
-.table--routes .w-route { width: 15%; }
-.table--routes .w-verdict { width: 170px; }
-.table--routes caption { padding-top: 20px; font-size: var(--fs-sm); color: var(--ink); font-weight: 500; }
 /* The result column (Thresholds, Verdict) sits at the right edge of its table. */
 .table .end { text-align: right; padding-right: 0; }
 /*
  * Fixed column grids. One rule for every data table: columns holding labels, dates or badges are
  * sized to their content, and the number columns share what is left evenly.
  */
-/* Stages: the stage number is the row label; VUs and Duration share the even grid with the metrics. */
-.table--stages { table-layout: fixed; min-width: 860px; }
-.table--stages .w-stage { width: 64px; }
-.table--stages .w-verdict { width: 96px; }
-/* Nine number columns get narrow on smaller laptops: headers wrap there instead of overflowing. */
-.table--stages thead th, .table--stages thead th.num { white-space: normal; text-wrap: balance; }
-.table--stages th, .table--stages td { padding-inline: 8px; }
 /* Runs of this plan: the run ID (left-aligned text) takes the spare width; the two numbers are equal. */
 .table--runs { table-layout: fixed; min-width: 1040px; }
 .table--runs .w-check { width: 48px; }
 .table--runs .w-started { width: 230px; }
 .table--runs .w-status { width: 150px; }
 .table--runs .w-num { width: 200px; }
-.table--calls { table-layout: fixed; min-width: 900px; }
-.table--calls .w-idx { width: 48px; }
-.table--calls .w-agent { width: 12%; }
-.table--calls .w-model { width: 20%; }
-.table--calls .w-outcome { width: 120px; }
 .table tr.is-pending td, .table tr.is-pending th { color: var(--muted); }
 .table tr:last-child th, .table tr:last-child td { border-bottom: 0; }
 .check { width: 18px; height: 18px; accent-color: var(--accent-text); }
@@ -362,94 +344,12 @@
 .profile__stage--skipped .profile__bar { background: transparent; box-shadow: inset 0 0 0 1px var(--surface-2); }
 .profile__stage--skipped .profile__label { opacity: 0.6; }
 
-/* ---- Run: header, tiles, board ---- */
-.run-head { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; }
-.run-head__text { display: grid; gap: 8px; min-width: 0; }
-.run-head__status { display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.run-head__meta { display: flex; flex-wrap: wrap; gap: 4px 20px; font-size: var(--fs-sm); }
-.run-head__actions { display: grid; gap: 6px; justify-items: end; text-align: right; max-width: 260px; }
-.run-head__actions p { font-size: var(--fs-xs); }
-/* The report's answer in one sentence, above the headline tiles. */
-.verdict { font: 400 var(--fs-lg)/1.4 var(--text); max-width: 64ch; text-wrap: pretty; }
-.report-notes { display: grid; gap: 4px; font-size: var(--fs-sm); color: var(--muted); }
-.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-.tile { background: var(--surface); border-radius: var(--radius); padding: 18px 20px 26px; display: grid; gap: 6px; align-content: start; min-height: 136px; min-width: 0; }
-.tile__label { font-size: var(--fs-sm); color: var(--muted); }
-.tile__value { font: 300 var(--fs-num)/1 var(--display); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.tile__value--text { font-size: 1.75rem; letter-spacing: -0.015em; line-height: 1.1; }
-.tile__sub { font-size: var(--fs-xs); color: var(--muted); }
-.tile { position: relative; overflow: hidden; }
-.tile__progress { position: absolute; left: 20px; right: 20px; bottom: 12px; height: 6px; border-radius: 3px; overflow: hidden; background: color-mix(in srgb, var(--ink) 14%, transparent); }
-.tile__progress span { display: block; height: 100%; width: calc(var(--p, 0) * 100%); background: var(--accent-ink); transition: width 900ms linear; }
-/* When the run ends, the spring-green tile carries the answer at the landing page's figure scale. */
-.tiles--report .tile--live .tile__value { font-size: clamp(3.5rem, 2.6rem + 2.4vw, 5.5rem); letter-spacing: -0.04em; }
-.tile--live { background: var(--accent); color: var(--accent-ink); }
-.tile--live .tile__label,
-.tile--live .tile__sub,
-.tile--live .muted,
-.tile--live .busy { color: var(--accent-ink-soft); }
-.tile--bad .tile__value { color: var(--bad); }
-.tile--warn .tile__value { color: var(--warn); }
-.tile--ok .tile__value { color: var(--ok); }
-.board { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 400px); gap: 8px; align-items: stretch; }
-.chart-box { min-width: 0; }
-.route-chart { width: 100%; height: auto; display: block; font-family: var(--text); }
-.route-chart__grid { stroke: var(--surface-2); stroke-width: 1; }
-.route-chart__tick { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-.route-chart__limit { stroke: var(--bad); stroke-width: 1.5; stroke-dasharray: 6 5; }
-.route-chart__limit-label { fill: var(--bad); font-size: 12px; }
-.route-chart__line path { fill: none; stroke: var(--bar); stroke-width: 2; stroke-linejoin: round; }
-.route-chart__line circle { fill: var(--bar); }
-.route-chart__line.is-lead path { stroke: var(--accent-text); stroke-width: 3; }
-.route-chart__line.is-lead circle { fill: var(--accent-text); }
-.route-chart__name { fill: var(--muted); font-size: 12px; }
-.route-chart__name.is-lead { fill: var(--ink); font-weight: 500; }
-.route-chart__leader { fill: none; stroke: var(--bar); stroke-width: 1; }
-.route-chart__swatch { stroke: var(--bar); stroke-width: 2; }
-.route-chart__label.is-lead .route-chart__swatch { stroke: var(--accent-text); stroke-width: 3; }
-.route-chart__empty { fill: var(--muted); font-size: 14px; }
-
-/* ---- Second chart: per-second average latency inside one stage. ---- */
-/* No new table classes here, so the print block needs no extra selector. */
-.second-chart { width: 100%; height: auto; display: block; font-family: var(--text); }
-.second-chart__grid { stroke: var(--surface-2); stroke-width: 1; }
-.second-chart__tick { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-.second-chart__line path { fill: none; stroke: var(--bar); stroke-width: 2; stroke-linejoin: round; }
-.second-chart__line.is-lead path { stroke: var(--accent-text); stroke-width: 3; }
-.second-chart__burst line { stroke: var(--bad); stroke-width: 2; }
-.second-chart__name { fill: var(--muted); font-size: 12px; }
-.second-chart__name.is-lead { fill: var(--ink); font-weight: 500; }
-.second-chart__leader { fill: none; stroke: var(--bar); stroke-width: 1; }
-.second-chart__swatch { stroke: var(--bar); stroke-width: 2; }
-.second-chart__label.is-lead .second-chart__swatch { stroke: var(--accent-text); stroke-width: 3; }
-.second-chart__empty { fill: var(--muted); font-size: 14px; }
-.during-stage { display: grid; gap: 10px; padding: 14px 0; border-top: 1px solid var(--surface-2); }
-.during-stage:first-child { border-top: 0; padding-top: 0; }
-.feed { grid-template-rows: auto minmax(0, 1fr); max-height: 440px; }
+/* ---- Probe event list ---- */
 .feed__list { list-style: none; margin: 0; padding: 0 0 24px; overflow-y: auto; display: grid; align-content: start; }
-/* The feed scrolls inside its panel; fade the cut edge so a clipped item reads as more below. */
-.feed .feed__list { mask-image: linear-gradient(to bottom, #000 calc(100% - 40px), transparent); }
 .feed__item { display: grid; gap: 3px; padding: 10px 0; border-top: 1px solid var(--surface-2); font-size: var(--fs-sm); }
 .feed__item:first-child { border-top: 0; padding-top: 0; }
 .feed__time { font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
 .feed__detail { color: var(--muted); }
-
-/* ---- Report ---- */
-.report { display: grid; gap: 16px; margin-top: 16px; }
-.report__head { display: grid; gap: 12px; padding: 8px 0; }
-.shell .report__head h2 { font: 300 1.75rem/1.1 var(--display); letter-spacing: -0.02em; }
-.meta-strip { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1px; background: var(--surface-2); border-radius: var(--radius); overflow: hidden; }
-.meta-strip .code { overflow-wrap: normal; white-space: nowrap; }
-.meta-strip__wide { grid-column: 1 / -1; }
-.meta-strip__wide .code { white-space: normal; word-break: break-all; }
-.meta-strip > div { background: var(--surface); padding: 12px 16px; display: grid; gap: 2px; min-width: 0; font-size: var(--fs-sm); }
-.meta-strip dt { color: var(--muted); font-size: var(--fs-xs); }
-.meta-strip dd { margin: 0; min-width: 0; }
-.ai__cols { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 32px; align-items: start; }
-.ai__notes { list-style: disc; margin: 0; padding-left: 1.2em; color: var(--muted); font-size: var(--fs-sm); }
-.ai__list { list-style: decimal; margin: 0; padding-left: 1.4em; display: grid; gap: 6px; }
-.compare { display: grid; gap: 14px; margin-top: 8px; }
-.compare__runs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; font-size: var(--fs-sm); }
 
 /* ---- Probe, recent runs ---- */
 .probe-result { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 28px; align-items: center; padding: 24px; border-radius: var(--radius); background: var(--surface); }
@@ -482,28 +382,16 @@
 
 /* ---- Narrower screens ---- */
 @media (max-width: 1180px) {
-  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .board { grid-template-columns: minmax(0, 1fr); }
   .split { grid-template-columns: minmax(0, 1fr); }
   .split__side { position: static; }
-  .ai__cols { grid-template-columns: minmax(0, 1fr); gap: 16px; }
-  .feed { max-height: 360px; }
 }
 @media (max-width: 860px) {
   .shell { grid-template-columns: minmax(0, 1fr); }
   .main { padding: 24px 16px 0; }
-  .table--calls { table-layout: auto; min-width: 0; }
   .table--runs { table-layout: auto; min-width: 0; }
   .shell .page__title { font-size: 1.75rem; }
-  .run-head { flex-direction: column; }
-  .run-head__actions { justify-items: start; text-align: left; max-width: none; }
   .panel { padding: 16px; }
-  .tile { min-height: 116px; padding: 14px 16px; }
-  .shell { --fs-num: 2.125rem; }
-  .tile__value--text { font-size: 1.375rem; }
-  .verdict { font-size: var(--fs-md); }
   .probe-result { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-  .compare__runs { grid-template-columns: minmax(0, 1fr); }
   /* Identifiers keep their shape and the table scrolls sideways instead of breaking them mid-word. */
   .table:not(.table--routes) .code { overflow-wrap: normal; white-space: nowrap; }
   /* The journey becomes one card per step: route name on top, then its four values in two columns. */

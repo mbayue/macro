@@ -3,10 +3,11 @@
  * with the seconds that saw errors marked. The only chart fed by the per-second
  * samples (SQLite stage_samples), so a stage without samples renders nothing.
  */
+import { memo } from 'react';
 import type { StageView } from '../../../../../../src/api-types.ts';
 import { fmtMs } from '../../../../../../src/run/format.ts';
-import { niceScale } from '../../lib/chart.ts';
 import { useWidth } from '../../hooks/useWidth.ts';
+import { niceScale } from '../../lib/chart.ts';
 
 const H = 240;
 const MIN_W = 320;
@@ -18,7 +19,7 @@ interface Series {
   points: { second: number; avgMs: number }[];
 }
 
-export function SecondChart({
+export const SecondChart = memo(function SecondChart({
   stage,
   displayIndex,
   routes = [],
@@ -88,9 +89,9 @@ export function SecondChart({
   for (let t = 0; t <= xMax; t += secondTickStep) ticks.push(t);
 
   return (
-    <div ref={box} className="chart-box">
+    <div ref={box} className="min-w-0">
       <svg
-        className="second-chart"
+        className="block h-auto w-full font-sans"
         viewBox={`0 0 ${W} ${H}`}
         role="img"
         aria-labelledby={`second-chart-title-${displayIndex} second-chart-desc-${displayIndex}`}
@@ -99,29 +100,52 @@ export function SecondChart({
         <desc id={`second-chart-desc-${displayIndex}`}>{desc}</desc>
         {maxY.ticks.map((t) => (
           <g key={t}>
-            <line className="second-chart__grid" x1={M.left} x2={M.left + pw} y1={y(t)} y2={y(t)} />
-            <text className="second-chart__tick" x={M.left - 10} y={y(t) + 4} textAnchor="end">
+            <line
+              className={t === 0 ? 'stroke-bar' : 'stroke-border'}
+              strokeWidth={1}
+              x1={M.left}
+              x2={M.left + pw}
+              y1={y(t)}
+              y2={y(t)}
+            />
+            <text
+              className="fill-muted-foreground font-mono text-[11px] tabular-nums"
+              x={M.left - 10}
+              y={y(t) + 4}
+              textAnchor="end"
+            >
               {fmtMs(t)}
             </text>
           </g>
         ))}
         {ticks.map((t) => (
-          <text key={t} className="second-chart__tick" x={x(t)} y={H - M.bottom + 22} textAnchor="middle">
+          <text
+            key={t}
+            className="fill-muted-foreground font-mono text-[11px] tabular-nums"
+            x={x(t)}
+            y={H - M.bottom + 22}
+            textAnchor="middle"
+          >
             {t}s
           </text>
         ))}
         {W < 520 ? (
-          <text className="second-chart__tick" x={M.left + pw / 2} y={H - 4} textAnchor="middle">
+          <text
+            className="fill-muted-foreground font-mono text-[11px]"
+            x={M.left + pw / 2}
+            y={H - 4}
+            textAnchor="middle"
+          >
             Second of the stage
           </text>
         ) : null}
         {errorSeconds.map((sec) => (
-          <g key={sec} className="second-chart__burst">
-            <line x1={x(sec)} x2={x(sec)} y1={M.top - 8} y2={M.top - 1} />
+          <g key={sec}>
+            <line className="stroke-bad" strokeWidth={2} x1={x(sec)} x2={x(sec)} y1={M.top - 8} y2={M.top - 1} />
           </g>
         ))}
         {errorSeconds.length > 0 ? (
-          <text className="second-chart__tick" x={M.left + pw} y={M.top - 10} textAnchor="end">
+          <text className="fill-bad font-mono text-[11px]" x={M.left + pw} y={M.top - 10} textAnchor="end">
             ticks: seconds with errors
           </text>
         ) : null}
@@ -130,12 +154,18 @@ export function SecondChart({
           .concat(lead ? [lead] : [])
           .map((s) => {
             const d = s.points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.second).toFixed(1)} ${y(p.avgMs).toFixed(1)}`).join(' ');
-            const cls = s === lead ? 'second-chart__line is-lead' : 'second-chart__line';
+            const isLead = s === lead;
             const quiet = series.filter((q) => q !== lead).indexOf(s);
-            const dash = s === lead ? undefined : DASHES[quiet % DASHES.length] || undefined;
+            const dash = isLead ? undefined : DASHES[quiet % DASHES.length] || undefined;
             return (
-              <g key={s.route} className={cls}>
-                <path d={d} strokeDasharray={dash} />
+              <g key={s.route}>
+                <path
+                  className={isLead ? 'fill-none stroke-accent-text' : 'fill-none stroke-bar'}
+                  strokeWidth={isLead ? 2.5 : 1.75}
+                  strokeLinejoin="round"
+                  d={d}
+                  strokeDasharray={dash}
+                />
               </g>
             );
           })}
@@ -144,25 +174,41 @@ export function SecondChart({
           const dash = l.lead ? undefined : DASHES[quiet % DASHES.length] || undefined;
           const ly = l.y - 4;
           return (
-            <g key={l.route} className={l.lead ? 'second-chart__label is-lead' : 'second-chart__label'}>
+            <g key={l.route}>
               {Math.abs(ly - l.at) > 2 ? (
-                <path className="second-chart__leader" d={`M${l.x + 5} ${l.at} L${l.x + 10} ${ly}`} />
+                <path className="fill-none stroke-bar" strokeWidth={1} d={`M${l.x + 5} ${l.at} L${l.x + 10} ${ly}`} />
               ) : null}
-              <line className="second-chart__swatch" x1={l.x + 12} x2={l.x + 30} y1={ly} y2={ly} strokeDasharray={dash} />
-              <text className={l.lead ? 'second-chart__name is-lead' : 'second-chart__name'} x={l.x + 35} y={l.y}>
+              <line
+                className={l.lead ? 'stroke-accent-text' : 'stroke-bar'}
+                strokeWidth={l.lead ? 2.5 : 1.75}
+                x1={l.x + 12}
+                x2={l.x + 30}
+                y1={ly}
+                y2={ly}
+                strokeDasharray={dash}
+              />
+              <text
+                className={
+                  l.lead
+                    ? 'fill-foreground font-mono text-[11px] font-medium'
+                    : 'fill-muted-foreground font-mono text-[11px]'
+                }
+                x={l.x + 35}
+                y={l.y}
+              >
                 {routes.find((r) => r.id === l.route)?.path ?? l.route}
               </text>
             </g>
           );
         })}
         {series.length === 0 ? (
-          <text className="second-chart__empty" x={M.left + pw / 2} y={M.top + ph / 2} textAnchor="middle">
+          <text className="fill-muted-foreground font-sans text-sm" x={M.left + pw / 2} y={M.top + ph / 2} textAnchor="middle">
             No per-second samples were stored for this stage.
           </text>
         ) : null}
       </svg>
     </div>
   );
-}
+});
 
 const lastOf = (s: Series): { second: number; avgMs: number } => s.points[s.points.length - 1] ?? { second: 0, avgMs: 0 };

@@ -1,21 +1,22 @@
 /**
- * The capacity report, shown in place on the run page once the run has ended. Every number
- * comes from the stored metrics; AI text appears only in the section labelled as the AI's.
- * Wording and states follow web/report-view.ts, whose view models are reused.
+ * The capacity report panels once the run has ended. Every number comes from the
+ * stored metrics; AI text appears only in the section labelled as the AI's.
+ * Wording and states follow lib/report-view.ts, whose view models are reused.
  */
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
+import { ChevronDownIcon, DownloadIcon, GitCompareIcon, PlayIcon, PrinterIcon } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import type { CapacityReport, MetricsView, RouteRowView, StageView } from '../../../../../../src/report/build.ts';
 import { reportCsvFilename, reportToCsv } from '../../../../../../src/report/export.ts';
-import { type ApiError, getCompare, getRunsForPlan, postRun, VERIFICATION_ERROR } from '../../lib/api.ts';
-import type { Comparison } from '../../../../../../src/report/compare.ts';
-import { headlineCompareRows, parseComparison, stageCompareRows } from '../../lib/compare-view.ts';
-import { downloadText } from '../../lib/export.ts';
-import { fmtUtc } from '../../lib/format.ts';
-import { aiModel, canRerun, MAX_LISTED_RUNS, reportNotices, type RunListRow, runListRows } from '../../lib/report-view.ts';
 import { useApp } from '../../context.tsx';
-import { runHref } from '../../router.ts';
+import { type ApiError, getRunsForPlan, postRun, VERIFICATION_ERROR } from '../../lib/api.ts';
+import { downloadText } from '../../lib/export.ts';
+import { aiModel, canRerun, MAX_LISTED_RUNS, reportNotices, type RunListRow, runListRows } from '../../lib/report-view.ts';
+import { compareHref, runHref } from '../../router.ts';
+import { TelemetryPanel } from '../studio/TelemetryFrame.tsx';
 import { TurnstileBox, useTurnstile } from '../Turnstile.tsx';
-import { AlertRegion, ApiErrorText, Badge, Busy, Panel, StatusBadge, TableWrap } from '../ui.tsx';
+import { AlertRegion, Busy, StatusBadge, TableWrap } from '../ui.tsx';
 
 const METRIC_HEADS = ['Requests', 'Requests/s', 'Error rate', 'HTTP 429', 'p50 (ms)', 'p95 (ms)', 'p99 (ms)'] as const;
 
@@ -24,7 +25,7 @@ function MetricCells({ m }: { m: MetricsView }) {
   return (
     <>
       {[d.requests, d.rps, d.errorRatePct, d.http429, d.p50, d.p95, d.p99].map((v, i) => (
-        <td key={i} className="num">
+        <td key={i} className="num font-mono tabular-nums">
           {v}
         </td>
       ))}
@@ -33,17 +34,17 @@ function MetricCells({ m }: { m: MetricsView }) {
 }
 
 function verdictBadge(s: StageView) {
-  if (s.status === 'error') return <Badge tone="bad">error</Badge>;
-  if (s.verdict === 'pass') return <Badge tone="ok">pass</Badge>;
-  if (s.verdict === 'fail') return <Badge tone="bad">fail</Badge>;
-  return <Badge>no metrics</Badge>;
+  if (s.status === 'error') return <Badge variant="destructive">error</Badge>;
+  if (s.verdict === 'pass') return <Badge variant="ok">pass</Badge>;
+  if (s.verdict === 'fail') return <Badge variant="destructive">fail</Badge>;
+  return <Badge variant="outline">no metrics</Badge>;
 }
 
 export function ReportNotices({ report }: { report: CapacityReport }) {
   const notices = reportNotices(report);
   if (notices.length === 0) return null;
   return (
-    <ul className="notices">
+    <ul className="m-0 grid list-disc gap-1 pl-5 text-sm text-muted-foreground">
       {notices.map((n) => (
         <li key={n}>{n}</li>
       ))}
@@ -51,21 +52,29 @@ export function ReportNotices({ report }: { report: CapacityReport }) {
   );
 }
 
-export function ReportStages({ report }: { report: CapacityReport }) {
+export const ReportStages = memo(function ReportStages({ report }: { report: CapacityReport }) {
   const withRoutes = report.stages.filter((s) => s.routes.length > 0);
   return (
-    <Panel title="Stages" id="report-stages-heading">
+    <TelemetryPanel ticks="bar" aria-labelledby="report-stages-heading">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="report-stages-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+          Stages
+        </h2>
+        <span className="font-mono text-xs text-muted-foreground tabular-nums">
+          {report.stages.length} {report.stages.length === 1 ? 'stage' : 'stages'}
+        </span>
+      </div>
       <TableWrap label="Stages">
-        <table className="table table--stages">
-          <caption className="visually-hidden">Stages</caption>
+        <table className="table w-full min-w-[860px] table-fixed print:min-w-0 print:table-auto">
+          <caption className="sr-only">Stages</caption>
           <colgroup>
-            <col className="w-stage" />
-            <col className="w-vus" />
-            <col className="w-dur" />
+            <col className="w-16" />
+            <col className="w-20" />
+            <col className="w-24" />
             {METRIC_HEADS.map((h) => (
               <col key={h} />
             ))}
-            <col className="w-verdict" />
+            <col className="w-24" />
           </colgroup>
           <thead>
             <tr>
@@ -77,7 +86,7 @@ export function ReportStages({ report }: { report: CapacityReport }) {
                 Duration
               </th>
               {METRIC_HEADS.map((h) => (
-                <th key={h} scope="col" className="num">
+                <th key={h} scope="col" className="num whitespace-normal">
                   {h}
                 </th>
               ))}
@@ -89,15 +98,15 @@ export function ReportStages({ report }: { report: CapacityReport }) {
           <tbody>
             {report.stages.map((s) => (
               <tr key={s.index}>
-                <th scope="row" className="idx">
+                <th scope="row" className="idx font-mono tabular-nums">
                   {s.displayIndex}
                 </th>
-                <td className="num">{s.vus}</td>
-                <td className="num">{s.durationSec} s</td>
+                <td className="num font-mono tabular-nums">{s.vus}</td>
+                <td className="num font-mono tabular-nums">{s.durationSec} s</td>
                 {s.overall !== null ? (
                   <MetricCells m={s.overall} />
                 ) : (
-                  <td colSpan={7} className="muted">
+                  <td colSpan={7} className="text-muted-foreground">
                     {s.status === 'error'
                       ? `Stage failed${s.errorReason !== null ? `: ${s.errorReason}` : '.'}`
                       : 'This Stage has no metrics.'}
@@ -109,40 +118,49 @@ export function ReportStages({ report }: { report: CapacityReport }) {
           </tbody>
         </table>
       </TableWrap>
+
       {withRoutes.length > 0 ? (
-        <details className="disclosure disclosure--inline">
-          <summary>
-            <h3 className="disclosure__title">Routes per stage</h3>
-            <span className="disclosure__count">{withRoutes.length} stages</span>
+        <details className="group grid gap-3 pt-1">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-sm py-1 focus-visible:outline-[3px] focus-visible:outline-offset-[3px] focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <h3 className="m-0 font-sans text-sm font-medium text-foreground">Routes per stage</h3>
+              <span className="font-mono text-xs text-muted-foreground tabular-nums">{withRoutes.length} stages</span>
+            </div>
+            <ChevronDownIcon
+              className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none"
+              aria-hidden="true"
+            />
           </summary>
-          {withRoutes.map((s) => (
-            <RouteTable key={s.index} stage={s} />
-          ))}
+          <div className="flex flex-col gap-5">
+            {withRoutes.map((s) => (
+              <RouteTable key={s.index} stage={s} />
+            ))}
+          </div>
         </details>
       ) : null}
-    </Panel>
+    </TelemetryPanel>
   );
-}
+});
 
 function RouteTable({ stage }: { stage: StageView }) {
   return (
     <TableWrap label={`Stage ${stage.displayIndex} routes`}>
-      <table className="table table--routes">
+      <table className="table w-full min-w-[860px] table-fixed print:min-w-0 print:table-auto">
         <colgroup>
-          <col className="w-route" />
+          <col className="w-[16%]" />
           {METRIC_HEADS.map((h) => (
-            <col key={h} className="w-metric" />
+            <col key={h} />
           ))}
-          <col className="w-verdict" />
+          <col className="w-[170px]" />
         </colgroup>
-        <caption>
+        <caption className="pt-2 text-left text-sm font-medium text-foreground">
           Stage {stage.displayIndex} routes ({stage.vus} VUs)
         </caption>
         <thead>
           <tr>
             <th scope="col">Route</th>
             {METRIC_HEADS.map((h) => (
-              <th key={h} scope="col" className="num">
+              <th key={h} scope="col" className="num whitespace-normal">
                 {h}
               </th>
             ))}
@@ -153,12 +171,18 @@ function RouteTable({ stage }: { stage: StageView }) {
         </thead>
         <tbody>
           {stage.routes.map((r: RouteRowView) => (
-            <tr key={r.route} className={r.exceedsThresholds ? 'is-exceeded' : undefined}>
-              <th scope="row" className="code">
+            <tr key={r.route}>
+              <th scope="row" className="font-mono text-xs break-all">
                 {r.route}
               </th>
               <MetricCells m={r} />
-              <td className="end">{r.exceedsThresholds ? <Badge tone="warn">Exceeded thresholds</Badge> : <span className="muted">Within</span>}</td>
+              <td className="end">
+                {r.exceedsThresholds ? (
+                  <Badge variant="warn">Exceeded thresholds</Badge>
+                ) : (
+                  <span className="text-xs text-muted-foreground">Within</span>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -167,38 +191,39 @@ function RouteTable({ stage }: { stage: StageView }) {
   );
 }
 
-export function AiSection({ report }: { report: CapacityReport }) {
+export const AiSection = memo(function AiSection({ report }: { report: CapacityReport }) {
   const m = aiModel(report);
   return (
-    <section className="panel ai" aria-labelledby="report-ai-heading">
-      <div className="panel__head">
-        <h2 id="report-ai-heading">
-          AI-generated <Badge>AI</Badge>
+    <TelemetryPanel ticks="bar" aria-labelledby="report-ai-heading">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id="report-ai-heading" className="m-0 flex items-center gap-2 font-sans text-[1.0625rem] font-medium text-foreground">
+          <span>AI-generated</span>
+          <Badge variant="secondary">AI</Badge>
         </h2>
       </div>
-      <p className="muted">
+      <p className="m-0 text-sm text-muted-foreground">
         Written by an AI model. The headline values and tables on this page come from the stored metrics, not from the AI.
       </p>
       {m.notes.length > 0 ? (
-        <ul className="ai__notes" role={m.pending ? undefined : 'status'}>
+        <ul className="m-0 grid list-disc gap-1 pl-5 text-sm text-muted-foreground" role={m.pending ? undefined : 'status'}>
           {m.notes.map((n) => (
             <li key={n}>{n}</li>
           ))}
         </ul>
       ) : null}
-      <div className="ai__cols">
+      <div className="grid grid-cols-1 items-start gap-4 min-[1180px]:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] min-[1180px]:gap-8">
         {m.explanation !== null ? (
-          <div className="stack-tight">
-            <h3 className="h-small">Explanation</h3>
-            <p className="prose">{m.explanation}</p>
+          <div className="flex flex-col gap-1.5">
+            <h3 className="m-0 font-sans text-[0.8125rem] font-medium text-muted-foreground">Explanation</h3>
+            <p className="m-0 max-w-[72ch] text-sm leading-relaxed text-foreground">{m.explanation}</p>
           </div>
         ) : null}
         {m.suggestions.length > 0 ? (
-          <div className="stack-tight">
-            <h3 className="h-small">Suggestions</h3>
-            <ol className="ai__list">
+          <div className="flex flex-col gap-1.5">
+            <h3 className="m-0 font-sans text-[0.8125rem] font-medium text-muted-foreground">Suggestions</h3>
+            <ol className="m-0 grid list-decimal gap-1.5 pl-5 text-sm leading-relaxed text-foreground">
               {m.suggestions.map((s, i) => (
-                <li key={i} className="prose">
+                <li key={i} className="max-w-[72ch]">
                   {s}
                 </li>
               ))}
@@ -206,16 +231,16 @@ export function AiSection({ report }: { report: CapacityReport }) {
           </div>
         ) : null}
       </div>
-    </section>
+    </TelemetryPanel>
   );
-}
+});
 
 /**
- * The two quiet export buttons above the report: the measured CSV file and the
- * browser's own print dialog (save as PDF). Print opens every closed route
- * disclosure and afterprint restores exactly who was closed.
+ * The two export buttons for the report: the measured CSV file and the browser's
+ * print dialog (save as PDF). Print opens every closed disclosure inside `.report`
+ * and afterprint restores only those that were closed.
  */
-export function ReportExport({ report }: { report: CapacityReport }) {
+export const ReportExport = memo(function ReportExport({ report }: { report: CapacityReport }) {
   const { announce } = useApp();
 
   useEffect(() => {
@@ -242,54 +267,61 @@ export function ReportExport({ report }: { report: CapacityReport }) {
   };
 
   return (
-    <div className="row report__export">
-      <button type="button" className="btn btn--quiet" onClick={downloadCsv}>
+    <div className="report__export flex flex-wrap items-center gap-2.5 print:hidden">
+      <Button type="button" variant="secondary" className="border border-bar-hover" onClick={downloadCsv}>
+        <DownloadIcon data-icon="inline-start" />
         Download CSV
-      </button>
-      <button type="button" className="btn btn--quiet" onClick={() => window.print()}>
+      </Button>
+      <Button type="button" variant="secondary" className="border border-bar-hover" onClick={() => window.print()}>
+        <PrinterIcon data-icon="inline-start" />
         Print / save as PDF
-      </button>
+      </Button>
     </div>
   );
-}
+});
 
-export function ReportMeta({ report }: { report: CapacityReport }) {
-  const items: [string, React.ReactNode][] = [
-    ['Target', <span className="code">{report.target}</span>],
+export const ReportMeta = memo(function ReportMeta({ report }: { report: CapacityReport }) {
+  const items: readonly [string, React.ReactNode, boolean][] = [
+    ['Target', <span className="font-mono text-xs break-all text-foreground">{report.target}</span>, false],
     [
       'Stop thresholds',
-      <span className="num">
+      <span className="font-mono text-xs text-foreground tabular-nums">
         p95 {report.thresholds.p95Ms} ms, error rate {report.thresholds.errorRatePct}%
       </span>,
+      false,
     ],
-    ['Sandbox runtime', <span className="code">{report.runtime}</span>],
-    ['Run ID', <span className="code">{report.runId}</span>],
-    ['Plan hash', <span className="code break">{report.planHash}</span>],
+    ['Sandbox runtime', <span className="font-mono text-xs text-foreground">{report.runtime}</span>, false],
+    ['Run ID', <span className="font-mono text-xs break-all text-foreground">{report.runId}</span>, false],
+    ['Plan hash', <span className="font-mono text-xs break-all text-foreground">{report.planHash}</span>, true],
   ];
   return (
-    <dl className="meta-strip">
-      {items.map(([k, v]) => (
-        <div key={k} className={k === 'Plan hash' ? 'meta-strip__wide' : undefined}>
-          <dt>{k}</dt>
-          <dd>{v}</dd>
+    <dl className="m-0 grid grid-cols-1 gap-px overflow-hidden rounded-md border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
+      {items.map(([k, v, wide]) => (
+        <div
+          key={k}
+          className={
+            wide
+              ? 'flex min-w-0 flex-col gap-0.5 bg-surface px-4 py-3 sm:col-span-2 lg:col-span-4'
+              : 'flex min-w-0 flex-col gap-0.5 bg-surface px-4 py-3'
+          }
+        >
+          <dt className="text-xs text-muted-foreground">{k}</dt>
+          <dd className="m-0 min-w-0">{v}</dd>
         </div>
       ))}
     </dl>
   );
-}
-/** Re-run the same approved plan, list its runs, compare two of them. The class scopes the print rules. */
-export function RunsPanel({ report }: { report: CapacityReport }) {
+});
+
+/** Re-run the same approved plan, list its runs, and navigate to `#/compare/:a/:b` when two runs are selected. */
+export const RunsPanel = memo(function RunsPanel({ report }: { report: CapacityReport }) {
   const { navigate, announce } = useApp();
   const turnstile = useTurnstile();
   const [rows, setRows] = useState<RunListRow[] | null>(null);
   const [listError, setListError] = useState<ApiError | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
-  const [comparing, setComparing] = useState(false);
-  const [comparison, setComparison] = useState<Comparison | null>(null);
-  const [compareError, setCompareError] = useState<ApiError | 'unreadable' | null>(null);
   const [rerunBusy, setRerunBusy] = useState(false);
   const [rerunError, setRerunError] = useState<ApiError | null>(null);
-  const seq = useRef(0);
   const alive = useRef(true);
 
   useEffect(() => {
@@ -310,7 +342,6 @@ export function RunsPanel({ report }: { report: CapacityReport }) {
   async function rerun() {
     if (rerunBusy) return;
     setRerunError(null);
-    // One confirmation. Cancel sends nothing, not even a Turnstile request.
     if (!window.confirm(`Run "${report.planName}" again against ${report.target}? This starts a new run of the same approved plan.`))
       return;
     setRerunBusy(true);
@@ -334,230 +365,134 @@ export function RunsPanel({ report }: { report: CapacityReport }) {
     announce(result.error.message);
   }
 
-  async function compare() {
-    const [a, b] = picked;
-    if (comparing || a === undefined || b === undefined || a === b) return;
-    const mine = ++seq.current;
-    setComparing(true);
-    setComparison(null);
-    setCompareError(null);
-    const res = await getCompare(a, b);
-    if (!alive.current || mine !== seq.current) return;
-    setComparing(false);
-    if (!res.ok) return setCompareError(res.error);
-    const parsed = parseComparison(res.data);
-    if (parsed === null) setCompareError('unreadable');
-    else setComparison(parsed);
-  }
+  const toggle = (id: string, on: boolean) =>
+    setPicked((p) => (on ? [...p, id].slice(0, 2) : p.filter((x) => x !== id)));
 
-  const toggle = (id: string, on: boolean) => setPicked((p) => (on ? [...p, id].slice(0, 2) : p.filter((x) => x !== id)));
+  const canCompare = picked.length === 2;
+  const compareTarget = canCompare ? compareHref(picked[0]!, picked[1]!) : null;
 
   return (
-    <Panel title="Run again and compare" id="report-runs-heading" className="panel--runs">
+    <TelemetryPanel ticks="bar" aria-labelledby="report-runs-heading" className="panel--runs print:hidden">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="report-runs-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+          Run again and compare
+        </h2>
+      </div>
+
       {canRerun(report.headline.status) ? (
-        <div className="stack-tight">
-          <p>Start a new run of this same approved plan. The plan is not changed.</p>
+        <div className="flex flex-col gap-2.5">
+          <p className="m-0 text-sm text-muted-foreground">
+            Start a new run of this same approved plan. The plan is not changed.
+          </p>
           <TurnstileBox boxRef={turnstile.box} />
-          <div className="row">
-            <button type="button" className="btn" disabled={rerunBusy} onClick={() => void rerun()}>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" variant="default" disabled={rerunBusy} onClick={() => void rerun()}>
+              <PlayIcon data-icon="inline-start" />
               Run this plan again
-            </button>
+            </Button>
             {rerunBusy ? <Busy>Starting the run.</Busy> : null}
           </div>
           <AlertRegion error={rerunError} />
         </div>
       ) : null}
 
-      <h3 className="h-small">Runs of this plan</h3>
-      {listError ? (
-        <AlertRegion error={listError} />
-      ) : rows === null ? (
-        <p className="muted" role="status">
-          Loading runs.
-        </p>
-      ) : rows.length === 0 ? (
-        <p className="muted">No runs of this plan were found.</p>
-      ) : (
-        <TableWrap label="Runs of this plan">
-          <table className="table table--runs">
-            <caption className="visually-hidden">Most recent runs of this plan, newest first (up to {MAX_LISTED_RUNS})</caption>
-            <colgroup>
-              <col className="w-check" />
-              <col />
-              <col className="w-started" />
-              <col className="w-status" />
-              <col className="w-num" />
-              <col className="w-num" />
-            </colgroup>
-            <thead>
-              <tr>
-                <th scope="col">
-                  <span className="visually-hidden">Select</span>
-                </th>
-                <th scope="col">Run ID</th>
-                <th scope="col">Started (UTC)</th>
-                <th scope="col">Status</th>
-                <th scope="col" className="num">
-                  Safe capacity (VUs)
-                </th>
-                <th scope="col" className="num">
-                  Breaking point (VUs)
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => {
-                const on = picked.includes(r.runId);
-                return (
-                  <tr key={r.runId}>
-                    <td>
-                      <input
-                        type="checkbox"
-                        className="check"
-                        checked={on}
-                        disabled={comparing || (picked.length >= 2 && !on)}
-                        aria-label={`Select run ${r.runId}`}
-                        onChange={(e) => toggle(r.runId, e.target.checked)}
-                      />
-                    </td>
-                    <th scope="row" className="code">
-                      <a href={runHref(r.runId)}>{r.runId}</a>
-                      {r.runId === report.runId ? <span className="muted"> (this run)</span> : null}
-                    </th>
-                    <td className="idx">{r.started}</td>
-                    <td>
-                      <StatusBadge status={r.status} />
-                    </td>
-                    <td className="num">{r.safeCapacity}</td>
-                    <td className="num">{r.breakingPoint}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </TableWrap>
-      )}
-      <div className="row">
-        <button type="button" className="btn btn--quiet" disabled={comparing || picked.length !== 2} onClick={() => void compare()}>
-          Compare selected runs
-        </button>
-        <span className="muted">Select two runs to compare them side by side.</span>
-      </div>
-      <div aria-live="polite">
-        {comparing ? (
-          <p className="muted" role="status">
-            Comparing runs.
+      <div className="flex flex-col gap-2">
+        <h3 className="m-0 font-sans text-[0.8125rem] font-medium text-muted-foreground">Runs of this plan</h3>
+        {listError ? (
+          <AlertRegion error={listError} />
+        ) : rows === null ? (
+          <p className="m-0 text-sm text-muted-foreground" role="status">
+            Loading runs.
           </p>
-        ) : compareError === 'unreadable' ? (
-          <div className="alert" role="alert">
-            <p className="alert__message">The comparison could not be read. Please try again.</p>
-          </div>
-        ) : compareError ? (
-          <div className="alert" role="alert">
-            <ApiErrorText error={compareError} />
-          </div>
-        ) : comparison ? (
-          <CompareResult comparison={comparison} />
-        ) : null}
-      </div>
-    </Panel>
-  );
-}
-
-function CompareResult({ comparison }: { comparison: Comparison }) {
-  if (comparison.kind === 'different_plan') {
-    return (
-      <div className="notice notice--warn" role="status">
-        <h3 className="h-small">These runs cannot be compared</h3>
-        <p>{comparison.message}</p>
-      </div>
-    );
-  }
-  const head = headlineCompareRows(comparison);
-  const cell = (text: string | null) => <td className={text === 'not run' ? 'num muted' : 'num'}>{text}</td>;
-  return (
-    <div className="compare">
-      <h3 className="h-small">Comparison</h3>
-      <div className="compare__runs">
-        {(
-          [
-            ['Baseline (earlier run)', comparison.baseline],
-            ['Later run', comparison.later],
-          ] as const
-        ).map(([label, run]) => (
-          <div key={label}>
-            <p className="muted">{label}</p>
-            <p className="code">{run.runId}</p>
-            <p className="muted">Started {fmtUtc(run.startedAt)}</p>
-          </div>
-        ))}
-      </div>
-      <TableWrap label="Headline comparison">
-        <table className="table">
-          <caption>Headline values</caption>
-          <thead>
-            <tr>
-              <th scope="col">Value</th>
-              <th scope="col">Baseline</th>
-              <th scope="col">Later</th>
-            </tr>
-          </thead>
-          <tbody>
-            {head.map((r) => (
-              <tr key={r.label}>
-                <th scope="row">{r.label}</th>
-                <td className="num">{r.baseline}</td>
-                <td className="num">{r.later}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </TableWrap>
-      {comparison.stages.length === 0 ? (
-        <p className="muted">Neither run has stage metrics to compare.</p>
-      ) : (
-        comparison.stages.map((st) => (
-          <TableWrap key={st.displayIndex} label={`Stage ${st.displayIndex} comparison`}>
-            <table className="table">
-              <caption>
-                Stage {st.displayIndex} ({st.vus} VUs)
+        ) : rows.length === 0 ? (
+          <p className="m-0 text-sm text-muted-foreground">No runs of this plan were found.</p>
+        ) : (
+          <TableWrap label="Runs of this plan">
+            <table className="table table--runs w-full">
+              <caption className="sr-only">
+                Most recent runs of this plan, newest first (up to {MAX_LISTED_RUNS})
               </caption>
+              <colgroup>
+                <col className="w-check" />
+                <col />
+                <col className="w-started" />
+                <col className="w-status" />
+                <col className="w-num" />
+                <col className="w-num" />
+              </colgroup>
               <thead>
                 <tr>
-                  <th scope="col">Scope</th>
-                  <th scope="col">Metric</th>
+                  <th scope="col">
+                    <span className="sr-only">Select</span>
+                  </th>
+                  <th scope="col">Run ID</th>
+                  <th scope="col">Started (UTC)</th>
+                  <th scope="col">Status</th>
                   <th scope="col" className="num">
-                    Baseline
+                    Safe capacity (VUs)
                   </th>
                   <th scope="col" className="num">
-                    Later
-                  </th>
-                  <th scope="col" className="num">
-                    Difference
-                  </th>
-                  <th scope="col" className="num">
-                    Change
+                    Breaking point (VUs)
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {stageCompareRows(st).map((row, i) => (
-                  <tr key={`${row.scope}-${row.metric}-${i}`}>
-                    <th scope="row" className="code">
-                      {row.scope}
-                    </th>
-                    <td>{row.metric}</td>
-                    {cell(row.value.baseline)}
-                    {cell(row.value.later)}
-                    {cell(row.value.difference)}
-                    {cell(row.value.percentChange)}
-                  </tr>
-                ))}
+                {rows.map((r) => {
+                  const on = picked.includes(r.runId);
+                  return (
+                    <tr key={r.runId}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          className="check"
+                          checked={on}
+                          disabled={picked.length >= 2 && !on}
+                          aria-label={`Select run ${r.runId}`}
+                          onChange={(e) => toggle(r.runId, e.target.checked)}
+                        />
+                      </td>
+                      <th scope="row" className="font-mono text-xs">
+                        <a href={runHref(r.runId)} className="underline underline-offset-4 hover:text-accent-text">
+                          {r.runId}
+                        </a>
+                        {r.runId === report.runId ? (
+                          <span className="font-sans text-xs font-normal text-muted-foreground"> (this run)</span>
+                        ) : null}
+                      </th>
+                      <td className="idx font-mono text-xs tabular-nums">{r.started}</td>
+                      <td>
+                        <StatusBadge status={r.status} />
+                      </td>
+                      <td className="num font-mono tabular-nums">{r.safeCapacity}</td>
+                      <td className="num font-mono tabular-nums">{r.breakingPoint}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </TableWrap>
-        ))
-      )}
-    </div>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        {compareTarget !== null ? (
+          <Button
+            render={<a href={compareTarget} />}
+            nativeButton={false}
+            variant="secondary"
+            className="border border-bar-hover"
+          >
+            <GitCompareIcon data-icon="inline-start" />
+            Compare selected runs
+          </Button>
+        ) : (
+          <Button type="button" variant="secondary" disabled className="border border-bar-hover">
+            <GitCompareIcon data-icon="inline-start" />
+            Compare selected runs
+          </Button>
+        )}
+        <span className="text-xs text-muted-foreground">Select two runs to compare them side by side.</span>
+      </div>
+    </TelemetryPanel>
   );
-}
+});

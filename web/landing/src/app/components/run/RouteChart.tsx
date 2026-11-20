@@ -3,11 +3,12 @@
  * The route with the highest latest p95 is drawn in the accent; the others stay quiet.
  * Metrics only exist for finished stages, so a running stage shows no point yet.
  */
+import { memo } from 'react';
 import type { StageView } from '../../../../../../src/api-types.ts';
 import { fmtMs } from '../../../../../../src/run/format.ts';
 import type { TestPlan } from '../../../../../../src/types.ts';
-import { niceScale } from '../../lib/chart.ts';
 import { useWidth } from '../../hooks/useWidth.ts';
+import { niceScale } from '../../lib/chart.ts';
 
 const H = 300;
 const MIN_W = 320;
@@ -19,7 +20,7 @@ interface Series {
   points: { stage: number; p95: number }[];
 }
 
-export function RouteChart({
+export const RouteChart = memo(function RouteChart({
   stages,
   plan,
   limitMs,
@@ -78,31 +79,68 @@ export function RouteChart({
     const below = labels[i - 1]!;
     if (below.y - labels[i]!.y < 15) labels[i]!.y = below.y - 15;
   }
+
   return (
-    <div ref={box} className="chart-box">
-      <svg className="route-chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-labelledby="route-chart-title route-chart-desc">
+    <div ref={box} className="min-w-0">
+      <svg
+        className="block h-auto w-full font-sans"
+        viewBox={`0 0 ${W} ${H}`}
+        role="img"
+        aria-labelledby="route-chart-title route-chart-desc"
+      >
         <title id="route-chart-title">p95 latency per route</title>
         <desc id="route-chart-desc">{desc}</desc>
         {maxY.ticks.map((t) => (
           <g key={t}>
-            <line className="route-chart__grid" x1={M.left} x2={M.left + pw} y1={y(t)} y2={y(t)} />
-            <text className="route-chart__tick" x={M.left - 10} y={y(t) + 4} textAnchor="end">
+            <line
+              className={t === 0 ? 'stroke-bar' : 'stroke-border'}
+              strokeWidth={1}
+              x1={M.left}
+              x2={M.left + pw}
+              y1={y(t)}
+              y2={y(t)}
+            />
+            <text
+              className="fill-muted-foreground font-mono text-[11px] tabular-nums"
+              x={M.left - 10}
+              y={y(t) + 4}
+              textAnchor="end"
+            >
               {fmtMs(t)}
             </text>
           </g>
         ))}
         {Array.from({ length: total }, (_, i) => (
-          <text key={i} className="route-chart__tick" x={x(i)} y={H - M.bottom + 22} textAnchor="middle">
+          <text
+            key={i}
+            className="fill-muted-foreground font-mono text-[11px] tabular-nums"
+            x={x(i)}
+            y={H - M.bottom + 22}
+            textAnchor="middle"
+          >
             {W < 520 ? i + 1 : `Stage ${i + 1}`}
           </text>
         ))}
         {W < 520 ? (
-          <text className="route-chart__tick" x={M.left + pw / 2} y={H - 4} textAnchor="middle">
+          <text
+            className="fill-muted-foreground font-mono text-[11px]"
+            x={M.left + pw / 2}
+            y={H - 4}
+            textAnchor="middle"
+          >
             Stage
           </text>
         ) : null}
-        <line className="route-chart__limit" x1={M.left} x2={M.left + pw} y1={y(limitMs)} y2={y(limitMs)} />
-        <text className="route-chart__limit-label" x={M.left + 8} y={y(limitMs) - 8}>
+        <line
+          className="stroke-bad"
+          strokeWidth={1.5}
+          strokeDasharray="6 5"
+          x1={M.left}
+          x2={M.left + pw}
+          y1={y(limitMs)}
+          y2={y(limitMs)}
+        />
+        <text className="fill-bad font-mono text-[11px] tabular-nums" x={M.left + 8} y={y(limitMs) - 8}>
           stop threshold {fmtMs(limitMs)} ms
         </text>
         {series
@@ -110,14 +148,26 @@ export function RouteChart({
           .concat(lead ? [lead] : [])
           .map((s) => {
             const d = s.points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.stage).toFixed(1)} ${y(p.p95).toFixed(1)}`).join(' ');
-            const cls = s === lead ? 'route-chart__line is-lead' : 'route-chart__line';
+            const isLead = s === lead;
             const quiet = series.filter((q) => q !== lead).indexOf(s);
-            const dash = s === lead ? undefined : DASHES[quiet % DASHES.length] || undefined;
+            const dash = isLead ? undefined : DASHES[quiet % DASHES.length] || undefined;
             return (
-              <g key={s.route} className={cls}>
-                <path d={d} strokeDasharray={dash} />
+              <g key={s.route}>
+                <path
+                  className={isLead ? 'fill-none stroke-accent-text' : 'fill-none stroke-bar'}
+                  strokeWidth={isLead ? 2.5 : 1.75}
+                  strokeLinejoin="round"
+                  d={d}
+                  strokeDasharray={dash}
+                />
                 {s.points.map((p) => (
-                  <circle key={p.stage} cx={x(p.stage)} cy={y(p.p95)} r={s === lead ? 4.5 : 3.5} />
+                  <circle
+                    key={p.stage}
+                    className={isLead ? 'fill-accent-text' : 'fill-bar'}
+                    cx={x(p.stage)}
+                    cy={y(p.p95)}
+                    r={isLead ? 4 : 3}
+                  />
                 ))}
               </g>
             );
@@ -128,21 +178,39 @@ export function RouteChart({
           const dash = l.lead ? undefined : DASHES[quiet % DASHES.length] || undefined;
           const ly = l.y - 4;
           return (
-            <g key={l.route} className={l.lead ? 'route-chart__label is-lead' : 'route-chart__label'}>
-              {Math.abs(ly - l.at) > 2 ? <path className="route-chart__leader" d={`M${l.x + 5} ${l.at} L${l.x + 10} ${ly}`} /> : null}
-              <line className="route-chart__swatch" x1={l.x + 12} x2={l.x + 30} y1={ly} y2={ly} strokeDasharray={dash} />
-              <text className={l.lead ? 'route-chart__name is-lead' : 'route-chart__name'} x={l.x + 35} y={l.y}>
+            <g key={l.route}>
+              {Math.abs(ly - l.at) > 2 ? (
+                <path className="fill-none stroke-bar" strokeWidth={1} d={`M${l.x + 5} ${l.at} L${l.x + 10} ${ly}`} />
+              ) : null}
+              <line
+                className={l.lead ? 'stroke-accent-text' : 'stroke-bar'}
+                strokeWidth={l.lead ? 2.5 : 1.75}
+                x1={l.x + 12}
+                x2={l.x + 30}
+                y1={ly}
+                y2={ly}
+                strokeDasharray={dash}
+              />
+              <text
+                className={
+                  l.lead
+                    ? 'fill-foreground font-mono text-[11px] font-medium'
+                    : 'fill-muted-foreground font-mono text-[11px]'
+                }
+                x={l.x + 35}
+                y={l.y}
+              >
                 {routes.find((r) => r.id === l.route)?.path ?? l.route}
               </text>
             </g>
           );
         })}
         {series.length === 0 ? (
-          <text className="route-chart__empty" x={M.left + pw / 2} y={M.top + ph / 2} textAnchor="middle">
+          <text className="fill-muted-foreground font-sans text-sm" x={M.left + pw / 2} y={M.top + ph / 2} textAnchor="middle">
             Latency appears here when stage 1 finishes.
           </text>
         ) : null}
       </svg>
     </div>
   );
-}
+});

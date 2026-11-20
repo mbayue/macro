@@ -1,9 +1,12 @@
-import { useId, useState } from 'react';
+import { memo, useId, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import type { CapacityReport } from '../../../../../../src/report/build.ts';
 import { useHybridPrompt } from '../../hooks/useHybridPrompt.ts';
 import { buildReportQaPrompt } from '../../lib/hybrid-ai.ts';
 import { HybridBadge } from '../HybridBadge.tsx';
-import { AlertRegion, Badge, Busy } from '../ui.tsx';
+import { TelemetryPanel } from '../studio/TelemetryFrame.tsx';
+import { AlertRegion, Busy } from '../ui.tsx';
 
 const QUICK_QUESTIONS = [
   'Why did this run pass or fail?',
@@ -12,7 +15,7 @@ const QUICK_QUESTIONS = [
 ] as const;
 
 /** AI-labelled Report Q&A panel grounded strictly in measured CapacityReport metrics. */
-export function ReportQa({ report }: { report: CapacityReport }) {
+export const ReportQa = memo(function ReportQa({ report }: { report: CapacityReport }) {
   const { available, busy, error, reply, run } = useHybridPrompt();
   const [question, setQuestion] = useState('');
   const headingId = useId();
@@ -32,39 +35,42 @@ export function ReportQa({ report }: { report: CapacityReport }) {
   }
 
   return (
-    <section className="panel ai report-qa" aria-labelledby={headingId}>
-      <div className="panel__head">
-        <h2 id={headingId}>
-          Report Q&amp;A <Badge>AI</Badge>
+    <TelemetryPanel ticks="bar" aria-labelledby={headingId} className="report-qa">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id={headingId} className="m-0 flex items-center gap-2 font-sans text-[1.0625rem] font-medium text-foreground">
+          <span>Report Q&amp;A</span>
+          <Badge variant="secondary">AI</Badge>
         </h2>
         {reply ? <HybridBadge origin={reply.origin} /> : null}
       </div>
-      <p className="muted">
+      <p className="m-0 text-sm text-muted-foreground">
         Ask follow-up questions about these measured stage and route metrics. Prefers on-device Gemini Nano with cloud Gemini fallback.
       </p>
 
-      <div className="examples" role="group" aria-label="Suggested report questions">
+      <div className="examples flex flex-wrap items-center gap-2 print:hidden" role="group" aria-label="Suggested report questions">
         {QUICK_QUESTIONS.map((q) => (
-          <button
+          <Button
             key={q}
             type="button"
-            className="chip-btn"
+            variant="outline"
+            size="sm"
+            className="border-bar bg-background text-foreground"
             disabled={busy}
             onClick={() => void ask(q)}
           >
             {q}
-          </button>
+          </Button>
         ))}
       </div>
 
       <form
-        className="field hybrid-assist__row"
+        className="flex flex-wrap gap-2 print:hidden"
         onSubmit={(e) => {
           e.preventDefault();
           void ask(question);
         }}
       >
-        <label htmlFor={inputId} className="visually-hidden">
+        <label htmlFor={inputId} className="sr-only">
           Ask a question about this capacity report
         </label>
         <input
@@ -74,20 +80,21 @@ export function ReportQa({ report }: { report: CapacityReport }) {
           disabled={busy}
           placeholder="Ask about latency, breaking point, or route errors…"
           onChange={(e) => setQuestion(e.target.value)}
+          className="min-h-10 min-w-[240px] flex-1 rounded-md border border-bar bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-accent-text focus-visible:outline-[2px] focus-visible:outline-offset-[1px] focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60"
         />
-        <button type="submit" className="btn btn--quiet" disabled={busy || question.trim() === ''}>
+        <Button type="submit" variant="secondary" className="border border-bar-hover" disabled={busy || question.trim() === ''}>
           Ask
-        </button>
+        </Button>
       </form>
 
       {busy ? <Busy>Thinking…</Busy> : null}
       <AlertRegion>{error ? <p>{error}</p> : null}</AlertRegion>
 
       {reply ? (
-        <div className="report-qa__answer stack-tight" aria-live="polite">
-          <p className="prose">{reply.text}</p>
+        <div className="rounded-md border border-bar bg-background p-3.5" aria-live="polite">
+          <p className="m-0 text-sm leading-relaxed whitespace-pre-wrap text-foreground">{reply.text}</p>
         </div>
       ) : null}
-    </section>
+    </TelemetryPanel>
   );
-}
+});

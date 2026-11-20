@@ -5,7 +5,7 @@ import { SiteFooter } from '../components/SiteFooter.tsx';
 import { HowItWorks } from '../components/HowItWorks.tsx';
 import { LatencyBars } from '../components/LatencyBars.tsx';
 import { FreeAccess } from '../components/FreeAccess.tsx';
-import { Waitlist } from '../components/Waitlist.tsx';
+import { Close } from '../components/Close.tsx';
 import { FAQ } from '../data.ts';
 
 const TILES: readonly { name: string; note: string; result: string }[] = [
@@ -170,7 +170,7 @@ export function Home() {
           </div>
         </section>
 
-        <Waitlist />
+        <Close />
       </main>
       <SiteFooter />
     </>

@@ -138,3 +138,16 @@ describe('every landing page', () => {
     expect(text).not.toContain('\u2014');
   });
 });
+
+describe('home page close', () => {
+  const CLOSE = 'section[aria-labelledby="close-title"]';
+
+  test('ends on "Load your own deck" with the DNS TXT step and the live demo action', async () => {
+    const h2 = await select(home, `${CLOSE} h2`);
+    expect(h2.map((h) => h.text)).toEqual(['Load your own deck']);
+    const text = (await select(home, CLOSE))[0]?.text ?? '';
+    expect(text).toContain('DNS TXT record');
+    const toApp = (await select(home, `${CLOSE} a`)).filter((a) => href(a) === '/app/');
+    expect(toApp.map((a) => a.text)).toEqual(['Try the live demo']);
+  });
+});

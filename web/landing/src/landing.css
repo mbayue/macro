@@ -1,25 +1,18 @@
 /*
- * Landing-only Tailwind v4 entry, on the shared tokens (tokens.css). Used by the home page now and by
- * the legal and 404 pages once they move over (#20). It never declares the app's code font face
- * and has no code font at all: the landing page uses none (DESIGN.md, tasteskill house rules).
+ * Landing-only Tailwind v4 entry, on the shared tokens (tokens.css): the one stylesheet of the home,
+ * legal and 404 pages. It never declares the app's code font face and has no code font at all: the
+ * landing page uses none (DESIGN.md, tasteskill house rules).
  *
  * The theme below is the whole vocabulary: token colours only (no default palette), two fonts, one
  * radius, and the `split` breakpoint (860 px) where the landing layouts go from one column to two.
  * Write mobile-first: base classes are the phone layout, `split:` the desktop one.
  */
-@layer theme, base, legacy, components, utilities;
+@layer theme, base, components, utilities;
 
 @import "tailwindcss" source(none);
 @source "./components";
 @source "./pages";
 @import "./tokens.css" layer(base);
-
-/*
- * EXPAND PHASE ONLY: the old landing stylesheet, still needed by the middle sections of the home page
- * until #15..#19 replace them. Its layer sits under the utilities, so Tailwind classes always win over
- * its element rules. Removed in #21 together with styles.css.
- */
-@import "./styles.css" layer(legacy);
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
@@ -32,8 +25,8 @@
   --drop-shadow-*: initial; /* taste-skill-ignore: removes the shadow utilities */
   --breakpoint-split: 53.75rem;
 
-  --animate-rise: rise 700ms var(--ease) both;
-  --animate-fade: fade 400ms ease both;
+  --animate-rise: rise 700ms var(--ease) backwards;
+  --animate-fade: fade 400ms ease backwards;
   @keyframes rise {
     from { opacity: 0; transform: translateY(24px); }
     to { opacity: 1; transform: none; }
@@ -74,6 +67,8 @@
   @media (prefers-reduced-motion: no-preference) {
     html:has([data-legal]) { scroll-behavior: smooth; }
   }
+  /* Product fragments (data-ui) keep the app's dark field in both themes, so its text tokens do too. */
+  [data-ui] { --ink: #ffffff; --muted: #9ea2a1; --accent-text: #00ed64; --bad: #ff8a80; font-family: var(--text); }
 }
 
 @layer components {
@@ -99,4 +94,52 @@
   @media (prefers-reduced-motion: reduce) {
     .crossfade { transition: none; }
   }
+
+  /*
+   * Two parts whose pseudo-elements would need long runs of Tailwind variants (and bytes of CSS):
+   * Load the deck's range input, a transparent native range over the stage band with a square ink
+   * thumb (LoadTheDeck.tsx), and the FAQ's plus sign, whose upright bar lies flat when its card is
+   * open (Faq.tsx). The ::-webkit and ::-moz thumbs stay in separate rules: a selector list with a
+   * pseudo-element one engine does not know is dropped whole.
+   */
+  .deck-range { appearance: none; background: transparent; cursor: pointer; }
+  .deck-range::-webkit-slider-runnable-track { height: 100%; background: transparent; }
+  .deck-range::-moz-range-track { background: transparent; }
+  .deck-range::-webkit-slider-thumb {
+    appearance: none; width: 40px; height: 40px; border-radius: var(--radius); background: var(--ink);
+    transition: scale 150ms var(--ease);
+  }
+  .deck-range::-moz-range-thumb { width: 40px; height: 40px; border: 0; border-radius: var(--radius); background: var(--ink); }
+  .deck-range:active::-webkit-slider-thumb { scale: 0.95; }
+  @media (width >= 53.75rem) {
+    .deck-range::-webkit-slider-thumb { width: 32px; height: 32px; }
+    .deck-range::-moz-range-thumb { width: 32px; height: 32px; }
+  }
+  .faq-plus { position: relative; flex-shrink: 0; width: 20px; height: 20px; transition: scale 150ms var(--ease), color 150ms ease; }
+  .faq-plus::before, .faq-plus::after { content: ""; position: absolute; border-radius: 1px; background: currentColor; }
+  .faq-plus::before { inset: 9px 0 auto; height: 2px; }
+  .faq-plus::after { inset: 0 auto 0 9px; width: 2px; transition: rotate 200ms var(--ease); }
+  details[open] .faq-plus::after { rotate: 90deg; }
+  details:active .faq-plus { scale: 0.9; }
+  @media (hover: hover) and (pointer: fine) {
+    details:hover .faq-plus { color: var(--accent-text); }
+  }
+  /*
+   * Entrance of every section below the hero (reveal.ts): each part marked data-reveal rises 24 px
+   * with opacity once, when it scrolls into view, staggered 75 ms by data-i. Only under .js, which
+   * landing-early.js sets before paint and takes away after 3 s unless reveal.ts has started (it sets
+   * motion-ready), so nothing stays hidden if the script fails. Reduced motion keeps the fade and
+   * drops the travel. Put data-reveal on elements without their own transition utilities.
+   */
+  .js [data-reveal] {
+    opacity: 0; translate: 0 24px;
+    transition: opacity 600ms var(--ease), translate 700ms var(--ease);
+    transition-delay: calc(var(--i, 0) * 75ms);
+  }
+  .js [data-reveal][data-shown] { opacity: 1; translate: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .js [data-reveal] { translate: none; transition-property: opacity; transition-duration: 400ms; }
+  }
+  [data-i="1"] { --i: 1; } [data-i="2"] { --i: 2; } [data-i="3"] { --i: 3; } [data-i="4"] { --i: 4; }
+  [data-i="5"] { --i: 5; } [data-i="6"] { --i: 6; } [data-i="7"] { --i: 7; } [data-i="8"] { --i: 8; }
 }

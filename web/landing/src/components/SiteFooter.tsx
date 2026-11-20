@@ -28,6 +28,8 @@ export function SiteFooter() {
           <span
             key={i}
             aria-hidden="true"
+            data-reveal
+            data-i={String(i)}
             className={`${BLOCK_HEIGHT[i]} flex flex-1 justify-center overflow-hidden rounded pt-[0.06em] font-display text-[min(44cqh,21cqw)] leading-none font-light ${
               i === 4 ? 'bg-accent text-accent-ink' : 'bg-surface-2 text-bg'
             }`}

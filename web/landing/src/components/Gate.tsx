@@ -28,7 +28,7 @@ export function Gate() {
       }`}
       aria-labelledby="gate-title"
     >
-      <div className="relative z-[1] max-w-[46ch]">
+      <div className="relative z-[1] max-w-[46ch]" data-reveal>
         <h2
           id="gate-title"
           aria-live="polite"
@@ -45,6 +45,8 @@ export function Gate() {
       </div>
       <div
         data-ui
+        data-reveal
+        data-i="1"
         role="group"
         aria-label="Where the plan points"
         className="absolute bottom-[8%] -left-[3%] flex flex-col items-stretch gap-[0.08em] rounded-[0.14em] bg-[#001e2b] p-[0.08em] text-[13vw] split:right-[-8%] split:flex-row split:bottom-[10%] split:left-auto split:text-[clamp(56px,8.5vw,150px)]"

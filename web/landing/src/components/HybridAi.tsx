@@ -67,18 +67,24 @@ export function HybridAi() {
     >
       <h2
         id="hybrid-title"
+        data-reveal
         className="font-display text-[16vw] leading-none font-light tracking-[-0.04em] split:col-span-5 split:text-[clamp(56px,7vw,120px)]"
       >
         Hybrid AI
       </h2>
-      <p className="max-w-[44ch] text-lg split:col-span-6 split:col-start-7 split:self-end">
+      <p className="max-w-[44ch] text-lg split:col-span-6 split:col-start-7 split:self-end" data-reveal data-i="1">
         Two helpers in the app call their AI from your browser, not from Macro&apos;s server, so they never use your planning quota.
         This is Hybrid Inference: your browser picks the model.
       </p>
 
       <dl className="m-0 grid gap-2 split:col-span-12">
-        {LANES.map((lane) => (
-          <div key={lane.term} className={`grid gap-2 rounded px-4 py-5 split:grid-cols-12 split:gap-8 split:px-6 split:py-7 ${lane.fill}`}>
+        {LANES.map((lane, i) => (
+          <div
+            key={lane.term}
+            className={`grid gap-2 rounded px-4 py-5 split:grid-cols-12 split:gap-8 split:px-6 split:py-7 ${lane.fill}`}
+            data-reveal
+            data-i={String(i + 2)}
+          >
             <dt className="font-display text-[26px] leading-tight font-light split:col-span-5 split:text-[clamp(26px,2.4vw,36px)]">
               {lane.when}
             </dt>
@@ -89,7 +95,7 @@ export function HybridAi() {
         ))}
       </dl>
 
-      <div className="split:col-span-7">
+      <div className="split:col-span-7" data-reveal data-i="2">
         <h3 className="text-xl font-medium">Scenario Assistant</h3>
         <p className="mt-2 max-w-[48ch]">
           In the Test Studio, before you submit. It rewrites your traffic description into a clearer draft with user counts, a traffic
@@ -97,7 +103,7 @@ export function HybridAi() {
         </p>
         <Fragment badge="On-device · Gemini Nano" items={PRESETS} onDevice />
       </div>
-      <div className="split:col-span-5 split:mt-12">
+      <div className="split:col-span-5 split:mt-12" data-reveal data-i="3">
         <h3 className="text-xl font-medium">Report Q&amp;A</h3>
         <p className="mt-2 max-w-[44ch]">
           On the AI tab of a finished Capacity Report. It answers your questions from that run&apos;s measured stage and route metrics
@@ -106,7 +112,7 @@ export function HybridAi() {
         <Fragment badge="Cloud · Gemini" items={QUESTIONS} onDevice={false} />
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-8 gap-y-5 split:col-span-12">
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-5 split:col-span-12" data-reveal>
         <a className="site-btn" href="/app/">
           Try it in the Test Studio
         </a>

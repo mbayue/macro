@@ -30,8 +30,9 @@ export function WhyMeasured() {
         decoding="async"
         alt={PHOTO.alt}
         className="aspect-[4/3] w-full rounded bg-ui-field object-cover"
+        data-reveal
       />
-      <div className="split:pr-6">
+      <div className="split:pr-6" data-reveal data-i="1">
         <h2
           id="why-title"
           className="font-display text-[10vw] leading-none font-light tracking-[-0.03em] split:text-[clamp(36px,4.2vw,68px)]"

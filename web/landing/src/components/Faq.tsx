@@ -17,7 +17,7 @@ export function Faq() {
             key={item.q}
             name="faq"
             open={i === 0}
-            className="group -mt-3 rounded bg-surface first:mt-0 even:bg-surface-2"
+            className="-mt-3 rounded bg-surface first:mt-0 even:bg-surface-2"
             data-reveal
             data-i={String(Math.min(i + 1, 8))}
           >
@@ -25,7 +25,7 @@ export function Faq() {
               {item.q}
               <span
                 aria-hidden="true"
-                className="relative size-5 shrink-0 transition-transform duration-150 group-active:scale-90 before:absolute before:inset-x-0 before:top-[9px] before:h-0.5 before:rounded-[1px] before:bg-current after:absolute after:inset-y-0 after:left-[9px] after:w-0.5 after:rounded-[1px] after:bg-current after:transition-transform after:duration-200 group-open:after:rotate-90 pointer-fine:group-hover:text-accent-text"
+                className="faq-plus"
               />
             </summary>
             <p className="max-w-[60ch] px-5 pb-10 split:px-7">{item.a}</p>

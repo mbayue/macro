@@ -7,7 +7,7 @@
  * display:none, so the browser only downloads the visible one (lazy images that are not rendered are
  * never fetched).
  *
- * Entrance: the existing scroll reveal (data-reveal, staggered by data-i; Home's useMotion).
+ * Entrance: the existing scroll reveal (data-reveal, staggered by data-i; reveal.ts).
  */
 const ESCAPES = [
   { name: 'example.com', note: 'HTTPS to a site outside the allowlist' },

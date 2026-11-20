@@ -23,6 +23,8 @@ export function Close() {
         loading="lazy"
         decoding="async"
         alt=""
+        data-reveal
+        data-i="1"
       />
       <div
         className="col-span-2 row-start-1 flex flex-col items-start justify-center gap-5 rounded bg-accent p-7 text-accent-ink split:col-span-1 split:col-start-2 split:h-[380px] split:p-10"
@@ -36,7 +38,7 @@ export function Close() {
           Try the live demo
         </a>
       </div>
-      <div className="h-[120px] rounded bg-surface-2 split:h-[380px] split:rounded-r-[0]" aria-hidden="true" />
+      <div className="h-[120px] rounded bg-surface-2 split:h-[380px] split:rounded-r-[0]" aria-hidden="true" data-reveal data-i="2" />
       <Waitlist className="col-span-2 split:col-span-1 split:col-start-2" />
     </section>
   );

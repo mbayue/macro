@@ -136,7 +136,7 @@ export function LoadTheDeck() {
       aria-labelledby="load-title"
       className="mx-3 mt-[clamp(120px,14vw,200px)] grid overflow-hidden rounded bg-surface split:min-h-[88svh] split:grid-cols-2 split:grid-rows-[1fr_auto]"
     >
-      <div className="order-2 flex flex-col gap-6 px-4 pt-8 pb-10 split:order-none split:col-start-1 split:row-start-1 split:px-10 split:py-12">
+      <div className="order-2 flex flex-col gap-6 px-4 pt-8 pb-10 split:order-none split:col-start-1 split:row-start-1 split:px-10 split:py-12" data-reveal>
         <h2
           id="load-title"
           aria-live="polite"
@@ -146,10 +146,10 @@ export function LoadTheDeck() {
         </h2>
         <p className="max-w-[38ch] text-lg">{current.line}</p>
       </div>
-      <div className="order-first grid place-items-center bg-surface-2 px-3 py-6 split:order-none split:col-start-2 split:row-start-1 split:px-6 split:py-12">
+      <div className="order-first grid place-items-center bg-surface-2 px-3 py-6 split:order-none split:col-start-2 split:row-start-1 split:px-6 split:py-12" data-reveal data-i="1">
         <RunFragment stage={stage} />
       </div>
-      <div className="order-1 px-4 pt-[22px] pb-6 split:order-none split:col-span-2 split:row-start-2 split:px-10 split:pt-7 split:pb-8">
+      <div className="order-1 px-4 pt-[22px] pb-6 split:order-none split:col-span-2 split:row-start-2 split:px-10 split:pt-7 split:pb-8" data-reveal data-i="2">
         <div className="relative">
           <label htmlFor="deck-range" className="sr-only">
             Users on the deck
@@ -164,7 +164,7 @@ export function LoadTheDeck() {
             aria-valuetext={`${current.users} users, Stage ${stage + 1} of ${STAGES.length}`}
             onChange={(e) => setStage(nearestStage(Number(e.target.value)))}
             onKeyDown={onKeyDown}
-            className="relative z-[1] m-0 block h-10 w-full cursor-pointer appearance-none bg-transparent split:h-8 [&::-moz-range-thumb]:size-10 [&::-moz-range-thumb]:rounded [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-ink split:[&::-moz-range-thumb]:size-8 [&::-moz-range-track]:bg-transparent [&::-webkit-slider-runnable-track]:h-full [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:size-10 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded [&::-webkit-slider-thumb]:bg-ink [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:duration-150 active:[&::-webkit-slider-thumb]:scale-95 split:[&::-webkit-slider-thumb]:size-8"
+            className="deck-range relative z-[1] m-0 block h-10 w-full split:h-8"
           />
           <StageBand upTo={stage} className="pointer-events-none absolute inset-x-5 top-[13px] w-auto! split:inset-x-4 split:top-[9px]" />
         </div>

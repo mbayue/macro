@@ -69,7 +69,10 @@ export function Hero() {
             Try the live demo
           </a>
         </div>
-        <nav className="flex flex-wrap items-center justify-center gap-x-5 text-[15px] split:gap-x-7" aria-label="On this page">
+        <nav
+          className="flex animate-rise flex-wrap items-center justify-center gap-x-5 text-[15px] [animation-delay:225ms] motion-reduce:animate-fade split:gap-x-7"
+          aria-label="On this page"
+        >
           {LINKS.map((l) => (
             <a key={l.href} href={l.href} className="inline-flex min-h-11 items-center no-underline pointer-fine:hover:underline">
               {l.label}
@@ -90,6 +93,7 @@ export function Hero() {
             alt={i === shown ? p.alt : ''}
             aria-hidden={i === shown ? undefined : true}
             fetchPriority={i === 0 ? 'high' : undefined}
+            loading={i === 0 ? undefined : 'lazy'}
             decoding="async"
             className={`crossfade absolute inset-0 h-full w-full object-cover ${i === shown ? 'is-shown' : ''}`}
           />

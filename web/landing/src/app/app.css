@@ -338,30 +338,10 @@
 .profile__stage--skipped .profile__bar { background: transparent; box-shadow: inset 0 0 0 1px var(--surface-2); }
 .profile__stage--skipped .profile__label { opacity: 0.6; }
 
-/* ---- Probe event list ---- */
-.feed__list { list-style: none; margin: 0; padding: 0 0 24px; overflow-y: auto; display: grid; align-content: start; }
-.feed__item { display: grid; gap: 3px; padding: 10px 0; border-top: 1px solid var(--surface-2); font-size: var(--fs-sm); }
-.feed__item:first-child { border-top: 0; padding-top: 0; }
-.feed__time { font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
+/* ---- Probe event detail ---- */
 .feed__detail { color: var(--muted); }
 
-/* ---- Probe, recent runs ---- */
-.probe-result { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 28px; align-items: center; padding: 24px; border-radius: var(--radius); background: var(--surface); }
-.probe-result--passed { background: var(--accent); color: var(--accent-ink); }
-.probe-result--passed .badge--ok { color: var(--accent-ink); }
-.probe-result--passed .muted,
-.probe-result--passed .busy { color: var(--accent-ink-soft); }
-.probe-result--failed { box-shadow: inset 0 0 0 1px var(--bad); }
-.probe-result--incomplete { box-shadow: inset 0 0 0 1px var(--warn); }
-.probe-result__score { display: grid; gap: 2px; }
-.probe-result__value { font: 300 4rem/1 var(--display); letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
-.probe-result__text { display: grid; gap: 6px; max-width: 64ch; }
-.explain { margin: 0; display: grid; gap: 14px; font-size: var(--fs-sm); }
-.explain dt { font-weight: 500; }
-.explain dd { margin: 4px 0 0; color: var(--muted); max-width: 72ch; }
-.attempts { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.attempts li { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; background: var(--surface); border-radius: var(--radius); padding: 14px 18px; font-size: var(--fs-sm); }
-.attempts__label { font-weight: 500; margin-bottom: 2px; }
+/* ---- Empty state ---- */
 .empty { background: var(--surface); border-radius: var(--radius); padding: 24px; display: grid; gap: 16px; }
 
 /* ---- Narrower screens ---- */
@@ -374,7 +354,6 @@
   .main { padding: 24px 16px 0; }
   .shell .page__title { font-size: 1.75rem; }
   .panel { padding: 16px; }
-  .probe-result { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   /* Identifiers keep their shape and the table scrolls sideways instead of breaking them mid-word. */
   .table:not(.table--routes) .code { overflow-wrap: normal; white-space: nowrap; }
   /* The journey becomes one card per step: route name on top, then its four values in two columns. */

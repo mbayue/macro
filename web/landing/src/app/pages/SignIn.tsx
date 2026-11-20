@@ -1,11 +1,301 @@
 /**
- * Sign in (`#/sign-in`): GitHub OAuth or magic link email.
+ * Sign in (`#/sign-in`) and Account (`#/account`): GitHub/Google OAuth, magic link email,
+ * active session actions, and account deletion.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
+import { ArrowLeftIcon, LogOutIcon, MailIcon, TablePropertiesIcon } from 'lucide-react';
+import type { MeResponse } from '../../../../../src/api-types.ts';
+import { Badge } from '@/components/ui/badge';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
+import { TelemetryPanel } from '../components/studio/TelemetryFrame.tsx';
+import { Busy, ConfirmButton } from '../components/ui.tsx';
+import { useApp } from '../context.tsx';
 import { clearReviewState, deleteAccount, githubStartHref, googleStartHref, postMagicLink, postSignOut } from '../lib/auth-api.ts';
 import { clearRecentRuns } from '../lib/recent-runs.ts';
-import { AlertRegion, Busy, ConfirmButton, Panel } from '../components/ui.tsx';
-import { useApp } from '../context.tsx';
+
+export interface EmailLinkPanelProps {
+  email: string;
+  busy: boolean;
+  sent: boolean;
+  wait: number;
+  error: string | null;
+  onEmailChange: (value: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  onBack: () => void;
+}
+
+/** Magic-link email sign-in panel with explicit label association, validation alert, and cooldown state. */
+export function EmailLinkPanel({
+  email,
+  busy,
+  sent,
+  wait,
+  error,
+  onEmailChange,
+  onSubmit,
+  onBack,
+}: EmailLinkPanelProps) {
+  const emailId = useId();
+  const emailHintId = useId();
+  const emailErrorId = useId();
+  const emailStatusId = useId();
+  const describedBy = [emailHintId, emailErrorId, sent ? emailStatusId : null].filter(Boolean).join(' ');
+
+  return (
+    <TelemetryPanel ticks="bar" aria-labelledby="signin-email-heading" className="bg-card">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id="signin-email-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+          Email link
+        </h2>
+        {wait > 0 ? (
+          <Badge variant="outline" className="font-mono tabular-nums">
+            Cooldown {wait}s
+          </Badge>
+        ) : null}
+      </div>
+
+      <form onSubmit={onSubmit} noValidate className="flex flex-col gap-3.5">
+        <div className="flex max-w-[420px] flex-col gap-1.5">
+          <label htmlFor={emailId} className="text-[0.8125rem] font-medium text-muted-foreground">
+            Email
+          </label>
+          <input
+            id={emailId}
+            type="email"
+            name="email"
+            autoComplete="email"
+            placeholder="you@company.com"
+            required
+            value={email}
+            onChange={(e) => onEmailChange(e.target.value)}
+            disabled={busy}
+            aria-invalid={Boolean(error)}
+            aria-describedby={describedBy}
+            className={cn(
+              'h-10 w-full rounded-md border bg-background px-3 text-[0.9375rem] text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60',
+              error ? 'border-bad' : 'border-bar',
+            )}
+          />
+          <p id={emailHintId} className="m-0 text-xs text-muted-foreground">
+            We will email a one-time sign-in link to this address.
+          </p>
+        </div>
+
+        <div
+          id={emailErrorId}
+          role="alert"
+          className={
+            error
+              ? 'flex max-w-[420px] flex-col gap-1.5 rounded-md border border-bad bg-background px-3.5 py-2.5 text-sm text-foreground'
+              : 'sr-only'
+          }
+        >
+          {error ? (
+            <>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="destructive">Could not send link</Badge>
+              </div>
+              <p className="m-0">{error}</p>
+            </>
+          ) : null}
+        </div>
+
+        <div
+          id={emailStatusId}
+          role="status"
+          className={
+            sent
+              ? 'flex max-w-[420px] flex-wrap items-center gap-2 rounded-md border border-ok bg-background px-3.5 py-2.5 text-sm text-foreground'
+              : 'sr-only'
+          }
+        >
+          {sent ? (
+            <>
+              <Badge variant="ok">Link sent</Badge>
+              <span>Check your email for a sign-in link.</span>
+            </>
+          ) : null}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Button type="submit" disabled={busy || wait > 0 || email.trim() === ''}>
+            {busy ? (
+              <Busy>Sending</Busy>
+            ) : wait > 0 ? (
+              <span className="font-mono tabular-nums">{`Wait ${wait}s`}</span>
+            ) : (
+              <>
+                <MailIcon data-icon="inline-start" />
+                Send sign-in link
+              </>
+            )}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="border border-bar-hover"
+            onClick={onBack}
+          >
+            <ArrowLeftIcon data-icon="inline-start" />
+            Back to new test
+          </Button>
+        </div>
+      </form>
+    </TelemetryPanel>
+  );
+}
+
+export interface AccountPanelProps {
+  me: MeResponse;
+  signingOut: boolean;
+  deleting: boolean;
+  deleteError: string | null;
+  onBack: () => void;
+  onSignOut: () => void;
+  onDelete: () => void;
+}
+
+/** Signed-in Account workspace view: identity telemetry, navigation/sign-out actions, and account deletion. */
+export function AccountPanel({
+  me,
+  signingOut,
+  deleting,
+  deleteError,
+  onBack,
+  onSignOut,
+  onDelete,
+}: AccountPanelProps) {
+  const identity = me.user.githubLogin ?? me.user.email;
+
+  return (
+    <section className="mx-auto grid w-full max-w-[1600px] gap-6" aria-labelledby="account-heading">
+      <header className="grid gap-2">
+        <h1
+          id="account-heading"
+          className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] text-balance text-foreground max-[860px]:text-[1.75rem]"
+        >
+          Account
+        </h1>
+        <p className="m-0 max-w-[64ch] text-muted-foreground">
+          You are signed in as <strong className="font-medium text-foreground">{identity}</strong>.
+        </p>
+      </header>
+
+      <div className="flex flex-col gap-4">
+        <TelemetryPanel ticks="bar" aria-labelledby="session-active-heading" className="gap-4 bg-card">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="session-active-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+              Session active
+            </h2>
+            <Badge variant="ok">Signed in</Badge>
+          </div>
+
+          <p className="m-0 max-w-[72ch] text-sm text-muted-foreground">
+            Your account can run private load tests against your verified origin.
+          </p>
+
+          <dl className="m-0 grid grid-cols-1 gap-px overflow-hidden rounded-sm border border-border bg-border sm:grid-cols-3">
+            <div className="flex min-w-0 flex-col gap-0.5 bg-background px-3.5 py-2.5">
+              <dt className="text-xs text-muted-foreground">Account</dt>
+              <dd className="m-0 font-mono text-xs break-all text-foreground">{identity}</dd>
+            </div>
+            <div className="flex min-w-0 flex-col gap-0.5 bg-background px-3.5 py-2.5">
+              <dt className="text-xs text-muted-foreground">Email</dt>
+              <dd className="m-0 font-mono text-xs break-all text-foreground">{me.user.email}</dd>
+            </div>
+            <div className="flex min-w-0 flex-col gap-0.5 bg-background px-3.5 py-2.5">
+              <dt className="text-xs text-muted-foreground">Verified origin</dt>
+              <dd className="m-0 font-mono text-xs break-all text-foreground">
+                {me.verifiedOrigin ? me.verifiedOrigin.host : 'None verified'}
+              </dd>
+            </div>
+          </dl>
+
+          <Separator />
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Button type="button" onClick={onBack}>
+              <ArrowLeftIcon data-icon="inline-start" />
+              Back to new test
+            </Button>
+            <Button
+              render={<a href="#/runs" />}
+              nativeButton={false}
+              variant="secondary"
+              className="border border-bar-hover"
+            >
+              <TablePropertiesIcon data-icon="inline-start" />
+              View your runs
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="border-bar"
+              disabled={signingOut || deleting}
+              onClick={onSignOut}
+            >
+              {signingOut ? (
+                <Busy>Signing out…</Busy>
+              ) : (
+                <>
+                  <LogOutIcon data-icon="inline-start" />
+                  Sign out
+                </>
+              )}
+            </Button>
+          </div>
+        </TelemetryPanel>
+
+        <TelemetryPanel ticks="bar" aria-labelledby="delete-account-heading" className="gap-4 bg-card">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="delete-account-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+              Delete account
+            </h2>
+            <Badge variant="outline">Permanent</Badge>
+          </div>
+
+          <p className="m-0 max-w-[72ch] text-sm text-muted-foreground">
+            Permanently deletes your account, verified origin, saved draft, and private runs.
+          </p>
+
+          <div
+            role="alert"
+            className={
+              deleteError
+                ? 'flex flex-col gap-1.5 rounded-md border border-bad bg-background px-3.5 py-2.5 text-sm text-foreground'
+                : 'sr-only'
+            }
+          >
+            {deleteError ? (
+              <>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="destructive">Delete failed</Badge>
+                </div>
+                <p className="m-0">{deleteError}</p>
+              </>
+            ) : null}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            <ConfirmButton
+              label={deleting ? 'Deleting…' : 'Delete account'}
+              confirmLabel="Confirm delete"
+              cancelLabel="Keep account"
+              className={cn(buttonVariants({ variant: 'secondary' }), 'border border-bar-hover')}
+              confirmClassName={buttonVariants({ variant: 'destructive' })}
+              cancelClassName={cn(buttonVariants({ variant: 'secondary' }), 'border border-bar-hover')}
+              disabled={deleting || signingOut}
+              onConfirm={onDelete}
+            />
+            {deleting ? <Busy>Deleting your account…</Busy> : null}
+          </div>
+        </TelemetryPanel>
+      </div>
+    </section>
+  );
+}
 
 export function SignIn() {
   const { config, me, navigate, announce, refreshMe } = useApp();
@@ -14,6 +304,9 @@ export function SignIn() {
   const [sent, setSent] = useState(false);
   const [wait, setWait] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (wait <= 0) return;
@@ -21,96 +314,68 @@ export function SignIn() {
     return () => window.clearInterval(id);
   }, [wait]);
 
-  const params = new URLSearchParams(window.location.hash.split('?')[1] ?? '');
+  const rawHash = typeof window !== 'undefined' ? window.location.hash : '';
+  const params = new URLSearchParams(rawHash.split('?')[1] ?? '');
   const githubEmailError = params.get('error') === 'github_email';
   const googleEmailError = params.get('error') === 'google_email';
 
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
-
   if (me !== null) {
     return (
-      <section className="page">
-        <header className="page__head">
-          <h1 className="page__title">Account</h1>
-          <p className="page__lead">
-            You are signed in as <strong>{me.user.githubLogin ?? me.user.email}</strong>.
-          </p>
-        </header>
-        <Panel title="Session active">
-          <p className="muted">
-            Your account can run private load tests against your verified origin.
-          </p>
-          <p className="actions">
-            <button type="button" className="btn" onClick={() => navigate('/')}>
-              Back to new test
-            </button>
-            <a href="#/runs" className="btn btn--quiet">
-              View your runs
-            </a>
-            <button
-              type="button"
-              className="btn btn--quiet"
-              onClick={() => {
-                void (async () => {
-                  await postSignOut();
-                  clearRecentRuns();
-                  clearReviewState();
-                  await refreshMe();
-                  announce('Signed out.');
-                })();
-              }}
-            >
-              Sign out
-            </button>
-          </p>
-        </Panel>
-        <Panel title="Delete account">
-          <p className="muted">
-            Permanently deletes your account, verified origin, saved draft, and private runs.
-          </p>
-          {deleteError ? (
-            <AlertRegion>
-              <p>{deleteError}</p>
-            </AlertRegion>
-          ) : null}
-          <p className="actions">
-            <ConfirmButton
-              label={deleting ? 'Deleting…' : 'Delete account'}
-              confirmLabel="Confirm delete"
-              cancelLabel="Keep account"
-              disabled={deleting}
-              onConfirm={() => {
-                void (async () => {
-                  setDeleting(true);
-                  setDeleteError(null);
-                  const res = await deleteAccount();
-                  setDeleting(false);
-                  if (!res.ok) {
-                    setDeleteError(res.error.message);
-                    announce(res.error.message);
-                    return;
-                  }
-                  clearRecentRuns();
-                  clearReviewState();
-                  await refreshMe();
-                  announce('Account deleted.');
-                })();
-              }}
-            />
-          </p>
-        </Panel>
-      </section>
+      <AccountPanel
+        me={me}
+        signingOut={signingOut}
+        deleting={deleting}
+        deleteError={deleteError}
+        onBack={() => navigate('/')}
+        onSignOut={() => {
+          if (signingOut || deleting) return;
+          void (async () => {
+            setSigningOut(true);
+            await postSignOut();
+            clearRecentRuns();
+            clearReviewState();
+            await refreshMe();
+            setSigningOut(false);
+            announce('Signed out.');
+          })();
+        }}
+        onDelete={() => {
+          if (deleting || signingOut) return;
+          void (async () => {
+            setDeleting(true);
+            setDeleteError(null);
+            const res = await deleteAccount();
+            setDeleting(false);
+            if (!res.ok) {
+              setDeleteError(res.error.message);
+              announce(res.error.message);
+              return;
+            }
+            clearRecentRuns();
+            clearReviewState();
+            await refreshMe();
+            announce('Account deleted.');
+          })();
+        }}
+      />
     );
   }
 
   async function onMagic(e: React.FormEvent) {
     e.preventDefault();
-    if (busy) return;
+    if (busy || wait > 0) return;
+    const trimmed = email.trim();
+    if (trimmed === '' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      const msg = 'Enter a valid email address.';
+      setError(msg);
+      setSent(false);
+      announce(msg);
+      return;
+    }
     setBusy(true);
     setError(null);
     setSent(false);
-    const result = await postMagicLink(email.trim(), '/app/#/'); // return to New test; draft hydrates from account + stash
+    const result = await postMagicLink(trimmed, '/app/#/'); // return to New test; draft hydrates from account + stash
     setBusy(false);
     if (!result.ok) {
       setError(result.error.message);
@@ -124,81 +389,86 @@ export function SignIn() {
   }
 
   return (
-    <section className="page">
-      <header className="page__head">
-        <h1 className="page__title">Sign in</h1>
-        <p className="page__lead">
+    <section className="mx-auto grid w-full max-w-[1600px] gap-6" aria-labelledby="signin-heading">
+      <header className="grid gap-2">
+        <h1
+          id="signin-heading"
+          className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] text-balance text-foreground max-[860px]:text-[1.75rem]"
+        >
+          Sign in
+        </h1>
+        <p className="m-0 max-w-[64ch] text-muted-foreground">
           Sign in to verify your site and keep own-site runs private. The demo shop still works signed out.
         </p>
       </header>
 
-      {githubEmailError ? (
-        <AlertRegion>
-          <p>GitHub did not provide a verified email. Use a magic link, or make a verified email public on GitHub and try again.</p>
-        </AlertRegion>
-      ) : null}
-
-      {googleEmailError ? (
-        <AlertRegion>
-          <p>Google did not provide a verified email. Use a magic link or another Google account with a verified email.</p>
-        </AlertRegion>
-      ) : null}
-
-      {config.googleSignIn ? (
-        <Panel title="Google">
-          <p className="muted">Uses your Google account. Macro needs a verified email address.</p>
-          <p className="actions">
-            <a className="btn" href={googleStartHref()}>
-              Continue with Google
-            </a>
-          </p>
-        </Panel>
-      ) : null}
-
-      <Panel title="GitHub">
-        <p className="muted">Uses your GitHub account. Macro needs a verified email address.</p>
-        <p className="actions">
-          <a className="btn" href={githubStartHref()}>
-            Continue with GitHub
-          </a>
-        </p>
-      </Panel>
-
-      <Panel title="Email link">
-        <form onSubmit={onMagic} className="stack stack--narrow">
-          <label className="field">
-            <span className="field__label">Email</span>
-            <input
-              type="email"
-              name="email"
-              autoComplete="email"
-              placeholder="you@company.com"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={busy}
-            />
-          </label>
-          {error ? (
-            <AlertRegion>
-              <p>{error}</p>
-            </AlertRegion>
-          ) : null}
-          {sent ? (
-            <p className="muted" role="status">
-              Check your email for a sign-in link.
+      <div className="flex flex-col gap-4">
+        {githubEmailError ? (
+          <TelemetryPanel tone="bad" ticks="bad" role="alert" className="gap-2 bg-card">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="destructive">GitHub email required</Badge>
+            </div>
+            <p className="m-0 max-w-[72ch] text-sm text-foreground">
+              GitHub did not provide a verified email. Use a magic link, or make a verified email public on GitHub and try again.
             </p>
-          ) : null}
-          <div className="actions">
-            <button type="submit" className="btn" disabled={busy || wait > 0 || email.trim() === ''}>
-              {busy ? <Busy>Sending</Busy> : wait > 0 ? `Wait ${wait}s` : 'Send sign-in link'}
-            </button>
-            <button type="button" className="btn btn--quiet" onClick={() => navigate('/')}>
-              Back to new test
-            </button>
+          </TelemetryPanel>
+        ) : null}
+
+        {googleEmailError ? (
+          <TelemetryPanel tone="bad" ticks="bad" role="alert" className="gap-2 bg-card">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="destructive">Google email required</Badge>
+            </div>
+            <p className="m-0 max-w-[72ch] text-sm text-foreground">
+              Google did not provide a verified email. Use a magic link or another Google account with a verified email.
+            </p>
+          </TelemetryPanel>
+        ) : null}
+
+        {config.googleSignIn ? (
+          <TelemetryPanel ticks="bar" aria-labelledby="signin-google-heading" className="bg-card">
+            <h2 id="signin-google-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+              Google
+            </h2>
+            <p className="m-0 max-w-[72ch] text-sm text-muted-foreground">
+              Uses your Google account. Macro needs a verified email address.
+            </p>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <Button render={<a href={googleStartHref()} />} nativeButton={false}>
+                Continue with Google
+              </Button>
+            </div>
+          </TelemetryPanel>
+        ) : null}
+
+        <TelemetryPanel ticks="bar" aria-labelledby="signin-github-heading" className="bg-card">
+          <h2 id="signin-github-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+            GitHub
+          </h2>
+          <p className="m-0 max-w-[72ch] text-sm text-muted-foreground">
+            Uses your GitHub account. Macro needs a verified email address.
+          </p>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Button render={<a href={githubStartHref()} />} nativeButton={false}>
+              Continue with GitHub
+            </Button>
           </div>
-        </form>
-      </Panel>
+        </TelemetryPanel>
+
+        <EmailLinkPanel
+          email={email}
+          busy={busy}
+          sent={sent}
+          wait={wait}
+          error={error}
+          onEmailChange={(value) => {
+            setEmail(value);
+            if (error) setError(null);
+          }}
+          onSubmit={(e) => void onMagic(e)}
+          onBack={() => navigate('/')}
+        />
+      </div>
     </section>
   );
 }

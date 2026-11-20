@@ -4,7 +4,15 @@
  * Wording and verdict rules come from web/probe-view.ts unchanged.
  */
 import { useEffect, useRef, useState } from 'react';
+import { ChevronDownIcon, RotateCcwIcon } from 'lucide-react';
 import type { EventView, RunSnapshot, RunView } from '../../../../../src/api-types.ts';
+import type { ProbeActionResult, ProbeVerdict } from '../../../../../src/k6/probe-result.ts';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { CornerTicks, TelemetryPanel } from '../components/studio/TelemetryFrame.tsx';
+import { ApiErrorText, Busy, StatusBadge, TableWrap } from '../components/ui.tsx';
+import { useApp } from '../context.tsx';
 import { type ApiError, getRun } from '../lib/api.ts';
 import { fmtUtc } from '../lib/format.ts';
 import {
@@ -20,8 +28,6 @@ import {
   statusText,
 } from '../lib/probe-view.ts';
 import { rememberRun } from '../lib/recent-runs.ts';
-import { ApiErrorText, Badge, Busy, KeyValues, StatusBadge, TableWrap, type Tone } from '../components/ui.tsx';
-import { useApp } from '../context.tsx';
 
 const POLL_MS = 1000;
 
@@ -139,81 +145,153 @@ export function ProbePage({ id }: { id: string }) {
   }, [id, attempt, announce, navigate]);
 
   return (
-    <div className="page">
-      <header className="page__head">
-        <h1 className="page__title" ref={heading} tabIndex={-1}>
-          Containment probe
+    <div className="mx-auto grid w-full max-w-[1600px] gap-6">
+      <header className="grid gap-2">
+        <h1
+          ref={heading}
+          tabIndex={-1}
+          className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] text-balance text-foreground focus:outline-none max-[860px]:text-[1.75rem]"
+        >
+          Containment Probe
         </h1>
-        <p className="page__lead">The probe runs inside the sandbox and tries to escape it. Each attempt should be blocked.</p>
+        <p className="m-0 max-w-[64ch] text-muted-foreground">
+          The probe runs inside the sandbox and tries to escape it. Each attempt should be blocked.
+        </p>
       </header>
-      <div className="split">
-        <div className="split__main">
+
+      <div className="grid grid-cols-1 items-start gap-6 min-[1180px]:grid-cols-[minmax(0,1fr)_minmax(300px,380px)]">
+        <div className="flex min-w-0 flex-col gap-4">
           {state.kind === 'loading' ? (
-            <div className="panel skeleton-pulse" role="status" aria-busy="true" aria-label="Loading probe…">
-              <div className="skeleton-line skeleton-line--heading" />
-              <div className="skeleton-block skeleton-block--area" />
-            </div>
-          ) : state.kind === 'fatal' ? (
-            <>
-              <div className="alert" role="alert">
-                <ApiErrorText error={state.error} />
+            <TelemetryPanel ticks="bar" role="status" aria-busy="true" aria-label="Loading probe…" className="gap-4 bg-card">
+              <p className="m-0 text-sm text-muted-foreground">Loading containment probe…</p>
+              <div className="flex animate-pulse flex-col gap-3 motion-reduce:animate-none">
+                <div className="h-4 w-44 rounded-sm bg-surface-2" />
+                <div className="h-32 w-full rounded-md bg-surface-2" />
               </div>
+            </TelemetryPanel>
+          ) : state.kind === 'fatal' ? (
+            <TelemetryPanel tone="bad" ticks="bad" role="alert" className="gap-4 bg-card">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="destructive">Probe unavailable</Badge>
+              </div>
+              <ApiErrorText error={state.error} />
               {state.error.code !== 'not_found' ? (
-                <div className="row">
-                  <button type="button" className="btn btn--quiet" onClick={() => setAttempt((a) => a + 1)}>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="border border-bar-hover"
+                    onClick={() => setAttempt((a) => a + 1)}
+                  >
+                    <RotateCcwIcon data-icon="inline-start" />
                     Try again
-                  </button>
+                  </Button>
                 </div>
               ) : null}
-            </>
+            </TelemetryPanel>
           ) : (
             <ProbeBody run={state.run} events={state.events} pollFailed={state.pollFailed} />
           )}
         </div>
-        <aside className="split__side" aria-label="About this probe">
+
+        <aside className="flex min-w-0 flex-col gap-4 min-[1180px]:sticky min-[1180px]:top-20" aria-label="About this probe">
           {state.kind === 'ready' ? (
-            <section className="panel" aria-labelledby="probe-info-heading">
-              <h2 id="probe-info-heading">This probe</h2>
-              <KeyValues
-                items={[
-                  ['Probe', <span className="code">{state.run.id}</span>],
-                  [
-                    'Status',
-                    <span className="kv__status">
-                      <StatusBadge status={state.run.status} /> {statusText(state.run)}
-                    </span>,
-                  ],
-                  ['Sandbox runtime', <span className="code">{state.run.runtime}</span>],
-                  ['Started', <span className="num">{fmtUtc(state.run.startedAt)}</span>],
-                  state.run.endedAt !== null ? ['Ended', <span className="num">{fmtUtc(state.run.endedAt)}</span>] : null,
-                ]}
-              />
-            </section>
+            <TelemetryPanel ticks="bar" aria-labelledby="probe-info-heading" className="bg-card">
+              <h2 id="probe-info-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+                This probe
+              </h2>
+              <dl className="m-0 grid grid-cols-[max-content_minmax(0,1fr)] gap-x-6 gap-y-2 text-sm">
+                <dt className="text-muted-foreground">Probe</dt>
+                <dd className="m-0 min-w-0 font-mono text-xs break-all text-foreground">{state.run.id}</dd>
+
+                <dt className="text-muted-foreground">Status</dt>
+                <dd className="m-0 flex min-w-0 flex-wrap items-center gap-2 text-foreground">
+                  <StatusBadge status={state.run.status} />
+                  <span>{statusText(state.run)}</span>
+                </dd>
+
+                <dt className="text-muted-foreground">Sandbox runtime</dt>
+                <dd className="m-0 min-w-0 font-mono text-xs text-foreground">{state.run.runtime}</dd>
+
+                <dt className="text-muted-foreground">Started</dt>
+                <dd className="m-0 min-w-0">
+                  <time
+                    className="font-mono text-xs text-foreground tabular-nums"
+                    dateTime={new Date(state.run.startedAt).toISOString()}
+                  >
+                    {fmtUtc(state.run.startedAt)}
+                  </time>
+                </dd>
+
+                {state.run.endedAt !== null ? (
+                  <>
+                    <dt className="text-muted-foreground">Ended</dt>
+                    <dd className="m-0 min-w-0">
+                      <time
+                        className="font-mono text-xs text-foreground tabular-nums"
+                        dateTime={new Date(state.run.endedAt).toISOString()}
+                      >
+                        {fmtUtc(state.run.endedAt)}
+                      </time>
+                    </dd>
+                  </>
+                ) : null}
+              </dl>
+            </TelemetryPanel>
           ) : null}
-          <details className="panel disclosure" open>
-            <summary>
-              <h2 className="disclosure__title">What each action does</h2>
+
+          <details className="group rounded-md border border-border bg-card p-5 sm:px-6" open>
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-sm py-0.5 text-foreground focus-visible:outline-[3px] focus-visible:outline-offset-[3px] focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
+              <h2 className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">What each action does</h2>
+              <ChevronDownIcon
+                className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none"
+                aria-hidden="true"
+              />
             </summary>
-            <dl className="explain">
+            <dl className="m-0 mt-4 flex flex-col gap-3.5 text-sm">
               {PROBE_ACTIONS.map((a) => (
-                <div key={a.id}>
-                  <dt>
-                    <span className="code">({a.id})</span> {a.label}
+                <div key={a.id} className="flex flex-col gap-1">
+                  <dt className="font-medium text-foreground">
+                    <span className="font-mono text-xs text-muted-foreground">({a.id})</span> {a.label}
                   </dt>
-                  <dd>{ACTION_EXPLANATIONS[a.id]}</dd>
+                  <dd className="m-0 max-w-[72ch] text-muted-foreground">{ACTION_EXPLANATIONS[a.id]}</dd>
                 </div>
               ))}
             </dl>
           </details>
         </aside>
-      </div>{' '}
+      </div>
     </div>
   );
 }
 
-const resultTone = (r: string): Tone => (r === 'contained' ? 'ok' : r === 'escaped' ? 'bad' : 'warn');
+function resultBadgeVariant(result: ProbeActionResult): 'ok' | 'destructive' | 'warn' {
+  if (result === 'contained') return 'ok';
+  if (result === 'escaped') return 'destructive';
+  return 'warn';
+}
 
-function ProbeBody({ run, events, pollFailed }: { run: RunView; events: Map<number, EventView>; pollFailed: boolean }) {
+const VERDICT_PANEL_CLASS: Record<ProbeVerdict, string> = {
+  passed: 'border-transparent bg-primary text-primary-foreground',
+  failed: 'border-destructive bg-card text-foreground',
+  incomplete: 'border-warn bg-card text-foreground',
+};
+
+const VERDICT_TICK_TONE: Record<ProbeVerdict, 'ink' | 'bad' | 'bar'> = {
+  passed: 'ink',
+  failed: 'bad',
+  incomplete: 'bar',
+};
+
+export function ProbeBody({
+  run,
+  events,
+  pollFailed,
+}: {
+  run: RunView;
+  events: Map<number, EventView>;
+  pollFailed: boolean;
+}) {
   const ended = isProbeEnded(run.status);
   const lines = eventLines(events.values(), run.id);
   const result = ended ? effectiveProbeResult(run.probeResult) : null;
@@ -223,87 +301,159 @@ function ProbeBody({ run, events, pollFailed }: { run: RunView; events: Map<numb
   return (
     <>
       {pollFailed && run.status === 'running' ? (
-        <div className="alert" role="alert">
-          <p>Could not refresh the probe. Trying again.</p>
-        </div>
+        <TelemetryPanel tone="bad" ticks="bad" role="alert" className="gap-2 bg-card">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="warn">Connection issue</Badge>
+          </div>
+          <p className="m-0 text-sm text-foreground">Could not refresh the probe. Trying again.</p>
+        </TelemetryPanel>
       ) : null}
-      {!ended ? <Busy>The probe is running. Results appear when it ends, usually within a minute.</Busy> : null}
+
+      {!ended ? (
+        <TelemetryPanel ticks="accent" className="bg-card">
+          <Busy>The probe is running. Results appear when it ends, usually within a minute.</Busy>
+        </TelemetryPanel>
+      ) : null}
 
       {result && wording ? (
         <>
-          <section className={`probe-result probe-result--${wording.verdict}`} aria-labelledby="probe-result-heading">
-            <h2 id="probe-result-heading" className="visually-hidden">
+          <section
+            aria-labelledby="probe-result-heading"
+            className={cn(
+              'relative grid grid-cols-1 items-center gap-4 rounded-md border p-6 min-[861px]:grid-cols-[auto_minmax(0,1fr)] min-[861px]:gap-7',
+              VERDICT_PANEL_CLASS[wording.verdict],
+            )}
+          >
+            <CornerTicks tone={VERDICT_TICK_TONE[wording.verdict]} />
+            <h2 id="probe-result-heading" className="sr-only">
               Result
             </h2>
-            <p className="probe-result__score">
-              <span className="probe-result__value">
+
+            <p className="m-0 flex flex-col gap-1">
+              <span className="font-mono text-[3.5rem] leading-none font-normal tracking-[-0.04em] tabular-nums min-[861px]:text-[4rem]">
                 {contained}/{PROBE_ACTIONS.length}
               </span>
-              <span>actions contained</span>
+              <span
+                className={cn(
+                  'text-xs font-medium',
+                  wording.verdict === 'passed' ? 'text-accent-ink-soft' : 'text-muted-foreground',
+                )}
+              >
+                actions contained
+              </span>
             </p>
-            <div className="probe-result__text">
-              <p>
-                <b>{wording.headline}</b>
-              </p>
+
+            <div className="flex max-w-[64ch] flex-col gap-1.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge
+                  variant={
+                    wording.verdict === 'passed'
+                      ? 'outline'
+                      : wording.verdict === 'failed'
+                        ? 'destructive'
+                        : 'warn'
+                  }
+                  className={
+                    wording.verdict === 'passed'
+                      ? 'border-primary-foreground text-primary-foreground'
+                      : undefined
+                  }
+                >
+                  {wording.badge}
+                </Badge>
+                <p className="m-0 font-semibold">{wording.headline}</p>
+              </div>
               {wording.details.map((line) => (
-                <p key={line}>{line}</p>
+                <p
+                  key={line}
+                  className={cn(
+                    'm-0 text-sm',
+                    wording.verdict === 'passed' ? 'text-accent-ink-soft' : 'text-muted-foreground',
+                  )}
+                >
+                  {line}
+                </p>
               ))}
             </div>
           </section>
-          <TableWrap label="Probe actions">
-            <table className="table">
-              <caption className="visually-hidden">The five probe actions, in the order they run</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Action</th>
-                  <th scope="col">What it tried</th>
-                  <th scope="col">Result</th>
-                </tr>
-              </thead>
-              <tbody>
-                {probeRows(result.classification).map((row) => (
-                  <tr key={row.id}>
-                    <th scope="row">
-                      <span className="code">({row.id})</span> {row.label}
+
+          <TelemetryPanel ticks="bar" aria-labelledby="probe-actions-heading" className="bg-card">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 id="probe-actions-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+                Probe actions
+              </h2>
+              <span className="font-mono text-xs text-muted-foreground tabular-nums">
+                {PROBE_ACTIONS.length} actions
+              </span>
+            </div>
+
+            <TableWrap label="Probe actions">
+              <table className="table w-full min-w-[600px]">
+                <caption className="sr-only">The five probe actions, in the order they run</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Action</th>
+                    <th scope="col">What it tried</th>
+                    <th scope="col" className="end">
+                      Result
                     </th>
-                    <td>{row.target}</td>
-                    <td>
-                      <Badge tone={resultTone(row.result)}>{row.badgeText}</Badge>
-                    </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </TableWrap>
+                </thead>
+                <tbody>
+                  {probeRows(result.classification).map((row) => (
+                    <tr key={row.id}>
+                      <th scope="row" className="font-medium text-foreground">
+                        <span className="font-mono text-xs text-muted-foreground">({row.id})</span> {row.label}
+                      </th>
+                      <td className="text-muted-foreground">{row.target}</td>
+                      <td className="end">
+                        <Badge variant={resultBadgeVariant(row.result)}>{row.badgeText}</Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableWrap>
+          </TelemetryPanel>
         </>
       ) : null}
 
-      <section className="panel" aria-labelledby="probe-events-heading">
-        <div className="panel__head">
-          <h2 id="probe-events-heading">Containment events</h2>
-          <span className="muted">Oldest first, UTC</span>
+      <TelemetryPanel ticks="bar" aria-labelledby="probe-events-heading" className="bg-card">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 id="probe-events-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+            Containment events
+          </h2>
+          <span className="font-mono text-xs text-muted-foreground">Oldest first, UTC</span>
         </div>
+
         {lines.length === 0 ? (
-          <p className="muted">{run.status === 'running' ? 'No containment events yet.' : 'No containment events were recorded.'}</p>
+          <p className="m-0 text-sm text-muted-foreground">
+            {run.status === 'running' ? 'No containment events yet.' : 'No containment events were recorded.'}
+          </p>
         ) : (
-          <ol className="feed__list" aria-label="Containment events, oldest first">
+          <ol className="m-0 flex list-none flex-col divide-y divide-border p-0" aria-label="Containment events, oldest first">
             {lines.map((l) => (
-              <li key={l.id} className={l.warn ? 'feed__item is-warn' : 'feed__item'}>
-                <span className="feed__time num">{fmtUtc(l.ts)}</span>
-                <p>
+              <li key={l.id} className="flex flex-col gap-1 py-2.5 text-sm first:pt-0 last:pb-0">
+                <time
+                  className="font-mono text-xs text-muted-foreground tabular-nums"
+                  dateTime={new Date(l.ts).toISOString()}
+                >
+                  {fmtUtc(l.ts)}
+                </time>
+                <p className="m-0 flex flex-wrap items-center gap-2 text-foreground">
                   {l.warn ? (
                     <>
                       {/* In a probe a blocked attempt or a cap that held is the expected result, so it reads as contained. */}
-                      <Badge tone="ok">contained</Badge>{' '}
+                      <Badge variant="ok">contained</Badge>
                     </>
                   ) : null}
-                  {l.text}
+                  <span>{l.text}</span>
                 </p>
               </li>
             ))}
           </ol>
         )}
-      </section>
+      </TelemetryPanel>
     </>
   );
 }

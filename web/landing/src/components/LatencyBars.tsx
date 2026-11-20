@@ -37,7 +37,7 @@ export function LatencyBars() {
   }, [order]);
 
   return (
-    <section className="stats" aria-labelledby="stats-title">
+    <section className="stats" id="load" aria-labelledby="stats-title">
       <div className="wrap stats__copy">
         <p className="stats__figure" data-reveal>
           1,611 ms

@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import { ApproveSwitch } from '../components/ApproveSwitch.tsx';
-import { Footer, Nav } from '../components/Chrome.tsx';
+import { Hero } from '../components/Hero.tsx';
+import { SiteFooter } from '../components/SiteFooter.tsx';
 import { HowItWorks } from '../components/HowItWorks.tsx';
 import { LatencyBars } from '../components/LatencyBars.tsx';
-import { PolicyGate } from '../components/PolicyGate.tsx';
 import { FreeAccess } from '../components/FreeAccess.tsx';
 import { Waitlist } from '../components/Waitlist.tsx';
 import { FAQ } from '../data.ts';
@@ -89,27 +89,11 @@ export function Home() {
   useMotion();
   return (
     <>
-      <Nav home />
+      <a className="skip-link" href="#top">
+        Skip to content
+      </a>
       <main id="top">
-        <section className="hero" aria-labelledby="hero-title">
-          <div className="wrap hero__copy">
-            <h1 id="hero-title" className="hero__rise" data-i="0">
-              Find your breaking point
-            </h1>
-            <p className="hero__lead hero__rise" data-i="1">
-              Macro plans a load test from plain words, checks it against fixed rules, and runs it in a sandbox that can only reach
-              your verified site.
-            </p>
-            <div className="hero__rise" data-i="2">
-              <a className="btn" href="/app/">
-                Try the live demo
-              </a>
-            </div>
-          </div>
-          <div className="stage" id="stage">
-            <PolicyGate />
-          </div>
-        </section>
+        <Hero />
 
         <section className="bridge" id="bridge" aria-label="Why staged load tests">
           <figure id="bridge-figure">
@@ -188,7 +172,7 @@ export function Home() {
 
         <Waitlist />
       </main>
-      <Footer />
+      <SiteFooter />
     </>
   );
 }

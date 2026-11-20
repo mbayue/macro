@@ -1,0 +1,97 @@
+/*
+ * Landing-only Tailwind v4 entry, on the shared tokens (tokens.css). Used by the home page now and by
+ * the legal and 404 pages once they move over (#20). It never declares the app's Geist Mono font face
+ * and has no monospace font at all: the landing page uses none (DESIGN.md, tasteskill house rules).
+ *
+ * The theme below is the whole vocabulary: token colours only (no default palette), two fonts, one
+ * radius, and the `split` breakpoint (860 px) where the landing layouts go from one column to two.
+ * Write mobile-first: base classes are the phone layout, `split:` the desktop one.
+ */
+@layer theme, base, legacy, components, utilities;
+
+@import "tailwindcss" source(none);
+@source "./components";
+@source "./pages";
+@import "./tokens.css" layer(base);
+
+/*
+ * EXPAND PHASE ONLY: the old landing stylesheet, still needed by the middle sections of the home page
+ * until #15..#19 replace them. Its layer sits under the utilities, so Tailwind classes always win over
+ * its element rules. Removed in #21 together with styles.css.
+ */
+@import "./styles.css" layer(legacy);
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  --color-*: initial;
+  --font-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --breakpoint-split: 53.75rem;
+
+  --animate-rise: rise 700ms var(--ease) both;
+  --animate-fade: fade 400ms ease both;
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+}
+
+/* Tokens switch with the theme, so the utilities read the variables at use time (inline). */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-bar: var(--bar);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-text: var(--accent-text);
+  --color-accent-hover: var(--accent-hover);
+  --color-bad: var(--bad);
+  --color-ui-bg: var(--ui-bg);
+  --color-ui-line: var(--ui-line);
+  --color-ui-field: var(--ui-field);
+  --color-white: #ffffff;
+
+  --font-display: var(--display);
+  --font-text: var(--text);
+}
+/* The one radius is `rounded` (border-radius: var(--radius) from tokens.css); no other radius keys exist. */
+
+@layer base {
+  a { text-underline-offset: 0.2em; }
+}
+
+@layer components {
+  /* The one button shape on the page (DESIGN.md). `.site-btn--ink` is the dark fill on accent fields. */
+  .site-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-height: 52px; padding: 0 26px;
+    border: 0; border-radius: var(--radius);
+    background: var(--accent); color: var(--accent-ink);
+    font: 500 17px/1 var(--text); text-decoration: none; cursor: pointer;
+    transition: transform 140ms var(--ease), background-color 160ms ease;
+  }
+  .site-btn:active { transform: scale(0.97); }
+  .site-btn--ink { background: var(--accent-ink); color: #ffffff; }
+  @media (hover: hover) and (pointer: fine) {
+    .site-btn:hover { background: var(--accent-hover); }
+    .site-btn--ink:hover { background: var(--accent-ink-soft); }
+  }
+
+  /* The hero photographs crossfade (Hero.tsx): about 1.6 s, opacity only. */
+  .crossfade { opacity: 0; transition: opacity 1600ms ease; }
+  .crossfade.is-shown { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) {
+    .crossfade { transition: none; }
+  }
+}

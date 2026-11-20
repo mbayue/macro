@@ -3,10 +3,10 @@
  * The pages are fully readable without it; this only adds the highlight.
  */
 const links = new Map<string, HTMLAnchorElement>();
-for (const a of document.querySelectorAll<HTMLAnchorElement>('.legal__toc a[href^="#"]')) {
+for (const a of document.querySelectorAll<HTMLAnchorElement>('[data-legal-toc] a[href^="#"]')) {
   links.set(a.hash.slice(1), a);
 }
-const sections = [...document.querySelectorAll<HTMLElement>('.legal__body section[id]')].filter((s) => links.has(s.id));
+const sections = [...document.querySelectorAll<HTMLElement>('[data-legal-body] section[id]')].filter((s) => links.has(s.id));
 
 // A section counts as current once its top passes this line, measured from the top of the viewport.
 const LINE = 0.3;

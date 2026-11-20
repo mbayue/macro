@@ -1,8 +1,12 @@
 import { useId, useState } from 'react';
+import { SparklesIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { useHybridPrompt } from '../hooks/useHybridPrompt.ts';
 import { buildScenarioPrompt } from '../lib/hybrid-ai.ts';
 import { HybridBadge } from './HybridBadge.tsx';
 import { AlertRegion, Busy } from './ui.tsx';
+import { CornerTicks } from './studio/TelemetryFrame.tsx';
 
 const PRESETS = [
   'Add ramp-up and peak spike stages',
@@ -38,42 +42,60 @@ export function ScenarioAssistant({ draft, routes, disabled, onApply }: Props) {
   }
 
   return (
-    <div className="hybrid-assist">
-      <div className="hybrid-assist__bar">
-        <button
+    <div className="flex flex-col gap-2.5">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <Button
           type="button"
-          className="chip-btn"
+          variant={open ? 'secondary' : 'outline'}
+          size="sm"
           aria-expanded={open}
           aria-controls={panelId}
           disabled={disabled}
+          className="border-bar bg-background hover:border-bar-hover"
           onClick={() => setOpen((v) => !v)}
         >
+          <SparklesIcon data-icon="inline-start" />
           {open ? 'Hide Scenario Assistant' : 'Refine with Hybrid AI'}
-        </button>
-        <span className="muted">Runs on-device when supported; does not use server planning quota.</span>
+        </Button>
+        <span className="text-xs text-muted-foreground">
+          Runs on-device when supported; does not use server planning quota.
+        </span>
       </div>
 
       {open ? (
-        <div id={panelId} className="hybrid-assist__box stack-tight">
-          <div className="examples" role="group" aria-label="Refinement presets">
-            {PRESETS.map((preset) => (
-              <button
-                key={preset}
-                type="button"
-                className={`chip-btn ${instruction === preset ? 'is-active' : ''}`}
-                disabled={busy || disabled}
-                onClick={() => {
-                  setInstruction(preset);
-                  void refine(preset);
-                }}
-              >
-                {preset}
-              </button>
-            ))}
+        <div
+          id={panelId}
+          className="relative flex flex-col gap-3 rounded-md border border-bar bg-background p-3.5"
+        >
+          <CornerTicks tone="bar" />
+
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Refinement presets">
+            {PRESETS.map((preset) => {
+              const active = instruction === preset;
+              return (
+                <Button
+                  key={preset}
+                  type="button"
+                  variant={active ? 'secondary' : 'outline'}
+                  size="sm"
+                  aria-pressed={active}
+                  disabled={busy || disabled}
+                  className={cn(
+                    active ? 'border-accent-text bg-secondary text-foreground' : 'border-bar bg-background hover:border-bar-hover',
+                  )}
+                  onClick={() => {
+                    setInstruction(preset);
+                    void refine(preset);
+                  }}
+                >
+                  {preset}
+                </Button>
+              );
+            })}
           </div>
 
-          <div className="field hybrid-assist__row">
-            <label htmlFor={inputId} className="visually-hidden">
+          <div className="flex flex-wrap items-center gap-2">
+            <label htmlFor={inputId} className="sr-only">
               Refinement instruction
             </label>
             <input
@@ -82,6 +104,7 @@ export function ScenarioAssistant({ draft, routes, disabled, onApply }: Props) {
               value={instruction}
               disabled={busy || disabled}
               placeholder="e.g. Ramp from 25 to 200 users over 4 minutes"
+              className="h-10 min-w-[220px] flex-1 rounded-md border border-bar bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-[2px] focus-visible:outline-offset-[1px] focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60"
               onChange={(e) => setInstruction(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -90,29 +113,29 @@ export function ScenarioAssistant({ draft, routes, disabled, onApply }: Props) {
                 }
               }}
             />
-            <button
+            <Button
               type="button"
-              className="btn btn--quiet"
+              variant="secondary"
               disabled={busy || disabled}
+              className="border border-bar-hover"
               onClick={() => void refine(instruction)}
             >
               Draft suggestion
-            </button>
+            </Button>
           </div>
 
           {busy ? <Busy>Refining description…</Busy> : null}
           <AlertRegion>{error ? <p>{error}</p> : null}</AlertRegion>
 
           {reply ? (
-            <div className="hybrid-assist__result stack-tight" aria-live="polite">
-              <div className="hybrid-assist__head">
+            <div className="flex flex-col gap-2.5 rounded-md border border-bar bg-surface p-3.5" aria-live="polite">
+              <div className="flex items-center justify-between gap-2">
                 <HybridBadge origin={reply.origin} />
               </div>
-              <p className="prose">{reply.text}</p>
-              <div className="hybrid-assist__actions">
-                <button
+              <p className="text-sm whitespace-pre-wrap text-foreground">{reply.text}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
                   type="button"
-                  className="btn"
                   disabled={disabled}
                   onClick={() => {
                     onApply(reply.text);
@@ -121,14 +144,10 @@ export function ScenarioAssistant({ draft, routes, disabled, onApply }: Props) {
                   }}
                 >
                   Apply to description
-                </button>
-                <button
-                  type="button"
-                  className="btn btn--quiet"
-                  onClick={clearReply}
-                >
+                </Button>
+                <Button type="button" variant="outline" className="border-bar" onClick={clearReply}>
                   Dismiss
-                </button>
+                </Button>
               </div>
             </div>
           ) : null}

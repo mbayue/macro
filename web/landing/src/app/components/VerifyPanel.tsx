@@ -1,29 +1,18 @@
 /**
  * Inline own-site verification: start a token, show DNS + well-known instructions, check, or clear.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { CheckIcon, CloudIcon, CopyIcon, ExternalLinkIcon, ZapIcon } from 'lucide-react';
 import type { VerifyStartResponse } from '../../../../../src/api-types.ts';
+import { Badge } from '@/components/ui/badge';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { getVerifyPending, postVerifyCancel, postVerifyCheck, postVerifyClear, postVerifyStart } from '../lib/auth-api.ts';
 import { useApp } from '../context.tsx';
-import { AlertRegion, Busy, ConfirmButton, Panel } from './ui.tsx';
+import { AlertRegion, Busy, ConfirmButton } from './ui.tsx';
+import { TelemetryPanel } from './studio/TelemetryFrame.tsx';
 
-function CloudflareIcon({ width = 14, height = 14 }: { width?: number; height?: number }) {
-  return (
-    <svg viewBox="0 0 24 24" width={width} height={height} fill="currentColor" aria-hidden="true">
-      <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z" />
-    </svg>
-  );
-}
-
-function DomainConnectIcon({ width = 14, height = 14 }: { width?: number; height?: number }) {
-  return (
-    <svg viewBox="0 0 24 24" width={width} height={height} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-    </svg>
-  );
-}
-
-function CopyButton({ text, onAnnounce }: { text: string; onAnnounce?: (msg: string) => void }) {
+function CopyButton({ text, onAnnounce }: { text: string; onAnnounce?: ((msg: string) => void) | undefined }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     try {
@@ -36,24 +25,17 @@ function CopyButton({ text, onAnnounce }: { text: string; onAnnounce?: (msg: str
     }
   };
   return (
-    <button
+    <Button
       type="button"
-      className="btn btn--quiet btn--copy"
+      variant="outline"
+      size="icon-xs"
+      className="shrink-0 border-bar-hover bg-background"
       onClick={() => void copy()}
       title={copied ? 'Copied to clipboard' : 'Copy to clipboard'}
       aria-label={copied ? 'Copied to clipboard' : 'Copy to clipboard'}
     >
-      {copied ? (
-        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
-          <polyline points="20 6 9 17 4 12" />
-        </svg>
-      ) : (
-        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-        </svg>
-      )}
-    </button>
+      {copied ? <CheckIcon /> : <CopyIcon />}
+    </Button>
   );
 }
 
@@ -63,8 +45,8 @@ export function VerifyPanel({
   onCleared,
 }: {
   initialHost?: string;
-  onVerified?: (origin: { origin: string; host: string }) => void;
-  onCleared?: () => void;
+  onVerified?: ((origin: { origin: string; host: string }) => void) | undefined;
+  onCleared?: (() => void) | undefined;
 }) {
   const { me, refreshMe, announce } = useApp();
   const [host, setHost] = useState(initialHost);
@@ -73,6 +55,8 @@ export function VerifyPanel({
   const [busy, setBusy] = useState<'start' | 'check' | 'clear' | 'cancel' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const restoreGen = useRef(0);
+  const hostInputId = useId();
+  const reverifyHostInputId = useId();
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -170,33 +154,42 @@ export function VerifyPanel({
     announce('Verified site cleared.');
   }
 
+  const quietBtn = cn(buttonVariants({ variant: 'secondary', size: 'sm' }), 'border border-bar-hover');
+  const dangerBtn = cn(buttonVariants({ variant: 'destructive', size: 'sm' }));
+
   return (
-    <Panel title="Verify your site">
-      <p className="muted">
-        Macro needs proof you control one HTTPS origin. Add either a DNS TXT record or a{' '}
-        <code>/.well-known/macro-site-verification</code> file with the token below, then check.
-      </p>
+    <TelemetryPanel ticks="bar" aria-labelledby="verify-panel-heading" className="bg-background">
+      <div className="flex flex-col gap-1">
+        <h3 id="verify-panel-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+          Verify your site
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          Macro needs proof you control one HTTPS origin. Add either a DNS TXT record or a{' '}
+          <code className="font-mono text-[0.92em] text-foreground">/.well-known/macro-site-verification</code> file with the token below, then check.
+        </p>
+      </div>
 
       {verified !== null ? (
-        <p role="status">
-          Verified: <strong>{verified.host}</strong>{' '}
+        <div className="flex flex-wrap items-center gap-2.5 text-sm" role="status">
+          <Badge variant="ok">Verified</Badge>
+          <span className="font-mono text-foreground">{verified.host}</span>
           {busy === 'clear' ? (
-            <button type="button" className="btn btn--ghost" disabled>
+            <Button type="button" variant="secondary" size="sm" disabled>
               <Busy>Clearing</Busy>
-            </button>
+            </Button>
           ) : (
             <ConfirmButton
               label="Clear"
               confirmLabel="Confirm clear"
               cancelLabel="Keep"
-              className="btn btn--ghost"
-              confirmClassName="btn btn--danger"
-              cancelClassName="btn btn--ghost"
+              className={quietBtn}
+              confirmClassName={dangerBtn}
+              cancelClassName={quietBtn}
               disabled={busy !== null}
               onConfirm={() => void onClear()}
             />
           )}
-        </p>
+        </div>
       ) : null}
 
       {error ? (
@@ -207,12 +200,17 @@ export function VerifyPanel({
 
       {pending === null ? (
         verified !== null ? (
-          <details className="disclosure disclosure--inline">
-            <summary>Verify a different host</summary>
-            <form onSubmit={onStart} className="stack">
-              <label className="field">
-                <span className="field__label">Host or https origin</span>
+          <details className="rounded-md border border-border bg-surface p-3.5">
+            <summary className="cursor-pointer text-sm font-medium text-foreground focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-ring">
+              Verify a different host
+            </summary>
+            <form onSubmit={onStart} className="mt-3 flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor={reverifyHostInputId} className="text-xs font-medium text-muted-foreground">
+                  Host or https origin
+                </label>
                 <input
+                  id={reverifyHostInputId}
                   type="text"
                   name="host"
                   autoComplete="url"
@@ -221,20 +219,24 @@ export function VerifyPanel({
                   value={host}
                   onChange={(e) => setHost(e.target.value)}
                   disabled={busy !== null}
+                  className="h-10 w-full rounded-md border border-bar bg-background px-3 font-mono text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-[2px] focus-visible:outline-offset-[1px] focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60"
                 />
-              </label>
-              <p className="actions">
-                <button type="submit" className="btn" disabled={busy !== null || host.trim() === ''}>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="submit" disabled={busy !== null || host.trim() === ''}>
                   {busy === 'start' ? <Busy>Starting</Busy> : 'Start verification'}
-                </button>
-              </p>
+                </Button>
+              </div>
             </form>
           </details>
         ) : (
-          <form onSubmit={onStart} className="stack">
-            <label className="field">
-              <span className="field__label">Host or https origin</span>
+          <form onSubmit={onStart} className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={hostInputId} className="text-xs font-medium text-muted-foreground">
+                Host or https origin
+              </label>
               <input
+                id={hostInputId}
                 type="text"
                 name="host"
                 autoComplete="url"
@@ -243,127 +245,130 @@ export function VerifyPanel({
                 value={host}
                 onChange={(e) => setHost(e.target.value)}
                 disabled={busy !== null}
+                className="h-10 w-full rounded-md border border-bar bg-background px-3 font-mono text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-[2px] focus-visible:outline-offset-[1px] focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60"
               />
-            </label>
-            <p className="actions">
-              <button type="submit" className="btn" disabled={busy !== null || host.trim() === ''}>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="submit" disabled={busy !== null || host.trim() === ''}>
                 {busy === 'start' ? <Busy>Starting</Busy> : 'Start verification'}
-              </button>
-            </p>
+              </Button>
+            </div>
           </form>
         )
       ) : (
-        <div className="stack">
+        <div className="flex flex-col gap-3">
           {pending.domainConnectUrl ? (
-            <div className="dc-banner">
-              <div className="dc-banner__header">
-                <span className="dc-badge">
-                  <DomainConnectIcon />{' '}
+            <div className="flex flex-col gap-2 rounded-md border border-bar-hover bg-secondary p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Badge variant="ok">
+                  <ZapIcon aria-hidden="true" />
                   {pending.domainConnectProviderName
                     ? `${pending.domainConnectProviderName} detected`
                     : 'Domain Connect ready'}
-                </span>
-                <a
-                  href={pending.domainConnectUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn--dc"
+                </Badge>
+                <Button
+                  render={
+                    <a href={pending.domainConnectUrl} target="_blank" rel="noopener noreferrer" />
+                  }
+                  nativeButton={false}
+                  variant="default"
+                  size="sm"
                 >
-                  Auto-configure DNS ↗
-                </a>
+                  Auto-configure DNS
+                  <ExternalLinkIcon data-icon="inline-end" />
+                </Button>
               </div>
-              <p className="dc-banner__desc">
+              <p className="text-xs leading-relaxed text-muted-foreground">
                 Your DNS provider supports Domain Connect. Authorize Macro to provision the verification TXT record automatically in one click.
               </p>
             </div>
           ) : pending.isCloudflare ? (
-            <div className="cf-banner">
-              <div className="cf-banner__header">
-                <span className="cf-badge">
-                  <CloudflareIcon /> Cloudflare detected
-                </span>
-                <a
-                  href={pending.cloudFlareDirectUrl ?? 'https://dash.cloudflare.com'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn--cf"
+            <div className="flex flex-col gap-2 rounded-md border border-bar-hover bg-secondary p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Badge variant="warn">
+                  <CloudIcon aria-hidden="true" />
+                  Cloudflare detected
+                </Badge>
+                <Button
+                  render={
+                    <a
+                      href={pending.cloudFlareDirectUrl ?? 'https://dash.cloudflare.com'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    />
+                  }
+                  nativeButton={false}
+                  variant="outline"
+                  size="sm"
+                  className="border-bar-hover bg-background"
                 >
-                  Open Cloudflare DNS ↗
-                </a>
+                  Open Cloudflare DNS
+                  <ExternalLinkIcon data-icon="inline-end" />
+                </Button>
               </div>
-              <p className="cf-banner__desc">
+              <p className="text-xs leading-relaxed text-muted-foreground">
                 Your domain uses Cloudflare DNS. Open your dashboard to add the TXT record, then check below.
               </p>
             </div>
           ) : null}
 
           {pending.domainConnectUrl ? (
-            <p className="verify-manual-row">
-              <button
+            <div>
+              <Button
                 type="button"
-                className="verify-manual-toggle"
+                variant="link"
+                size="sm"
                 onClick={() => setShowManual((v) => !v)}
               >
                 {showManual ? 'Hide manual DNS records' : 'Or configure DNS records manually'}
-              </button>
-            </p>
+              </Button>
+            </div>
           ) : null}
 
           {showManual || !pending.domainConnectUrl ? (
-            <div className="verify-records">
-              <div className="verify-record">
-                <span className="verify-record__label">DNS TXT name</span>
-                <div className="verify-record__box">
-                  <code>{pending.txtName}</code>
-                  <CopyButton text={pending.txtName} onAnnounce={announce} />
+            <div className="grid gap-2.5">
+              {[
+                { label: 'DNS TXT name', value: pending.txtName },
+                { label: 'DNS TXT value', value: pending.txtValue },
+                { label: 'Well-known URL', value: pending.wellKnownUrl },
+                { label: 'File body', value: pending.token },
+              ].map((record) => (
+                <div key={record.label} className="grid gap-1">
+                  <span className="text-xs font-medium text-muted-foreground">{record.label}</span>
+                  <div className="flex items-center justify-between gap-2 rounded-md border border-bar-hover bg-secondary px-2.5 py-1.5">
+                    <code className="min-w-0 flex-1 font-mono text-xs break-all text-foreground select-all">
+                      {record.value}
+                    </code>
+                    <CopyButton text={record.value} onAnnounce={announce} />
+                  </div>
                 </div>
-              </div>
-              <div className="verify-record">
-                <span className="verify-record__label">DNS TXT value</span>
-                <div className="verify-record__box">
-                  <code>{pending.txtValue}</code>
-                  <CopyButton text={pending.txtValue} onAnnounce={announce} />
-                </div>
-              </div>
-              <div className="verify-record">
-                <span className="verify-record__label">Well-known URL</span>
-                <div className="verify-record__box">
-                  <code>{pending.wellKnownUrl}</code>
-                  <CopyButton text={pending.wellKnownUrl} onAnnounce={announce} />
-                </div>
-              </div>
-              <div className="verify-record">
-                <span className="verify-record__label">File body</span>
-                <div className="verify-record__box">
-                  <code>{pending.token}</code>
-                  <CopyButton text={pending.token} onAnnounce={announce} />
-                </div>
-              </div>
+              ))}
             </div>
           ) : null}
-          <p className="actions">
-            <button type="button" className="btn" disabled={busy !== null} onClick={() => void onCheck()}>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Button type="button" disabled={busy !== null} onClick={() => void onCheck()}>
               {busy === 'check' ? <Busy>Checking</Busy> : 'I added the proof — check'}
-            </button>
+            </Button>
             {busy === 'cancel' ? (
-              <button type="button" className="btn btn--ghost" disabled>
+              <Button type="button" variant="secondary" disabled>
                 <Busy>Resetting</Busy>
-              </button>
+              </Button>
             ) : (
               <ConfirmButton
                 label="Start over"
                 confirmLabel="Reset token"
                 cancelLabel="Keep"
-                className="btn btn--ghost"
-                confirmClassName="btn btn--danger"
-                cancelClassName="btn btn--ghost"
+                className={cn(buttonVariants({ variant: 'secondary' }), 'border border-bar-hover')}
+                confirmClassName={buttonVariants({ variant: 'destructive' })}
+                cancelClassName={cn(buttonVariants({ variant: 'secondary' }), 'border border-bar-hover')}
                 disabled={busy !== null}
                 onConfirm={() => void onStartOver()}
               />
             )}
-          </p>
+          </div>
         </div>
       )}
-    </Panel>
+    </TelemetryPanel>
   );
 }

@@ -4,6 +4,7 @@
  * beside it holds the same numbers for assistive technology.
  */
 import { useEffect, useRef } from 'react';
+import { cn } from '@/lib/utils';
 
 export type StageState = 'planned' | 'running' | 'pass' | 'fail' | 'error' | 'skipped';
 
@@ -15,7 +16,15 @@ export interface ProfileStage {
   progress?: number;
 }
 
-export function StageProfile({ stages, compact = false }: { stages: readonly ProfileStage[]; compact?: boolean }) {
+export function StageProfile({
+  stages,
+  compact = false,
+  mode = 'live',
+}: {
+  stages: readonly ProfileStage[];
+  compact?: boolean;
+  mode?: 'live' | 'preview';
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const max = Math.max(1, ...stages.map((s) => s.vus));
 
@@ -32,20 +41,23 @@ export function StageProfile({ stages, compact = false }: { stages: readonly Pro
   }, [stages, max]);
 
   return (
-    <div ref={ref} className={compact ? 'profile profile--compact' : 'profile'} aria-hidden="true">
-      {stages.map((s, i) => (
-        <div key={i} data-stage={i} className={`profile__stage profile__stage--${s.state}`}>
-          <span className="profile__bar">
-            {s.state === 'running' ? <span className="profile__fill" /> : null}
-          </span>
-          <span className="profile__label">
-            <span>
-              <b>{s.vus.toLocaleString('en-US')}</b> VUs
+    <div ref={ref} className={cn('profile', compact && 'profile--compact')} aria-hidden="true">
+      {stages.map((s, i) => {
+        const stateClass = mode === 'preview' && s.state === 'planned' ? '' : `profile__stage--${s.state}`;
+        return (
+          <div key={i} data-stage={i} className={cn('profile__stage border-b border-border', stateClass)}>
+            <span className="profile__bar">
+              {s.state === 'running' ? <span className="profile__fill" /> : null}
             </span>
-            {compact ? null : <span>{s.durationSec} s</span>}
-          </span>
-        </div>
-      ))}
+            <span className="profile__label font-mono tabular-nums">
+              <span>
+                <b>{s.vus.toLocaleString('en-US')}</b> VUs
+              </span>
+              {compact ? null : <span>{s.durationSec} s</span>}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }

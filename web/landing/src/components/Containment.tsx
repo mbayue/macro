@@ -24,14 +24,14 @@ export function Containment() {
   return (
     <section
       id="containment"
-      className="mx-3 mt-[clamp(120px,14vw,200px)] grid grid-cols-2 gap-1.5 split:grid-cols-4 split:gap-2"
+      className="section mx-3 grid grid-cols-2 gap-1.5 split:grid-cols-4 split:gap-2"
       aria-labelledby="proof-title"
     >
       <div
         className="col-span-2 flex flex-col justify-between gap-8 rounded bg-accent p-5 text-accent-ink split:min-h-[280px] split:p-7"
         data-reveal
       >
-        <h2 id="proof-title" className="max-w-[10ch] font-display text-[10vw] font-light leading-none tracking-[-0.03em] split:text-[clamp(36px,4.2vw,68px)]">
+        <h2 id="proof-title" className="section-title max-w-[10ch]">
           Five escapes, five blocked
         </h2>
         <p className="max-w-[44ch] text-lg">

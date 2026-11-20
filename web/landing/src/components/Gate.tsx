@@ -23,7 +23,7 @@ export function Gate() {
   const [own, setOwn] = useState(true);
   return (
     <section
-      className={`relative mt-[clamp(120px,14vw,200px)] min-h-[86svh] overflow-hidden px-5 py-10 split:min-h-[92svh] split:px-10 split:py-14 ${
+      className={`section relative min-h-[86svh] overflow-hidden px-5 py-10 split:min-h-[92svh] split:px-10 split:py-14 ${
         own ? 'bg-accent text-accent-ink' : 'bg-refusal text-white'
       }`}
       aria-labelledby="gate-title"
@@ -32,7 +32,7 @@ export function Gate() {
         <h2
           id="gate-title"
           aria-live="polite"
-          className="font-display text-[10vw] leading-none font-light tracking-[-0.03em] split:text-[clamp(36px,4.2vw,68px)]"
+          className="section-title"
         >
           {`The gate says ${own ? 'yes' : 'no'}`}
         </h2>

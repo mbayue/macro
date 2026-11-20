@@ -15,7 +15,16 @@ const HEIGHT: Record<StageBandSize, string> = {
   bullet: 'h-2 w-3.5',
 };
 
-const SEGMENT = ['flex-[1_1_0]', 'flex-[2_1_0]', 'flex-[4_1_0]', 'flex-[8_1_0]'] as const;
+/**
+ * The four Stages' weights (1 : 2 : 4 : 8, like 25, 50, 100, 200 users), with the flex class that sizes
+ * each segment to its weight. Load the deck lays its Stage labels and slider stops out on the same weights.
+ */
+export const STAGE_SEGMENTS = [
+  { weight: 1, flex: 'flex-[1_1_0]' },
+  { weight: 2, flex: 'flex-[2_1_0]' },
+  { weight: 4, flex: 'flex-[4_1_0]' },
+  { weight: 8, flex: 'flex-[8_1_0]' },
+] as const;
 
 export function StageBand({
   upTo = 3,
@@ -34,7 +43,7 @@ export function StageBand({
   const gap = size === 'bullet' ? 'gap-px' : 'gap-1';
   return (
     <span className={`flex ${gap} ${size === 'bullet' ? '' : 'w-full'} ${HEIGHT[size]} ${className}`} aria-hidden="true">
-      {SEGMENT.map((flex, i) => (
+      {STAGE_SEGMENTS.map(({ flex }, i) => (
         <span
           key={flex}
           className={`block h-full ${flex} ${i <= upTo ? on : off}`}

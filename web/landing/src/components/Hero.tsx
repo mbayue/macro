@@ -8,6 +8,7 @@
  * motion (the first photograph stays).
  */
 import { useEffect, useState } from 'react';
+import { prefersReducedMotion } from '../motion.ts';
 import { sanokSrc, sanokSrcSet, SANOK_PHOTOS, SANOK_SIZE } from '../sanok.ts';
 import { ThemeToggle } from './ThemeToggle.tsx';
 import { StageBand } from './StageBand.tsx';
@@ -25,7 +26,7 @@ const LINKS = [
 function useCrossfade(count: number): number {
   const [shown, setShown] = useState(0);
   useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (prefersReducedMotion()) return;
     let timer: number | undefined;
     const schedule = () => {
       timer = window.setTimeout(() => {

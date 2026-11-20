@@ -10,7 +10,7 @@ import { Island } from '../islands.tsx';
 export function Close() {
   return (
     <section
-      className="mx-3 mt-[clamp(120px,14vw,200px)] grid grid-cols-2 gap-2 split:mx-0 split:grid-cols-[2fr_8fr_2fr]"
+      className="section mx-3 grid grid-cols-2 gap-2 split:mx-0 split:grid-cols-[2fr_8fr_2fr]"
       aria-labelledby="close-title"
     >
       <img

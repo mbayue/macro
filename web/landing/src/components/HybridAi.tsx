@@ -61,7 +61,7 @@ function Fragment({ badge, items, onDevice }: { badge: string; items: readonly s
 export function HybridAi() {
   return (
     <section
-      className="mx-3 mt-[clamp(120px,14vw,200px)] grid gap-10 rounded bg-surface px-4 py-10 split:grid-cols-12 split:gap-x-8 split:gap-y-14 split:p-12"
+      className="section mx-3 grid gap-10 rounded bg-surface px-4 py-10 split:grid-cols-12 split:gap-x-8 split:gap-y-14 split:p-12"
       id="hybrid-ai"
       aria-labelledby="hybrid-title"
     >

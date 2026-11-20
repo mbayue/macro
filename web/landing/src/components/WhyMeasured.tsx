@@ -17,7 +17,7 @@ const POINTS = [
 export function WhyMeasured() {
   return (
     <section
-      className="mx-3 mt-[clamp(120px,14vw,200px)] grid items-center gap-7 split:grid-cols-[7fr_5fr] split:gap-12"
+      className="section mx-3 grid items-center gap-7 split:grid-cols-[7fr_5fr] split:gap-12"
       aria-labelledby="why-title"
     >
       <img
@@ -35,7 +35,7 @@ export function WhyMeasured() {
       <div className="split:pr-6" data-reveal data-i="1">
         <h2
           id="why-title"
-          className="font-display text-[10vw] leading-none font-light tracking-[-0.03em] split:text-[clamp(36px,4.2vw,68px)]"
+          className="section-title"
         >
           Measured, then opened
         </h2>

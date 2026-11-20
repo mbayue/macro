@@ -10,7 +10,7 @@
  */
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { BARS } from '../data.ts';
-import { StageBand } from './StageBand.tsx';
+import { STAGE_SEGMENTS, StageBand } from './StageBand.tsx';
 
 const STAGES = [
   {
@@ -34,9 +34,9 @@ const LAST = STAGES.length - 1;
 const ROUTES = ['store_home', 'catalog_list', 'product_detail'] as const;
 /** Bars are drawn against the run's highest p95 (store_home at 200 users). */
 const BAR_MAX = Math.max(...BARS.map((b) => b.p95));
-/** Slider value at the end of each Stage's band segment (cumulative 1, 2, 4, 8). */
-const STOP = [1, 3, 7, 15] as const;
-const RANGE_MAX = STOP[LAST];
+/** Slider value at the end of each Stage's band segment: the running sum of the weights (1, 3, 7, 15). */
+const STOP = STAGE_SEGMENTS.map((_, i) => STAGE_SEGMENTS.slice(0, i + 1).reduce((sum, s) => sum + s.weight, 0));
+const RANGE_MAX = STOP[LAST]!;
 
 /** The Stage whose stop is nearest `value`; on a tie, the lower Stage. */
 function nearestStage(value: number): number {
@@ -134,13 +134,13 @@ export function LoadTheDeck() {
     <section
       id="load"
       aria-labelledby="load-title"
-      className="mx-3 mt-[clamp(120px,14vw,200px)] grid overflow-hidden rounded bg-surface split:min-h-[88svh] split:grid-cols-2 split:grid-rows-[1fr_auto]"
+      className="section mx-3 grid overflow-hidden rounded bg-surface split:min-h-[88svh] split:grid-cols-2 split:grid-rows-[1fr_auto]"
     >
       <div className="order-2 flex flex-col gap-6 px-4 pt-8 pb-10 split:order-none split:col-start-1 split:row-start-1 split:px-10 split:py-12" data-reveal>
         <h2
           id="load-title"
           aria-live="polite"
-          className="max-w-[11ch] text-[11vw] leading-none tracking-[-0.03em] split:text-[clamp(36px,4.2vw,68px)]"
+          className="section-title max-w-[11ch]"
         >
           {current.clause}
         </h2>
@@ -170,7 +170,7 @@ export function LoadTheDeck() {
         </div>
         <ol className="m-0 mt-3.5 flex list-none gap-1 p-0 px-5 split:px-4">
           {STAGES.map((s, i) => (
-            <li key={s.users} className={`flex min-w-0 justify-end ${['flex-[1_1_0]', 'flex-[2_1_0]', 'flex-[4_1_0]', 'flex-[8_1_0]'][i]}`}>
+            <li key={s.users} className={`flex min-w-0 justify-end ${STAGE_SEGMENTS[i]?.flex ?? ''}`}>
               <button
                 type="button"
                 aria-pressed={i === stage}

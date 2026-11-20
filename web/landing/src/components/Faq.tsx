@@ -8,7 +8,7 @@ import { FAQ } from '../data.ts';
 export function Faq() {
   return (
     <section className="mx-auto mt-[clamp(96px,12vw,180px)] max-w-[980px] px-3" aria-labelledby="faq-title">
-      <h2 id="faq-title" className="mb-8 text-[10vw] split:mb-10 split:text-[clamp(36px,4.2vw,68px)]" data-reveal>
+      <h2 id="faq-title" className="section-title mb-8 split:mb-10" data-reveal>
         Before you ask
       </h2>
       <div className="grid">

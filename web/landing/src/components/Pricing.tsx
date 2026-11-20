@@ -24,7 +24,7 @@ export function Pricing() {
   return (
     <section className="mx-3 mt-[clamp(96px,12vw,180px)] scroll-mt-3" id="pricing" aria-labelledby="pricing-title">
       <div className="mb-8 split:mb-10 split:px-7">
-        <h2 id="pricing-title" className="text-[10vw] split:text-[clamp(36px,4.2vw,68px)]" data-reveal>
+        <h2 id="pricing-title" className="section-title" data-reveal>
           Priced by site
         </h2>
         <p className="mt-4 max-w-[52ch] text-muted" data-reveal data-i="1">

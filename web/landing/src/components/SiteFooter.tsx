@@ -18,7 +18,7 @@ const LINKS = [
 
 export function SiteFooter() {
   return (
-    <footer className="mt-[clamp(120px,14vw,200px)] px-3 pb-8">
+    <footer className="section px-3 pb-8">
       <p
         className="m-0 flex h-[max(22svh,160px)] items-end gap-1 [container-type:size] split:h-[max(34svh,220px)]"
         aria-label="Macro"

@@ -33,7 +33,7 @@ const TILE = {
 
 const STRIP = {
   low: 'rounded-b bg-surface-2 pointer-fine:hover:bg-bar pointer-fine:hover:text-white',
-  high: 'rounded-b bg-accent text-accent-ink pointer-fine:hover:bg-accent-hover',
+  high: 'rounded-b bg-accent text-accent-ink focus-visible:outline-accent-ink pointer-fine:hover:bg-accent-hover',
 } as const;
 
 export function FreePlans() {

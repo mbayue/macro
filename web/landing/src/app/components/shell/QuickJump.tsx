@@ -31,6 +31,7 @@ import { useShell } from './ShellContext.tsx';
 export function QuickJump() {
   const { state, actions, meta } = useShell();
   const navigatingRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (state.quickJumpOpen) {
@@ -60,10 +61,11 @@ export function QuickJump() {
       onOpenChange={actions.setQuickJumpOpen}
       title="Quick Jump"
       description="Jump to an app route, recent run, or workspace action."
+      initialFocus={inputRef}
       finalFocus={resolveFinalFocus}
     >
       <Command label="Quick Jump">
-        <CommandInput placeholder="Jump to a route, recent run, or action…" />
+        <CommandInput ref={inputRef} autoFocus placeholder="Jump to a route, recent run, or action…" />
         <CommandList>
           <CommandEmpty>No matching routes, runs, or actions.</CommandEmpty>
 

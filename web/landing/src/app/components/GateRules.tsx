@@ -18,12 +18,12 @@ function Rules({ targetOrigin }: { targetOrigin?: string | null | undefined }) {
   const target = targetOrigin ?? config.webOrigin;
   const isOwn = target !== config.webOrigin;
 
-  const bounds = [
-    { label: 'Target', value: target, mono: true },
+  const bounds: readonly { label: string; value: string; mono: boolean; breakAll?: boolean }[] = [
+    { label: 'Target', value: target, mono: true, breakAll: true },
     { label: 'Stages', value: '1 to 6, each with more users than the one before', mono: false },
     { label: 'Users per stage', value: '1 to 500', mono: true },
     { label: 'Stage length', value: '30 to 180\u00A0s, at most 600\u00A0s in total', mono: true },
-  ] as const;
+  ];
 
   return (
     <div className="flex flex-col gap-4">
@@ -34,7 +34,8 @@ function Rules({ targetOrigin }: { targetOrigin?: string | null | undefined }) {
             <dd
               className={cn(
                 'm-0 min-w-0 text-[0.8125rem] text-foreground',
-                row.mono && 'font-mono break-all tabular-nums',
+                row.mono && 'font-mono tabular-nums',
+                row.breakAll && 'break-all',
               )}
             >
               {row.value}

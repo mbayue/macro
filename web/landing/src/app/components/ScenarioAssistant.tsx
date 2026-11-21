@@ -58,9 +58,7 @@ export function ScenarioAssistant({ draft, routes, disabled, onApply }: Props) {
           {open ? 'Hide Scenario Assistant' : 'Scenario Assistant'}
         </Button>
         {!reply ? <HybridAvailabilityBadge availability={availability} /> : null}
-        <span className="text-xs text-muted-foreground">
-          Runs on-device (Gemini Nano) when supported; does not use server planning quota.
-        </span>
+        <span className="text-xs text-muted-foreground">Does not use server planning quota.</span>
       </div>
 
       {open ? (
@@ -146,6 +144,7 @@ export function ScenarioAssistant({ draft, routes, disabled, onApply }: Props) {
               <div className="flex flex-wrap items-center gap-2">
                 <Button
                   type="button"
+                  variant="secondary"
                   disabled={disabled || busy}
                   onClick={() => {
                     onApply(reply.text);

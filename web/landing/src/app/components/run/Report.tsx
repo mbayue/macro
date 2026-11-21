@@ -7,6 +7,15 @@ import { memo, useEffect, useRef, useState } from 'react';
 import { ChevronDownIcon, DownloadIcon, ExternalLinkIcon, GitCompareIcon, PlayIcon, PrinterIcon, XIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import type { CapacityReport, MetricsView, RouteRowView, StageView } from '../../../../../../src/report/build.ts';
@@ -379,6 +388,7 @@ export const RunsPanel = memo(function RunsPanel({ report }: { report: CapacityR
   const [listError, setListError] = useState<ApiError | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
   const [comparePair, setComparePair] = useState<{ a: string; b: string } | null>(null);
+  const [rerunConfirmOpen, setRerunConfirmOpen] = useState(false);
   const [rerunBusy, setRerunBusy] = useState(false);
   const [rerunError, setRerunError] = useState<ApiError | null>(null);
   const alive = useRef(true);
@@ -402,9 +412,8 @@ export const RunsPanel = memo(function RunsPanel({ report }: { report: CapacityR
 
   async function rerun() {
     if (rerunBusy) return;
+    setRerunConfirmOpen(false);
     setRerunError(null);
-    if (!window.confirm(`Run "${report.planName}" again against ${report.target}? This starts a new run of the same approved plan.`))
-      return;
     setRerunBusy(true);
     announce('Starting the run.');
     let result: Awaited<ReturnType<typeof postRun>>;
@@ -461,12 +470,31 @@ export const RunsPanel = memo(function RunsPanel({ report }: { report: CapacityR
           </p>
           <TurnstileBox boxRef={turnstile.box} />
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="button" variant="default" disabled={rerunBusy} onClick={() => void rerun()}>
+            <Button type="button" variant="default" disabled={rerunBusy} onClick={() => setRerunConfirmOpen(true)}>
               <PlayIcon data-icon="inline-start" />
               Run this plan again
             </Button>
             {rerunBusy ? <Busy>Starting the run…</Busy> : null}
           </div>
+          <Dialog open={rerunConfirmOpen} onOpenChange={setRerunConfirmOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Run this plan again?</DialogTitle>
+                <DialogDescription>
+                  Run &ldquo;{report.planName}&rdquo; again against{' '}
+                  <span className="font-mono text-foreground">{report.target}</span>? This starts a new run of the same
+                  approved plan.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <DialogClose render={<Button type="button" variant="secondary" />}>Cancel</DialogClose>
+                <Button type="button" variant="default" disabled={rerunBusy} onClick={() => void rerun()}>
+                  <PlayIcon data-icon="inline-start" />
+                  Start new run
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           <AlertRegion error={rerunError} />
         </div>
       ) : null}

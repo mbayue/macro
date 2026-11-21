@@ -74,8 +74,8 @@ flowchart LR
 | Capability | What It Does | Why On-Device Matters |
 | --- | --- | --- |
 | **Scenario Assistant** | Refines plain-English traffic descriptions (injecting realistic ramp-ups, peak spikes, and catalog mixes) before plan generation. | **Zero server quota & instant latency:** Developers iterate freely on traffic drafts right on their machine without consuming server planning limits or sending unapproved drafts over the wire. |
-| **Report Q&A** | Answers conversational questions about completed runs grounded strictly in measured metrics (`p95` latencies, breaking points, route errors). | **Strict grounding & privacy:** Uses the structured `CapacityReport` numbers directly in the browser to explain results without hallucinations. |
-| **Origin Transparency** | Displays `On-device (Nano)` vs `Cloud (Gemini)` badge on every completed generation. | Users can verify exactly where their prompt ran. |
+| **Report Q&A** | Answers conversational questions about completed runs grounded strictly in measured metrics (`p95` latencies, breaking points, route errors), with client-side Number Guard checks. | **Strict grounding & privacy:** Uses the structured `CapacityReport` numbers directly in the browser to explain results without hallucinations. |
+| **Origin Transparency** | Pre-flight availability badge (`On-device ready`, `Gemini Nano downloading`, `Cloud fallback`), completion badge (`On-device · Gemini Nano` vs `Cloud · Gemini`), and **Stop** stream control. | Users can see where their prompt will run before clicking and cancel streams mid-flight. |
 | **App Check Hardening** | Protects cloud inference fallbacks with `ReCaptchaEnterpriseProvider` and limited-use App Check tokens. | Defends the project backend from unauthorized abuse. |
 
 ### Running Gemini Nano Locally in Chrome
@@ -86,7 +86,7 @@ To run client-side inference on-device using Chrome's built-in Gemini Nano:
    - `chrome://flags/#prompt-api-for-gemini-nano` → **Enabled**
    - `chrome://flags/#optimization-guide-on-device-model` → **Enabled BypassPrefRequirement**
 2. In `chrome://components`, verify the **Optimization Guide On Device Model** component is downloaded and up to date.
-3. In Macro's **Test Studio**, open **Scenario Assistant** or **Report Q&A**: prompts execute directly on-device with real-time streaming, marked with the **`On-device (Nano)`** badge.
+3. In Macro's **Test Studio**, open **Scenario Assistant** or **Report Q&A**: prompts execute directly on-device with real-time streaming, marked with the **`On-device · Gemini Nano`** badge.
 
 ## Quickstart & Demo Walkthrough
 

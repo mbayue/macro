@@ -98,7 +98,7 @@ export const PLAN_ROWS: readonly { label: string; key: keyof Pick<Plan, 'sites' 
 export const FAQ: readonly { q: string; a: string }[] = [
   {
     q: 'Can Macro test my own site today?',
-    a: 'Yes. Sign in with Google, GitHub, or an email link, verify your HTTPS site with a DNS TXT record (or a /.well-known/macro-site-verification file), and Macro will auto-discover safe routes and run private load tests against it. The public demo shop still works signed out.',
+    a: 'Yes. Sign in with Google, GitHub, or an email link, verify your HTTPS site via Domain Connect, a DNS TXT record, or a /.well-known/macro-site-verification file, and Macro will auto-discover safe routes and run private load tests against it. The public demo shop still works signed out.',
   },
   {
     q: 'What stops someone using it as a DDoS tool?',

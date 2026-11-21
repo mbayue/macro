@@ -46,7 +46,7 @@ export interface GateSidebarProps {
 
 /**
  * Sticky right column (>= 1180px) stacking last below 1180px:
- * Policy Gate verdict & rules, Stage/VU preview, and spring-green Approve & Run gate with Turnstile.
+ * Policy Gate verdict, the spring-green Approve & Run gate with Turnstile, then the rules and the Stage/VU preview.
  */
 export function GateSidebar({
   review,
@@ -98,12 +98,7 @@ export function GateSidebar({
         </TelemetryPanel>
       ) : null}
 
-      <GateRules folded={review !== null || showVerify} targetOrigin={activeOrigin} />
-
-      {review?.plan && review.plan.stages.length > 0 ? (
-        <StagePreviewCard plan={review.plan} />
-      ) : null}
-
+      {/* The action comes straight after the verdict, so its button is on the first screen. */}
       {approvable && review?.plan && review.planText !== null ? (
         <ApprovePanel
           key={reviewSeq}
@@ -121,7 +116,15 @@ export function GateSidebar({
           alive={alive}
           checksDiffer={checksDiffer}
         />
-      ) : review === null && !showVerify ? (
+      ) : null}
+
+      <GateRules folded={review !== null || showVerify} targetOrigin={activeOrigin} />
+
+      {review?.plan && review.plan.stages.length > 0 ? (
+        <StagePreviewCard plan={review.plan} />
+      ) : null}
+
+      {review === null && !showVerify ? (
         <>
           {targetMode === 'demo' && sampleRunId ? (
             <TelemetryPanel ticks="bar" aria-labelledby="sample-report-heading">

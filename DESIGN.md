@@ -208,7 +208,7 @@ One corner language: `6px` (`rounded-md`) on buttons, panels, tiles, inputs, dia
 - **Sign in (`#/sign-in`) & Account (`#/account`):** Google / GitHub OAuth links, accessible magic-link email form (`aria-invalid`, `aria-describedby`, cooldown badge), two-column signed-in layout (**Session active** + **Delete account** `ConfirmButton` on the left; **Account & data** sticky sidebar on the right), and a shared **Sign out?** `Dialog` confirmation across all sign-out triggers.
 
 ## Buttons, Badges & Inputs
-- **Buttons (`40px` default height, `6px` radius):** Primary spring-green fill with evergreen ink (`scale(0.97)` active, disabled in `motion-reduce`); Quiet/Secondary (`surface-2` with `--bar-hover` border where needed); Outline (`bg-background` with `--bar` border); Danger (transparent with 1px `--bad` border). Focus ring: `3px` `--accent-text` outline with `3px` offset (`--primary-foreground` on spring green).
+- **Buttons (`40px` default height, `6px` radius):** Primary spring-green fill with evergreen ink (`scale(0.97)` active, disabled in `motion-reduce`); Quiet/Secondary (`surface-2` with `--bar-hover` border where needed); Outline (`bg-background` with `--bar` border); Danger (solid `--bad` fill with `--bg` ink). Focus ring: `3px` `--accent-text` outline with `3px` offset (`--primary-foreground` on spring green).
 - **Badges (`4px` radius, `0.75rem`/500):** `1px` border and text in tone colour (`ok`, `warn`, `destructive`, `outline`); `live` uses spring-green fill with evergreen text. Status words always accompany colour.
 - **Inputs:** Ground-coloured (`--bg`) field with `1px` `--bar` border and `6px` radius; focus uses `--accent-text` ring.
 

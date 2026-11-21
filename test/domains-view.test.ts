@@ -28,13 +28,16 @@ describe('Domains page (#/domains)', () => {
     expect(html).toContain('Sign in');
   });
 
-  test('renders VerifyPanel when signed in', () => {
+  test('renders VerifyPanel, how-it-works cards, and domain limits sidebar when signed in', () => {
     const html = renderDomains({
       user: { id: 'u1', email: 'dev@example.com', githubLogin: null },
       verifiedOrigin: null,
       pendingVerification: null,
     });
     expect(html).toContain('Verify your site');
+    expect(html).toContain('How own-site testing works');
+    expect(html).toContain('Domain rules &amp; limits');
+    expect(html).not.toMatch(/\sstyle=/i);
   });
 });
 

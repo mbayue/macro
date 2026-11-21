@@ -8,6 +8,7 @@ import { cn, reducedMotion } from '@/lib/utils';
 import { useApp } from '../../context.tsx';
 import { type ApiError, postApprove, VERIFICATION_ERROR } from '../../lib/api.ts';
 import { GateRules } from '../GateRules.tsx';
+import { fmtGrouped } from '../../lib/format.ts';
 import { formatQuotaReadout } from '../shell/shell-view.ts';
 import { StageProfile } from '../StageProfile.tsx';
 import { TurnstileBox, useTurnstile } from '../Turnstile.tsx';
@@ -21,7 +22,7 @@ import {
 } from './studio-view.ts';
 import { CornerTicks, TelemetryPanel } from './TelemetryFrame.tsx';
 
-const fmt = (n: number): string => n.toLocaleString('en-US');
+const fmt = fmtGrouped;
 
 export interface GateSidebarProps {
   review: PlanResponse | null;

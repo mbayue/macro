@@ -2,13 +2,12 @@ import type { MeResponse, PlanResponse } from '../../../../../../src/api-types.t
 import { journeyLabel, type JourneyRow } from '../../../../../../src/plan/journey-edit.ts';
 import type { TestPlan } from '../../../../../../src/types.ts';
 import { countCodePoints } from '../../lib/describe.ts';
+import { fmtGrouped as fmtCount } from '../../lib/format.ts';
 
 export type StudioBusy = 'planning' | 'approving' | null;
 export type TargetMode = 'demo' | 'own';
 
 const KIND_RANK = ['Page', 'Script', 'Stylesheet', 'Font', 'Image'] as const;
-
-const fmtCount = (n: number): string => n.toLocaleString('en-US');
 
 /** Returns true when a drafted plan parsed cleanly and passed every fixed Policy Gate rule. */
 export function isApprovable(res: PlanResponse): boolean {

@@ -6,8 +6,7 @@ import { ScenarioAssistant } from '../ScenarioAssistant.tsx';
 import { AlertRegion, Busy } from '../ui.tsx';
 import { type StudioBusy, trafficSubmitProblem } from './studio-view.ts';
 import { TelemetryPanel } from './TelemetryFrame.tsx';
-
-const fmt = (n: number): string => n.toLocaleString('en-US');
+import { fmtGrouped as fmt } from '../../lib/format.ts';
 
 export interface TrafficComposerProps {
   text: string;

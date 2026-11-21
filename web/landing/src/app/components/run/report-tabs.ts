@@ -7,7 +7,7 @@ import {
 } from '../../../../../../src/report/compare.ts';
 import { fmtCount, fmtMs, fmtPct } from '../../../../../../src/run/format.ts';
 import type { ContainmentType, RunStatus, SandboxRuntime, TestPlan } from '../../../../../../src/types.ts';
-import { fmtUtc } from '../../lib/format.ts';
+import { fmtGrouped, fmtUtc } from '../../lib/format.ts';
 import { AI_WITHHELD_NOTE } from '../../lib/report-view.ts';
 import {
   containmentLabel,
@@ -299,7 +299,7 @@ export function verdictLine(report: CapacityReport, routes: readonly { id: strin
   const th = report.thresholds;
   const measured = report.stages.filter((s) => s.overall !== null);
   if (measured.length === 0) return 'No stage produced metrics, so this run has no capacity answer.';
-  const fmtN = (n: number): string => n.toLocaleString('en-US');
+  const fmtN = fmtGrouped;
   const top = Math.max(...measured.map((s) => s.vus));
   const brkStage = brk === null ? undefined : measured.find((s) => s.vus === brk && s.verdict === 'fail');
 

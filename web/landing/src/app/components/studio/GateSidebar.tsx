@@ -46,7 +46,7 @@ export interface GateSidebarProps {
 
 /**
  * Sticky right column (>= 1180px) stacking last below 1180px:
- * Policy Gate verdict, the spring-green Approve & Run gate with Turnstile, then the rules. The plan's stages live in the Draft plan, not here.
+ * the spring-green Approve & Run gate with Turnstile, the Policy Gate verdict, then the rules. The plan's stages live in the Draft plan, not here.
  */
 export function GateSidebar({
   review,
@@ -76,6 +76,26 @@ export function GateSidebar({
       className="flex min-w-0 flex-col gap-4 min-[1180px]:sticky min-[1180px]:top-20"
       aria-label={approvable && review?.plan ? 'Approve & Run' : 'Policy Gate rules'}
     >
+      {/* The action comes first, so its button is on the first screen; the verdict follows it. */}
+      {approvable && review?.plan && review.planText !== null ? (
+        <ApprovePanel
+          key={reviewSeq}
+          plan={review.plan}
+          planText={review.planText}
+          targetMode={targetMode}
+          {...(targetMode === 'own' && verifiedOrigin !== null ? { targetOrigin: verifiedOrigin.origin } : {})}
+          draftId={review.draftId}
+          busy={busy}
+          setBusy={onBusyChange}
+          onCancel={onCancelPlan}
+          onStarted={onStarted}
+          onInView={onInViewChange}
+          startFromBar={startFromBar}
+          alive={alive}
+          checksDiffer={checksDiffer}
+        />
+      ) : null}
+
       {review !== null ? (
         <TelemetryPanel
           ticks={gateStatus.tone === 'bad' ? 'bad' : gateStatus.tone === 'ok' ? 'accent' : 'bar'}
@@ -96,26 +116,6 @@ export function GateSidebar({
             </p>
           ) : null}
         </TelemetryPanel>
-      ) : null}
-
-      {/* The action comes straight after the verdict, so its button is on the first screen. */}
-      {approvable && review?.plan && review.planText !== null ? (
-        <ApprovePanel
-          key={reviewSeq}
-          plan={review.plan}
-          planText={review.planText}
-          targetMode={targetMode}
-          {...(targetMode === 'own' && verifiedOrigin !== null ? { targetOrigin: verifiedOrigin.origin } : {})}
-          draftId={review.draftId}
-          busy={busy}
-          setBusy={onBusyChange}
-          onCancel={onCancelPlan}
-          onStarted={onStarted}
-          onInView={onInViewChange}
-          startFromBar={startFromBar}
-          alive={alive}
-          checksDiffer={checksDiffer}
-        />
       ) : null}
 
       <GateRules folded={review !== null || showVerify} targetOrigin={activeOrigin} />
@@ -347,14 +347,15 @@ function ApprovePanel({
           Approve & Run
         </Button>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-col gap-2.5">
           <ConfirmButton
             label="Cancel"
             confirmLabel="Discard plan"
             cancelLabel="Keep"
-            className={onSpringOutline}
-            confirmClassName={onSpringDanger}
-            cancelClassName={onSpringOutline}
+            className={cn(onSpringOutline, 'w-full')}
+            confirmClassName={cn(onSpringDanger, 'flex-1')}
+            cancelClassName={cn(onSpringOutline, 'flex-1')}
+            groupClassName="flex w-full"
             disabled={!idle}
             onConfirm={onCancel}
           />

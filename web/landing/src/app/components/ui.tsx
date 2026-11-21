@@ -222,6 +222,7 @@ export function ConfirmButton({
   className = buttonVariants({ variant: 'secondary' }),
   confirmClassName = buttonVariants({ variant: 'destructive' }),
   cancelClassName = buttonVariants({ variant: 'secondary' }),
+  groupClassName,
   onConfirm,
 }: {
   label: ReactNode;
@@ -231,6 +232,8 @@ export function ConfirmButton({
   className?: string;
   confirmClassName?: string;
   cancelClassName?: string;
+  /** Classes for the Cancel / confirm pair shown after the first click. */
+  groupClassName?: string;
   onConfirm: () => void;
 }) {
   const [armed, setArmed] = useState(false);
@@ -268,7 +271,7 @@ export function ConfirmButton({
 
   return (
     <span
-      className="inline-flex flex-wrap items-center gap-3"
+      className={cn('inline-flex flex-wrap items-center gap-3', groupClassName)}
       onKeyDown={(e) => {
         if (e.key === 'Escape') {
           e.preventDefault();

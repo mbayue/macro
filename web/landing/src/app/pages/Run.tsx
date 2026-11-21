@@ -263,7 +263,7 @@ export function RunPage({ id }: { id: string }) {
             <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
               <TabsList
                 aria-label="Capacity Report sections"
-                className="flex h-auto w-full flex-wrap justify-start gap-1 border border-border bg-surface p-1 sm:w-fit"
+                className="flex h-auto w-full flex-wrap justify-start gap-1 border border-border bg-surface p-1 group-data-horizontal/tabs:h-auto sm:w-fit"
               >
                 {RUN_TAB_ITEMS.map((tab) => {
                   const disabled = tab.id === 'ai' && !hasReport;

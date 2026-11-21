@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { useApp } from '../../context.tsx';
-import { parseErrorText } from '../../lib/format.ts';
+import { fmtGrouped, parseErrorText } from '../../lib/format.ts';
 import { ModelCalls } from '../ModelCalls.tsx';
 import { StageProfile } from '../StageProfile.tsx';
 import { TableWrap, ViolationsTable } from '../ui.tsx';
@@ -25,7 +25,7 @@ import {
 } from './studio-view.ts';
 import { TelemetryPanel } from './TelemetryFrame.tsx';
 
-const fmt = (n: number): string => n.toLocaleString('en-US');
+const fmt = fmtGrouped;
 
 /** The Traffic Description a plan was drafted from, folded once a draft exists. */
 export function PlanBrief({
@@ -559,11 +559,15 @@ function JourneyChecks({
         <p className="text-sm text-muted-foreground">Some pages were left off because a plan holds 32 routes.</p>
       ) : null}
 
+      {/* Always in the page, so the prompt to revise is announced when the checks change. */}
+      <p className="sr-only" aria-live="polite">
+        {differ ? 'Revise the plan to use these checks.' : ''}
+      </p>
       {differ ? (
         <div className="flex flex-col gap-3 pt-1">
           <Separator />
           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-            <p className="m-0 flex-1 text-sm text-foreground" aria-live="polite">
+            <p className="m-0 flex-1 text-sm text-foreground">
               Revise the plan to use these checks.
             </p>
             <Button

@@ -157,6 +157,33 @@ describe('Domain Connect Signer & URL Builder', () => {
       expect(settings?.urlSyncUX).toBe('https://dcc.godaddy.com/manage/dns/connect');
     });
 
+    test('fetchDomainConnectSettings handles host with path prefix and providerDisplayName (Cloudflare)', async () => {
+      const mockFetch: FetchFn = async (input) => {
+        const url = String(input);
+        expect(url).toBe('https://api.cloudflare.com/client/v4/dns/domainconnect/v2/yueshop.xyz/settings');
+        return new Response(
+          JSON.stringify({
+            providerId: 'cloudflare.com',
+            providerName: 'cloudflare',
+            providerDisplayName: 'Cloudflare',
+            urlSyncUX: 'https://dash.cloudflare.com/domainconnect',
+            urlAPI: 'https://api.cloudflare.com/client/v4/dns/domainconnect',
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        );
+      };
+
+      const settings = await fetchDomainConnectSettings(
+        'api.cloudflare.com/client/v4/dns/domainconnect',
+        'yueshop.xyz',
+        mockFetch,
+      );
+      expect(settings).not.toBeNull();
+      expect(settings?.providerId).toBe('cloudflare.com');
+      expect(settings?.providerName).toBe('Cloudflare');
+      expect(settings?.urlSyncUX).toBe('https://dash.cloudflare.com/domainconnect');
+    });
+
     test('fetchDomainConnectSettings returns null on non-200 or invalid payload', async () => {
       const mockFetch404: FetchFn = async () => new Response('Not Found', { status: 404 });
       const res = await fetchDomainConnectSettings('api.example.com', 'example.com', mockFetch404);

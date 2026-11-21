@@ -10,11 +10,18 @@ const DNS_HOSTNAME_RE =
   /^[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?(?:\.[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?)+$/i;
 
 /**
- * Validate that a DNS-derived Domain Connect API host is a public multi-label
- * DNS hostname (no ports, userinfo, paths, IP literals, or internal suffixes).
+ * Validate that a DNS-derived Domain Connect API host or host/path prefix is a public multi-label
+ * DNS hostname (no ports, userinfo, IP literals, or internal suffixes) with an optional safe path prefix.
+ * Domain Connect specification allows _domainconnect TXT records to contain a path prefix
+ * (e.g. api.cloudflare.com/client/v4/dns/domainconnect).
  */
 export function isSafeDomainConnectHost(raw: string): boolean {
-  const host = raw.trim().replace(/\.+$/, '').toLowerCase();
+  const trimmed = raw.trim().replace(/[./]+$/, '');
+  if (trimmed.length === 0 || trimmed.length > 512) return false;
+  const slashIdx = trimmed.indexOf('/');
+  const host = (slashIdx === -1 ? trimmed : trimmed.slice(0, slashIdx)).toLowerCase();
+  const path = slashIdx === -1 ? '' : trimmed.slice(slashIdx);
+
   if (host.length === 0 || host.length > 253) return false;
   if (isIP(host) !== 0) return false;
   if (!DNS_HOSTNAME_RE.test(host)) return false;
@@ -27,6 +34,12 @@ export function isSafeDomainConnectHost(raw: string): boolean {
   ) {
     return false;
   }
+
+  if (path !== '') {
+    if (!/^\/[a-zA-Z0-9_./-]+$/.test(path)) return false;
+    if (path.includes('..') || path.includes('//')) return false;
+  }
+
   return true;
 }
 
@@ -183,13 +196,18 @@ export async function fetchDomainConnectSettings(
   fetchFn?: FetchFn,
   lookupFn?: LookupAllFn,
 ): Promise<DomainConnectSettings | null> {
-  const host = apiHost.trim().replace(/[./]+$/, '');
-  if (!isSafeDomainConnectHost(host)) return null;
+  const trimmed = apiHost.trim().replace(/[./]+$/, '');
+  if (!isSafeDomainConnectHost(trimmed)) return null;
+
+  const slashIdx = trimmed.indexOf('/');
+  const host = slashIdx === -1 ? trimmed : trimmed.slice(0, slashIdx);
+  const pathPrefix = slashIdx === -1 ? '' : trimmed.slice(slashIdx);
+
   if (fetchFn === undefined || fetchFn === fetch || lookupFn !== undefined) {
     if (!(await isPublicHost(host, lookupFn))) return null;
   }
   const customFetch = fetchFn ?? fetch;
-  const url = `https://${host}/v2/${encodeURIComponent(apexDomain)}/settings`;
+  const url = `https://${host}${pathPrefix}/v2/${encodeURIComponent(apexDomain)}/settings`;
 
   try {
     const res = await customFetch(url, {
@@ -203,14 +221,21 @@ export async function fetchDomainConnectSettings(
     if (!res.ok) return null;
 
     const body = (await res.json()) as Record<string, unknown>;
+    const providerName =
+      typeof body.providerDisplayName === 'string'
+        ? body.providerDisplayName
+        : typeof body.providerName === 'string'
+          ? body.providerName
+          : undefined;
+
     if (
       typeof body.urlSyncUX === 'string' &&
       typeof body.providerId === 'string' &&
-      typeof body.providerName === 'string'
+      providerName !== undefined
     ) {
       return {
         providerId: body.providerId,
-        providerName: body.providerName,
+        providerName,
         urlSyncUX: body.urlSyncUX,
         urlAPI: typeof body.urlAPI === 'string' ? body.urlAPI : undefined,
       };

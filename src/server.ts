@@ -2020,7 +2020,7 @@ export function createApp(deps: AppDeps): App {
         ? {
             fetchFn: deps.fetchImpl as typeof fetch | undefined,
             verifyToken: token,
-            redirectUri: config.auth ? `${config.auth.publicBaseUrl}/app/#/verify?domainConnect=done` : undefined,
+            redirectUri: config.auth ? `${config.auth.publicBaseUrl}/app/#/domains?domainConnect=done` : undefined,
             privateKeyPem: config.domainConnect?.privateKey,
             keyId: config.domainConnect?.keyId,
           }
@@ -2060,7 +2060,7 @@ export function createApp(deps: AppDeps): App {
         ? {
             fetchFn: deps.fetchImpl as typeof fetch | undefined,
             verifyToken: pending.token,
-            redirectUri: config.auth ? `${config.auth.publicBaseUrl}/app/#/verify?domainConnect=done` : undefined,
+            redirectUri: config.auth ? `${config.auth.publicBaseUrl}/app/#/domains?domainConnect=done` : undefined,
             privateKeyPem: config.domainConnect?.privateKey,
             keyId: config.domainConnect?.keyId,
           }

@@ -5,7 +5,6 @@ import type { PlanResponse } from '../src/api-types.ts';
 import type { TestPlan } from '../src/types.ts';
 import {
   isApprovable,
-  isVerifyPanelHash,
   kindGroups,
   kindHeading,
   pathFace,
@@ -228,33 +227,19 @@ describe('resolveGateStatus', () => {
   });
 });
 
-describe('isVerifyPanelHash and resolveTargetState', () => {
-  test('isVerifyPanelHash matches #/verify-panel regardless of trailing slash or query string', () => {
-    expect(isVerifyPanelHash('#/verify-panel')).toBe(true);
-    expect(isVerifyPanelHash('#/verify-panel/')).toBe(true);
-    expect(isVerifyPanelHash('#/verify-panel?domainConnect=done')).toBe(true);
-    expect(isVerifyPanelHash('#/verify')).toBe(true);
-    expect(isVerifyPanelHash('#/verify/')).toBe(true);
-    expect(isVerifyPanelHash('#/verify?domainConnect=done')).toBe(true);
-    expect(isVerifyPanelHash('#/')).toBe(false);
-    expect(isVerifyPanelHash('')).toBe(false);
-    expect(isVerifyPanelHash('#/runs')).toBe(false);
-  });
-
-  test('resolveTargetState derives active origin, verification requirement, and panel visibility', () => {
+describe('resolveTargetState', () => {
+  test('derives active origin, verification requirement, and pending host', () => {
     expect(
       resolveTargetState({
         targetMode: 'demo',
         me: null,
         webOrigin: 'https://yue.macro.my.id',
-        openedVerify: false,
       }),
     ).toEqual({
       verifiedOrigin: null,
       ownNeedsVerify: false,
       activeOrigin: 'https://yue.macro.my.id',
       pendingHost: null,
-      showVerify: false,
     });
 
     expect(
@@ -266,14 +251,12 @@ describe('isVerifyPanelHash and resolveTargetState', () => {
           pendingVerification: { origin: 'https://shop.example.com', host: 'shop.example.com' },
         },
         webOrigin: 'https://yue.macro.my.id',
-        openedVerify: false,
       }),
     ).toEqual({
       verifiedOrigin: null,
       ownNeedsVerify: true,
       activeOrigin: 'https://yue.macro.my.id',
       pendingHost: 'shop.example.com',
-      showVerify: true,
     });
 
     expect(
@@ -285,14 +268,12 @@ describe('isVerifyPanelHash and resolveTargetState', () => {
           pendingVerification: null,
         },
         webOrigin: 'https://yue.macro.my.id',
-        openedVerify: false,
       }),
     ).toEqual({
       verifiedOrigin: { origin: 'https://shop.example.com', host: 'shop.example.com' },
       ownNeedsVerify: false,
       activeOrigin: 'https://shop.example.com',
       pendingHost: null,
-      showVerify: false,
     });
   });
 });
@@ -366,31 +347,32 @@ describe('TargetPicker verified own site', () => {
         pendingVerification: null,
       },
       verifiedOrigin: { origin: 'https://shop.example.com', host: 'shop.example.com' },
-      showVerify: false,
       disabled: false,
-      clearing: false,
-      clearError: null,
       onChooseTarget: () => {},
-      onClearVerifiedOrigin: () => {},
       ...overrides,
     };
     return renderToStaticMarkup(createElement(TargetPicker, props));
   }
 
-  test('names the clear action for what it does instead of "Change"', () => {
+  test('links to #/domains via Manage domain when verified and never renders inline VerifyPanel', () => {
     const html = render({});
-    expect(html).toContain('>Use another site<');
-    expect(html).not.toContain('>Change<');
+    expect(html).toContain('href="#/domains"');
+    expect(html).toContain('Manage domain');
+    expect(html).not.toContain('id="verify-panel"');
   });
 
-  test('shows a busy line while the verified site is being removed', () => {
-    const html = render({ clearing: true });
-    expect(html).toContain('Removing the verified site…');
-    expect(html).not.toContain('>Use another site<');
-  });
-
-  test('shows a failed removal in an alert region', () => {
-    const html = render({ clearError: { code: 'internal', message: 'Something went wrong on our side.' } });
-    expect(html).toMatch(/role="alert"[^>]*>.*Something went wrong on our side\./);
+  test('links to #/domains when unverified without inline VerifyPanel or spring-green primary fill', () => {
+    const html = render({
+      me: {
+        user: { id: 'u_1', email: 'dev@example.com', githubLogin: null },
+        verifiedOrigin: null,
+        pendingVerification: null,
+      },
+      verifiedOrigin: null,
+    });
+    expect(html).toContain('href="#/domains"');
+    expect(html).toContain('Verify a domain');
+    expect(html).not.toContain('id="verify-panel"');
+    expect(html).not.toContain('bg-primary');
   });
 });

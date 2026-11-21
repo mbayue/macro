@@ -1,6 +1,7 @@
 import type { MouseEvent } from 'react';
 import {
   AlertCircleIcon,
+  GlobeIcon,
   InfoIcon,
   LogOutIcon,
   MenuIcon,
@@ -46,6 +47,7 @@ function useNavItems(): NavItem[] {
     { id: 'new', label: 'Test Studio', href: '#/', icon: SlidersHorizontalIcon },
     { id: 'runs', label: 'Runs Table', href: '#/runs', icon: TablePropertiesIcon },
     { id: 'probe', label: 'Containment Probe', href: '#/probe', icon: ShieldCheckIcon },
+    { id: 'domains', label: 'Domains', href: '#/domains', icon: GlobeIcon },
     { id: 'account', label: 'Account', href: state.me !== null ? '#/account' : '#/sign-in', icon: UserIcon },
   ];
 }
@@ -368,7 +370,7 @@ export function MobileTopBar() {
                 <p className="truncate font-mono text-xs text-foreground">{state.target.host ?? 'Demo Target'}</p>
                 {state.target.pendingHost !== null ? (
                   <a
-                    href="#/verify-panel"
+                    href="#/domains"
                     onClick={() => actions.setMobileOpen(false)}
                     className="inline-flex items-center gap-1.5 text-xs font-medium text-warn underline underline-offset-4 focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-ring"
                   >

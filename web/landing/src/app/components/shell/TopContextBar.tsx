@@ -49,7 +49,7 @@ export function TopContextBar() {
             </Badge>
             {state.target.pendingHost !== null ? (
               <a
-                href="#/verify-panel"
+                href="#/domains"
                 className="inline-flex min-w-0 items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs font-medium text-warn underline underline-offset-4 hover:opacity-85 focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-ring"
               >
                 <AlertCircleIcon className="size-3.5 shrink-0" aria-hidden="true" />
@@ -172,7 +172,7 @@ export function TopContextBar() {
                     Runs Table
                   </DropdownMenuLinkItem>
                   {state.target.pendingHost !== null ? (
-                    <DropdownMenuLinkItem href="#/verify-panel">
+                    <DropdownMenuLinkItem href="#/domains">
                       <AlertCircleIcon />
                       Finish verifying {state.target.pendingHost}
                     </DropdownMenuLinkItem>

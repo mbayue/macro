@@ -159,7 +159,7 @@ export function mapBrowserRunsToQuickJump(
   }));
 }
 
-export type NavRouteId = 'new' | 'runs' | 'probe' | 'account';
+export type NavRouteId = 'new' | 'runs' | 'probe' | 'domains' | 'account';
 
 /** Returns whether a primary workspace navigation item matches the active route. */
 export function isNavRouteActive(navId: NavRouteId, route: Route): boolean {
@@ -170,6 +170,8 @@ export function isNavRouteActive(navId: NavRouteId, route: Route): boolean {
       return route.view === 'runs';
     case 'probe':
       return route.view === 'probe-start' || route.view === 'probe';
+    case 'domains':
+      return route.view === 'domains';
     case 'account':
       return route.view === 'account' || route.view === 'sign-in';
   }

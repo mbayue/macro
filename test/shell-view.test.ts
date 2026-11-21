@@ -285,6 +285,8 @@ describe('shell navigation and identity helpers', () => {
     expect(isNavRouteActive('runs', { view: 'run', id: 'r1', tab: 'overview' })).toBe(false);
     expect(isNavRouteActive('probe', { view: 'probe-start' })).toBe(true);
     expect(isNavRouteActive('probe', { view: 'probe', id: 'p1' })).toBe(true);
+    expect(isNavRouteActive('domains', { view: 'domains' })).toBe(true);
+    expect(isNavRouteActive('domains', { view: 'new' })).toBe(false);
     expect(isNavRouteActive('account', { view: 'account' })).toBe(true);
     expect(isNavRouteActive('account', { view: 'sign-in' })).toBe(true);
     expect(isNavRouteActive('account', { view: 'notfound' })).toBe(false);

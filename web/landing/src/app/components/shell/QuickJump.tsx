@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import {
   ActivityIcon,
   AlertCircleIcon,
+  GlobeIcon,
   LogInIcon,
   LogOutIcon,
   MoonIcon,
@@ -92,6 +93,14 @@ export function QuickJump() {
               <span>Containment Probe</span>
             </CommandItem>
             <CommandItem
+              value="route:domains"
+              keywords={['domains', 'verify', 'dns', 'origin']}
+              onSelect={() => selectRoute('/domains')}
+            >
+              <GlobeIcon />
+              <span>Domains</span>
+            </CommandItem>
+            <CommandItem
               value="route:account"
               keywords={['account', 'profile', 'sign-in', 'auth']}
               onSelect={() => selectRoute(state.me !== null ? '/account' : '/sign-in')}
@@ -103,7 +112,7 @@ export function QuickJump() {
               <CommandItem
                 value={`route:verify:${state.target.pendingHost}`}
                 keywords={['verify', 'domain', 'origin', state.target.pendingHost]}
-                onSelect={() => selectRoute('/verify-panel')}
+                onSelect={() => selectRoute('/domains')}
               >
                 <AlertCircleIcon />
                 <span className="truncate">Finish verifying {state.target.pendingHost}</span>

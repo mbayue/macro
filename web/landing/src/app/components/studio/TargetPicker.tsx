@@ -1,11 +1,8 @@
-import { ArrowDownIcon, GlobeIcon, StoreIcon } from 'lucide-react';
+import { ArrowRightIcon, GlobeIcon, StoreIcon } from 'lucide-react';
 import type { MeResponse } from '../../../../../../src/api-types.ts';
-import type { ApiError } from '../../lib/api.ts';
 import { Badge } from '@/components/ui/badge';
-import { Button, buttonVariants } from '@/components/ui/button';
-import { cn, reducedMotion } from '@/lib/utils';
-import { AlertRegion, Busy, ConfirmButton } from '../ui.tsx';
-import { VerifyPanel } from '../VerifyPanel.tsx';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import type { TargetMode } from './studio-view.ts';
 import { TelemetryPanel } from './TelemetryFrame.tsx';
 
@@ -14,33 +11,20 @@ export interface TargetPickerProps {
   webOrigin: string;
   me: MeResponse | null;
   verifiedOrigin: { origin: string; host: string } | null;
-  showVerify: boolean;
   disabled: boolean;
-  /** True while the verified site is being removed. */
-  clearing: boolean;
-  clearError: ApiError | null;
   onChooseTarget: (mode: TargetMode) => void;
-  onClearVerifiedOrigin: () => void;
 }
 
-/** Target environment selector (`Demo Target` vs `Own Site`) with inline domain verification when needed. */
+/** Target environment selector (`Demo Target` vs `Own Site`) linking to `#/domains` for verification management. */
 export function TargetPicker({
   targetMode,
   webOrigin,
   me,
   verifiedOrigin,
-  showVerify,
   disabled,
-  clearing,
-  clearError,
   onChooseTarget,
-  onClearVerifiedOrigin,
 }: TargetPickerProps) {
-  const scrollToVerify = () => {
-    const panel = document.getElementById('verify-panel');
-    panel?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' });
-    panel?.querySelector<HTMLInputElement>('input[name="host"]')?.focus();
-  };
+  const pendingHost = me?.pendingVerification?.host ?? null;
 
   return (
     <TelemetryPanel ticks="bar" aria-labelledby="target-heading">
@@ -110,20 +94,10 @@ export function TargetPicker({
           <>
             <span className="font-mono text-foreground break-all">{verifiedOrigin.origin}</span>
             <Badge variant="ok">Verified</Badge>
-            {clearing ? (
-              <Busy>Removing the verified site…</Busy>
-            ) : (
-              <ConfirmButton
-                label="Use another site"
-                confirmLabel="Remove verified site"
-                cancelLabel="Keep"
-                className={buttonVariants({ variant: 'secondary', size: 'sm' })}
-                confirmClassName={buttonVariants({ variant: 'destructive', size: 'sm' })}
-                cancelClassName={buttonVariants({ variant: 'secondary', size: 'sm' })}
-                disabled={disabled}
-                onConfirm={onClearVerifiedOrigin}
-              />
-            )}
+            <Button render={<a href="#/domains" />} nativeButton={false} variant="secondary" size="sm">
+              Manage domain
+              <ArrowRightIcon data-icon="inline-end" />
+            </Button>
           </>
         ) : me === null ? (
           <span className="text-muted-foreground">
@@ -134,28 +108,28 @@ export function TargetPicker({
           </span>
         ) : (
           <>
-            <Badge variant="warn">Verification required</Badge>
-            <span className="text-bad">Domain verification required before drafting.</span>
-            <Button type="button" variant="link" size="xs" onClick={scrollToVerify}>
-              See verification panel
-              <ArrowDownIcon data-icon="inline-end" />
+            <Badge variant="warn">{pendingHost ? 'Verification pending' : 'Verification required'}</Badge>
+            <span className={pendingHost ? 'text-muted-foreground' : 'text-bad'}>
+              {pendingHost ? (
+                <>
+                  Finish verifying <span className="font-mono text-foreground">{pendingHost}</span>.
+                </>
+              ) : (
+                'Domain verification required before drafting.'
+              )}
+            </span>
+            <Button render={<a href="#/domains" />} nativeButton={false} variant="secondary" size="sm">
+              {pendingHost ? 'Continue verification' : 'Verify a domain'}
+              <ArrowRightIcon data-icon="inline-end" />
             </Button>
           </>
         )}
       </div>
 
-      <AlertRegion error={clearError} className={cn(!clearError && 'sr-only')} />
-
       {targetMode === 'own' ? (
         <p className="text-xs leading-relaxed text-muted-foreground">
           Macro reads <span className="font-mono text-foreground">/</span> on your site, then the scripts that page links, and uses those files as the journey. It does not run the page.
         </p>
-      ) : null}
-
-      {showVerify ? (
-        <div id="verify-panel" className="scroll-mt-20 pt-1">
-          <VerifyPanel initialHost="" />
-        </div>
       ) : null}
     </TelemetryPanel>
   );

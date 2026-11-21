@@ -37,16 +37,22 @@ async function loadMemoryRoute(entry: string): Promise<{
 }
 
 describe('parseRoute & URL helpers', () => {
-  test('parses empty, root, and verify-panel hashes as new test view', () => {
+  test('parses empty and root hashes as new test view', () => {
     expect(parseRoute('')).toEqual({ view: 'new' });
     expect(parseRoute('#')).toEqual({ view: 'new' });
     expect(parseRoute('#/')).toEqual({ view: 'new' });
-    expect(parseRoute('#/verify-panel')).toEqual({ view: 'new' });
-    expect(parseRoute('#/verify-panel/')).toEqual({ view: 'new' });
-    expect(parseRoute('#/verify-panel?step=1')).toEqual({ view: 'new' });
-    expect(parseRoute('#/verify')).toEqual({ view: 'new' });
-    expect(parseRoute('#/verify/')).toEqual({ view: 'new' });
-    expect(parseRoute('#/verify?domainConnect=done')).toEqual({ view: 'new' });
+  });
+
+  test('parses domains, verify, and verify-panel hashes as domains view', () => {
+    expect(parseRoute('#/domains')).toEqual({ view: 'domains' });
+    expect(parseRoute('#/domains/')).toEqual({ view: 'domains' });
+    expect(parseRoute('#/domains?domainConnect=done')).toEqual({ view: 'domains' });
+    expect(parseRoute('#/verify-panel')).toEqual({ view: 'domains' });
+    expect(parseRoute('#/verify-panel/')).toEqual({ view: 'domains' });
+    expect(parseRoute('#/verify-panel?step=1')).toEqual({ view: 'domains' });
+    expect(parseRoute('#/verify')).toEqual({ view: 'domains' });
+    expect(parseRoute('#/verify/')).toEqual({ view: 'domains' });
+    expect(parseRoute('#/verify?domainConnect=done')).toEqual({ view: 'domains' });
   });
 
   test('parses static app routes and preserves sign-in query params', () => {
@@ -162,12 +168,16 @@ describe('TanStack Router integration (memory history)', () => {
     expect(root.route).toEqual({ view: 'new' });
     expect(root.pathname).toBe('/');
 
+    const domains = await loadMemoryRoute('/domains');
+    expect(domains.route).toEqual({ view: 'domains' });
+    expect(domains.pathname).toBe('/domains');
+
     const verify = await loadMemoryRoute('/verify-panel');
-    expect(verify.route).toEqual({ view: 'new' });
+    expect(verify.route).toEqual({ view: 'domains' });
     expect(verify.pathname).toBe('/verify-panel');
 
     const verifyAlias = await loadMemoryRoute('/verify');
-    expect(verifyAlias.route).toEqual({ view: 'new' });
+    expect(verifyAlias.route).toEqual({ view: 'domains' });
     expect(verifyAlias.pathname).toBe('/verify');
 
     const runs = await loadMemoryRoute('/runs');

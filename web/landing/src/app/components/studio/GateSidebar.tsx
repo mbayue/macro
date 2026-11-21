@@ -29,7 +29,6 @@ export interface GateSidebarProps {
   activeOrigin: string;
   targetMode: TargetMode;
   verifiedOrigin: { origin: string; host: string } | null;
-  showVerify: boolean;
   quota: QuotaResponse | null;
   demoTrends: DemoTrendsResponse | null;
   sampleRunId: string | null | undefined;
@@ -53,7 +52,6 @@ export function GateSidebar({
   activeOrigin,
   targetMode,
   verifiedOrigin,
-  showVerify,
   quota,
   demoTrends,
   sampleRunId,
@@ -118,9 +116,9 @@ export function GateSidebar({
         </TelemetryPanel>
       ) : null}
 
-      <GateRules folded={review !== null || showVerify} targetOrigin={activeOrigin} />
+      <GateRules folded={review !== null} targetOrigin={activeOrigin} />
 
-      {review === null && !showVerify ? (
+      {review === null ? (
         <>
           {targetMode === 'demo' && sampleRunId ? (
             <TelemetryPanel ticks="bar" aria-labelledby="sample-report-heading">

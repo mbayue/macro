@@ -11,7 +11,6 @@ import {
   getDraft,
   loadReviewState,
   loadSignedOutDraft,
-  postVerifyClear,
   putDraft,
   stashLocalDraft,
   stashReviewState,
@@ -21,9 +20,8 @@ import {
 import { type ApiError, type ApiResult, getDemoTrends, getQuota, postPlan, VERIFICATION_ERROR } from '../lib/api.ts';
 import { NextUp } from '../components/NextUp.tsx';
 import { TurnstileBox, useTurnstile } from '../components/Turnstile.tsx';
-import { VerifyPanel } from '../components/VerifyPanel.tsx';
 import { Badge } from '@/components/ui/badge';
-import { cn, reducedMotion } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { useOptionalShell } from '../components/shell/ShellContext.tsx';
 import { useApp } from '../context.tsx';
 import { ApproveBar, GateSidebar } from '../components/studio/GateSidebar.tsx';
@@ -32,7 +30,6 @@ import { TargetPicker } from '../components/studio/TargetPicker.tsx';
 import { TrafficComposer } from '../components/studio/TrafficComposer.tsx';
 import {
   isApprovable,
-  isVerifyPanelHash,
   resolveTargetState,
   type StudioBusy,
   type TargetMode,
@@ -40,7 +37,7 @@ import {
 } from '../components/studio/studio-view.ts';
 
 export function NewTest() {
-  const { config, me, refreshMe, navigate, announce } = useApp();
+  const { config, me, navigate, announce } = useApp();
   const shell = useOptionalShell();
   const setTargetModeOverride = shell?.actions.setTargetModeOverride;
   const min = config.trafficEventMin;
@@ -66,8 +63,6 @@ export function NewTest() {
   const [demoTrends, setDemoTrends] = useState<DemoTrendsResponse | null>(null);
   const [quota, setQuota] = useState<QuotaResponse | null>(null);
   const [checksDiffer, setChecksDiffer] = useState(false);
-  const [clearingOrigin, setClearingOrigin] = useState(false);
-  const [clearError, setClearError] = useState<ApiError | null>(null);
 
   useEffect(() => () => void (alive.current = false), []);
 
@@ -122,12 +117,10 @@ export function NewTest() {
   const showRetry = planError?.code === 'planning_failed' && !changedSinceDraft;
   const approvable = review !== null && isApprovable(review);
   const showComposer = review === null || editing;
-  const openedVerify = isVerifyPanelHash(window.location.hash);
-  const { verifiedOrigin, ownNeedsVerify, activeOrigin, pendingHost, showVerify } = resolveTargetState({
+  const { verifiedOrigin, ownNeedsVerify, activeOrigin } = resolveTargetState({
     targetMode,
     me,
     webOrigin: config.webOrigin,
-    openedVerify,
   });
 
   function currentDraft(): AccountDraft {
@@ -176,13 +169,6 @@ export function NewTest() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me]);
 
-  useEffect(() => {
-    if (!openedVerify) return;
-    setTargetMode('own');
-    const panel = document.getElementById('verify-panel');
-    panel?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' });
-  }, [openedVerify, pendingHost, showVerify]);
-
   function chooseTarget(mode: TargetMode) {
     if (!idle) return;
     if (mode === 'own' && me === null) {
@@ -194,24 +180,6 @@ export function NewTest() {
     setTargetMode(mode);
     setLastEditedAt(Date.now());
     setPlanError(null);
-  }
-
-  async function clearVerifiedOrigin() {
-    if (!idle || clearingOrigin || me === null) return;
-    setClearingOrigin(true);
-    setClearError(null);
-    const res = await postVerifyClear();
-    if (!alive.current) return;
-    if (!res.ok) {
-      setClearingOrigin(false);
-      setClearError(res.error);
-      announce(res.error.message);
-      return;
-    }
-    await refreshMe();
-    if (!alive.current) return;
-    setClearingOrigin(false);
-    announce('Verified site removed.');
   }
 
   async function startPlanning(value: string, routeIds?: string[]) {
@@ -327,12 +295,8 @@ export function NewTest() {
                 webOrigin={config.webOrigin}
                 me={me}
                 verifiedOrigin={verifiedOrigin}
-                showVerify={showVerify}
-                disabled={!idle || clearingOrigin}
-                clearing={clearingOrigin}
-                clearError={clearError}
+                disabled={!idle}
                 onChooseTarget={chooseTarget}
-                onClearVerifiedOrigin={() => void clearVerifiedOrigin()}
               />
               <TrafficComposer
                 text={text}
@@ -368,15 +332,7 @@ export function NewTest() {
               />
             </>
           ) : (
-            <>
-              <PlanBrief text={lastSubmitted ?? text} origin={activeOrigin} disabled={!idle} onEdit={editDescription} />
-              {/* Keep VerifyPanel reachable after drafting if the user opened #/verify-panel directly. */}
-              {openedVerify ? (
-                <div id="verify-panel" className="scroll-mt-20">
-                  <VerifyPanel initialHost="" />
-                </div>
-              ) : null}
-            </>
+            <PlanBrief text={lastSubmitted ?? text} origin={activeOrigin} disabled={!idle} onEdit={editDescription} />
           )}
 
           {/* Outside the form: the form folds away after a draft, and the widget must not lose its container. */}
@@ -402,7 +358,6 @@ export function NewTest() {
           activeOrigin={activeOrigin}
           targetMode={targetMode}
           verifiedOrigin={verifiedOrigin}
-          showVerify={showVerify}
           quota={quota}
           demoTrends={demoTrends}
           sampleRunId={config.sampleRunId}

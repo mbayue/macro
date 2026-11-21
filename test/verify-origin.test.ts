@@ -552,6 +552,9 @@ describe('pending verification restore', () => {
     expect(startBody.domainConnectUrl).toContain('https://dcc.godaddy.com/manage');
     expect(startBody.domainConnectUrl).toContain('domain=example.com');
     expect(startBody.domainConnectUrl).toContain('host=shop');
+    expect(startBody.domainConnectUrl).toContain(
+      `redirect_uri=${encodeURIComponent('https://macro.test/app/#/domains?domainConnect=done')}`,
+    );
 
     const pending = await app.fetch(
       new Request('http://macro.test/api/verify/pending', { headers: { cookie } }),

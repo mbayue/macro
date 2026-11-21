@@ -99,6 +99,37 @@ function VerifyHostForm({
   );
 }
 
+/** Removes `domainConnect=done` from a location hash while preserving any sibling query parameters. */
+export function stripDomainConnectParam(hash: string): string {
+  const qIdx = hash.indexOf('?');
+  if (qIdx === -1) return hash;
+  const base = hash.slice(0, qIdx);
+  const params = new URLSearchParams(hash.slice(qIdx + 1));
+  if (!params.has('domainConnect')) return hash;
+  params.delete('domainConnect');
+  const rest = params.toString();
+  return rest === '' ? base : `${base}?${rest}`;
+}
+
+/** Decides whether returning from Domain Connect should trigger `onCheck`, wait for hydration, or ignore. */
+export function shouldAutoCheckDomainConnect({
+  hash,
+  hasPending,
+  alreadyVerified,
+}: {
+  hash: string;
+  hasPending: boolean;
+  alreadyVerified: boolean;
+}): 'wait' | 'check' | 'ignore' {
+  const qIdx = hash.indexOf('?');
+  if (qIdx === -1) return 'ignore';
+  const params = new URLSearchParams(hash.slice(qIdx + 1));
+  if (params.get('domainConnect') !== 'done') return 'ignore';
+  if (hasPending) return 'check';
+  if (alreadyVerified) return 'ignore';
+  return 'wait';
+}
+
 export function VerifyPanel({
   initialHost = '',
   onVerified,
@@ -119,15 +150,28 @@ export function VerifyPanel({
   const verifyHelpId = useId();
   const verifyErrorId = useId();
 
+  const verified = me?.verifiedOrigin ?? null;
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const hash = window.location.hash;
-    if (hash.includes('domainConnect=done')) {
-      const cleanHash = hash.replace(/[?&]domainConnect=done/, '');
-      window.history.replaceState(null, '', window.location.pathname + cleanHash);
+    const cleanHash = stripDomainConnectParam(hash);
+    if (cleanHash === hash) return;
+
+    const action = shouldAutoCheckDomainConnect({
+      hash,
+      hasPending: pending !== null,
+      alreadyVerified: verified !== null,
+    });
+    if (action === 'wait' && (me === null || me.pendingVerification !== null)) {
+      return;
+    }
+
+    window.history.replaceState(null, '', window.location.pathname + cleanHash);
+    if (action === 'check') {
       void onCheck();
     }
-  }, [pending?.token]);
+  }, [pending?.token, verified?.origin, me?.pendingVerification]);
 
   useEffect(() => {
     if (me?.pendingVerification == null) return;
@@ -143,8 +187,6 @@ export function VerifyPanel({
       cancelled = true;
     };
   }, [me?.user.id, me?.pendingVerification?.host, me?.pendingVerification?.origin]);
-
-  const verified = me?.verifiedOrigin ?? null;
 
   async function onStart(e: React.FormEvent) {
     e.preventDefault();

@@ -165,42 +165,31 @@ export function resolveGateStatus(res: PlanResponse | null): GateStatusView {
   };
 }
 
-/** Returns true when a location hash targets the inline own-site verification panel. */
-export function isVerifyPanelHash(hash: string): boolean {
-  const bare = hash.replace(/^#\/?/, '').split('?')[0]?.replace(/\/$/, '') ?? '';
-  return bare === 'verify-panel' || bare === 'verify';
-}
-
 export interface StudioTargetState {
   verifiedOrigin: { origin: string; host: string } | null;
   ownNeedsVerify: boolean;
   activeOrigin: string;
   pendingHost: string | null;
-  showVerify: boolean;
 }
 
-/** Resolves active origin, pending host, and verification visibility for the Test Studio target picker. */
+/** Resolves active origin, pending host, and verification requirement for the Test Studio target picker. */
 export function resolveTargetState({
   targetMode,
   me,
   webOrigin,
-  openedVerify,
 }: {
   targetMode: TargetMode;
   me: MeResponse | null;
   webOrigin: string;
-  openedVerify: boolean;
 }): StudioTargetState {
   const verifiedOrigin = me?.verifiedOrigin ?? null;
   const ownNeedsVerify = targetMode === 'own' && (me === null || verifiedOrigin === null);
   const activeOrigin = targetMode === 'own' && verifiedOrigin !== null ? verifiedOrigin.origin : webOrigin;
   const pendingHost = me?.pendingVerification?.host ?? null;
-  const showVerify = me !== null && (openedVerify || ownNeedsVerify || pendingHost !== null);
   return {
     verifiedOrigin,
     ownNeedsVerify,
     activeOrigin,
     pendingHost,
-    showVerify,
   };
 }

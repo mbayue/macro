@@ -35,6 +35,7 @@ const RUNS_QUERY_MAX = 200;
 
 export type Route =
   | { view: 'new' }
+  | { view: 'domains' }
   | { view: 'run'; id: string; tab: RunTab }
   | { view: 'probe'; id: string }
   | { view: 'probe-start' }
@@ -45,6 +46,7 @@ export type Route =
   | { view: 'notfound' };
 
 const LazyNewTest = lazy(() => import('./pages/NewTest.tsx').then((m) => ({ default: m.NewTest })));
+const LazyDomainsPage = lazy(() => import('./pages/Domains.tsx').then((m) => ({ default: m.Domains })));
 const LazyRunPage = lazy(() => import('./pages/Run.tsx').then((m) => ({ default: m.RunPage })));
 const LazyProbeStart = lazy(() => import('./pages/ProbeStart.tsx').then((m) => ({ default: m.ProbeStart })));
 const LazyProbePage = lazy(() => import('./pages/Probe.tsx').then((m) => ({ default: m.ProbePage })));
@@ -58,6 +60,7 @@ const probeRouteApi = getRouteApi('/probe/$id');
 const compareRouteApi = getRouteApi('/compare/$a/$b');
 
 const NewTestScreen: RouteComponent = () => createElement(LazyNewTest);
+const DomainsScreen: RouteComponent = () => createElement(LazyDomainsPage);
 const ProbeStartScreen: RouteComponent = () => createElement(LazyProbeStart);
 const RecentRunsScreen: RouteComponent = () => createElement(LazyRecentRunsPage);
 const SignInScreen: RouteComponent = () => createElement(LazySignIn);
@@ -127,7 +130,8 @@ export function parseRoute(hash: string): Route {
   const searchStr = qIndex === -1 ? '' : path.slice(qIndex + 1);
   const bare = rawPath.replace(/\/$/, '');
 
-  if (bare === '' || bare === 'verify-panel' || bare === 'verify') return { view: 'new' };
+  if (bare === '') return { view: 'new' };
+  if (bare === 'domains' || bare === 'verify-panel' || bare === 'verify') return { view: 'domains' };
 
   const [kind, first, second, ...rest] = bare.split('/');
   if (kind === 'sign-in' && first === undefined && rest.length === 0) return { view: 'sign-in' };
@@ -161,6 +165,8 @@ export function routeTitle(route: Route): string {
   switch (route.view) {
     case 'new':
       return 'Macro: new load test';
+    case 'domains':
+      return 'Macro: domains';
     case 'run':
       return 'Macro: run';
     case 'probe':
@@ -223,17 +229,23 @@ function buildRouteTree(options?: CreateAppRouterOptions) {
     component: NewTestScreen,
   });
 
-  // Alias of `#/`; keep the path intact so NewTest.tsx can detect `verify-panel` or `verify`.
+  const domainsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/domains',
+    component: DomainsScreen,
+  });
+
+  // Legacy aliases kept so Domain Connect redirects or saved links still land on Domains.
   const verifyPanelRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/verify-panel',
-    component: NewTestScreen,
+    component: DomainsScreen,
   });
 
   const verifyRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/verify',
-    component: NewTestScreen,
+    component: DomainsScreen,
   });
 
   const runRoute = createRoute({
@@ -302,6 +314,7 @@ function buildRouteTree(options?: CreateAppRouterOptions) {
 
   return rootRoute.addChildren([
     indexRoute,
+    domainsRoute,
     verifyPanelRoute,
     verifyRoute,
     runRoute,
@@ -355,9 +368,11 @@ export function resolveRouterRoute(state: ResolvableRouterState): Route {
 
   switch (leafMatch.routeId) {
     case '/':
+      return { view: 'new' };
+    case '/domains':
     case '/verify-panel':
     case '/verify':
-      return { view: 'new' };
+      return { view: 'domains' };
     case '/run/$id': {
       const id = (leafMatch.params as { id?: unknown }).id;
       if (typeof id !== 'string' || !ID_PATTERN.test(id)) return { view: 'notfound' };

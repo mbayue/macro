@@ -233,6 +233,9 @@ describe('isVerifyPanelHash and resolveTargetState', () => {
     expect(isVerifyPanelHash('#/verify-panel')).toBe(true);
     expect(isVerifyPanelHash('#/verify-panel/')).toBe(true);
     expect(isVerifyPanelHash('#/verify-panel?domainConnect=done')).toBe(true);
+    expect(isVerifyPanelHash('#/verify')).toBe(true);
+    expect(isVerifyPanelHash('#/verify/')).toBe(true);
+    expect(isVerifyPanelHash('#/verify?domainConnect=done')).toBe(true);
     expect(isVerifyPanelHash('#/')).toBe(false);
     expect(isVerifyPanelHash('')).toBe(false);
     expect(isVerifyPanelHash('#/runs')).toBe(false);

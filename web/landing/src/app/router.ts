@@ -127,7 +127,7 @@ export function parseRoute(hash: string): Route {
   const searchStr = qIndex === -1 ? '' : path.slice(qIndex + 1);
   const bare = rawPath.replace(/\/$/, '');
 
-  if (bare === '' || bare === 'verify-panel') return { view: 'new' };
+  if (bare === '' || bare === 'verify-panel' || bare === 'verify') return { view: 'new' };
 
   const [kind, first, second, ...rest] = bare.split('/');
   if (kind === 'sign-in' && first === undefined && rest.length === 0) return { view: 'sign-in' };
@@ -223,10 +223,16 @@ function buildRouteTree(options?: CreateAppRouterOptions) {
     component: NewTestScreen,
   });
 
-  // Alias of `#/`; keep the path intact so NewTest.tsx can detect `verify-panel`.
+  // Alias of `#/`; keep the path intact so NewTest.tsx can detect `verify-panel` or `verify`.
   const verifyPanelRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/verify-panel',
+    component: NewTestScreen,
+  });
+
+  const verifyRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/verify',
     component: NewTestScreen,
   });
 
@@ -297,6 +303,7 @@ function buildRouteTree(options?: CreateAppRouterOptions) {
   return rootRoute.addChildren([
     indexRoute,
     verifyPanelRoute,
+    verifyRoute,
     runRoute,
     probeStartRoute,
     probeRoute,
@@ -349,6 +356,7 @@ export function resolveRouterRoute(state: ResolvableRouterState): Route {
   switch (leafMatch.routeId) {
     case '/':
     case '/verify-panel':
+    case '/verify':
       return { view: 'new' };
     case '/run/$id': {
       const id = (leafMatch.params as { id?: unknown }).id;

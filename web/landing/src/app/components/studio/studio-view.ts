@@ -168,7 +168,7 @@ export function resolveGateStatus(res: PlanResponse | null): GateStatusView {
 /** Returns true when a location hash targets the inline own-site verification panel. */
 export function isVerifyPanelHash(hash: string): boolean {
   const bare = hash.replace(/^#\/?/, '').split('?')[0]?.replace(/\/$/, '') ?? '';
-  return bare === 'verify-panel';
+  return bare === 'verify-panel' || bare === 'verify';
 }
 
 export interface StudioTargetState {

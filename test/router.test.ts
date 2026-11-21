@@ -44,6 +44,9 @@ describe('parseRoute & URL helpers', () => {
     expect(parseRoute('#/verify-panel')).toEqual({ view: 'new' });
     expect(parseRoute('#/verify-panel/')).toEqual({ view: 'new' });
     expect(parseRoute('#/verify-panel?step=1')).toEqual({ view: 'new' });
+    expect(parseRoute('#/verify')).toEqual({ view: 'new' });
+    expect(parseRoute('#/verify/')).toEqual({ view: 'new' });
+    expect(parseRoute('#/verify?domainConnect=done')).toEqual({ view: 'new' });
   });
 
   test('parses static app routes and preserves sign-in query params', () => {
@@ -162,6 +165,10 @@ describe('TanStack Router integration (memory history)', () => {
     const verify = await loadMemoryRoute('/verify-panel');
     expect(verify.route).toEqual({ view: 'new' });
     expect(verify.pathname).toBe('/verify-panel');
+
+    const verifyAlias = await loadMemoryRoute('/verify');
+    expect(verifyAlias.route).toEqual({ view: 'new' });
+    expect(verifyAlias.pathname).toBe('/verify');
 
     const runs = await loadMemoryRoute('/runs');
     expect(runs.route).toEqual({ view: 'runs' });

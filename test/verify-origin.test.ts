@@ -76,7 +76,8 @@ describe('normalizeVerifyHost', () => {
     expect(normalizeVerifyHost('http://shop.example.com').ok).toBe(false);
     expect(normalizeVerifyHost('127.0.0.1').ok).toBe(false);
     expect(normalizeVerifyHost('https://macro.my.id').ok).toBe(false);
-    expect(normalizeVerifyHost('yueshop.xyz').ok).toBe(false);
+    expect(normalizeVerifyHost('localhost').ok).toBe(false);
+    expect(normalizeVerifyHost('yueshop.xyz').ok).toBe(true);
   });
 });
 

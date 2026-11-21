@@ -39,8 +39,7 @@ export function isDenylistedHost(hostname: string): boolean {
   if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal')) {
     return true;
   }
-  if (host === 'macro.my.id') return true;
-  return host === 'yueshop.xyz' || host.endsWith('.yueshop.xyz');
+  return host === 'macro.my.id';
 }
 
 type TargetCheck = { ok: true; origin: string; hostname: string } | { ok: false; reason: string };

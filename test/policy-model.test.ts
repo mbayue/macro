@@ -33,9 +33,11 @@ function refParseOrigin(text: string): RefOrigin | null {
 
 function refDenylisted(host: string): boolean {
   return (
-    host === 'yueshop.xyz' ||
-    host.endsWith('.yueshop.xyz') ||
     host === 'macro.my.id' ||
+    host === 'localhost' ||
+    host.endsWith('.localhost') ||
+    host.endsWith('.local') ||
+    host.endsWith('.internal') ||
     /^[0-9]{1,3}(\.[0-9]{1,3}){3}$/.test(host) || // IPv4 literal
     host.startsWith('[') // IPv6 literal
   );
@@ -108,12 +110,10 @@ function check(plan: TestPlan, allowlist: readonly string[]): void {
 /** Includes denylisted hosts, IP literals, and look-alikes so that "denylist beats allowlist" is exercised. */
 const PERMISSIVE_ALLOWLIST: readonly string[] = [
   ...ALLOWLIST,
-  'https://yueshop.xyz',
-  'https://api.yueshop.xyz',
   'https://macro.my.id',
+  'https://localhost',
   'https://127.0.0.1',
   'https://[::1]',
-  'https://notyueshop.xyz',
   'https://macro.my.id.evil.test',
   'https://evil.test',
   'https://example.com',

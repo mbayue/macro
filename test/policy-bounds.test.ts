@@ -141,8 +141,8 @@ describe('Requirement 4.6: stop thresholds (inclusive bounds)', () => {
 describe('Requirements 4.2 and 4.3: target and routes', () => {
   test('both allowlisted origins are accepted; a denylisted or unlisted host is rejected', () => {
     expect(violations(plan({ target: 'https://api.yue.macro.my.id' }))).toEqual([]);
-    expect(violations(plan({ target: 'https://yueshop.xyz' }))).toEqual(['4.2 target']);
-    expect(violations(plan({ target: 'https://api.yueshop.xyz' }))).toEqual(['4.2 target']);
+    expect(violations(plan({ target: 'https://macro.my.id' }))).toEqual(['4.2 target']);
+    expect(violations(plan({ target: 'https://localhost' }))).toEqual(['4.2 target']);
     expect(violations(plan({ target: 'https://example.com' }))).toEqual(['4.2 target']);
     expect(violations(plan({ target: 'https://127.0.0.1' }))).toEqual(['4.2 target']);
     expect(violations(plan({ target: 'http://yue.macro.my.id' }))).toEqual(['4.2 target']);
@@ -151,7 +151,7 @@ describe('Requirements 4.2 and 4.3: target and routes', () => {
   });
 
   test('the denylist wins over the allowlist', () => {
-    const r = evaluatePlan(plan({ target: 'https://yueshop.xyz' }), [...ALLOWLIST, 'https://yueshop.xyz']);
+    const r = evaluatePlan(plan({ target: 'https://macro.my.id' }), [...ALLOWLIST, 'https://macro.my.id']);
     expect(r.status).toBe('rejected');
   });
 

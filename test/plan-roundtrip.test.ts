@@ -52,7 +52,7 @@ describe('plan round trip', () => {
     // Feature: macro, Property 1: Plan round trip
     const plan: TestPlan = {
       name: 'zero vus',
-      target: 'https://yueshop.xyz/path?q=1',
+      target: 'https://example.com/path?q=1',
       stages: [{ vus: 0, durationSec: -5 }],
       journey: [{ route: 'not_a_route', probability: 101, thinkMs: -1 }],
       stopThresholds: { p95Ms: 0, errorRatePct: -3.5 },

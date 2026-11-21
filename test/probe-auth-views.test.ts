@@ -443,7 +443,7 @@ describe('VerifyPanel view', () => {
     assertNoInlineStyle(html);
   }
 
-  test('renders VerifyHostForm with noValidate, label/input wiring, aria-invalid, and aria-describedby in both unverified and verified states', () => {
+  test('renders VerifyHostForm when unverified and a single-domain Verified card without a second host form when verified', () => {
     const unverifiedHtml = renderWithApp(createElement(VerifyPanel), {
       me: {
         user: { id: 'u_1', email: 'dev@example.com', githubLogin: null },
@@ -460,8 +460,12 @@ describe('VerifyPanel view', () => {
         pendingVerification: null,
       },
     });
-    expect(verifiedHtml).toContain('Verify a different host');
-    assertValidHostForm(verifiedHtml);
+    expect(verifiedHtml).toContain('Verified');
+    expect(verifiedHtml).toContain('https://shop.example.com');
+    expect(verifiedHtml).toContain('Remove domain');
+    expect(verifiedHtml).not.toContain('Verify a different host');
+    expect(verifiedHtml).not.toContain('Host or https origin');
+    assertNoInlineStyle(verifiedHtml);
   });
 });
 

@@ -2,7 +2,7 @@
  * Inline own-site verification: start a token, show DNS + well-known instructions, check, or clear.
  */
 import { type Ref, useEffect, useId, useRef, useState } from 'react';
-import { CheckIcon, CloudIcon, CopyIcon, ExternalLinkIcon, ZapIcon } from 'lucide-react';
+import { ArrowRightIcon, CheckIcon, CloudIcon, CopyIcon, ExternalLinkIcon, ZapIcon } from 'lucide-react';
 import type { VerifyStartResponse } from '../../../../../src/api-types.ts';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -174,7 +174,7 @@ export function VerifyPanel({
   }, [pending?.token, verified?.origin, me?.pendingVerification]);
 
   useEffect(() => {
-    if (me?.pendingVerification == null) return;
+    if (me?.verifiedOrigin != null || me?.pendingVerification == null) return;
     const gen = ++restoreGen.current;
     let cancelled = false;
     void (async () => {
@@ -273,6 +273,50 @@ export function VerifyPanel({
     if (error) setError(null);
   };
 
+  if (verified !== null) {
+    return (
+      <TelemetryPanel ticks="bar" aria-labelledby="verify-panel-heading" className="bg-background">
+        <div className="flex flex-col gap-1">
+          <h3 id="verify-panel-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+            Verified domain
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Your account is limited to one verified HTTPS origin at a time. Remove this domain first if you want to verify a different one.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5 text-sm" role="status">
+          <Badge variant="ok">Verified</Badge>
+          <span className="min-w-0 font-mono break-all text-foreground">{verified.origin}</span>
+          {busy === 'clear' ? (
+            <Button type="button" variant="secondary" size="sm" disabled>
+              <Busy>Removing…</Busy>
+            </Button>
+          ) : (
+            <ConfirmButton
+              label="Remove domain"
+              confirmLabel="Confirm remove"
+              cancelLabel="Keep"
+              className={quietBtn}
+              confirmClassName={dangerBtn}
+              cancelClassName={quietBtn}
+              disabled={busy !== null}
+              onConfirm={() => void onClear()}
+            />
+          )}
+          <Button render={<a href="#/" />} nativeButton={false} variant="secondary" size="sm">
+            Test in Test Studio
+            <ArrowRightIcon data-icon="inline-end" />
+          </Button>
+        </div>
+
+        <AlertRegion id={verifyErrorId} className={cn(!error && 'sr-only')}>
+          {error ? <p>{error}</p> : null}
+        </AlertRegion>
+      </TelemetryPanel>
+    );
+  }
+
   return (
     <TelemetryPanel ticks="bar" aria-labelledby="verify-panel-heading" className="bg-background">
       <div className="flex flex-col gap-1">
@@ -285,65 +329,22 @@ export function VerifyPanel({
         </p>
       </div>
 
-      {verified !== null ? (
-        <div className="flex flex-wrap items-center gap-2.5 text-sm" role="status">
-          <Badge variant="ok">Verified</Badge>
-          <span className="min-w-0 font-mono break-all text-foreground">{verified.host}</span>
-          {busy === 'clear' ? (
-            <Button type="button" variant="secondary" size="sm" disabled>
-              <Busy>Clearing…</Busy>
-            </Button>
-          ) : (
-            <ConfirmButton
-              label="Clear"
-              confirmLabel="Confirm clear"
-              cancelLabel="Keep"
-              className={quietBtn}
-              confirmClassName={dangerBtn}
-              cancelClassName={quietBtn}
-              disabled={busy !== null}
-              onConfirm={() => void onClear()}
-            />
-          )}
-        </div>
-      ) : null}
-
       <AlertRegion id={verifyErrorId} className={cn(!error && 'sr-only')}>
         {error ? <p>{error}</p> : null}
       </AlertRegion>
 
       {pending === null ? (
-        verified !== null ? (
-          <details className="rounded-md border border-border bg-surface p-3.5">
-            <summary className="cursor-pointer text-sm font-medium text-foreground focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-ring">
-              Verify a different host
-            </summary>
-            <VerifyHostForm
-              host={host}
-              busy={busy !== null}
-              starting={busy === 'start'}
-              hasError={Boolean(error)}
-              helpId={verifyHelpId}
-              errorId={verifyErrorId}
-              inputRef={hostInput}
-              className="mt-3"
-              onHostChange={onHostChange}
-              onSubmit={(e) => void onStart(e)}
-            />
-          </details>
-        ) : (
-          <VerifyHostForm
-            host={host}
-            busy={busy !== null}
-            starting={busy === 'start'}
-            hasError={Boolean(error)}
-            helpId={verifyHelpId}
-            errorId={verifyErrorId}
-            inputRef={hostInput}
-            onHostChange={onHostChange}
-            onSubmit={(e) => void onStart(e)}
-          />
-        )
+        <VerifyHostForm
+          host={host}
+          busy={busy !== null}
+          starting={busy === 'start'}
+          hasError={Boolean(error)}
+          helpId={verifyHelpId}
+          errorId={verifyErrorId}
+          inputRef={hostInput}
+          onHostChange={onHostChange}
+          onSubmit={(e) => void onStart(e)}
+        />
       ) : (
         <div className="flex flex-col gap-3">
           {pending.domainConnectUrl ? (

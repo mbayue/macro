@@ -3,7 +3,7 @@
  * active session actions, and account deletion.
  */
 import { type Ref, useEffect, useId, useRef, useState } from 'react';
-import { ArrowLeftIcon, LogOutIcon, MailIcon, TablePropertiesIcon } from 'lucide-react';
+import { ArrowLeftIcon, GlobeIcon, LogOutIcon, MailIcon, TablePropertiesIcon } from 'lucide-react';
 import type { MeResponse } from '../../../../../src/api-types.ts';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -183,88 +183,125 @@ export function AccountPanel({
         </p>
       </header>
 
-      <div className="flex flex-col gap-4">
-        <TelemetryPanel ticks="bar" aria-labelledby="session-active-heading" className="gap-4 bg-card">
-          <h2 id="session-active-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
-            Session active
-          </h2>
-
-          <p className="m-0 max-w-[72ch] text-sm text-muted-foreground">
-            Your account can run private load tests against your verified origin.
-          </p>
-
-          <div className="flex flex-wrap items-center gap-2.5">
-            <Button type="button" onClick={onBack}>
-              <ArrowLeftIcon data-icon="inline-start" />
-              Back to Test Studio
-            </Button>
-            <Button render={<a href="#/runs" />} nativeButton={false} variant="secondary">
-              <TablePropertiesIcon data-icon="inline-start" />
-              View Runs Table
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="border-bar"
-              disabled={signingOut || deleting}
-              onClick={onSignOut}
-            >
-              {signingOut ? (
-                <Busy>Signing out…</Busy>
-              ) : (
-                <>
-                  <LogOutIcon data-icon="inline-start" />
-                  Sign out
-                </>
-              )}
-            </Button>
-          </div>
-        </TelemetryPanel>
-
-        <TelemetryPanel ticks="bar" aria-labelledby="delete-account-heading" className="gap-4 bg-card">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 id="delete-account-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
-              Delete account
+      <div className="grid grid-cols-1 items-start gap-6 min-[1180px]:grid-cols-[minmax(0,1fr)_minmax(300px,380px)]">
+        <div className="flex min-w-0 flex-col gap-4">
+          <TelemetryPanel ticks="bar" aria-labelledby="session-active-heading" className="gap-4 bg-card">
+            <h2 id="session-active-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+              Session active
             </h2>
-            <Badge variant="outline">Permanent</Badge>
-          </div>
 
-          <p className="m-0 max-w-[72ch] text-sm text-muted-foreground">
-            Permanently deletes your account, verified origin, saved draft, and private runs.
-          </p>
+            <p className="m-0 max-w-[72ch] text-sm text-muted-foreground">
+              Your account can run private load tests against your verified domain.
+            </p>
 
-          <div
-            role="alert"
-            className={cn(
-              deleteError
-                ? 'flex flex-col gap-1.5 rounded-md border border-bad bg-background px-3.5 py-2.5 text-sm text-foreground'
-                : 'sr-only',
-            )}
-          >
-            {deleteError ? (
-              <>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="destructive">Delete failed</Badge>
-                </div>
-                <p className="m-0">{deleteError}</p>
-              </>
-            ) : null}
-          </div>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <Button type="button" onClick={onBack}>
+                <ArrowLeftIcon data-icon="inline-start" />
+                Back to Test Studio
+              </Button>
+              <Button render={<a href="#/domains" />} nativeButton={false} variant="secondary">
+                <GlobeIcon data-icon="inline-start" />
+                Manage domains
+              </Button>
+              <Button render={<a href="#/runs" />} nativeButton={false} variant="secondary">
+                <TablePropertiesIcon data-icon="inline-start" />
+                View Runs Table
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="border-bar"
+                disabled={signingOut || deleting}
+                onClick={onSignOut}
+              >
+                {signingOut ? (
+                  <Busy>Signing out…</Busy>
+                ) : (
+                  <>
+                    <LogOutIcon data-icon="inline-start" />
+                    Sign out
+                  </>
+                )}
+              </Button>
+            </div>
+          </TelemetryPanel>
 
-          <div className="flex flex-wrap items-center gap-2.5">
-            <ConfirmButton
-              label={deleting ? 'Deleting…' : 'Delete account'}
-              confirmLabel="Confirm delete"
-              cancelLabel="Keep account"
-              className={buttonVariants({ variant: 'secondary' })}
-              confirmClassName={buttonVariants({ variant: 'destructive' })}
-              cancelClassName={buttonVariants({ variant: 'secondary' })}
-              disabled={deleting || signingOut}
-              onConfirm={onDelete}
-            />
-            {deleting ? <Busy>Deleting your account…</Busy> : null}
-          </div>
-        </TelemetryPanel>
+          <TelemetryPanel ticks="bar" aria-labelledby="delete-account-heading" className="gap-4 bg-card">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 id="delete-account-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+                Delete account
+              </h2>
+              <Badge variant="outline">Permanent</Badge>
+            </div>
+
+            <p className="m-0 max-w-[72ch] text-sm text-muted-foreground">
+              Permanently deletes your account, verified domain, saved draft, and private runs.
+            </p>
+
+            <div
+              role="alert"
+              className={cn(
+                deleteError
+                  ? 'flex flex-col gap-1.5 rounded-md border border-bad bg-background px-3.5 py-2.5 text-sm text-foreground'
+                  : 'sr-only',
+              )}
+            >
+              {deleteError ? (
+                <>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="destructive">Delete failed</Badge>
+                  </div>
+                  <p className="m-0">{deleteError}</p>
+                </>
+              ) : null}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5">
+              <ConfirmButton
+                label={deleting ? 'Deleting…' : 'Delete account'}
+                confirmLabel="Confirm delete"
+                cancelLabel="Keep account"
+                className={buttonVariants({ variant: 'secondary' })}
+                confirmClassName={buttonVariants({ variant: 'destructive' })}
+                cancelClassName={buttonVariants({ variant: 'secondary' })}
+                disabled={deleting || signingOut}
+                onConfirm={onDelete}
+              />
+              {deleting ? <Busy>Deleting your account…</Busy> : null}
+            </div>
+          </TelemetryPanel>
+        </div>
+
+        <aside aria-label="Account and data summary" className="flex min-w-0 flex-col gap-4 min-[1180px]:sticky min-[1180px]:top-20">
+          <TelemetryPanel ticks="bar" aria-labelledby="account-data-heading">
+            <h2 id="account-data-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+              Account &amp; data
+            </h2>
+            <dl className="m-0 grid gap-3">
+              <div className="grid gap-0.5">
+                <dt className="text-xs font-medium text-muted-foreground">Email</dt>
+                <dd className="m-0 font-mono text-xs break-all text-foreground">{me.user.email}</dd>
+              </div>
+              <div className="grid gap-0.5 border-t border-border pt-2.5">
+                <dt className="text-xs font-medium text-muted-foreground">Session cookie</dt>
+                <dd className="m-0 text-sm text-foreground">HttpOnly cookie solely to keep you signed in.</dd>
+              </div>
+              <div className="grid gap-0.5 border-t border-border pt-2.5">
+                <dt className="text-xs font-medium text-muted-foreground">Account deletion</dt>
+                <dd className="m-0 text-sm text-foreground">
+                  Immediately removes your account, saved draft, verified domain, and private runs.
+                </dd>
+              </div>
+            </dl>
+            <p className="m-0 text-xs text-muted-foreground">
+              Details in the{' '}
+              <a href="/privacy" className="text-foreground underline underline-offset-4 hover:text-accent-text">
+                privacy policy
+              </a>
+              .
+            </p>
+          </TelemetryPanel>
+        </aside>
       </div>
     </section>
   );

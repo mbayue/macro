@@ -382,8 +382,11 @@ describe('SignIn view (signed in / Account view)', () => {
     expect(githubUserHtml).not.toContain('shop.example.com');
     expect(githubUserHtml).toContain('Back to Test Studio');
     expect(githubUserHtml).not.toContain('Back to new test');
+    expect(githubUserHtml).toContain('href="#/domains"');
+    expect(githubUserHtml).toContain('Manage domains');
     expect(githubUserHtml).toContain('href="#/runs"');
     expect(githubUserHtml).toContain('View Runs Table');
+    expect(githubUserHtml).toContain('Account &amp; data');
     expect(githubUserHtml).toContain('Sign out');
     expect(githubUserHtml).toContain('Delete account');
     expect(githubUserHtml).toContain('data-slot="button"');

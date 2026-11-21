@@ -69,7 +69,7 @@ export function normalizeVerifyHost(input: string): NormalizeVerifyResult {
   return { ok: true, host, origin: `https://${host}` };
 }
 
-/** True when any TXT string equals the expected token (trimmed). */
+/** True when any TXT string equals the expected token or prefixed token (`macro-verify=<token>`). */
 export async function checkDnsTxt(
   host: string,
   expectedValue: string,
@@ -78,8 +78,8 @@ export async function checkDnsTxt(
   try {
     const records = await resolveTxt(txtNameForHost(host));
     for (const chunks of records) {
-      const joined = chunks.join('');
-      if (joined.trim() === expectedValue) return true;
+      const joined = chunks.join('').trim();
+      if (joined === expectedValue || joined === `macro-verify=${expectedValue}`) return true;
     }
   } catch {
     return false;

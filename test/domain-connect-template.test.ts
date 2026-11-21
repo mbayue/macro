@@ -7,7 +7,7 @@ describe('Domain Connect Template', () => {
     expect(template.providerName).toBe('Macro');
     expect(template.serviceId).toBe('verify');
     expect(template.serviceName).toBe('Macro Site Verification');
-    expect(template.version).toBe(1);
+    expect(template.version).toBe(2);
     expect(template.syncPubKeyDomain).toBe('macro.my.id');
     expect(template.syncRedirectDomain).toBe('macro.my.id');
     expect(Array.isArray(template.records)).toBe(true);
@@ -16,7 +16,7 @@ describe('Domain Connect Template', () => {
     const txtRecord = template.records.find((r: { type: string }) => r.type === 'TXT');
     expect(txtRecord).toBeDefined();
     expect(txtRecord?.host).toBe('_macro-verify');
-    expect(txtRecord?.data).toBe('%token%');
+    expect(txtRecord?.data).toBe('macro-verify=%token%');
     expect(txtRecord?.ttl).toBe(300);
   });
 });

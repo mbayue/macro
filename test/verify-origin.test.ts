@@ -89,6 +89,14 @@ describe('checkDnsTxt / checkWellKnown', () => {
     expect(ok).toBe(true);
   });
 
+  test('DNS succeeds when TXT contains prefixed macro-verify=<token>', async () => {
+    const ok = await checkDnsTxt('shop.example.com', 'tok-abc', async (name) => {
+      expect(name).toBe('_macro-verify.shop.example.com');
+      return [['macro-verify=tok-abc']];
+    });
+    expect(ok).toBe(true);
+  });
+
   test('well-known succeeds on 200 with exact token body', async () => {
     const ok = await checkWellKnown(
       'https://shop.example.com',

@@ -1,10 +1,10 @@
-import { memo, useId, useState } from 'react';
+import { memo, useId, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { CapacityReport } from '../../../../../../src/report/build.ts';
 import { useHybridPrompt } from '../../hooks/useHybridPrompt.ts';
-import { buildReportQaPrompt } from '../../lib/hybrid-ai.ts';
-import { HybridBadge } from '../HybridBadge.tsx';
+import { buildReportQaPrompt, verifyReportQaReply } from '../../lib/hybrid-ai.ts';
+import { HybridAvailabilityBadge, HybridBadge, HybridStopButton } from '../HybridBadge.tsx';
 import { TelemetryPanel } from '../studio/TelemetryFrame.tsx';
 import { AlertRegion, Busy } from '../ui.tsx';
 
@@ -16,10 +16,14 @@ const QUICK_QUESTIONS = [
 
 /** AI-labelled Report Q&A panel grounded strictly in measured CapacityReport metrics. */
 export const ReportQa = memo(function ReportQa({ report }: { report: CapacityReport }) {
-  const { available, busy, error, reply, run } = useHybridPrompt();
+  const { available, availability, busy, completed, error, reply, run, stop } = useHybridPrompt();
   const [question, setQuestion] = useState('');
   const headingId = useId();
   const inputId = useId();
+  const numberCheck = useMemo(
+    () => (completed && reply ? verifyReportQaReply(reply.text, report) : null),
+    [completed, reply, report],
+  );
 
   if (!available) return null;
 
@@ -42,7 +46,7 @@ export const ReportQa = memo(function ReportQa({ report }: { report: CapacityRep
           <span>Report Q&amp;A</span>
           <Badge variant="secondary">AI</Badge>
         </h2>
-        {reply ? <HybridBadge origin={reply.origin} /> : null}
+        {reply ? <HybridBadge origin={reply.origin} /> : <HybridAvailabilityBadge availability={availability} />}
       </div>
       <p className="m-0 text-sm text-muted-foreground">
         Ask follow-up questions about these measured stage and route metrics. Prefers on-device Gemini Nano with cloud Gemini fallback.
@@ -92,6 +96,7 @@ export const ReportQa = memo(function ReportQa({ report }: { report: CapacityRep
         >
           Ask
         </Button>
+        <HybridStopButton busy={busy} onStop={stop} />
       </form>
 
       {busy && !reply ? <Busy>Thinking…</Busy> : null}
@@ -107,6 +112,11 @@ export const ReportQa = memo(function ReportQa({ report }: { report: CapacityRep
               </div>
             ) : null}
             <p className="m-0 text-sm leading-relaxed whitespace-pre-wrap text-foreground">{reply.text}</p>
+            {numberCheck && !numberCheck.ok ? (
+              <p className="m-0 text-xs text-warn">
+                Contains numbers not in the measured report — verify against the tables above
+              </p>
+            ) : null}
           </div>
         ) : null}
       </div>

@@ -14,8 +14,11 @@ import {
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 import type { FirebaseWebConfig } from '../../../../../src/api-types.ts';
 import type { CapacityReport } from '../../../../../src/report/build.ts';
+import { allowedNumbers, guardText, type GuardResult } from '../../../../../src/report/number-guard.ts';
 
 export type InferenceOrigin = 'on-device' | 'cloud' | 'unknown';
+export type OnDeviceAvailability = 'ready' | 'downloading' | 'cloud-fallback';
+export type LanguageModelProbe = () => Promise<string>;
 
 export interface HybridReply {
   text: string;
@@ -25,6 +28,7 @@ export interface HybridReply {
 export type HybridRunner = (
   prompt: string,
   onChunk?: (text: string) => void,
+  signal?: AbortSignal,
 ) => Promise<HybridReply>;
 
 const modelCache = new Map<string, GenerativeModel>();
@@ -97,18 +101,59 @@ export function buildReportQaPrompt(report: CapacityReport, question: string): s
 
 export const AI_HELPER_UNAVAILABLE = "AI helper isn't available right now";
 
-/** Executes a hybrid prompt through the provided runner and normalizes errors/empty outputs. */
+function defaultLanguageModelProbe(): LanguageModelProbe | null {
+  if (typeof globalThis === 'undefined') return null;
+  const g = globalThis as unknown as {
+    LanguageModel?: { availability?: () => Promise<string> };
+  };
+  if (typeof g.LanguageModel?.availability === 'function') {
+    return () => g.LanguageModel!.availability!();
+  }
+  return null;
+}
+
+/** Checks Chrome Built-in AI (Gemini Nano) availability before running a prompt. */
+export async function detectOnDeviceAvailability(probe?: LanguageModelProbe): Promise<OnDeviceAvailability> {
+  const fn = probe ?? defaultLanguageModelProbe();
+  if (!fn) return 'cloud-fallback';
+  try {
+    const status = (await fn()).toLowerCase();
+    if (status === 'available' || status === 'readily') return 'ready';
+    if (status === 'downloading' || status === 'downloadable' || status === 'after-download') return 'downloading';
+    return 'cloud-fallback';
+  } catch {
+    return 'cloud-fallback';
+  }
+}
+
+/** Verifies numbers in a Report Q&A reply against the measured CapacityReport values. */
+export function verifyReportQaReply(replyText: string, report: CapacityReport): GuardResult {
+  return guardText(replyText, allowedNumbers(report));
+}
+
+export type HybridPromptResult =
+  | { ok: true; reply: HybridReply }
+  | { ok: false; aborted: true }
+  | { ok: false; aborted?: false; error: string };
+
+/** Executes a hybrid prompt through the provided runner and normalizes errors, aborts, and empty outputs. */
 export async function runHybridPrompt(
   runner: HybridRunner,
   prompt: string,
   onChunk?: (text: string) => void,
-): Promise<{ ok: true; reply: HybridReply } | { ok: false; error: string }> {
+  signal?: AbortSignal,
+): Promise<HybridPromptResult> {
+  if (signal?.aborted) return { ok: false, aborted: true };
   try {
-    const reply = await runner(prompt, onChunk);
+    const reply = await runner(prompt, onChunk, signal);
+    if (signal?.aborted) return { ok: false, aborted: true };
     const text = reply.text.trim();
     if (!text) return { ok: false, error: 'Model returned an empty response.' };
     return { ok: true, reply: { text, origin: reply.origin } };
   } catch (err) {
+    if (signal?.aborted || (err instanceof DOMException && err.name === 'AbortError')) {
+      return { ok: false, aborted: true };
+    }
     console.error('Hybrid inference error:', err);
     return { ok: false, error: AI_HELPER_UNAVAILABLE };
   }
@@ -164,15 +209,20 @@ function getOrCreateHybridModel(config: FirebaseWebConfig): GenerativeModel {
  * Streams content in real-time via `generateContentStream` when available.
  */
 export function createFirebaseHybridRunner(config: FirebaseWebConfig): HybridRunner {
-  return async (prompt: string, onChunk?: (text: string) => void): Promise<HybridReply> => {
+  return async (prompt: string, onChunk?: (text: string) => void, signal?: AbortSignal): Promise<HybridReply> => {
     const model = getOrCreateHybridModel(config);
+    const requestOptions = signal ? { signal } : undefined;
     if (typeof model.generateContentStream === 'function') {
-      const result = await model.generateContentStream(prompt);
+      const result = await model.generateContentStream(prompt, requestOptions);
       let fullText = '';
       for await (const chunk of result.stream) {
+        if (signal?.aborted) break;
         const chunkText = chunk.text();
         fullText += chunkText;
         onChunk?.(fullText);
+      }
+      if (signal?.aborted) {
+        return { text: fullText, origin: 'unknown' };
       }
       const response = await result.response;
       return {
@@ -180,7 +230,10 @@ export function createFirebaseHybridRunner(config: FirebaseWebConfig): HybridRun
         origin: mapInferenceSource(response.inferenceSource),
       };
     }
-    const result = await model.generateContent(prompt);
+    const result = await model.generateContent(prompt, requestOptions);
+    if (signal?.aborted) {
+      return { text: '', origin: 'unknown' };
+    }
     const text = result.response.text();
     onChunk?.(text);
     return {

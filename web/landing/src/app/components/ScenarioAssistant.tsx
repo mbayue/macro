@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useHybridPrompt } from '../hooks/useHybridPrompt.ts';
 import { buildScenarioPrompt } from '../lib/hybrid-ai.ts';
-import { HybridBadge } from './HybridBadge.tsx';
+import { HybridAvailabilityBadge, HybridBadge, HybridStopButton } from './HybridBadge.tsx';
 import { AlertRegion, Busy } from './ui.tsx';
 import { CornerTicks } from './studio/TelemetryFrame.tsx';
 
@@ -23,7 +23,7 @@ interface Props {
 
 /** Pre-submission Scenario Assistant that refines Traffic Descriptions via Hybrid Inference. */
 export function ScenarioAssistant({ draft, routes, disabled, onApply }: Props) {
-  const { available, busy, error, reply, clearReply, run } = useHybridPrompt();
+  const { available, availability, busy, error, reply, clearReply, run, stop } = useHybridPrompt();
   const [open, setOpen] = useState(false);
   const [instruction, setInstruction] = useState<string>(PRESETS[0]);
   const panelId = useId();
@@ -57,6 +57,7 @@ export function ScenarioAssistant({ draft, routes, disabled, onApply }: Props) {
           <SparklesIcon data-icon="inline-start" />
           {open ? 'Hide Scenario Assistant' : 'Scenario Assistant'}
         </Button>
+        {!reply ? <HybridAvailabilityBadge availability={availability} /> : null}
         <span className="text-xs text-muted-foreground">
           Runs on-device (Gemini Nano) when supported; does not use server planning quota.
         </span>
@@ -127,6 +128,7 @@ export function ScenarioAssistant({ draft, routes, disabled, onApply }: Props) {
             >
               Draft suggestion
             </Button>
+            <HybridStopButton busy={busy} onStop={stop} />
           </div>
 
           {busy && !reply ? <Busy>Refining description…</Busy> : null}

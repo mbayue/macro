@@ -1,13 +1,18 @@
 import { describe, expect, test } from 'bun:test';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { InferenceSource } from 'firebase/ai';
 import type { CapacityReport } from '../src/report/build.ts';
+import { HybridAvailabilityBadge } from '../web/landing/src/app/components/HybridBadge.tsx';
 import {
   AI_HELPER_UNAVAILABLE,
   buildReportQaPrompt,
   buildScenarioPrompt,
+  detectOnDeviceAvailability,
   mapInferenceSource,
   runHybridPrompt,
   summarizeReportForQa,
+  verifyReportQaReply,
 } from '../web/landing/src/app/lib/hybrid-ai.ts';
 
 const SAMPLE_REPORT: CapacityReport = {
@@ -173,7 +178,7 @@ describe('runHybridPrompt', () => {
         throw boom;
       }, 'prompt');
       expect(res).toEqual({ ok: false, error: AI_HELPER_UNAVAILABLE });
-      expect(res.ok ? '' : res.error).toBe("AI helper isn't available right now");
+      expect(!res.ok && !res.aborted ? res.error : '').toBe("AI helper isn't available right now");
       expect(logged).toHaveLength(1);
       expect(logged[0]).toEqual(['Hybrid inference error:', boom]);
     } finally {
@@ -194,5 +199,68 @@ describe('runHybridPrompt', () => {
     );
     expect(res.ok).toBe(true);
     expect(chunks).toEqual(['Ramp from ', 'Ramp from 10 to 100 users']);
+  });
+
+  test('returns aborted without error when AbortSignal fires', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const res = await runHybridPrompt(
+      async (_prompt, _onChunk, signal) => {
+        if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+        return { text: 'done', origin: 'cloud' };
+      },
+      'prompt',
+      undefined,
+      controller.signal,
+    );
+    expect(res).toEqual({ ok: false, aborted: true });
+  });
+});
+
+describe('detectOnDeviceAvailability', () => {
+  test('maps Chrome LanguageModel availability strings and handles missing/throwing probes', async () => {
+    expect(await detectOnDeviceAvailability(async () => 'available')).toBe('ready');
+    expect(await detectOnDeviceAvailability(async () => 'readily')).toBe('ready');
+    expect(await detectOnDeviceAvailability(async () => 'downloading')).toBe('downloading');
+    expect(await detectOnDeviceAvailability(async () => 'downloadable')).toBe('downloading');
+    expect(await detectOnDeviceAvailability(async () => 'after-download')).toBe('downloading');
+    expect(await detectOnDeviceAvailability(async () => 'unavailable')).toBe('cloud-fallback');
+    expect(await detectOnDeviceAvailability(async () => 'no')).toBe('cloud-fallback');
+    expect(
+      await detectOnDeviceAvailability(async () => {
+        throw new Error('not supported');
+      }),
+    ).toBe('cloud-fallback');
+  });
+});
+
+describe('verifyReportQaReply', () => {
+  test('accepts grounded numbers from CapacityReport and flags invented numbers', () => {
+    expect(verifyReportQaReply('Safe capacity is 100 VUs and p95 was 1611 ms.', SAMPLE_REPORT)).toEqual({
+      ok: true,
+    });
+    const bad = verifyReportQaReply('Stage 2 handled 99999 requests at 777 ms.', SAMPLE_REPORT);
+    expect(bad.ok).toBe(false);
+    if (!bad.ok) {
+      expect(bad.offending).toEqual([99999, 777]);
+    }
+  });
+});
+
+describe('HybridAvailabilityBadge', () => {
+  test('renders pre-flight status labels without inline styles', () => {
+    const ready = renderToStaticMarkup(createElement(HybridAvailabilityBadge, { availability: 'ready' }));
+    expect(ready).toContain('On-device ready');
+    expect(ready).not.toMatch(/\sstyle=/i);
+
+    const downloading = renderToStaticMarkup(
+      createElement(HybridAvailabilityBadge, { availability: 'downloading' }),
+    );
+    expect(downloading).toContain('Gemini Nano downloading');
+
+    const cloud = renderToStaticMarkup(
+      createElement(HybridAvailabilityBadge, { availability: 'cloud-fallback' }),
+    );
+    expect(cloud).toContain('Cloud fallback');
   });
 });

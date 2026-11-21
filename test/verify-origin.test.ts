@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { InferenceClient } from '../src/agents/inference.ts';
-import type { ApiErrorBody } from '../src/api-types.ts';
+import type { ApiErrorBody, VerifyStartResponse } from '../src/api-types.ts';
 import type { ResendMailer } from '../src/auth/magic-link.ts';
 import {
   checkDnsTxt,
@@ -484,5 +484,80 @@ describe('pending verification restore', () => {
     const meAfter = await app.fetch(new Request('http://macro.test/api/me', { headers: { cookie } }));
     const meAfterBody = (await meAfter.json()) as { pendingVerification: { host: string } | null };
     expect(meAfterBody.pendingVerification).toBeNull();
+  });
+
+  test('verify start and pending return domainConnectUrl when provider supports Domain Connect', async () => {
+    const store = new Store(':memory:');
+    const sent: { to: string; url: string }[] = [];
+    const mailer: ResendMailer = {
+      sendMagicLink: async (input) => {
+        sent.push(input);
+        return { ok: true };
+      },
+    };
+    const config = authConfig();
+    const app = createApp({
+      store,
+      config,
+      verifyTurnstile: () => Promise.resolve({ ok: true }),
+      client: new InferenceClient({
+        config: config.inference,
+        store,
+        fetchImpl: asFetch(() => Promise.reject(new Error('no'))),
+      }),
+      runController: fakeController(),
+      probeController: fakeController(),
+      now: () => NOW,
+      log: () => {},
+      mailer,
+      resolveNs: async (host) => {
+        if (host === 'example.com') return ['ns1.godaddy.com'];
+        return [];
+      },
+      resolveTxt: async (host) => {
+        if (host === '_domainconnect.example.com') {
+          return [['domainconnect.godaddy.com']];
+        }
+        return [];
+      },
+      resolveCname: noDns,
+      fetchImpl: async (url) => {
+        if (String(url).includes('/v2/example.com/settings')) {
+          return new Response(
+            JSON.stringify({
+              providerId: 'godaddy.com',
+              providerName: 'GoDaddy',
+              urlSyncUX: 'https://dcc.godaddy.com/manage',
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          );
+        }
+        return new Response('no', { status: 404 });
+      },
+    });
+
+    const cookie = await signIn(app, sent);
+    const start = await app.fetch(
+      new Request('http://macro.test/api/verify/start', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', cookie },
+        body: JSON.stringify({ host: 'shop.example.com' }),
+      }),
+    );
+    expect(start.status).toBe(200);
+    const startBody = (await start.json()) as VerifyStartResponse;
+    expect(startBody.domainConnectProviderName).toBe('GoDaddy');
+    expect(startBody.domainConnectUrl).toBeDefined();
+    expect(startBody.domainConnectUrl).toContain('https://dcc.godaddy.com/manage');
+    expect(startBody.domainConnectUrl).toContain('domain=example.com');
+    expect(startBody.domainConnectUrl).toContain('host=shop');
+
+    const pending = await app.fetch(
+      new Request('http://macro.test/api/verify/pending', { headers: { cookie } }),
+    );
+    expect(pending.status).toBe(200);
+    const pendingBody = (await pending.json()) as VerifyStartResponse;
+    expect(pendingBody.domainConnectProviderName).toBe('GoDaddy');
+    expect(pendingBody.domainConnectUrl).toBe(startBody.domainConnectUrl);
   });
 });

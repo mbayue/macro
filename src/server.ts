@@ -1988,8 +1988,7 @@ export function createApp(deps: AppDeps): App {
     });
   };
 
-  // Disabled for now without deleting the implementation.
-  const DOMAIN_CONNECT_ENABLED = false;
+  const DOMAIN_CONNECT_ENABLED = true;
 
   const postVerifyStart: Handler = async ({ req }) => {
     if (config.auth === undefined) {

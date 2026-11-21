@@ -36,8 +36,13 @@ export function useHybridPrompt() {
     const mine = ++seq.current;
     setBusy(true);
     setError(null);
+    setReply(null);
     announce(busyAnnouncement);
-    const res = await runHybridPrompt(runner, prompt);
+    const onChunk = (streamed: string) => {
+      if (!alive.current || mine !== seq.current) return;
+      setReply((prev) => ({ text: streamed, origin: prev?.origin ?? 'unknown' }));
+    };
+    const res = await runHybridPrompt(runner, prompt, onChunk);
     if (!alive.current || mine !== seq.current) return;
     setBusy(false);
     if (res.ok) {

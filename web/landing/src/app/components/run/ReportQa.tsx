@@ -94,13 +94,18 @@ export const ReportQa = memo(function ReportQa({ report }: { report: CapacityRep
         </Button>
       </form>
 
-      {busy ? <Busy>Thinking…</Busy> : null}
+      {busy && !reply ? <Busy>Thinking…</Busy> : null}
       <AlertRegion>{error ? <p>{error}</p> : null}</AlertRegion>
 
       {/* The live region is always in the page, so screen readers hear the answer when it arrives. */}
       <div aria-live="polite">
         {reply ? (
-          <div className="rounded-md border border-bar bg-background p-3.5">
+          <div className="flex flex-col gap-2 rounded-md border border-bar bg-background p-3.5">
+            {busy ? (
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono text-xs text-muted-foreground animate-pulse">Streaming answer…</span>
+              </div>
+            ) : null}
             <p className="m-0 text-sm leading-relaxed whitespace-pre-wrap text-foreground">{reply.text}</p>
           </div>
         ) : null}

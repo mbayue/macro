@@ -58,7 +58,7 @@ export function ScenarioAssistant({ draft, routes, disabled, onApply }: Props) {
           {open ? 'Hide Scenario Assistant' : 'Scenario Assistant'}
         </Button>
         <span className="text-xs text-muted-foreground">
-          Runs on-device when supported; does not use server planning quota.
+          Runs on-device (Gemini Nano) when supported; does not use server planning quota.
         </span>
       </div>
 
@@ -129,7 +129,7 @@ export function ScenarioAssistant({ draft, routes, disabled, onApply }: Props) {
             </Button>
           </div>
 
-          {busy ? <Busy>Refining description…</Busy> : null}
+          {busy && !reply ? <Busy>Refining description…</Busy> : null}
           <AlertRegion>{error ? <p>{error}</p> : null}</AlertRegion>
 
           {/* Always in the page, so screen readers hear the suggestion when it arrives. */}
@@ -138,12 +138,13 @@ export function ScenarioAssistant({ draft, routes, disabled, onApply }: Props) {
             <div className="flex flex-col gap-2.5 rounded-md border border-bar bg-surface p-3.5">
               <div className="flex items-center justify-between gap-2">
                 <HybridBadge origin={reply.origin} />
+                {busy ? <span className="font-mono text-xs text-muted-foreground animate-pulse">Streaming…</span> : null}
               </div>
               <p className="text-sm whitespace-pre-wrap text-foreground">{reply.text}</p>
               <div className="flex flex-wrap items-center gap-2">
                 <Button
                   type="button"
-                  disabled={disabled}
+                  disabled={disabled || busy}
                   onClick={() => {
                     onApply(reply.text);
                     clearReply();
@@ -152,7 +153,7 @@ export function ScenarioAssistant({ draft, routes, disabled, onApply }: Props) {
                 >
                   Apply to description
                 </Button>
-                <Button type="button" variant="outline" className="border-bar" onClick={clearReply}>
+                <Button type="button" variant="outline" className="border-bar" disabled={busy} onClick={clearReply}>
                   Dismiss
                 </Button>
               </div>

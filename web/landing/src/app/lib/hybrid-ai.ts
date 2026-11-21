@@ -22,7 +22,10 @@ export interface HybridReply {
   origin: InferenceOrigin;
 }
 
-export type HybridRunner = (prompt: string) => Promise<HybridReply>;
+export type HybridRunner = (
+  prompt: string,
+  onChunk?: (text: string) => void,
+) => Promise<HybridReply>;
 
 const modelCache = new Map<string, GenerativeModel>();
 const appCheckInitialized = new Set<string>();
@@ -98,9 +101,10 @@ export const AI_HELPER_UNAVAILABLE = "AI helper isn't available right now";
 export async function runHybridPrompt(
   runner: HybridRunner,
   prompt: string,
+  onChunk?: (text: string) => void,
 ): Promise<{ ok: true; reply: HybridReply } | { ok: false; error: string }> {
   try {
-    const reply = await runner(prompt);
+    const reply = await runner(prompt, onChunk);
     const text = reply.text.trim();
     if (!text) return { ok: false, error: 'Model returned an empty response.' };
     return { ok: true, reply: { text, origin: reply.origin } };
@@ -157,13 +161,30 @@ function getOrCreateHybridModel(config: FirebaseWebConfig): GenerativeModel {
 /**
  * Creates a HybridRunner backed by Firebase AI Logic (`InferenceMode.PREFER_ON_DEVICE`).
  * SDK initialization is deferred until the first prompt is executed.
+ * Streams content in real-time via `generateContentStream` when available.
  */
 export function createFirebaseHybridRunner(config: FirebaseWebConfig): HybridRunner {
-  return async (prompt: string): Promise<HybridReply> => {
+  return async (prompt: string, onChunk?: (text: string) => void): Promise<HybridReply> => {
     const model = getOrCreateHybridModel(config);
+    if (typeof model.generateContentStream === 'function') {
+      const result = await model.generateContentStream(prompt);
+      let fullText = '';
+      for await (const chunk of result.stream) {
+        const chunkText = chunk.text();
+        fullText += chunkText;
+        onChunk?.(fullText);
+      }
+      const response = await result.response;
+      return {
+        text: fullText || response.text(),
+        origin: mapInferenceSource(response.inferenceSource),
+      };
+    }
     const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    onChunk?.(text);
     return {
-      text: result.response.text(),
+      text,
       origin: mapInferenceSource(result.response.inferenceSource),
     };
   };

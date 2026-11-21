@@ -180,4 +180,19 @@ describe('runHybridPrompt', () => {
       console.error = originalError;
     }
   });
+
+  test('notifies onChunk callback as chunks stream in real time', async () => {
+    const chunks: string[] = [];
+    const res = await runHybridPrompt(
+      async (_prompt, onChunk) => {
+        onChunk?.('Ramp from ');
+        onChunk?.('Ramp from 10 to 100 users');
+        return { text: 'Ramp from 10 to 100 users', origin: 'on-device' };
+      },
+      'prompt',
+      (c) => chunks.push(c),
+    );
+    expect(res.ok).toBe(true);
+    expect(chunks).toEqual(['Ramp from ', 'Ramp from 10 to 100 users']);
+  });
 });

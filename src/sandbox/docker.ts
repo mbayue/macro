@@ -391,6 +391,11 @@ export class DockerClient {
     return (await res.json()) as T;
   }
 
+  async ping(): Promise<void> {
+    const res = await this.request('GET', '/_ping');
+    await res.body?.cancel();
+  }
+
   async info(): Promise<DockerInfo> {
     const info = await this.json<Partial<DockerInfo>>(await this.request('GET', '/info'));
     return { ...info, Runtimes: info.Runtimes ?? {} };

@@ -2,7 +2,7 @@
 // the VM): URL rewriting, passthrough of method/body/signal, and the strict
 // base/host validation. Synthetic only — no daemon is contacted.
 import { describe, expect, test } from 'bun:test';
-import { fetchForDockerHost, tcpFetch } from '../src/sandbox/docker.ts';
+import { DockerClient, fetchForDockerHost, tcpFetch } from '../src/sandbox/docker.ts';
 import type { DockerRequestInit } from '../src/sandbox/docker.ts';
 
 interface Seen {
@@ -63,6 +63,24 @@ describe('tcpFetch rewrites the internal docker host onto the configured endpoin
       expect(() => tcpFetch(base)).toThrow('invalid Docker TCP base URL');
     },
   );
+});
+
+describe('DockerClient.ping checks daemon availability', () => {
+  test('ping succeeds when endpoint returns 200', async () => {
+    const { fetchImpl, seen } = recordingFetch();
+    const client = new DockerClient(fetchImpl);
+    await expect(client.ping()).resolves.toBeUndefined();
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.url).toContain('/_ping');
+  });
+
+  test('ping rejects when transport throws', async () => {
+    const failingFetch = (async () => {
+      throw new Error('connect ECONNREFUSED');
+    }) as unknown as typeof fetch;
+    const client = new DockerClient(failingFetch);
+    await expect(client.ping()).rejects.toThrow('connect ECONNREFUSED');
+  });
 });
 
 describe('fetchForDockerHost maps one DOCKER_HOST to a transport', () => {

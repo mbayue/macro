@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { InferenceSource } from 'firebase/ai';
 import type { CapacityReport } from '../src/report/build.ts';
 import {
+  AI_HELPER_UNAVAILABLE,
   buildReportQaPrompt,
   buildScenarioPrompt,
   mapInferenceSource,
@@ -160,10 +161,23 @@ describe('runHybridPrompt', () => {
     expect(res.ok).toBe(false);
   });
 
-  test('catches runner errors cleanly', async () => {
-    const res = await runHybridPrompt(async () => {
-      throw new Error('Model unavailable');
-    }, 'prompt');
-    expect(res).toEqual({ ok: false, error: 'Model unavailable' });
+  test('catches runner errors cleanly, returns friendly copy, and logs details', async () => {
+    const originalError = console.error;
+    const logged: unknown[][] = [];
+    console.error = (...args: unknown[]) => {
+      logged.push(args);
+    };
+    try {
+      const boom = new Error('Model unavailable (401)');
+      const res = await runHybridPrompt(async () => {
+        throw boom;
+      }, 'prompt');
+      expect(res).toEqual({ ok: false, error: AI_HELPER_UNAVAILABLE });
+      expect(res.ok ? '' : res.error).toBe("AI helper isn't available right now");
+      expect(logged).toHaveLength(1);
+      expect(logged[0]).toEqual(['Hybrid inference error:', boom]);
+    } finally {
+      console.error = originalError;
+    }
   });
 });

@@ -92,6 +92,8 @@ export function buildReportQaPrompt(report: CapacityReport, question: string): s
   ].join('\n');
 }
 
+export const AI_HELPER_UNAVAILABLE = "AI helper isn't available right now";
+
 /** Executes a hybrid prompt through the provided runner and normalizes errors/empty outputs. */
 export async function runHybridPrompt(
   runner: HybridRunner,
@@ -103,7 +105,8 @@ export async function runHybridPrompt(
     if (!text) return { ok: false, error: 'Model returned an empty response.' };
     return { ok: true, reply: { text, origin: reply.origin } };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Hybrid inference failed.' };
+    console.error('Hybrid inference error:', err);
+    return { ok: false, error: AI_HELPER_UNAVAILABLE };
   }
 }
 

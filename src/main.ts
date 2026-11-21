@@ -35,7 +35,9 @@ const MSG_PROXY_IMAGE_MISSING =
   'The Egress_Proxy image macro-proxy:latest is not present. Build it, then restart the Macro_API.';
 
 function errName(e: unknown): string {
-  return e instanceof Error ? e.name : 'unknown';
+  if (e instanceof Error) return e.name;
+  if (typeof e === 'string') return e.slice(0, 500);
+  return 'unknown';
 }
 
 function logLine(fields: Record<string, unknown>): void {
@@ -80,6 +82,7 @@ async function main(): Promise<void> {
 
   try {
     await runner.assertRuntimeUsable();
+    await docker.ping();
   } catch (e) {
     if (e instanceof SandboxRefusedError) refuse(e.message);
     else {
@@ -88,15 +91,17 @@ async function main(): Promise<void> {
     }
   }
 
-  try {
-    const swept = await runner.cleanupAll();
-    if (swept.errors.length > 0) {
-      logError('startup_cleanup_incomplete', swept.errors.join('; '));
+  if (runtimeError === undefined) {
+    try {
+      const swept = await runner.cleanupAll();
+      if (swept.errors.length > 0) {
+        logError('startup_cleanup_incomplete', swept.errors.join('; '));
+        refuse(MSG_CLEANUP_FAILED);
+      }
+    } catch (e) {
+      logError('startup_cleanup_failed', e);
       refuse(MSG_CLEANUP_FAILED);
     }
-  } catch (e) {
-    logError('startup_cleanup_failed', e);
-    refuse(MSG_CLEANUP_FAILED);
   }
 
   try {

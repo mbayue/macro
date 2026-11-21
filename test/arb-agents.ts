@@ -18,9 +18,15 @@ export const API_KEY = 'test-inference-key-SECRET-1111';
 /** A Config built from synthetic settings (never `process.env`). */
 export function testConfig(patch: Record<string, string | undefined> = {}): Config {
   const result = parseConfig({
-    VULTR_INFERENCE_API_KEY: API_KEY,
+    INFERENCE_API_KEY: API_KEY,
+    INFERENCE_BASE_URL: 'https://api.vultrinference.com/v1',
+    INFERENCE_MODEL: 'minimax-m3.1-flash',
+    INFERENCE_FALLBACK_MODEL: 'mimo-v2.6-flash',
     TURNSTILE_SECRET_KEY: 'test-turnstile-secret-2222',
     TURNSTILE_SITE_KEY: 'test-site-key-3333',
+    FIREBASE_API_KEY: 'AIzaMockKey',
+    FIREBASE_APP_ID: '1:123:web:abc',
+    FIREBASE_PROJECT_ID: 'macro-c80bc',
     ...patch,
   });
   if (!result.ok) throw new Error(`test config invalid: ${JSON.stringify(result.errors)}`);

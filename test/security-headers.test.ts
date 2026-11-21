@@ -91,11 +91,15 @@ describe('security headers on every response', () => {
     expect(CSP).toContain("base-uri 'none'");
   });
 
-  test('GET /api/config returns firebase: null when Firebase is unconfigured', async () => {
+  test('GET /api/config returns public firebase config', async () => {
     const res = await fetchPath('/api/config');
     expect(res.status).toBe(200);
     const body = (await res.json()) as { firebase?: unknown };
-    expect(body.firebase).toBeNull();
+    expect(body.firebase).toEqual({
+      apiKey: 'AIzaMockKey',
+      appId: '1:123:web:abc',
+      projectId: 'macro-c80bc',
+    });
   });
 
   test('GET /api/config returns public firebase config when configured', async () => {

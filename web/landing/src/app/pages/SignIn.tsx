@@ -408,19 +408,21 @@ export function SignIn() {
           </TelemetryPanel>
         ) : null}
 
-        <TelemetryPanel ticks="bar" aria-labelledby="signin-github-heading" className="bg-card">
-          <h2 id="signin-github-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
-            GitHub
-          </h2>
-          <p className="m-0 max-w-[72ch] text-sm text-muted-foreground">
-            Uses your GitHub account. Macro needs a verified email address.
-          </p>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <Button render={<a href={githubStartHref()} />} nativeButton={false}>
-              Continue with GitHub
-            </Button>
-          </div>
-        </TelemetryPanel>
+        {config.githubSignIn ? (
+          <TelemetryPanel ticks="bar" aria-labelledby="signin-github-heading" className="bg-card">
+            <h2 id="signin-github-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+              GitHub
+            </h2>
+            <p className="m-0 max-w-[72ch] text-sm text-muted-foreground">
+              Uses your GitHub account. Macro needs a verified email address.
+            </p>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <Button render={<a href={githubStartHref()} />} nativeButton={false}>
+                Continue with GitHub
+              </Button>
+            </div>
+          </TelemetryPanel>
+        ) : null}
 
         <EmailLinkPanel
           email={email}

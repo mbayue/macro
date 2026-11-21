@@ -34,9 +34,15 @@ function intFromEnv(name: string, fallback: number): number {
 }
 
 const parsed = parseConfig({
-  VULTR_INFERENCE_API_KEY: 'dummy',
+  INFERENCE_API_KEY: 'dummy',
+  INFERENCE_BASE_URL: 'https://api.vultrinference.com/v1',
+  INFERENCE_MODEL: 'minimax-m3.1-flash',
+  INFERENCE_FALLBACK_MODEL: 'mimo-v2.6-flash',
   TURNSTILE_SECRET_KEY: 'dummy',
   TURNSTILE_SITE_KEY: 'dummy',
+  FIREBASE_API_KEY: 'dummy',
+  FIREBASE_APP_ID: 'dummy',
+  FIREBASE_PROJECT_ID: 'dummy',
   ...(process.env['SANDBOX_RUNTIME'] !== undefined ? { SANDBOX_RUNTIME: process.env['SANDBOX_RUNTIME'] } : {}),
   ...(process.env['DATA_DIR'] !== undefined ? { DATA_DIR: process.env['DATA_DIR'] } : {}),
 });

@@ -392,9 +392,15 @@ const TURNSTILE_SECRET = 'turnstile-SECRET-abcdef';
 
 function makeConfig(extra: Record<string, string> = {}): Config {
   const result = parseConfig({
-    VULTR_INFERENCE_API_KEY: SECRET_KEY,
+    INFERENCE_API_KEY: SECRET_KEY,
+    INFERENCE_BASE_URL: 'https://api.vultrinference.com/v1',
+    INFERENCE_MODEL: 'minimax-m3.1-flash',
+    INFERENCE_FALLBACK_MODEL: 'mimo-v2.6-flash',
     TURNSTILE_SECRET_KEY: TURNSTILE_SECRET,
     TURNSTILE_SITE_KEY: 'site-key',
+    FIREBASE_API_KEY: 'AIzaMockKey',
+    FIREBASE_APP_ID: '1:123:web:abc',
+    FIREBASE_PROJECT_ID: 'macro-c80bc',
     DATA_DIR: '/data',
     ...extra,
   });

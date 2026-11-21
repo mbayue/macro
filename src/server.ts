@@ -992,6 +992,7 @@ export function createApp(deps: AppDeps): App {
       trafficEventMax: 1000,
       sampleRunId: store.getLatestPublicCompletedRunId(),
       firebase: config.firebase ?? null,
+      githubSignIn: config.auth !== undefined && config.githubAuth !== undefined,
       googleSignIn: config.auth !== undefined && config.googleAuth !== undefined,
     };
     return json(200, body, { 'cache-control': 'no-cache' });
@@ -1849,15 +1850,25 @@ export function createApp(deps: AppDeps): App {
   };
 
   const getGithubStart: Handler = async () => {
-    if (config.auth === undefined) {
+    if (config.auth === undefined || config.githubAuth === undefined) {
       return apiError(503, 'auth_unavailable', MSG.authUnavailable);
     }
     const state = generateMagicToken();
-    return startOauthRedirect(githubAuthorizeUrl(config.auth, state), state);
+    return startOauthRedirect(
+      githubAuthorizeUrl(
+        {
+          githubClientId: config.githubAuth.clientId,
+          githubClientSecret: config.githubAuth.clientSecret,
+          githubRedirectUri: config.githubAuth.redirectUri,
+        },
+        state,
+      ),
+      state,
+    );
   };
 
   const getGithubCallback: Handler = async ({ req, url }) => {
-    if (config.auth === undefined) {
+    if (config.auth === undefined || config.githubAuth === undefined) {
       return apiError(503, 'auth_unavailable', MSG.authUnavailable);
     }
     const expected = parseCookieValue(req.headers.get('cookie'), OAUTH_STATE_COOKIE);
@@ -1867,7 +1878,15 @@ export function createApp(deps: AppDeps): App {
       return apiError(400, 'invalid_input', MSG.oauthFailed, {}, { 'Set-Cookie': clearOauthStateCookie(cookieSecure) });
     }
     const ghFetch = deps.githubFetch ?? fetch;
-    const token = await exchangeGithubCode(config.auth, code, ghFetch);
+    const token = await exchangeGithubCode(
+      {
+        githubClientId: config.githubAuth.clientId,
+        githubClientSecret: config.githubAuth.clientSecret,
+        githubRedirectUri: config.githubAuth.redirectUri,
+      },
+      code,
+      ghFetch,
+    );
     if ('error' in token) {
       return apiError(400, 'invalid_input', MSG.oauthFailed, {}, { 'Set-Cookie': clearOauthStateCookie(cookieSecure) });
     }

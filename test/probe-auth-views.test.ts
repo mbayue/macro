@@ -26,7 +26,12 @@ function makeConfig(overrides?: Partial<ConfigResponse>): ConfigResponse {
     trafficEventMin: 10,
     trafficEventMax: 1000,
     sampleRunId: null,
-    firebase: null,
+    firebase: {
+      apiKey: 'AIzaMockKey',
+      appId: '1:123:web:abc',
+      projectId: 'macro-c80bc',
+    },
+    githubSignIn: true,
     googleSignIn: false,
     ...overrides,
   };
@@ -288,6 +293,12 @@ describe('SignIn view (signed out)', () => {
       me: null,
     });
     expect(withGoogleHtml).toContain('href="/api/auth/google/start"');
+
+    const withoutGithubHtml = renderWithApp(createElement(SignIn), {
+      config: { githubSignIn: false },
+      me: null,
+    });
+    expect(withoutGithubHtml).not.toContain('href="/api/auth/github/start"');
     expect(withGoogleHtml).toContain('Continue with Google');
     assertNoInlineStyle(withGoogleHtml);
   });

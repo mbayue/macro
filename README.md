@@ -140,15 +140,18 @@ Main configuration settings (full list in [`.env.example`](.env.example) and [`s
 
 | Setting | Notes |
 | --- | --- |
-| `VULTR_INFERENCE_API_KEY` | Required, secret. Server-side LLM inference API key. |
+| `INFERENCE_API_KEY` | Required, secret. Server-side LLM inference API key (aliases: `VULTR_INFERENCE_API_KEY`, `AI_API_KEY`). Compatible with any OpenAI-compatible endpoint. |
+| `INFERENCE_BASE_URL` | Required. Base HTTP(S) URL for the OpenAI-compatible inference endpoint (alias: `VULTR_INFERENCE_BASE_URL`). |
+| `INFERENCE_MODEL`, `INFERENCE_FALLBACK_MODEL` | Required. Primary model name and fallback model name (aliases: `VULTR_INFERENCE_MODEL`, `VULTR_INFERENCE_FALLBACK_MODEL`). |
+| `FIREBASE_API_KEY`, `FIREBASE_APP_ID`, `FIREBASE_PROJECT_ID` | Required. Powers client-side Hybrid AI via `firebase/ai` (`PREFER_ON_DEVICE`) with on-device Gemini Nano and cloud fallback (plus optional `FIREBASE_AUTH_DOMAIN`, `FIREBASE_MEASUREMENT_ID`, `FIREBASE_APPCHECK_SITE_KEY`). |
 | `TURNSTILE_SECRET_KEY`, `TURNSTILE_SITE_KEY` | Required. Cloudflare Turnstile keys (test keys work locally). |
 | `TARGET_ORIGINS` | The allowed origins: web origin followed by API origin. |
 | `SANDBOX_RUNTIME` | `runsc` (default) or `runc` to opt out of gVisor. |
 | `K6_IMAGE` | Pinned by `@sha256:` digest. |
 | `TIGERDATA_URL` | Optional, secret. `postgres://` connection string for external telemetry mirroring (SQLite remains the primary source of truth). |
-| Auth block (all or nothing) | `SESSION_SECRET`, `PUBLIC_BASE_URL`, `RESEND_API_KEY`, `RESEND_FROM`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_REDIRECT_URI`. Omit to run in signed-out demo mode; set all to enable user accounts. |
-| Google OAuth (optional) | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` (requires auth block). Enables **Continue with Google** alongside GitHub and magic-link sign-in. |
-| Firebase Hybrid AI (optional) | `FIREBASE_API_KEY`, `FIREBASE_APP_ID`, `FIREBASE_PROJECT_ID` (plus optional `FIREBASE_AUTH_DOMAIN`, `FIREBASE_MEASUREMENT_ID`, `FIREBASE_APPCHECK_SITE_KEY`). Enables client-side Scenario Assistant & Report Q&A via `firebase/ai` (`PREFER_ON_DEVICE`); unset hides them. |
+| Auth block (optional) | `SESSION_SECRET`, `PUBLIC_BASE_URL`, `RESEND_API_KEY`, `RESEND_FROM`. Omit to run in signed-out demo mode; set all to enable user accounts and magic-link sign-in. |
+| GitHub OAuth (optional) | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_REDIRECT_URI` (requires auth block). Enables **Continue with GitHub**. |
+| Google OAuth (optional) | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` (requires auth block). Enables **Continue with Google**. |
 
 If any sandbox prerequisite is missing (Docker, gVisor, or proxy image), the API starts but safely refuses runs, reporting the issue via `GET /api/config`.
 

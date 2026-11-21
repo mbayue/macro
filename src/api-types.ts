@@ -96,8 +96,10 @@ export interface ConfigResponse {
   trafficEventMax: 1000;
   /** Most recent completed public demo run ID with a report, if any. */
   sampleRunId?: string | null;
-  /** Public Firebase Web SDK config for client-side Hybrid Inference, or null when unconfigured. */
+  /** Public Firebase Web SDK config for client-side Hybrid Inference. */
   firebase?: FirebaseWebConfig | null;
+  /** True when optional GitHub OAuth is configured alongside auth. */
+  githubSignIn?: boolean;
   /** True when optional Direct Google OAuth is configured alongside auth. */
   googleSignIn?: boolean;
 }

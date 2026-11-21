@@ -8,9 +8,6 @@ import type { FirebaseWebConfig } from './api-types.ts';
 export const K6_IMAGE_DEFAULT = 'grafana/k6@sha256:3e4186aea62e11a45560bfc51e19eeafe82fc07ce069c78aff44b7ff893d9a5e';
 
 export const DEFAULTS = {
-  inferenceBaseUrl: 'https://api.vultrinference.com/v1',
-  inferenceModel: 'minimax-m3.1-flash',
-  inferenceFallbackModel: 'mimo-v2.6-flash',
   targetOrigins: 'https://yue.macro.my.id,https://api.yue.macro.my.id',
   sandboxRuntime: 'runsc',
   macroVmIp: '139.180.219.252',
@@ -73,9 +70,9 @@ export interface Config {
     readonly publicBaseUrl: string;
     readonly resendApiKey: string;
     readonly resendFrom: string;
-    readonly githubClientId: string;
-    readonly githubClientSecret: string;
-    readonly githubRedirectUri: string;
+    readonly githubClientId?: string;
+    readonly githubClientSecret?: string;
+    readonly githubRedirectUri?: string;
   };
   readonly domainConnect?: {
     readonly keyId: string;
@@ -83,9 +80,17 @@ export interface Config {
   };
   /**
    * Public Firebase Web SDK config for client-side Hybrid Inference.
-   * Omitted when unset (Hybrid AI UI stays hidden).
    */
-  readonly firebase?: FirebaseWebConfig;
+  readonly firebase: FirebaseWebConfig;
+  /**
+   * Optional GitHub OAuth client credentials (all-or-nothing).
+   * Omitted when unset (GitHub sign-in stays disabled).
+   */
+  readonly githubAuth?: {
+    readonly clientId: string;
+    readonly clientSecret: string;
+    readonly redirectUri: string;
+  };
   /**
    * Optional Google OAuth client credentials (all-or-nothing).
    * Omitted when unset (Google sign-in stays disabled).
@@ -167,17 +172,11 @@ function parseFirebaseConfig(
   const authDomain = read(env, 'FIREBASE_AUTH_DOMAIN');
   const measurementId = read(env, 'FIREBASE_MEASUREMENT_ID');
   const appCheckSiteKey = read(env, 'FIREBASE_APPCHECK_SITE_KEY');
-  const anySet =
-    requiredKeys.some((k) => required[k] !== undefined) ||
-    authDomain !== undefined ||
-    measurementId !== undefined ||
-    appCheckSiteKey !== undefined;
-  if (!anySet) return undefined;
 
   let missing = false;
   for (const k of requiredKeys) {
     if (required[k] === undefined) {
-      fail(k, 'is required when any FIREBASE_* setting is provided');
+      fail(k, 'is required and must not be empty');
       missing = true;
     }
   }
@@ -190,6 +189,39 @@ function parseFirebaseConfig(
     ...(authDomain !== undefined ? { authDomain } : {}),
     ...(measurementId !== undefined ? { measurementId } : {}),
     ...(appCheckSiteKey !== undefined ? { appCheckSiteKey } : {}),
+  };
+}
+
+function parseGithubAuthConfig(
+  env: Env,
+  fail: (setting: string, reason: string) => void,
+): Config['githubAuth'] {
+  const keys = ['GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'GITHUB_REDIRECT_URI'] as const;
+  const values = Object.fromEntries(keys.map((k) => [k, read(env, k)])) as Record<
+    (typeof keys)[number],
+    string | undefined
+  >;
+  if (!keys.some((k) => values[k] !== undefined)) return undefined;
+
+  let missing = false;
+  for (const k of keys) {
+    if (values[k] === undefined) {
+      fail(k, 'is required when any GITHUB_* setting is provided');
+      missing = true;
+    }
+  }
+  if (missing) return undefined;
+
+  const redirectUri = values.GITHUB_REDIRECT_URI as string;
+  if (!isHttpUrl(redirectUri)) {
+    fail('GITHUB_REDIRECT_URI', 'must be an http(s) URL');
+    return undefined;
+  }
+
+  return {
+    clientId: values.GITHUB_CLIENT_ID as string,
+    clientSecret: values.GITHUB_CLIENT_SECRET as string,
+    redirectUri,
   };
 }
 
@@ -226,19 +258,43 @@ export function parseConfig(env: Env): ConfigResult {
     errors.push({ setting, reason });
   };
 
-  // Required secrets. VULTR_INFERENCE_API_KEY wins over the AI_API_KEY alias.
-  const apiKey = read(env, 'VULTR_INFERENCE_API_KEY') ?? read(env, 'AI_API_KEY');
-  if (apiKey === undefined) fail('VULTR_INFERENCE_API_KEY', 'is required and must not be empty (alias: AI_API_KEY)');
+  // Required secrets. INFERENCE_API_KEY wins over aliases VULTR_INFERENCE_API_KEY and AI_API_KEY.
+  const apiKey =
+    read(env, 'INFERENCE_API_KEY') ??
+    read(env, 'VULTR_INFERENCE_API_KEY') ??
+    read(env, 'AI_API_KEY');
+  if (apiKey === undefined) {
+    fail('INFERENCE_API_KEY', 'is required and must not be empty (aliases: VULTR_INFERENCE_API_KEY, AI_API_KEY)');
+  }
   const turnstileSecret = read(env, 'TURNSTILE_SECRET_KEY');
   if (turnstileSecret === undefined) fail('TURNSTILE_SECRET_KEY', 'is required and must not be empty');
   const turnstileSite = read(env, 'TURNSTILE_SITE_KEY');
   if (turnstileSite === undefined) fail('TURNSTILE_SITE_KEY', 'is required and must not be empty');
 
-  // Inference
-  const baseUrl = read(env, 'VULTR_INFERENCE_BASE_URL') ?? DEFAULTS.inferenceBaseUrl;
-  if (!isHttpUrl(baseUrl)) fail('VULTR_INFERENCE_BASE_URL', 'must be an http(s) URL');
-  const model = read(env, 'VULTR_INFERENCE_MODEL') ?? DEFAULTS.inferenceModel;
-  const fallbackModel = read(env, 'VULTR_INFERENCE_FALLBACK_MODEL') ?? DEFAULTS.inferenceFallbackModel;
+  // Inference (general LLM API)
+  const baseUrlRaw = read(env, 'INFERENCE_BASE_URL') ?? read(env, 'VULTR_INFERENCE_BASE_URL');
+  const baseUrlSetting =
+    read(env, 'INFERENCE_BASE_URL') !== undefined ? 'INFERENCE_BASE_URL' : 'VULTR_INFERENCE_BASE_URL';
+  if (baseUrlRaw === undefined) {
+    fail('INFERENCE_BASE_URL', 'is required and must be an http(s) URL (alias: VULTR_INFERENCE_BASE_URL)');
+  } else if (!isHttpUrl(baseUrlRaw)) {
+    fail(baseUrlSetting, 'must be an http(s) URL');
+  }
+
+  const modelRaw = read(env, 'INFERENCE_MODEL') ?? read(env, 'VULTR_INFERENCE_MODEL');
+  if (modelRaw === undefined) {
+    fail('INFERENCE_MODEL', 'is required and must not be empty (alias: VULTR_INFERENCE_MODEL)');
+  }
+
+  const fallbackModelRaw =
+    read(env, 'INFERENCE_FALLBACK_MODEL') ?? read(env, 'VULTR_INFERENCE_FALLBACK_MODEL');
+  if (fallbackModelRaw === undefined) {
+    fail('INFERENCE_FALLBACK_MODEL', 'is required and must not be empty (alias: VULTR_INFERENCE_FALLBACK_MODEL)');
+  }
+
+  const baseUrl = baseUrlRaw ?? '';
+  const model = modelRaw ?? '';
+  const fallbackModel = fallbackModelRaw ?? '';
 
   // Target origins
   const origins = parseTargetOrigins(read(env, 'TARGET_ORIGINS') ?? DEFAULTS.targetOrigins);
@@ -308,15 +364,12 @@ export function parseConfig(env: Env): ConfigResult {
     }
   }
 
-  // Auth: all-or-nothing. Any one set requires every auth setting.
+  // Auth: all-or-nothing core settings. Any one set requires every core auth setting.
   const AUTH_KEYS = [
     'SESSION_SECRET',
     'PUBLIC_BASE_URL',
     'RESEND_API_KEY',
     'RESEND_FROM',
-    'GITHUB_CLIENT_ID',
-    'GITHUB_CLIENT_SECRET',
-    'GITHUB_REDIRECT_URI',
   ] as const;
   const authValues = Object.fromEntries(AUTH_KEYS.map((k) => [k, read(env, k)])) as Record<
     (typeof AUTH_KEYS)[number],
@@ -332,16 +385,30 @@ export function parseConfig(env: Env): ConfigResult {
   } else if (authPresent.length === AUTH_KEYS.length) {
     const publicBaseUrl = authValues.PUBLIC_BASE_URL as string;
     if (!isHttpUrl(publicBaseUrl)) fail('PUBLIC_BASE_URL', 'must be an http(s) URL');
-    const githubRedirectUri = authValues.GITHUB_REDIRECT_URI as string;
-    if (!isHttpUrl(githubRedirectUri)) fail('GITHUB_REDIRECT_URI', 'must be an http(s) URL');
     auth = {
       sessionSecret: authValues.SESSION_SECRET as string,
       publicBaseUrl,
       resendApiKey: authValues.RESEND_API_KEY as string,
       resendFrom: authValues.RESEND_FROM as string,
-      githubClientId: authValues.GITHUB_CLIENT_ID as string,
-      githubClientSecret: authValues.GITHUB_CLIENT_SECRET as string,
-      githubRedirectUri,
+    };
+  }
+
+  const githubAuth = parseGithubAuthConfig(env, fail);
+  const googleAuth = parseGoogleAuthConfig(env, fail);
+
+  if (githubAuth !== undefined && auth === undefined) {
+    fail('GITHUB_CLIENT_ID', 'requires the core auth settings (SESSION_SECRET, PUBLIC_BASE_URL, RESEND_API_KEY, RESEND_FROM)');
+  }
+  if (googleAuth !== undefined && auth === undefined) {
+    fail('GOOGLE_CLIENT_ID', 'requires the core auth settings (SESSION_SECRET, PUBLIC_BASE_URL, RESEND_API_KEY, RESEND_FROM)');
+  }
+
+  if (auth !== undefined && githubAuth !== undefined) {
+    auth = {
+      ...auth,
+      githubClientId: githubAuth.clientId,
+      githubClientSecret: githubAuth.clientSecret,
+      githubRedirectUri: githubAuth.redirectUri,
     };
   }
 
@@ -353,14 +420,18 @@ export function parseConfig(env: Env): ConfigResult {
       : undefined;
 
   const firebase = parseFirebaseConfig(env, fail);
-  const googleAuth = parseGoogleAuthConfig(env, fail);
 
   if (
     errors.length > 0 ||
     apiKey === undefined ||
+    baseUrlRaw === undefined ||
+    !isHttpUrl(baseUrlRaw) ||
+    modelRaw === undefined ||
+    fallbackModelRaw === undefined ||
     turnstileSecret === undefined ||
     turnstileSite === undefined ||
-    origins === undefined
+    origins === undefined ||
+    firebase === undefined
   ) {
     return { ok: false, errors };
   }
@@ -377,24 +448,29 @@ export function parseConfig(env: Env): ConfigResult {
     macroVmIp,
     port,
     dataDir,
+    firebase,
     ...(dockerHost !== undefined ? { dockerHost } : {}),
     ...(tigerDataUrl !== undefined ? { tigerDataUrl } : {}),
     ...(vultrApiKey !== undefined ? { vultrApiKey } : {}),
     ...(auth !== undefined ? { auth } : {}),
     ...(domainConnect !== undefined ? { domainConnect } : {}),
-    ...(firebase !== undefined ? { firebase } : {}),
+    ...(githubAuth !== undefined ? { githubAuth } : {}),
     ...(googleAuth !== undefined ? { googleAuth } : {}),
   };
   return { ok: true, config: deepFreeze(config) };
 }
 
-/** Loggable copy: the three secret keys are replaced by '[set]' / '[unset]'. */
+/** Loggable copy: the secret keys are replaced by '[set]' / '[unset]'. */
 export function redactedConfig(config: Config): unknown {
   const mark = (v: string | undefined): '[set]' | '[unset]' => (v === undefined || v === '' ? '[unset]' : '[set]');
   return {
     ...config,
     inference: { ...config.inference, apiKey: mark(config.inference.apiKey) },
     turnstile: { ...config.turnstile, secretKey: mark(config.turnstile.secretKey) },
+    firebase: {
+      ...config.firebase,
+      apiKey: mark(config.firebase.apiKey),
+    },
     // The URL itself carries credentials (user:password@host), so only its
     // presence is loggable.
     tigerDataUrl: mark(config.tigerDataUrl),
@@ -414,6 +490,14 @@ export function redactedConfig(config: Config): unknown {
           domainConnect: {
             keyId: config.domainConnect.keyId,
             privateKey: mark(config.domainConnect.privateKey),
+          },
+        }
+      : {}),
+    ...(config.githubAuth !== undefined
+      ? {
+          githubAuth: {
+            ...config.githubAuth,
+            clientSecret: mark(config.githubAuth.clientSecret),
           },
         }
       : {}),

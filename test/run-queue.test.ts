@@ -27,6 +27,11 @@ const config: Config = {
   port: 3000,
   dataDir: ':memory:',
   dockerHost: 'unix:///var/run/docker.sock',
+  firebase: {
+    apiKey: 'mock-key',
+    appId: '1:123:web:mock',
+    projectId: 'macro-mock',
+  },
 };
 
 const PLAN_TEXT = JSON.stringify({

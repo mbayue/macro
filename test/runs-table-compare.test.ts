@@ -583,7 +583,12 @@ function makeAppContext(): AppContextValue {
     trafficEventMin: 10,
     trafficEventMax: 1000,
     sampleRunId: null,
-    firebase: null,
+    firebase: {
+      apiKey: 'AIzaMockKey',
+      appId: '1:123:web:abc',
+      projectId: 'macro-c80bc',
+    },
+    githubSignIn: true,
     googleSignIn: false,
   };
   return {

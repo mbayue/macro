@@ -46,7 +46,7 @@ export interface GateSidebarProps {
 
 /**
  * Sticky right column (>= 1180px) stacking last below 1180px:
- * Policy Gate verdict, the spring-green Approve & Run gate with Turnstile, then the rules and the Stage/VU preview.
+ * Policy Gate verdict, the spring-green Approve & Run gate with Turnstile, then the rules. The plan's stages live in the Draft plan, not here.
  */
 export function GateSidebar({
   review,
@@ -119,10 +119,6 @@ export function GateSidebar({
       ) : null}
 
       <GateRules folded={review !== null || showVerify} targetOrigin={activeOrigin} />
-
-      {review?.plan && review.plan.stages.length > 0 ? (
-        <StagePreviewCard plan={review.plan} />
-      ) : null}
 
       {review === null && !showVerify ? (
         <>
@@ -203,42 +199,6 @@ export function GateSidebar({
   );
 }
 
-function StagePreviewCard({ plan }: { plan: TestPlan }) {
-  const { maxVus, totalSec } = planSize(plan);
-  return (
-    <TelemetryPanel ticks="bar" aria-labelledby="sidebar-stage-preview">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="sidebar-stage-preview" className="m-0 font-sans text-sm font-medium text-foreground">
-          Stage &amp; VU preview
-        </h2>
-        <span className="font-mono text-xs text-muted-foreground tabular-nums">
-          {plan.stages.length} {plan.stages.length === 1 ? 'stage' : 'stages'} · max {fmt(maxVus)} VUs · {fmt(totalSec)} s
-        </span>
-      </div>
-
-      <ol className="sr-only" aria-labelledby="sidebar-stage-preview">
-        {plan.stages.map((s, i) => (
-          <li key={i}>
-            Stage {i + 1}: {fmt(s.vus)} VUs for {s.durationSec} s
-          </li>
-        ))}
-      </ol>
-
-      <StageProfile
-        compact
-        mode="preview"
-        stages={plan.stages.map((s) => ({ vus: s.vus, durationSec: s.durationSec, state: 'planned' as const }))}
-      />
-
-      <Separator />
-
-      <div className="flex flex-wrap items-center justify-between gap-2 font-mono text-xs text-muted-foreground tabular-nums">
-        <span>p95 limit {fmt(plan.stopThresholds.p95Ms)} ms</span>
-        <span>err limit {plan.stopThresholds.errorRatePct}%</span>
-      </div>
-    </TelemetryPanel>
-  );
-}
 
 function ApprovePanel({
   plan,

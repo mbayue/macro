@@ -36,10 +36,10 @@ function CompareNavigationLinks({ a, b }: { a: string; b: string }) {
   return (
     <div className="flex flex-wrap items-center gap-2.5">
       <Button render={<a href={runHref(a)} />} nativeButton={false} variant="secondary">
-        Open run {a}
+        Open Run <span className="font-mono tabular-nums" translate="no">{a}</span>
       </Button>
       <Button render={<a href={runHref(b)} />} nativeButton={false} variant="secondary">
-        Open run {b}
+        Open Run <span className="font-mono tabular-nums" translate="no">{b}</span>
       </Button>
       <Button render={<a href="#/runs" />} nativeButton={false} variant="outline" className="border-bar">
         Back to Runs Table

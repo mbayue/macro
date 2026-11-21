@@ -97,7 +97,7 @@ export function Waitlist({ className = '' }: { className?: string }) {
             type="email"
             name="email"
             aria-label="Email address"
-            placeholder="you@shop.com"
+            placeholder="you@shop.com…"
             autoComplete="email"
             spellCheck={false}
             required

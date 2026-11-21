@@ -125,7 +125,7 @@ export function QuickJump() {
                     onSelect={() => selectRoute(run.href)}
                   >
                     {run.kind === 'probe' ? <ShieldCheckIcon /> : <ActivityIcon />}
-                    <span className="truncate">{run.title}</span>
+                    <span className="truncate min-w-0">{run.title}</span>
                     <span className="ml-auto flex shrink-0 items-center gap-2">
                       {run.status ? (
                         <span className="text-xs text-muted-foreground">{statusWords(run.status)}</span>

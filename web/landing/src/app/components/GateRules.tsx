@@ -22,7 +22,7 @@ function Rules({ targetOrigin }: { targetOrigin?: string | null | undefined }) {
     { label: 'Target', value: target, mono: true },
     { label: 'Stages', value: '1 to 6, each with more users than the one before', mono: false },
     { label: 'Users per stage', value: '1 to 500', mono: true },
-    { label: 'Stage length', value: '30 to 180 s, at most 600 s in total', mono: true },
+    { label: 'Stage length', value: '30 to 180\u00A0s, at most 600\u00A0s in total', mono: true },
   ] as const;
 
   return (

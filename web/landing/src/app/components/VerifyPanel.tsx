@@ -76,8 +76,9 @@ function VerifyHostForm({
           type="text"
           name="host"
           autoComplete="url"
+          spellCheck={false}
           required
-          placeholder="shop.example.com"
+          placeholder="shop.example.com…"
           value={host}
           onChange={(e) => onHostChange(e.target.value)}
           disabled={busy}
@@ -321,6 +322,7 @@ export function VerifyPanel({
                   size="sm"
                 >
                   Auto-configure DNS
+                  <span className="sr-only"> (opens in new tab)</span>
                   <ExternalLinkIcon data-icon="inline-end" />
                 </Button>
               </div>
@@ -349,6 +351,7 @@ export function VerifyPanel({
                   className="border-bar-hover bg-background"
                 >
                   Open Cloudflare DNS
+                  <span className="sr-only"> (opens in new tab)</span>
                   <ExternalLinkIcon data-icon="inline-end" />
                 </Button>
               </div>
@@ -382,7 +385,7 @@ export function VerifyPanel({
                 <div key={record.label} className="grid gap-1">
                   <span className="text-xs font-medium text-muted-foreground">{record.label}</span>
                   <div className="flex items-center justify-between gap-2 rounded-md border border-bar-hover bg-secondary px-2.5 py-1.5">
-                    <code className="min-w-0 flex-1 font-mono text-xs break-all text-foreground select-all">
+                    <code className="min-w-0 flex-1 font-mono text-xs break-all text-foreground select-all" translate="no">
                       {record.value}
                     </code>
                     <CopyButton text={record.value} onAnnounce={announce} />

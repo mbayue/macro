@@ -150,7 +150,7 @@ export function ProbePage({ id }: { id: string }) {
         <h1
           ref={heading}
           tabIndex={-1}
-          className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] text-balance text-foreground focus:outline-none max-[860px]:text-[1.75rem]"
+          className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] text-balance text-foreground focus-visible:outline-none max-[860px]:text-[1.75rem]"
         >
           Containment Probe
         </h1>
@@ -197,7 +197,7 @@ export function ProbePage({ id }: { id: string }) {
               </h2>
               <dl className="m-0 grid grid-cols-[max-content_minmax(0,1fr)] gap-x-6 gap-y-2 text-sm">
                 <dt className="text-muted-foreground">Probe</dt>
-                <dd className="m-0 min-w-0 font-mono text-xs break-all text-foreground">{state.run.id}</dd>
+                <dd className="m-0 min-w-0 font-mono text-xs break-all text-foreground" translate="no">{state.run.id}</dd>
 
                 <dt className="text-muted-foreground">Status</dt>
                 <dd className="m-0 flex min-w-0 flex-wrap items-center gap-2 text-foreground">
@@ -206,7 +206,7 @@ export function ProbePage({ id }: { id: string }) {
                 </dd>
 
                 <dt className="text-muted-foreground">Sandbox runtime</dt>
-                <dd className="m-0 min-w-0 font-mono text-xs text-foreground">{state.run.runtime}</dd>
+                <dd className="m-0 min-w-0 font-mono text-xs text-foreground" translate="no">{state.run.runtime}</dd>
 
                 <dt className="text-muted-foreground">Started</dt>
                 <dd className="m-0 min-w-0">

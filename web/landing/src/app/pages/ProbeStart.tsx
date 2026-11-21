@@ -96,7 +96,7 @@ export function ProbeStart() {
               <dd className="m-0 min-w-0 font-mono text-xs text-foreground tabular-nums">1 GiB</dd>
               <dt className="text-muted-foreground">Network</dt>
               <dd className="m-0 min-w-0 text-foreground">
-                Only <span className="font-mono text-xs break-all text-foreground">{allowedHost}</span> (egress proxy)
+                Only <span className="font-mono text-xs break-all text-foreground" translate="no">{allowedHost}</span> (egress proxy)
               </dd>
               <dt className="text-muted-foreground">Load sent</dt>
               <dd className="m-0 min-w-0 text-foreground">None</dd>

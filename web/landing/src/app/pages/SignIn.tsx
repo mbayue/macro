@@ -70,7 +70,8 @@ export function EmailLinkPanel({
             type="email"
             name="email"
             autoComplete="email"
-            placeholder="you@company.com"
+            spellCheck={false}
+            placeholder="you@company.com…"
             required
             value={email}
             onChange={(e) => onEmailChange(e.target.value)}

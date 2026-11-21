@@ -77,8 +77,8 @@ export const ModelCalls = memo(function ModelCalls({ calls }: { calls: readonly 
                       <th scope="row" className="idx font-mono tabular-nums">
                         {r.n}
                       </th>
-                      <td className="font-mono text-xs">{r.agent}</td>
-                      <td className="font-mono text-xs break-all">{r.model}</td>
+                      <td className="font-mono text-xs" translate="no">{r.agent}</td>
+                      <td className="font-mono text-xs break-all" translate="no">{r.model}</td>
                       <td>
                         <Badge variant={outcomeVariant(r.outcome)}>{r.outcome}</Badge>
                       </td>

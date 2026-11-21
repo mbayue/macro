@@ -55,7 +55,7 @@ export function SiteFooter() {
               {i < SANOK_PHOTOS.length - 1 ? ', ' : '; '}
             </span>
           ))}
-          <a href={SANOK_LICENCE.url}>{SANOK_LICENCE.name}</a>, via Wikimedia Commons. 2026 Macro.
+          <a href={SANOK_LICENCE.url} rel="noopener noreferrer">{SANOK_LICENCE.name}</a>, via Wikimedia Commons. 2026 Macro.
         </p>
       </div>
     </footer>

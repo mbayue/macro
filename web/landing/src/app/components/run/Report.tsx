@@ -588,7 +588,7 @@ export const RunsPanel = memo(function RunsPanel({ report }: { report: CapacityR
           Compare selected runs
         </Button>
         {picked.length > 0 ? (
-          <Button type="button" variant="outline" size="sm" className="border-bar" onClick={() => setPicked([])}>
+          <Button type="button" variant="outline" className="border-bar" onClick={() => setPicked([])}>
             Clear selection
           </Button>
         ) : null}

@@ -65,7 +65,7 @@ export function Pricing() {
         ))}
       </div>
       <p className="mt-6 max-w-[72ch] text-[15px] text-muted split:px-7">
-        Why so low: one run costs us about 2 cents on Vultr, a few thousand tokens on Serverless Inference and five minutes of a
+        Why so low: one run costs us about 2 cents, a few thousand tokens on serverless inference and five minutes of a
         $10-a-month VM. The paid plans pay for larger load generators and longer history.
       </p>
     </section>

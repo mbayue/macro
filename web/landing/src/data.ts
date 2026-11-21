@@ -98,7 +98,7 @@ export const PLAN_ROWS: readonly { label: string; key: keyof Pick<Plan, 'sites' 
 export const FAQ: readonly { q: string; a: string }[] = [
   {
     q: 'Can Macro test my own site today?',
-    a: 'Yes. Sign in with GitHub or an email link, verify your HTTPS site with a DNS TXT record (or a /.well-known/macro-site-verification file), and Macro will auto-discover safe routes and run private load tests against it. The public demo shop still works signed out.',
+    a: 'Yes. Sign in with Google, GitHub, or an email link, verify your HTTPS site with a DNS TXT record (or a /.well-known/macro-site-verification file), and Macro will auto-discover safe routes and run private load tests against it. The public demo shop still works signed out.',
   },
   {
     q: 'What stops someone using it as a DDoS tool?',
@@ -114,7 +114,7 @@ export const FAQ: readonly { q: string; a: string }[] = [
   },
   {
     q: 'Is Macro free?',
-    a: 'Yes, for now. The hosted app costs nothing during early access, and the code is MIT-licensed, so you can run your own copy and pay only for your server and Vultr inference. One run costs about 2 cents on Vultr.',
+    a: 'Yes, for now. The hosted app costs nothing during early access, and the code is MIT-licensed, so you can run your own copy and pay only for your server and serverless inference. One run costs about 2 cents.',
   },
   {
     q: 'What runs inside the sandbox?',
@@ -122,6 +122,6 @@ export const FAQ: readonly { q: string; a: string }[] = [
   },
   {
     q: 'Where does the traffic come from?',
-    a: 'One Vultr machine in Singapore. At high user counts the load generator itself can become the limit, and the report says so.',
+    a: 'One cloud machine in Singapore. At high user counts the load generator itself can become the limit, and the report says so.',
   },
 ];

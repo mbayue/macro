@@ -9,7 +9,7 @@ import { StageBand } from './StageBand.tsx';
 const PLANS = [
   {
     name: 'Self-host',
-    facts: ['MIT License, all of the code', 'The same Policy Gate and sandbox', 'You pay only your server and inference, about 2 cents a run on Vultr'],
+    facts: ['MIT License, all of the code', 'The same Policy Gate and sandbox', 'You pay only your server and inference, about 2 cents a run'],
     action: { label: 'View on GitHub', href: 'https://github.com/mbayue/macro' },
     high: false,
   },

@@ -3,7 +3,7 @@ import { SiteFooter } from '../components/SiteFooter.tsx';
 import { SiteHeader } from '../components/SiteHeader.tsx';
 import { StageBand } from '../components/StageBand.tsx';
 
-const UPDATED = '14 November 2026';
+const UPDATED = '21 November 2026';
 const CONTACT = 'hello@macro.my.id';
 
 type Section = { id: string; title: string; body: ReactNode };
@@ -144,7 +144,7 @@ const PRIVACY_SECTIONS: Section[] = [
           Demo runs are public (anyone with a run's link can open its page), so do not put personal data in a traffic description.
         </li>
         <li>
-          If you sign in (with GitHub or an email magic link), we store your email address, optional GitHub identity, your verified
+          If you sign in (with Google, GitHub, or an email magic link), we store your email address, optional OAuth account identity, your verified
           HTTPS origin and verification token, any saved draft text, and your private own-site runs.
         </li>
         <li>
@@ -152,8 +152,9 @@ const PRIVACY_SECTIONS: Section[] = [
           discover safe routes for the planner.
         </li>
         <li>
-          Your traffic description and the measured results are sent to Vultr Serverless Inference, which drafts the plan, advises
-          between stages and writes the report explanation.
+          Your traffic description and the measured results are sent to serverless LLM inference, which drafts the plan, advises
+          between stages and writes the report explanation. Scenario Assistant and Report Q&amp;A run on your device via Chrome Gemini
+          Nano when available; otherwise, requests are routed to Google Cloud Gemini via Firebase AI Logic with App Check attestation.
         </li>
         <li>
           Your IP address is recorded with a timestamp when you draft a plan or start a run while signed out, so we can enforce
@@ -178,6 +179,10 @@ const PRIVACY_SECTIONS: Section[] = [
           </li>
           <li>
             <strong>Resend</strong> sends sign-in magic links and waitlist emails when you request them.
+          </li>
+          <li>
+            <strong>Google and Firebase</strong> handle Google OAuth sign-in, Firebase App Check client attestation, and cloud Gemini
+            inference fallback when on-device Gemini Nano is not available.
           </li>
           <li>
             <strong>GitHub</strong> handles OAuth sign-in if you choose to sign in with GitHub.

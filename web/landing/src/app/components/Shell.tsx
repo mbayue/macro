@@ -3,12 +3,62 @@
  * sticky top context bar, main content region, Ctrl/Cmd+K Quick Jump, and polite live region.
  */
 import type { ReactNode } from 'react';
+import { LogOutIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import type { Route } from '../router.ts';
 import { QuickJump } from './shell/QuickJump.tsx';
 import { DesktopRail, MobileTopBar } from './shell/Rail.tsx';
 import { ShellProvider, useShell } from './shell/ShellContext.tsx';
 import { TopContextBar } from './shell/TopContextBar.tsx';
+import { Busy } from './ui.tsx';
+
+function SignOutDialog() {
+  const { state, actions } = useShell();
+  return (
+    <Dialog open={state.signOutConfirmOpen} onOpenChange={(open) => !state.signingOut && actions.setSignOutConfirmOpen(open)}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Sign out?</DialogTitle>
+          <DialogDescription>
+            You will be signed out of{' '}
+            <span className="font-medium text-foreground">{state.identityLabel ?? 'your account'}</span>. Your saved
+            draft, verified domain, and private runs stay in your account.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <DialogClose render={<Button type="button" variant="secondary" disabled={state.signingOut} />}>
+            Cancel
+          </DialogClose>
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={state.signingOut}
+            onClick={() => void actions.confirmSignOut()}
+          >
+            {state.signingOut ? (
+              <Busy>Signing out…</Busy>
+            ) : (
+              <>
+                <LogOutIcon data-icon="inline-start" />
+                Sign out
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function ShellLayout({
   live,
@@ -67,6 +117,7 @@ function ShellLayout({
       </div>
 
       <QuickJump />
+      <SignOutDialog />
 
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {live}

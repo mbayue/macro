@@ -31,6 +31,7 @@ export interface ShellState {
   quotaLoading: boolean;
   recentRuns: QuickJumpRunItem[];
   recentRunsSource: 'account' | 'browser';
+  signOutConfirmOpen: boolean;
   signingOut: boolean;
   me: MeResponse | null;
   target: ContextTargetView;
@@ -44,7 +45,9 @@ export interface ShellActions {
   setQuickJumpOpen: (open: boolean) => void;
   openQuickJump: () => void;
   toggleTheme: () => void;
-  signOut: () => Promise<void>;
+  signOut: () => void;
+  setSignOutConfirmOpen: (open: boolean) => void;
+  confirmSignOut: () => Promise<void>;
   navigateTo: (pathOrHash: string) => void;
   setTargetModeOverride: (mode: ShellTargetMode) => void;
 }
@@ -86,6 +89,7 @@ export function ShellProvider({
   const [railCollapsed, setRailCollapsed] = useState<boolean>(() => readRailCollapsed());
   const [mobileOpen, setMobileOpen] = useState(false);
   const [quickJumpOpen, setQuickJumpOpenState] = useState(false);
+  const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
   const [targetModeOverride, setTargetModeOverride] = useState<ShellTargetMode>(null);
   const [theme, setThemeState] = useState<Theme>(() =>
     typeof document !== 'undefined' && currentTheme() === 'light' ? 'light' : 'dark',
@@ -224,7 +228,14 @@ export function ShellProvider({
     [ctx],
   );
 
-  const signOut = useCallback(async () => {
+  const signOut = useCallback(() => {
+    if (signingOut) return;
+    setMobileOpen(false);
+    setQuickJumpOpenState(false);
+    setSignOutConfirmOpen(true);
+  }, [signingOut]);
+
+  const confirmSignOut = useCallback(async () => {
     if (signingOut) return;
     setSigningOut(true);
     try {
@@ -233,8 +244,7 @@ export function ShellProvider({
       clearReviewState();
       setRecentRuns([]);
       setTargetModeOverride(null);
-      setMobileOpen(false);
-      setQuickJumpOpenState(false);
+      setSignOutConfirmOpen(false);
       await ctx?.refreshMe();
       ctx?.announce('Signed out.');
       if (ctx) ctx.navigate('/');
@@ -267,6 +277,7 @@ export function ShellProvider({
         quotaLoading,
         recentRuns,
         recentRunsSource,
+        signOutConfirmOpen,
         signingOut,
         me,
         target,
@@ -280,6 +291,8 @@ export function ShellProvider({
         openQuickJump,
         toggleTheme,
         signOut,
+        setSignOutConfirmOpen,
+        confirmSignOut,
         navigateTo,
         setTargetModeOverride,
       },
@@ -299,6 +312,7 @@ export function ShellProvider({
       quotaLoading,
       recentRuns,
       recentRunsSource,
+      signOutConfirmOpen,
       signingOut,
       me,
       target,
@@ -309,6 +323,7 @@ export function ShellProvider({
       openQuickJump,
       toggleTheme,
       signOut,
+      confirmSignOut,
       navigateTo,
       shortcutHint,
       mainRef,

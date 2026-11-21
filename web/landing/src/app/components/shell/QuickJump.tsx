@@ -64,7 +64,7 @@ export function QuickJump() {
       initialFocus={inputRef}
       finalFocus={resolveFinalFocus}
     >
-      <Command label="Quick Jump">
+      <Command label="Quick Jump" loop>
         <CommandInput ref={inputRef} autoFocus placeholder="Jump to a route, recent run, or action…" />
         <CommandList>
           <CommandEmpty>No matching routes, runs, or actions.</CommandEmpty>

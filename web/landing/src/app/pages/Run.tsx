@@ -9,7 +9,7 @@ import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from '
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { reducedMotion } from '@/lib/utils';
+import { cn, reducedMotion } from '@/lib/utils';
 import type { StageView } from '../../../../../src/api-types.ts';
 import { fmtCount, fmtMs, fmtPct, fmtRps } from '../../../../../src/run/format.ts';
 import { Feed } from '../components/run/Feed.tsx';
@@ -193,7 +193,12 @@ export function RunPage({ id }: { id: string }) {
         {queued || running ? (
           <div className="flex max-w-none flex-col items-start gap-1.5 text-left min-[861px]:max-w-[260px] min-[861px]:items-end min-[861px]:text-right">
             {stopPending ? (
-              <Button type="button" variant="destructive" disabled>
+              <Button
+                type="button"
+                variant="destructive"
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled
+              >
                 Stopping{'\u2026'}
               </Button>
             ) : (
@@ -201,9 +206,16 @@ export function RunPage({ id }: { id: string }) {
                 label={queued ? 'Cancel queued run' : 'Stop run'}
                 confirmLabel={queued ? 'Confirm cancel' : 'Confirm stop'}
                 cancelLabel={queued ? 'Keep queued' : 'Keep running'}
-                className={buttonVariants({ variant: 'destructive' })}
-                confirmClassName={buttonVariants({ variant: 'destructive' })}
+                className={cn(
+                  buttonVariants({ variant: 'destructive' }),
+                  'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+                )}
+                confirmClassName={cn(
+                  buttonVariants({ variant: 'destructive' }),
+                  'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+                )}
                 cancelClassName={buttonVariants({ variant: 'secondary' })}
+                groupClassName="flex-row-reverse"
                 onConfirm={stop}
               />
             )}

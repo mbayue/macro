@@ -1,18 +1,21 @@
 /**
  * Test Studio (`#/`): pick a target (`Demo Target` or `Own Site`), describe the traffic,
  * draft a plan, review it against the Policy Gate, and approve or cancel.
- * Nothing reaches the target until "Approve and run".
+ * Nothing reaches the target until "Approve & Run".
  */
 import { useEffect, useRef, useState } from 'react';
 import type { AccountDraft, DemoTrendsResponse, PlanResponse, QuotaResponse } from '../../../../../src/api-types.ts';
 import {
   clearReviewState,
+  clearSignedOutDraft,
   getDraft,
   loadReviewState,
+  loadSignedOutDraft,
   postVerifyClear,
   putDraft,
   stashLocalDraft,
   stashReviewState,
+  stashSignedOutDraft,
   takeLocalDraft,
 } from '../lib/auth-api.ts';
 import { type ApiError, type ApiResult, getDemoTrends, getQuota, postPlan, VERIFICATION_ERROR } from '../lib/api.ts';
@@ -44,7 +47,7 @@ export function NewTest() {
   const max = config.trafficEventMax;
 
   const initialReview = loadReviewState(me?.user.id ?? null);
-  const [text, setText] = useState(() => initialReview?.lastSubmitted ?? '');
+  const [text, setText] = useState(() => initialReview?.lastSubmitted ?? loadSignedOutDraft() ?? '');
   const [busy, setBusy] = useState<StudioBusy>(null);
   const [lastSubmitted, setLastSubmitted] = useState<string | null>(() => initialReview?.lastSubmitted ?? null);
   const [planError, setPlanError] = useState<ApiError | null>(null);
@@ -63,6 +66,8 @@ export function NewTest() {
   const [demoTrends, setDemoTrends] = useState<DemoTrendsResponse | null>(null);
   const [quota, setQuota] = useState<QuotaResponse | null>(null);
   const [checksDiffer, setChecksDiffer] = useState(false);
+  const [clearingOrigin, setClearingOrigin] = useState(false);
+  const [clearError, setClearError] = useState<ApiError | null>(null);
 
   useEffect(() => () => void (alive.current = false), []);
 
@@ -95,6 +100,13 @@ export function NewTest() {
     }
     stashReviewState({ ownerUserId, review, lastSubmitted, editing, targetMode });
   }, [me, review, lastSubmitted, editing, targetMode]);
+
+  // Signed-out users have no server draft: keep their text in this tab across navigation and reload.
+  // Once signed in, the account draft takes over and the browser copy is dropped.
+  useEffect(() => {
+    if (me === null) stashSignedOutDraft(text);
+    else clearSignedOutDraft();
+  }, [me, text]);
 
   // The text box may only mount on this render (after "Edit description" or a discarded plan).
   useEffect(() => {
@@ -185,12 +197,21 @@ export function NewTest() {
   }
 
   async function clearVerifiedOrigin() {
-    if (!idle || me === null) return;
+    if (!idle || clearingOrigin || me === null) return;
+    setClearingOrigin(true);
+    setClearError(null);
     const res = await postVerifyClear();
-    if (res.ok) {
-      await refreshMe();
-      announce('Cleared verified origin.');
+    if (!alive.current) return;
+    if (!res.ok) {
+      setClearingOrigin(false);
+      setClearError(res.error);
+      announce(res.error.message);
+      return;
     }
+    await refreshMe();
+    if (!alive.current) return;
+    setClearingOrigin(false);
+    announce('Verified site removed.');
   }
 
   async function startPlanning(value: string, routeIds?: string[]) {
@@ -244,6 +265,7 @@ export function NewTest() {
     if (!alive.current) return;
     setBusy(null);
     if (result.ok) {
+      clearSignedOutDraft();
       setReview(result.data);
       setReviewSeq((s) => s + 1);
       setEditing(false);
@@ -306,7 +328,9 @@ export function NewTest() {
                 me={me}
                 verifiedOrigin={verifiedOrigin}
                 showVerify={showVerify}
-                disabled={!idle}
+                disabled={!idle || clearingOrigin}
+                clearing={clearingOrigin}
+                clearError={clearError}
                 onChooseTarget={chooseTarget}
                 onClearVerifiedOrigin={() => void clearVerifiedOrigin()}
               />

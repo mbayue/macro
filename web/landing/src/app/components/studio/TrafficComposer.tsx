@@ -1,13 +1,12 @@
-import type { RefObject } from 'react';
+import { type RefObject, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { ApiError } from '../../lib/api.ts';
 import { ScenarioAssistant } from '../ScenarioAssistant.tsx';
 import { AlertRegion, Busy } from '../ui.tsx';
-import type { StudioBusy } from './studio-view.ts';
+import { type StudioBusy, trafficSubmitProblem } from './studio-view.ts';
 import { TelemetryPanel } from './TelemetryFrame.tsx';
-
-const fmt = (n: number): string => n.toLocaleString('en-US');
+import { fmtGrouped as fmt } from '../../lib/format.ts';
 
 export interface TrafficComposerProps {
   text: string;
@@ -58,7 +57,21 @@ export function TrafficComposer({
   onApplyAssistant,
 }: TrafficComposerProps) {
   const idle = busy === null;
-  const invalid = count > 0 && !inRange;
+  // Set when the user submits text that cannot be drafted; the error then shows even for an empty box.
+  const [attempted, setAttempted] = useState(false);
+  const shownProblem = problem !== '' ? problem : attempted ? trafficSubmitProblem(text, min, max) : '';
+  const invalid = shownProblem !== '';
+
+  function submit() {
+    if (!idle) return;
+    if (!inRange) {
+      setAttempted(true);
+      textareaRef.current?.focus();
+      return;
+    }
+    setAttempted(false);
+    onSubmitDraft();
+  }
 
   return (
     <TelemetryPanel ticks="bar" aria-labelledby="traffic-event-label">
@@ -67,7 +80,7 @@ export function TrafficComposer({
         noValidate
         onSubmit={(e) => {
           e.preventDefault();
-          onSubmitDraft();
+          submit();
         }}
       >
         <div className="flex flex-col gap-1">
@@ -75,7 +88,7 @@ export function TrafficComposer({
             Traffic description
           </label>
           <p id="traffic-event-hint" className="text-sm text-muted-foreground">
-            Describe the traffic you expect — say who arrives, when, and what they do.{' '}
+            Describe the traffic you expect: say who arrives, when, and what they do.{' '}
             <span className="font-mono text-xs tabular-nums">{min}</span> to{' '}
             <span className="font-mono text-xs tabular-nums">{fmt(max)}</span> characters. Press{' '}
             <kbd className="rounded-sm border border-bar bg-background px-1.5 py-0.5 font-mono text-[11px] text-foreground">
@@ -100,12 +113,15 @@ export function TrafficComposer({
             'min-h-36 w-full resize-y rounded-md border bg-background px-3.5 py-3 text-[1.0625rem] leading-relaxed text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-[2px] focus-visible:outline-offset-[1px] focus-visible:outline-ring read-only:opacity-70',
             invalid ? 'border-bad' : 'border-bar',
           )}
-          onChange={(e) => onTextChange(e.target.value)}
+          onChange={(e) => {
+            setAttempted(false);
+            onTextChange(e.target.value);
+          }}
           onBlur={onBlurSync}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
               e.preventDefault();
-              onSubmitDraft();
+              submit();
             }
           }}
         />
@@ -118,7 +134,7 @@ export function TrafficComposer({
             {fmt(count)} / {fmt(max)}
           </span>
           <span id="traffic-event-problem" className="font-medium text-bad" role="status">
-            {problem}
+            {shownProblem}
           </span>
         </div>
 
@@ -136,6 +152,7 @@ export function TrafficComposer({
                 disabled={!idle}
                 className="border-bar bg-background hover:border-bar-hover max-[860px]:min-h-10"
                 onClick={() => {
+                  setAttempted(false);
                   onTextChange(ex.text);
                   textareaRef.current?.focus();
                 }}
@@ -154,7 +171,7 @@ export function TrafficComposer({
         />
 
         <div className="flex flex-wrap items-center gap-3 pt-1">
-          <Button type="submit" disabled={!inRange || !idle || ownNeedsVerify}>
+          <Button type="submit" disabled={!idle}>
             {hasReview ? 'Draft a new plan' : 'Draft a plan'}
           </Button>
           {hasReview && editing ? (
@@ -171,7 +188,7 @@ export function TrafficComposer({
             <Busy>Drafting a plan. This can take up to a minute.</Busy>
           ) : ownNeedsVerify ? (
             <span className="text-sm text-muted-foreground">Verify your site above before drafting.</span>
-          ) : idle && count === 0 ? (
+          ) : idle && count === 0 && !attempted ? (
             <span className="text-sm text-muted-foreground">Write at least {min} characters to draft.</span>
           ) : null}
         </div>

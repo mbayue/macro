@@ -24,6 +24,7 @@ export const ReportQa = memo(function ReportQa({ report }: { report: CapacityRep
   if (!available) return null;
 
   async function ask(q: string) {
+    if (busy) return;
     const trimmed = q.trim();
     if (!trimmed) return;
     setQuestion(trimmed);
@@ -54,8 +55,8 @@ export const ReportQa = memo(function ReportQa({ report }: { report: CapacityRep
             type="button"
             variant="outline"
             size="sm"
-            className="border-bar bg-background text-foreground"
-            disabled={busy}
+            className="border-bar bg-background text-foreground aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+            aria-disabled={busy || undefined}
             onClick={() => void ask(q)}
           >
             {q}
@@ -77,12 +78,18 @@ export const ReportQa = memo(function ReportQa({ report }: { report: CapacityRep
           id={inputId}
           type="text"
           value={question}
-          disabled={busy}
+          readOnly={busy}
+          aria-busy={busy || undefined}
           placeholder="Ask about latency, breaking point, or route errors…"
           onChange={(e) => setQuestion(e.target.value)}
-          className="min-h-10 min-w-[240px] flex-1 rounded-md border border-bar bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-accent-text focus-visible:outline-[2px] focus-visible:outline-offset-[1px] focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60"
+          className="min-h-10 min-w-[240px] flex-1 rounded-md border border-bar bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-accent-text focus-visible:outline-[2px] focus-visible:outline-offset-[1px] focus-visible:outline-ring read-only:opacity-60"
         />
-        <Button type="submit" variant="secondary" disabled={busy || question.trim() === ''}>
+        <Button
+          type="submit"
+          variant="secondary"
+          className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+          aria-disabled={busy || question.trim() === '' || undefined}
+        >
           Ask
         </Button>
       </form>
@@ -90,11 +97,14 @@ export const ReportQa = memo(function ReportQa({ report }: { report: CapacityRep
       {busy ? <Busy>Thinking…</Busy> : null}
       <AlertRegion>{error ? <p>{error}</p> : null}</AlertRegion>
 
-      {reply ? (
-        <div className="rounded-md border border-bar bg-background p-3.5" aria-live="polite">
-          <p className="m-0 text-sm leading-relaxed whitespace-pre-wrap text-foreground">{reply.text}</p>
-        </div>
-      ) : null}
+      {/* The live region is always in the page, so screen readers hear the answer when it arrives. */}
+      <div aria-live="polite">
+        {reply ? (
+          <div className="rounded-md border border-bar bg-background p-3.5">
+            <p className="m-0 text-sm leading-relaxed whitespace-pre-wrap text-foreground">{reply.text}</p>
+          </div>
+        ) : null}
+      </div>
     </TelemetryPanel>
   );
 });

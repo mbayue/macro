@@ -1,9 +1,10 @@
 import { ArrowDownIcon, GlobeIcon, StoreIcon } from 'lucide-react';
 import type { MeResponse } from '../../../../../../src/api-types.ts';
+import type { ApiError } from '../../lib/api.ts';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn, reducedMotion } from '@/lib/utils';
-import { ConfirmButton } from '../ui.tsx';
+import { AlertRegion, Busy, ConfirmButton } from '../ui.tsx';
 import { VerifyPanel } from '../VerifyPanel.tsx';
 import type { TargetMode } from './studio-view.ts';
 import { TelemetryPanel } from './TelemetryFrame.tsx';
@@ -15,6 +16,9 @@ export interface TargetPickerProps {
   verifiedOrigin: { origin: string; host: string } | null;
   showVerify: boolean;
   disabled: boolean;
+  /** True while the verified site is being removed. */
+  clearing: boolean;
+  clearError: ApiError | null;
   onChooseTarget: (mode: TargetMode) => void;
   onClearVerifiedOrigin: () => void;
 }
@@ -27,6 +31,8 @@ export function TargetPicker({
   verifiedOrigin,
   showVerify,
   disabled,
+  clearing,
+  clearError,
   onChooseTarget,
   onClearVerifiedOrigin,
 }: TargetPickerProps) {
@@ -104,16 +110,20 @@ export function TargetPicker({
           <>
             <span className="font-mono text-foreground break-all">{verifiedOrigin.origin}</span>
             <Badge variant="ok">Verified</Badge>
-            <ConfirmButton
-              label="Change"
-              confirmLabel="Clear verified site"
-              cancelLabel="Keep"
-              className={buttonVariants({ variant: 'secondary', size: 'sm' })}
-              confirmClassName={buttonVariants({ variant: 'destructive', size: 'sm' })}
-              cancelClassName={buttonVariants({ variant: 'secondary', size: 'sm' })}
-              disabled={disabled}
-              onConfirm={onClearVerifiedOrigin}
-            />
+            {clearing ? (
+              <Busy>Removing the verified site…</Busy>
+            ) : (
+              <ConfirmButton
+                label="Use another site"
+                confirmLabel="Remove verified site"
+                cancelLabel="Keep"
+                className={buttonVariants({ variant: 'secondary', size: 'sm' })}
+                confirmClassName={buttonVariants({ variant: 'destructive', size: 'sm' })}
+                cancelClassName={buttonVariants({ variant: 'secondary', size: 'sm' })}
+                disabled={disabled}
+                onConfirm={onClearVerifiedOrigin}
+              />
+            )}
           </>
         ) : me === null ? (
           <span className="text-muted-foreground">
@@ -133,6 +143,8 @@ export function TargetPicker({
           </>
         )}
       </div>
+
+      <AlertRegion error={clearError} className={cn(!clearError && 'sr-only')} />
 
       {targetMode === 'own' ? (
         <p className="text-xs leading-relaxed text-muted-foreground">

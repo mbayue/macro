@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'bun:test';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import type { PlanResponse } from '../src/api-types.ts';
 import type { TestPlan } from '../src/types.ts';
 import {
@@ -11,8 +13,12 @@ import {
   resolveGateStatus,
   resolveTargetState,
   sharedDir,
+  trafficSubmitProblem,
   validateTrafficLength,
 } from '../web/landing/src/app/components/studio/studio-view.ts';
+import { TrafficComposer, type TrafficComposerProps } from '../web/landing/src/app/components/studio/TrafficComposer.tsx';
+import { AppContext, type AppContextValue } from '../web/landing/src/app/context.tsx';
+import { TargetPicker, type TargetPickerProps } from '../web/landing/src/app/components/studio/TargetPicker.tsx';
 
 function makePlan(overrides?: Partial<TestPlan>): TestPlan {
   return {
@@ -285,5 +291,103 @@ describe('isVerifyPanelHash and resolveTargetState', () => {
       pendingHost: null,
       showVerify: false,
     });
+  });
+});
+
+describe('trafficSubmitProblem', () => {
+  test('names the minimum even for an empty description, and is empty when in range', () => {
+    expect(trafficSubmitProblem('', 10, 1000)).toBe('Needs at least 10 characters.');
+    expect(trafficSubmitProblem('   ', 10, 1000)).toBe('Needs at least 10 characters.');
+    expect(trafficSubmitProblem('short', 10, 1000)).toBe('Needs at least 10 characters.');
+    expect(trafficSubmitProblem('a'.repeat(1002), 10, 1000)).toBe('2 over the limit.');
+    expect(trafficSubmitProblem('1234567890', 10, 1000)).toBe('');
+  });
+});
+
+describe('TrafficComposer draft button', () => {
+  function render(overrides: Partial<TrafficComposerProps>): string {
+    const props: TrafficComposerProps = {
+      text: '',
+      min: 10,
+      max: 1000,
+      count: 0,
+      inRange: false,
+      problem: '',
+      busy: null,
+      hasReview: false,
+      editing: false,
+      showRetry: false,
+      ownNeedsVerify: false,
+      examples: [],
+      assistantRoutes: [],
+      planError: null,
+      textareaRef: { current: null },
+      onTextChange: () => {},
+      onBlurSync: () => {},
+      onSubmitDraft: () => {},
+      onKeepPlan: () => {},
+      onRetry: () => {},
+      onApplyAssistant: () => {},
+      ...overrides,
+    };
+    const app = {
+      config: { examples: [], catalog: [], trafficEventMin: 10, trafficEventMax: 1000 },
+      me: null,
+      refreshMe: async () => {},
+      navigate: () => {},
+      announce: () => {},
+    } as unknown as AppContextValue;
+    return renderToStaticMarkup(createElement(AppContext.Provider, { value: app }, createElement(TrafficComposer, props)));
+  }
+  const draftButton = (html: string): string => html.match(/<button[^>]*type="submit"[^>]*>/)?.[0] ?? '';
+
+  test('stays enabled with an empty or too-short description and while own site needs verifying', () => {
+    expect(draftButton(render({}))).not.toContain(' disabled="');
+    expect(draftButton(render({ text: 'short', count: 5, problem: 'Needs at least 10 characters.' }))).not.toContain(' disabled="');
+    expect(draftButton(render({ ownNeedsVerify: true }))).not.toContain(' disabled="');
+  });
+
+  test('is disabled only while a request is in flight', () => {
+    expect(draftButton(render({ busy: 'planning' }))).toContain(' disabled="');
+    expect(draftButton(render({ busy: 'approving' }))).toContain(' disabled="');
+  });
+});
+describe('TargetPicker verified own site', () => {
+  function render(overrides: Partial<TargetPickerProps>): string {
+    const props: TargetPickerProps = {
+      targetMode: 'own',
+      webOrigin: 'https://yue.macro.my.id',
+      me: {
+        user: { id: 'u_1', email: 'dev@example.com', githubLogin: null },
+        verifiedOrigin: { origin: 'https://shop.example.com', host: 'shop.example.com' },
+        pendingVerification: null,
+      },
+      verifiedOrigin: { origin: 'https://shop.example.com', host: 'shop.example.com' },
+      showVerify: false,
+      disabled: false,
+      clearing: false,
+      clearError: null,
+      onChooseTarget: () => {},
+      onClearVerifiedOrigin: () => {},
+      ...overrides,
+    };
+    return renderToStaticMarkup(createElement(TargetPicker, props));
+  }
+
+  test('names the clear action for what it does instead of "Change"', () => {
+    const html = render({});
+    expect(html).toContain('>Use another site<');
+    expect(html).not.toContain('>Change<');
+  });
+
+  test('shows a busy line while the verified site is being removed', () => {
+    const html = render({ clearing: true });
+    expect(html).toContain('Removing the verified site…');
+    expect(html).not.toContain('>Use another site<');
+  });
+
+  test('shows a failed removal in an alert region', () => {
+    const html = render({ clearError: { code: 'internal', message: 'Something went wrong on our side.' } });
+    expect(html).toMatch(/role="alert"[^>]*>.*Something went wrong on our side\./);
   });
 });

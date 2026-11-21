@@ -38,8 +38,11 @@ export function TopContextBar() {
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
             <span className="text-xs text-muted-foreground">Target</span>
-            <span className="max-w-[240px] truncate font-mono text-xs text-foreground sm:max-w-xs">
-              {state.target.host ?? 'Demo shop'}
+            <span
+              className="max-w-[240px] truncate font-mono text-xs text-foreground sm:max-w-xs"
+              title={state.target.host ?? undefined}
+            >
+              {state.target.host ?? 'Demo Target'}
             </span>
             <Badge variant={state.target.kind === 'verified' ? 'ok' : 'outline'}>
               {state.target.badgeLabel}
@@ -50,7 +53,7 @@ export function TopContextBar() {
                 className="inline-flex min-w-0 items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs font-medium text-warn underline underline-offset-4 hover:opacity-85 focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-ring"
               >
                 <AlertCircleIcon className="size-3.5 shrink-0" aria-hidden="true" />
-                <span className="truncate">
+                <span className="truncate" title={state.target.pendingHost}>
                   Finish verifying <span className="font-mono">{state.target.pendingHost}</span>
                 </span>
               </a>
@@ -58,24 +61,30 @@ export function TopContextBar() {
           </div>
 
           <div
+            role="group"
+            aria-label="Usage quota"
             className="hidden min-[861px]:inline-flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1 text-xs"
-            aria-label="Quota"
           >
             {quota !== null ? (
               <>
-                <span className="text-muted-foreground">Plans</span>
+                <span className="text-muted-foreground">Plans left</span>
                 <span className="font-mono text-foreground tabular-nums">{quota.planning}</span>
                 <span className="text-muted-foreground" aria-hidden="true">
                   ·
                 </span>
-                <span className="text-muted-foreground">Runs</span>
+                <span className="text-muted-foreground">Runs left</span>
                 <span className="font-mono text-foreground tabular-nums">{quota.dailyRuns}</span>
                 {quota.scopeLabel !== null ? (
-                  <span className="text-muted-foreground">{quota.scopeLabel}</span>
+                  <>
+                    <span className="text-muted-foreground" aria-hidden="true">
+                      ·
+                    </span>
+                    <span className="text-muted-foreground">{quota.scopeLabel}</span>
+                  </>
                 ) : null}
               </>
             ) : state.quotaLoading ? (
-              <span className="font-mono text-muted-foreground tabular-nums">Quota …</span>
+              <span className="text-muted-foreground">Loading quota…</span>
             ) : null}
           </div>
         </div>
@@ -143,7 +152,10 @@ export function TopContextBar() {
                   <DropdownMenuLabel className="font-normal">
                     <span className="block truncate font-medium text-foreground">{state.identityLabel}</span>
                     {state.me.verifiedOrigin ? (
-                      <span className="block truncate font-mono text-[11px] text-muted-foreground">
+                      <span
+                        className="block truncate font-mono text-[11px] text-muted-foreground"
+                        title={state.me.verifiedOrigin.host}
+                      >
                         {state.me.verifiedOrigin.host}
                       </span>
                     ) : null}

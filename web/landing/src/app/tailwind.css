@@ -138,6 +138,17 @@
     font-size: 0.9375rem;
   }
 
+  /* Keyboard focus and anchor jumps land below the sticky bars: the phone header (61px), or on
+     desktop the Top Context Bar (53px) plus the one-line KPI Strip on run pages. */
+  html {
+    scroll-padding-top: 76px;
+  }
+  @media (min-width: 861px) {
+    html {
+      scroll-padding-top: 108px;
+    }
+  }
+
   [tabindex="-1"]:focus {
     outline: none;
   }

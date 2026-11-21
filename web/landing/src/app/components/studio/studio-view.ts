@@ -2,13 +2,12 @@ import type { MeResponse, PlanResponse } from '../../../../../../src/api-types.t
 import { journeyLabel, type JourneyRow } from '../../../../../../src/plan/journey-edit.ts';
 import type { TestPlan } from '../../../../../../src/types.ts';
 import { countCodePoints } from '../../lib/describe.ts';
+import { fmtGrouped as fmtCount } from '../../lib/format.ts';
 
 export type StudioBusy = 'planning' | 'approving' | null;
 export type TargetMode = 'demo' | 'own';
 
 const KIND_RANK = ['Page', 'Script', 'Stylesheet', 'Font', 'Image'] as const;
-
-const fmtCount = (n: number): string => n.toLocaleString('en-US');
 
 /** Returns true when a drafted plan parsed cleanly and passed every fixed Policy Gate rule. */
 export function isApprovable(res: PlanResponse): boolean {
@@ -46,6 +45,13 @@ export function validateTrafficLength(
           ? `${fmtCount(count - max)} over the limit.`
           : '';
   return { count, inRange, problem };
+}
+
+/** The inline error to show when the user submits this Traffic Description; empty when it can be drafted. */
+export function trafficSubmitProblem(text: string, min: number, max: number): string {
+  const { count, inRange, problem } = validateTrafficLength(text, min, max);
+  if (inRange) return '';
+  return count === 0 ? `Needs at least ${min} characters.` : problem;
 }
 
 /** Splits a route path into its trailing filename and shared directory prefix when applicable. */

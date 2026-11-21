@@ -8,6 +8,8 @@ import { cn, reducedMotion } from '@/lib/utils';
 import { useApp } from '../../context.tsx';
 import { type ApiError, postApprove, VERIFICATION_ERROR } from '../../lib/api.ts';
 import { GateRules } from '../GateRules.tsx';
+import { fmtGrouped } from '../../lib/format.ts';
+import { formatQuotaReadout } from '../shell/shell-view.ts';
 import { StageProfile } from '../StageProfile.tsx';
 import { TurnstileBox, useTurnstile } from '../Turnstile.tsx';
 import { AlertRegion, Busy, ConfirmButton } from '../ui.tsx';
@@ -20,7 +22,7 @@ import {
 } from './studio-view.ts';
 import { CornerTicks, TelemetryPanel } from './TelemetryFrame.tsx';
 
-const fmt = (n: number): string => n.toLocaleString('en-US');
+const fmt = fmtGrouped;
 
 export interface GateSidebarProps {
   review: PlanResponse | null;
@@ -44,7 +46,7 @@ export interface GateSidebarProps {
 
 /**
  * Sticky right column (>= 1180px) stacking last below 1180px:
- * Policy Gate verdict & rules, Stage/VU preview, and spring-green Approve & Run gate with Turnstile.
+ * the spring-green Approve & Run gate with Turnstile, the Policy Gate verdict, then the rules. The plan's stages live in the Draft plan, not here.
  */
 export function GateSidebar({
   review,
@@ -74,6 +76,26 @@ export function GateSidebar({
       className="flex min-w-0 flex-col gap-4 min-[1180px]:sticky min-[1180px]:top-20"
       aria-label={approvable && review?.plan ? 'Approve & Run' : 'Policy Gate rules'}
     >
+      {/* The action comes first, so its button is on the first screen; the verdict follows it. */}
+      {approvable && review?.plan && review.planText !== null ? (
+        <ApprovePanel
+          key={reviewSeq}
+          plan={review.plan}
+          planText={review.planText}
+          targetMode={targetMode}
+          {...(targetMode === 'own' && verifiedOrigin !== null ? { targetOrigin: verifiedOrigin.origin } : {})}
+          draftId={review.draftId}
+          busy={busy}
+          setBusy={onBusyChange}
+          onCancel={onCancelPlan}
+          onStarted={onStarted}
+          onInView={onInViewChange}
+          startFromBar={startFromBar}
+          alive={alive}
+          checksDiffer={checksDiffer}
+        />
+      ) : null}
+
       {review !== null ? (
         <TelemetryPanel
           ticks={gateStatus.tone === 'bad' ? 'bad' : gateStatus.tone === 'ok' ? 'accent' : 'bar'}
@@ -98,28 +120,7 @@ export function GateSidebar({
 
       <GateRules folded={review !== null || showVerify} targetOrigin={activeOrigin} />
 
-      {review?.plan && review.plan.stages.length > 0 ? (
-        <StagePreviewCard plan={review.plan} />
-      ) : null}
-
-      {approvable && review?.plan && review.planText !== null ? (
-        <ApprovePanel
-          key={reviewSeq}
-          plan={review.plan}
-          planText={review.planText}
-          targetMode={targetMode}
-          {...(targetMode === 'own' && verifiedOrigin !== null ? { targetOrigin: verifiedOrigin.origin } : {})}
-          draftId={review.draftId}
-          busy={busy}
-          setBusy={onBusyChange}
-          onCancel={onCancelPlan}
-          onStarted={onStarted}
-          onInView={onInViewChange}
-          startFromBar={startFromBar}
-          alive={alive}
-          checksDiffer={checksDiffer}
-        />
-      ) : review === null && !showVerify ? (
+      {review === null && !showVerify ? (
         <>
           {targetMode === 'demo' && sampleRunId ? (
             <TelemetryPanel ticks="bar" aria-labelledby="sample-report-heading">
@@ -149,11 +150,11 @@ export function GateSidebar({
               <dl className="m-0 grid grid-cols-[max-content_minmax(0,1fr)] gap-x-6 gap-y-1.5 text-sm">
                 <dt className="text-muted-foreground">Plans left (1h)</dt>
                 <dd className="m-0 font-mono text-foreground tabular-nums">
-                  {quota.planning.remaining} of {quota.planning.limit}
+                  {formatQuotaReadout(quota)?.planning}
                 </dd>
                 <dt className="text-muted-foreground">Runs left (today)</dt>
                 <dd className="m-0 font-mono text-foreground tabular-nums">
-                  {quota.dailyRuns.remaining} of {quota.dailyRuns.limit}
+                  {formatQuotaReadout(quota)?.dailyRuns}
                 </dd>
                 <dt className="text-muted-foreground">Scope</dt>
                 <dd className="m-0 text-foreground">{quota.scope === 'account' ? 'Your account' : 'This IP'}</dd>
@@ -198,42 +199,6 @@ export function GateSidebar({
   );
 }
 
-function StagePreviewCard({ plan }: { plan: TestPlan }) {
-  const { maxVus, totalSec } = planSize(plan);
-  return (
-    <TelemetryPanel ticks="bar" aria-labelledby="sidebar-stage-preview">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="sidebar-stage-preview" className="m-0 font-sans text-sm font-medium text-foreground">
-          Stage &amp; VU preview
-        </h2>
-        <span className="font-mono text-xs text-muted-foreground tabular-nums">
-          {plan.stages.length} {plan.stages.length === 1 ? 'stage' : 'stages'} · max {fmt(maxVus)} VUs · {fmt(totalSec)} s
-        </span>
-      </div>
-
-      <ol className="sr-only" aria-labelledby="sidebar-stage-preview">
-        {plan.stages.map((s, i) => (
-          <li key={i}>
-            Stage {i + 1}: {fmt(s.vus)} VUs for {s.durationSec} s
-          </li>
-        ))}
-      </ol>
-
-      <StageProfile
-        compact
-        mode="preview"
-        stages={plan.stages.map((s) => ({ vus: s.vus, durationSec: s.durationSec, state: 'planned' as const }))}
-      />
-
-      <Separator />
-
-      <div className="flex flex-wrap items-center justify-between gap-2 font-mono text-xs text-muted-foreground tabular-nums">
-        <span>p95 limit {fmt(plan.stopThresholds.p95Ms)} ms</span>
-        <span>err limit {plan.stopThresholds.errorRatePct}%</span>
-      </div>
-    </TelemetryPanel>
-  );
-}
 
 function ApprovePanel({
   plan,
@@ -379,21 +344,22 @@ function ApprovePanel({
           onClick={() => void approve()}
           className="w-full"
         >
-          Approve and run
+          Approve & Run
         </Button>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-col gap-2.5">
           <ConfirmButton
             label="Cancel"
             confirmLabel="Discard plan"
             cancelLabel="Keep"
-            className={onSpringOutline}
-            confirmClassName={onSpringDanger}
-            cancelClassName={onSpringOutline}
+            className={cn(onSpringOutline, 'w-full')}
+            confirmClassName={cn(onSpringDanger, 'flex-1')}
+            cancelClassName={cn(onSpringOutline, 'flex-1')}
+            groupClassName="flex w-full"
             disabled={!idle}
             onConfirm={onCancel}
           />
-          {busy === 'approving' ? <Busy className="text-accent-ink-soft">Starting the run.</Busy> : null}
+          {busy === 'approving' ? <Busy className="text-accent-ink-soft">Starting the run…</Busy> : null}
         </div>
       </div>
 
@@ -428,7 +394,7 @@ export function ApproveBar({
     <div
       className="fixed inset-x-0 bottom-0 z-20 flex flex-wrap items-center justify-between gap-3 border-t border-primary-foreground/20 bg-primary px-4 py-3 text-primary-foreground min-[861px]:left-[var(--rail)] min-[861px]:px-10 min-[1180px]:hidden"
       role="region"
-      aria-label="Approve and run"
+      aria-label="Approve & Run"
     >
       <p className="m-0 text-sm text-primary-foreground">
         <span className="font-mono font-medium tabular-nums">{fmt(maxVus)}</span> VUs at most,{' '}
@@ -441,7 +407,7 @@ export function ApproveBar({
         onClick={onApprove}
         className="flex-1 sm:flex-none"
       >
-        Approve and run
+        Approve & Run
       </Button>
     </div>
   );

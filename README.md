@@ -78,7 +78,7 @@ The hero preview (**Drafted plan checked by policy gate**) also demonstrates how
 ## Try a load test
 
 1. Pick an example such as **Campaign spike**, or write your own, then submit.
-2. Review the draft plan (stages, journey, stop thresholds) and press **Approve and run**.
+2. Review the draft plan (stages, journey, stop thresholds) and press **Approve & Run**.
 3. Watch the stages run live. A typical 4-stage run (25, 50, 100, 200 VUs) takes about 4.5 minutes.
 4. Read the report: safe capacity, breaking point, first degraded route, a p95 and error-rate chart, per-route tables, a per-second latency chart for each stage ("During the stage"), and the AI explanation.
 5. **Re-run** the same plan and compare two runs side by side.

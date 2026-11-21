@@ -125,7 +125,7 @@ describe('formatQuotaReadout', () => {
     expect(formatQuotaReadout(null)).toBeNull();
   });
 
-  test('formats planning and daily runs as used/limit and adds per IP only for ip scope', () => {
+  test('formats planning and daily runs as remaining of limit (left framing) and adds per IP only for ip scope', () => {
     expect(
       formatQuotaReadout({
         scope: 'ip',
@@ -133,8 +133,8 @@ describe('formatQuotaReadout', () => {
         dailyRuns: { used: 1, limit: 5, remaining: 4 },
       }),
     ).toEqual({
-      planning: '3/10',
-      dailyRuns: '1/5',
+      planning: '7 of 10',
+      dailyRuns: '4 of 5',
       scopeLabel: 'per IP',
     });
 
@@ -145,8 +145,8 @@ describe('formatQuotaReadout', () => {
         dailyRuns: { used: 4, limit: 50, remaining: 46 },
       }),
     ).toEqual({
-      planning: '12/30',
-      dailyRuns: '4/50',
+      planning: '18 of 30',
+      dailyRuns: '46 of 50',
       scopeLabel: null,
     });
   });

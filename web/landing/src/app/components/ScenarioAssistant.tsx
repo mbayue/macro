@@ -32,7 +32,7 @@ export function ScenarioAssistant({ draft, routes, disabled, onApply }: Props) {
   if (!available) return null;
 
   async function refine(goal: string) {
-    if (disabled) return;
+    if (disabled || busy) return;
     const trimmed = goal.trim() || PRESETS[0];
     await run(
       buildScenarioPrompt({ draft, instruction: trimmed, routes }),
@@ -79,8 +79,10 @@ export function ScenarioAssistant({ draft, routes, disabled, onApply }: Props) {
                   variant={active ? 'secondary' : 'outline'}
                   size="sm"
                   aria-pressed={active}
-                  disabled={busy || disabled}
+                  disabled={disabled}
+                  aria-disabled={busy || undefined}
                   className={cn(
+                    'aria-disabled:cursor-not-allowed aria-disabled:opacity-50',
                     active ? 'border-accent-text bg-secondary text-foreground' : 'border-bar bg-background hover:border-bar-hover',
                   )}
                   onClick={() => {
@@ -102,9 +104,11 @@ export function ScenarioAssistant({ draft, routes, disabled, onApply }: Props) {
               id={inputId}
               type="text"
               value={instruction}
-              disabled={busy || disabled}
+              disabled={disabled}
+              readOnly={busy}
+              aria-busy={busy || undefined}
               placeholder="e.g. Ramp from 25 to 200 users over 4 minutes"
-              className="h-10 min-w-[220px] flex-1 rounded-md border border-bar bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-[2px] focus-visible:outline-offset-[1px] focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60"
+              className="h-10 min-w-[220px] flex-1 rounded-md border border-bar bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-[2px] focus-visible:outline-offset-[1px] focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60 read-only:opacity-60"
               onChange={(e) => setInstruction(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -116,7 +120,9 @@ export function ScenarioAssistant({ draft, routes, disabled, onApply }: Props) {
             <Button
               type="button"
               variant="secondary"
-              disabled={busy || disabled}
+              disabled={disabled}
+              aria-disabled={busy || undefined}
+              className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
               onClick={() => void refine(instruction)}
             >
               Draft suggestion
@@ -126,8 +132,10 @@ export function ScenarioAssistant({ draft, routes, disabled, onApply }: Props) {
           {busy ? <Busy>Refining description…</Busy> : null}
           <AlertRegion>{error ? <p>{error}</p> : null}</AlertRegion>
 
+          {/* Always in the page, so screen readers hear the suggestion when it arrives. */}
+          <div aria-live="polite">
           {reply ? (
-            <div className="flex flex-col gap-2.5 rounded-md border border-bar bg-surface p-3.5" aria-live="polite">
+            <div className="flex flex-col gap-2.5 rounded-md border border-bar bg-surface p-3.5">
               <div className="flex items-center justify-between gap-2">
                 <HybridBadge origin={reply.origin} />
               </div>
@@ -150,6 +158,7 @@ export function ScenarioAssistant({ draft, routes, disabled, onApply }: Props) {
               </div>
             </div>
           ) : null}
+          </div>
         </div>
       ) : null}
     </div>

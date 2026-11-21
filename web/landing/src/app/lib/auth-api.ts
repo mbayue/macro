@@ -253,6 +253,56 @@ export function takeLocalDraft(): AccountDraft | null {
   }
 }
 
+/** sessionStorage key for the Traffic Description a signed-out user is typing (signed-in users get a server draft). */
+export const SIGNED_OUT_DRAFT_KEY = 'macro.signedOutDraft.v1';
+const SIGNED_OUT_DRAFT_MAX_CHARS = 20_000;
+
+type DraftStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
+
+function sessionStore(): DraftStorage | null {
+  try {
+    return typeof sessionStorage !== 'undefined' ? sessionStorage : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Keeps a signed-out user's Traffic Description across navigation and reload; empty text removes it. */
+export function stashSignedOutDraft(text: string, storage: DraftStorage | null = sessionStore()): void {
+  if (storage === null) return;
+  try {
+    if (text.trim() === '') storage.removeItem(SIGNED_OUT_DRAFT_KEY);
+    else storage.setItem(SIGNED_OUT_DRAFT_KEY, JSON.stringify({ text }));
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+/** Reads the stashed signed-out Traffic Description, or null when missing or not a valid draft. */
+export function loadSignedOutDraft(storage: DraftStorage | null = sessionStore()): string | null {
+  if (storage === null) return null;
+  try {
+    const raw = storage.getItem(SIGNED_OUT_DRAFT_KEY);
+    if (raw === null) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    if (typeof parsed !== 'object' || parsed === null) return null;
+    const text = (parsed as { text?: unknown }).text;
+    if (typeof text !== 'string' || text.trim() === '' || text.length > SIGNED_OUT_DRAFT_MAX_CHARS) return null;
+    return text;
+  } catch {
+    return null;
+  }
+}
+
+export function clearSignedOutDraft(storage: DraftStorage | null = sessionStore()): void {
+  if (storage === null) return;
+  try {
+    storage.removeItem(SIGNED_OUT_DRAFT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 export async function postClaim(runIds: string[]): Promise<ApiResult<ClaimResponse>> {
   try {
     const res = await fetch('/api/auth/claim', {

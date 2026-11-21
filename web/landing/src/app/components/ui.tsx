@@ -1,5 +1,5 @@
 /** Small building blocks shared by every screen of the app. */
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Badge as UiBadge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -30,7 +30,7 @@ export function statusTone(status: RunStatus | string): Tone {
       return 'live';
     case 'completed':
       return 'ok';
-    case 'halted':
+    // A Supervisor halt is a deliberate decision, not a failure: neutral tone, the word and the reason carry it.
     case 'stopped':
     case 'timed_out':
       return 'warn';
@@ -222,6 +222,7 @@ export function ConfirmButton({
   className = buttonVariants({ variant: 'secondary' }),
   confirmClassName = buttonVariants({ variant: 'destructive' }),
   cancelClassName = buttonVariants({ variant: 'secondary' }),
+  groupClassName,
   onConfirm,
 }: {
   label: ReactNode;
@@ -231,25 +232,54 @@ export function ConfirmButton({
   className?: string;
   confirmClassName?: string;
   cancelClassName?: string;
+  /** Classes for the Cancel / confirm pair shown after the first click. */
+  groupClassName?: string;
   onConfirm: () => void;
 }) {
   const [armed, setArmed] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  // Where focus goes after the next render: the safe Cancel when arming, the trigger when disarming.
+  const focusNext = useRef<'cancel' | 'trigger' | null>(null);
 
   useEffect(() => {
     if (disabled) setArmed(false);
   }, [disabled]);
 
+  useEffect(() => {
+    const target = focusNext.current === 'cancel' ? cancelRef.current : focusNext.current === 'trigger' ? triggerRef.current : null;
+    focusNext.current = null;
+    target?.focus();
+  }, [armed]);
+
+  const arm = () => {
+    focusNext.current = 'cancel';
+    setArmed(true);
+  };
+  const disarm = () => {
+    focusNext.current = 'trigger';
+    setArmed(false);
+  };
+
   if (!armed) {
     return (
-      <button type="button" className={className} disabled={disabled} onClick={() => setArmed(true)}>
+      <button ref={triggerRef} type="button" className={className} disabled={disabled} onClick={arm}>
         {label}
       </button>
     );
   }
 
   return (
-    <span className="inline-flex flex-wrap items-center gap-3">
-      <button type="button" className={cancelClassName} disabled={disabled} onClick={() => setArmed(false)}>
+    <span
+      className={cn('inline-flex flex-wrap items-center gap-3', groupClassName)}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          disarm();
+        }
+      }}
+    >
+      <button ref={cancelRef} type="button" className={cancelClassName} disabled={disabled} onClick={disarm}>
         {cancelLabel}
       </button>
       <button
@@ -257,6 +287,7 @@ export function ConfirmButton({
         className={confirmClassName}
         disabled={disabled}
         onClick={() => {
+          focusNext.current = 'trigger';
           setArmed(false);
           onConfirm();
         }}

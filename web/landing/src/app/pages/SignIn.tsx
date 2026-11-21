@@ -2,7 +2,7 @@
  * Sign in (`#/sign-in`) and Account (`#/account`): GitHub/Google OAuth, magic link email,
  * active session actions, and account deletion.
  */
-import { useEffect, useId, useState } from 'react';
+import { type Ref, useEffect, useId, useRef, useState } from 'react';
 import { ArrowLeftIcon, LogOutIcon, MailIcon, TablePropertiesIcon } from 'lucide-react';
 import type { MeResponse } from '../../../../../src/api-types.ts';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,8 @@ export interface EmailLinkPanelProps {
   sent: boolean;
   wait: number;
   error: string | null;
+  /** Receives the email field so the page can focus it when a submit is rejected. */
+  inputRef?: Ref<HTMLInputElement> | undefined;
   onEmailChange: (value: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   onBack: () => void;
@@ -33,6 +35,7 @@ export function EmailLinkPanel({
   sent,
   wait,
   error,
+  inputRef,
   onEmailChange,
   onSubmit,
   onBack,
@@ -62,6 +65,7 @@ export function EmailLinkPanel({
             Email
           </label>
           <input
+            ref={inputRef}
             id={emailId}
             type="email"
             name="email"
@@ -120,9 +124,9 @@ export function EmailLinkPanel({
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <Button type="submit" disabled={busy || wait > 0 || email.trim() === ''}>
+          <Button type="submit" disabled={busy || wait > 0}>
             {busy ? (
-              <Busy>Sending</Busy>
+              <Busy>Sending…</Busy>
             ) : wait > 0 ? (
               <span className="font-mono tabular-nums">{`Wait ${wait}s`}</span>
             ) : (
@@ -174,7 +178,7 @@ export function AccountPanel({
           Account
         </h1>
         <p className="m-0 max-w-[64ch] text-muted-foreground">
-          You are signed in as <strong className="font-medium text-foreground">{identity}</strong>.
+          You are signed in as <strong className="font-medium break-all text-foreground">{identity}</strong>.
         </p>
       </header>
 
@@ -275,6 +279,7 @@ export function SignIn() {
   const [error, setError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const emailInput = useRef<HTMLInputElement>(null);
   const signingOut = shell?.state.signingOut ?? false;
 
   useEffect(() => {
@@ -330,6 +335,7 @@ export function SignIn() {
       setError(msg);
       setSent(false);
       announce(msg);
+      emailInput.current?.focus();
       return;
     }
     setBusy(true);
@@ -421,6 +427,7 @@ export function SignIn() {
           sent={sent}
           wait={wait}
           error={error}
+          inputRef={emailInput}
           onEmailChange={(value) => {
             setEmail(value);
             if (error) setError(null);

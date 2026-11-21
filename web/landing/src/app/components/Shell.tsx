@@ -60,7 +60,7 @@ function ShellLayout({
             <p className="border-t border-border pt-3.5">
               {me?.verifiedOrigin
                 ? `You can load-test ${typeof me.verifiedOrigin === 'string' ? me.verifiedOrigin : me.verifiedOrigin.host} (verified) or the public demo shop.`
-                : 'Demo shop tests work signed out. Own-site tests need a signed-in account and a verified origin.'}
+                : 'Demo Target tests work signed out. Own-site tests need a signed-in account and a verified origin.'}
             </p>
           </footer>
         </main>

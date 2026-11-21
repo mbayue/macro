@@ -156,7 +156,7 @@ An evergreen ground paired with a single spring-green accent, mirrored on cream 
 - **Heading** (500, `1.0625rem`, line-height `1.3`): panel and section headings in the app.
 - **Body** (400, `0.9375rem`, line-height `1.5`): app text; prose blocks capped at `64ch`–`72ch`.
 - **Label** (400/500, `0.8125rem`): table headers, key-value terms, tile labels; never uppercase-tracked.
-- **Telemetry Readout** (Geist Mono 400, `tabular-nums`, `11px`–`0.875rem`): quota counters (`used/limit`), run IDs, stage indices, latencies, and chart axis ticks.
+- **Telemetry Readout** (Geist Mono 400, `tabular-nums`, `11px`–`0.875rem`): quota counters (`N of M` left), run IDs, stage indices, latencies, and chart axis ticks.
 
 ### Named Rules
 **The Readings Rule.** Headline 300 is for titles and signature figures only; controls, labels, and prose stay in Stack Sans Text, and instrument metrics/identifiers use Geist Mono with `tabular-nums`.
@@ -174,7 +174,7 @@ The workspace uses three primary responsive thresholds checked across `1440px`, 
 Flat by default: zero box shadows anywhere (`@theme` zeroes all `--shadow-*` and `--inset-shadow-*`). Depth is strictly tonal (`bg`, `surface`, `surface-2`) plus 1px hairline framing:
 - **1px Hairline Grid Frames:** Structural separators (`--surface-2`) frame the rail, top context bar, meta strips, KPI strip dividers, and table rows; interactive controls, inputs, and overlay surfaces (`Dialog`, `Sheet`, `DropdownMenu`) use `1px` `--bar` borders (or `--bar-hover` on `surface-2` backgrounds to keep >= 3:1 non-text contrast).
 - **Corner Ticks (`CornerTicks`):** Key `TelemetryPanel` frames, KPI tiles, and verdict banners use subtle 1px hairline corner ticks (`--bar`, `--accent-text`, `--bad`, or `--primary-foreground/60` on spring green) to anchor readings like a bench oscilloscope.
-- **Tabulated Monospace Readouts:** Quotas (`used/limit`), IDs, hostnames, durations, latencies, and chart axis ticks use **Geist Mono** (`tabular-nums`) so numbers never jitter as digits update.
+- **Tabulated Monospace Readouts:** Quotas (`N of M` left), IDs, hostnames, durations, latencies, and chart axis ticks use **Geist Mono** (`tabular-nums`) so numbers never jitter as digits update.
 
 ## Shapes
 
@@ -184,7 +184,7 @@ One corner language: `6px` (`rounded-md`) on buttons, panels, tiles, inputs, dia
 
 ### Shell Navigation
 - **Desktop Rail & Mobile Sheet:** Macro monogram + wordmark, spring-green **New test** button (`#/`), quiet navigation links (**Test Studio** `#/`, **Runs Table** `#/runs`, **Containment Probe** `#/probe`, **Account** `#/account` or `#/sign-in`), and footer legal links (**About Macro**, **Privacy**, **Terms**). Current route gets `surface-2` fill, foreground text, and a hairline `--accent-text` bar indicator. Collapsing on desktop shows `Tooltip` labels on icons.
-- **Top Context Bar:** Sticky header showing the active target host and `Demo` / `Verified` badge (plus a pending verification link to `#/verify-panel` when present), `/api/quota` planning and daily run counters (`used/limit` in Geist Mono, labelled `per IP` when signed out, hidden at `<= 860px`), **Quick Jump** trigger (`Ctrl+K` / `⌘K`), theme toggle, and account dropdown (`Sign in` when signed out; identity, links, and `Sign out` when signed in).
+- **Top Context Bar:** Sticky header showing the active target host and `Demo` / `Verified` badge (plus a pending verification link to `#/verify-panel` when present), `/api/quota` planning and daily run counters (`Plans left N of M`, `Runs left N of M` in Geist Mono, the same framing as the Test Studio **Usage quota** card, labelled `per IP` when signed out, hidden at `<= 860px`), **Quick Jump** trigger (`Ctrl+K` / `⌘K`), theme toggle, and account dropdown (`Sign in` when signed out; identity, links, and `Sign out` when signed in).
 - **Quick Jump (`Ctrl/Cmd+K`):** Keyboard-driven `CommandDialog` listing main routes, recent runs (`/api/account/runs` when signed in, browser storage when signed out), and global actions (**New test**, **Toggle theme**, **Sign in** / **Sign out**), restoring focus cleanly when dismissed.
 
 ### Test Studio (`#/`)

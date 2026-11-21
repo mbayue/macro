@@ -5,6 +5,7 @@
  */
 import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
+import { fmtGrouped } from '../lib/format.ts';
 
 export type StageState = 'planned' | 'running' | 'pass' | 'fail' | 'error' | 'skipped';
 
@@ -51,7 +52,7 @@ export function StageProfile({
             </span>
             <span className="profile__label font-mono tabular-nums">
               <span>
-                <b>{s.vus.toLocaleString('en-US')}</b> VUs
+                <b>{fmtGrouped(s.vus)}</b> VUs
               </span>
               {compact ? null : <span>{s.durationSec} s</span>}
             </span>

@@ -6,6 +6,7 @@ import {
   ID_PATTERN,
   parseRoute,
   parseRunTab,
+  parseRunsSearch,
   probeHref,
   resolveRouterRoute,
   routeKey,
@@ -249,5 +250,52 @@ describe('TanStack Router integration (memory history)', () => {
 
     await router.navigate({ href: '/compare/run-1/run-9' });
     expect(resolveRouterRoute(router.state)).toEqual({ view: 'compare', a: 'run-1', b: 'run-9' });
+  });
+});
+
+describe('Runs Table search params', () => {
+  test('parseRunsSearch keeps valid type, status and query', () => {
+    expect(parseRunsSearch({ type: 'probe', status: 'failed', q: 'flash sale' })).toEqual({
+      type: 'probe',
+      status: 'failed',
+      q: 'flash sale',
+    });
+    expect(parseRunsSearch({ type: 'run', status: 'stopped_halted' })).toEqual({
+      type: 'run',
+      status: 'stopped_halted',
+      q: '',
+    });
+  });
+
+  test('parseRunsSearch falls back to defaults for missing, unknown or wrong-typed values', () => {
+    expect(parseRunsSearch({})).toEqual({ type: 'all', status: 'all', q: '' });
+    expect(parseRunsSearch({ type: 'PROBE', status: 'halted' })).toEqual({ type: 'all', status: 'all', q: '' });
+    expect(parseRunsSearch({ type: ['probe'], status: null, q: { a: 1 } })).toEqual({ type: 'all', status: 'all', q: '' });
+  });
+
+  test('parseRunsSearch keeps a numeric query from a hand-typed link as text', () => {
+    expect(parseRunsSearch({ q: 42 }).q).toBe('42');
+  });
+
+  test('parseRunsSearch caps an overlong query at 200 characters', () => {
+    expect(parseRunsSearch({ q: 'x'.repeat(500) }).q).toBe('x'.repeat(200));
+  });
+
+  test('a shared /runs link restores filters; invalid values fall back and defaults are stripped from the URL', async () => {
+    const shared = await loadMemoryRoute('/runs?type=probe&status=completed&q=checkout');
+    expect(shared.route).toEqual({ view: 'runs' });
+    expect(shared.search).toEqual({ type: 'probe', status: 'completed', q: 'checkout' });
+
+    const bogus = await loadMemoryRoute('/runs?type=nope&status=nope');
+    expect(bogus.route).toEqual({ view: 'runs' });
+    expect(bogus.search).toEqual({ type: 'all', status: 'all', q: '' });
+
+    const router = createAppRouter({
+      history: createMemoryHistory({ initialEntries: ['/runs?type=probe'] }),
+      isServer: false,
+    });
+    await router.load();
+    await router.navigate({ to: '/runs', search: { type: 'all', status: 'failed', q: '' } });
+    expect(router.state.location.href).toBe('/runs?status=failed');
   });
 });

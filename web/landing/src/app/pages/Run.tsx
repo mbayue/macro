@@ -162,7 +162,7 @@ export function RunPage({ id }: { id: string }) {
     <div className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6 print:max-w-none">
       <header className="flex flex-col justify-between gap-6 min-[861px]:flex-row min-[861px]:items-start print:hidden">
         <div className="flex min-w-0 flex-col gap-2">
-          <h1 className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] text-balance text-foreground max-[860px]:text-[1.75rem]">
+          <h1 className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] break-words text-balance text-foreground max-[860px]:text-[1.75rem]">
             {model.plan?.name ?? report?.planName ?? 'Load test'}
           </h1>
           <p className="m-0 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-muted-foreground">
@@ -175,7 +175,7 @@ export function RunPage({ id }: { id: string }) {
             </span>
             {model.plan ? (
               <span>
-                on <span className="font-mono text-xs text-foreground">{model.plan.target}</span>
+                on <span className="font-mono text-xs break-all text-foreground">{model.plan.target}</span>
               </span>
             ) : null}
             <span>
@@ -244,14 +244,16 @@ export function RunPage({ id }: { id: string }) {
       ) : null}
 
       <div className="min-w-0">
+        {/* Sticky only from 861px, where the strip is one line. On phones it would stack into four rows
+            under the sticky header and cover about a quarter of the screen, so it scrolls with the page. */}
         {activeTab === 'overview' ? (
           !queued && !tilesInView ? (
-            <div className="sticky top-[61px] z-20 h-0 overflow-visible min-[861px]:top-[53px] print:hidden">
+            <div className="hidden min-[861px]:sticky min-[861px]:top-[53px] min-[861px]:z-20 min-[861px]:block min-[861px]:h-0 min-[861px]:overflow-visible print:hidden">
               <KpiStrip items={kpiItems} />
             </div>
           ) : null
         ) : (
-          <div className="sticky top-[61px] z-20 mb-4 min-[861px]:top-[53px] print:hidden">
+          <div className="mb-4 min-[861px]:sticky min-[861px]:top-[53px] min-[861px]:z-20 print:hidden">
             <KpiStrip items={kpiItems} />
           </div>
         )}
@@ -261,7 +263,7 @@ export function RunPage({ id }: { id: string }) {
             <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
               <TabsList
                 aria-label="Capacity Report sections"
-                className="flex h-auto w-full flex-wrap justify-start gap-1 border border-border bg-surface p-1 sm:w-fit"
+                className="flex h-auto w-full flex-wrap justify-start gap-1 border border-border bg-surface p-1 group-data-horizontal/tabs:h-auto sm:w-fit"
               >
                 {RUN_TAB_ITEMS.map((tab) => {
                   const disabled = tab.id === 'ai' && !hasReport;

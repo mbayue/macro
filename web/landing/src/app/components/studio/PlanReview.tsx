@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { useApp } from '../../context.tsx';
-import { parseErrorText } from '../../lib/format.ts';
+import { fmtGrouped, parseErrorText } from '../../lib/format.ts';
 import { ModelCalls } from '../ModelCalls.tsx';
 import { StageProfile } from '../StageProfile.tsx';
 import { TableWrap, ViolationsTable } from '../ui.tsx';
@@ -25,7 +25,7 @@ import {
 } from './studio-view.ts';
 import { TelemetryPanel } from './TelemetryFrame.tsx';
 
-const fmt = (n: number): string => n.toLocaleString('en-US');
+const fmt = fmtGrouped;
 
 /** The Traffic Description a plan was drafted from, folded once a draft exists. */
 export function PlanBrief({
@@ -196,7 +196,7 @@ function PlanDetails({
 
   return (
     <TelemetryPanel ticks="bar" className="gap-4.5">
-      <p className="m-0 font-display text-[1.625rem] leading-[1.15] font-light tracking-[-0.015em] text-foreground">
+      <p className="m-0 min-w-0 font-display text-[1.625rem] leading-[1.15] font-light tracking-[-0.015em] break-words text-foreground">
         {plan.name}
       </p>
 
@@ -444,7 +444,7 @@ function JourneyChecks({
 
   // A revised plan returns a new routes list; re-sync the checkboxes to its
   // defaultOn flags, or the stale selection keeps checksDiffer true forever
-  // and "Approve and run" stays disabled.
+  // and "Approve & Run" stays disabled.
   useEffect(() => {
     setChecked(new Set(routes.filter((row) => row.defaultOn === true).map((row) => row.id)));
   }, [routes]);
@@ -559,11 +559,15 @@ function JourneyChecks({
         <p className="text-sm text-muted-foreground">Some pages were left off because a plan holds 32 routes.</p>
       ) : null}
 
+      {/* Always in the page, so the prompt to revise is announced when the checks change. */}
+      <p className="sr-only" aria-live="polite">
+        {differ ? 'Revise the plan to use these checks.' : ''}
+      </p>
       {differ ? (
         <div className="flex flex-col gap-3 pt-1">
           <Separator />
           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-            <p className="m-0 flex-1 text-sm text-foreground" aria-live="polite">
+            <p className="m-0 flex-1 text-sm text-foreground">
               Revise the plan to use these checks.
             </p>
             <Button

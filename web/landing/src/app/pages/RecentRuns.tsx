@@ -224,9 +224,11 @@ export function RecentRunsPage() {
           <Badge variant="outline" className="font-mono">
             {source === 'account' ? 'Signed in · up to 50 runs' : 'Browser local · up to 10 runs'}
           </Badge>
-          <Button render={<a href="#/" />} nativeButton={false} size="sm">
-            + New test
-          </Button>
+          {rows.length > 0 ? (
+            <Button render={<a href="#/" />} nativeButton={false} variant="secondary" size="sm">
+              + New test
+            </Button>
+          ) : null}
         </div>
       </header>
 

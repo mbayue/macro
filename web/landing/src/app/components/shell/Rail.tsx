@@ -117,7 +117,7 @@ export function DesktopRail() {
                 onClick={actions.toggleRailCollapsed}
                 aria-label={collapsed ? 'Expand navigation rail' : 'Collapse navigation rail'}
                 aria-expanded={!collapsed}
-                className="text-rail-muted hover:bg-white/8 hover:text-rail-ink focus-visible:outline-primary"
+                className="text-rail-muted hover:bg-white/8 hover:text-rail-ink aria-expanded:bg-transparent aria-expanded:text-rail-muted aria-expanded:hover:bg-white/8 aria-expanded:hover:text-rail-ink focus-visible:outline-primary"
               />
             }
           >

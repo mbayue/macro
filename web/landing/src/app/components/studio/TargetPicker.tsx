@@ -29,13 +29,13 @@ export function TargetPicker({
   return (
     <div className="flex flex-col items-start gap-2 min-[861px]:items-end">
       <div
-        className="inline-flex flex-wrap items-center gap-0.5 rounded-md border border-[var(--ap-line-strong)] bg-surface p-0.5"
+        className="inline-flex w-full flex-wrap items-center gap-0.5 rounded-md border border-[var(--ap-line-strong)] bg-surface p-0.5 min-[640px]:w-auto"
         role="radiogroup"
         aria-label="Target environment"
       >
         <label
           className={cn(
-            'relative flex min-h-8 cursor-pointer items-center gap-1.5 rounded-sm px-3 py-1 text-xs font-medium select-none transition-[background-color,color] duration-150 motion-reduce:transition-none has-[input:disabled]:cursor-not-allowed has-[input:disabled]:opacity-60 has-[input:focus-visible]:outline-[3px] has-[input:focus-visible]:outline-offset-[2px] has-[input:focus-visible]:outline-ring',
+            'relative flex min-h-8 w-full cursor-pointer items-center gap-1.5 rounded-sm px-3 py-1 text-xs font-medium select-none transition-[background-color,color] duration-150 motion-reduce:transition-none min-[640px]:w-auto has-[input:disabled]:cursor-not-allowed has-[input:disabled]:opacity-60 has-[input:focus-visible]:outline-[3px] has-[input:focus-visible]:outline-offset-[2px] has-[input:focus-visible]:outline-ring',
             targetMode === 'demo'
               ? 'bg-secondary text-foreground shadow-[inset_0_0_0_1px_var(--ap-line-strong)]'
               : 'text-muted-foreground hover:text-foreground',
@@ -56,7 +56,7 @@ export function TargetPicker({
 
         <label
           className={cn(
-            'relative flex min-h-8 cursor-pointer items-center gap-1.5 rounded-sm px-3 py-1 text-xs font-medium select-none transition-[background-color,color] duration-150 motion-reduce:transition-none has-[input:disabled]:cursor-not-allowed has-[input:disabled]:opacity-60 has-[input:focus-visible]:outline-[3px] has-[input:focus-visible]:outline-offset-[2px] has-[input:focus-visible]:outline-ring',
+            'relative flex min-h-8 w-full cursor-pointer items-center gap-1.5 rounded-sm px-3 py-1 text-xs font-medium select-none transition-[background-color,color] duration-150 motion-reduce:transition-none min-[640px]:w-auto has-[input:disabled]:cursor-not-allowed has-[input:disabled]:opacity-60 has-[input:focus-visible]:outline-[3px] has-[input:focus-visible]:outline-offset-[2px] has-[input:focus-visible]:outline-ring',
             targetMode === 'own'
               ? 'bg-secondary text-foreground shadow-[inset_0_0_0_1px_var(--ap-line-strong)]'
               : 'text-muted-foreground hover:text-foreground',

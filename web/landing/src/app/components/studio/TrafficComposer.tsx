@@ -102,10 +102,10 @@ export function TrafficComposer({
               <Button
                 key={ex.label}
                 type="button"
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 disabled={!idle}
-                className="border-bar bg-background text-xs hover:border-bar-hover max-[860px]:min-h-10"
+                className="h-8 rounded-sm border border-transparent px-2.5 text-xs text-muted-foreground hover:border-[var(--ap-line-strong)] hover:bg-secondary hover:text-foreground max-[860px]:min-h-10"
                 onClick={() => {
                   setAttempted(false);
                   onTextChange(ex.text);

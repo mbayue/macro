@@ -27,23 +27,26 @@ function Rules({ targetOrigin }: { targetOrigin?: string | null | undefined }) {
   ];
 
   return (
-    <div className="flex flex-col gap-4">
-      <dl className="m-0 grid grid-cols-1 gap-2 text-sm sm:grid-cols-[max-content_minmax(0,1fr)] sm:gap-x-5 sm:gap-y-2">
+    <div className="flex flex-col gap-3.5">
+      <ul className="m-0 flex list-none flex-col gap-2 p-0 font-mono text-xs">
         {bounds.map((row) => (
-          <div key={row.label} className="contents">
-            <dt className="text-muted-foreground">{row.label}</dt>
-            <dd
+          <li
+            key={row.label}
+            className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border pb-2 last:border-b-0 last:pb-0"
+          >
+            <span className="text-muted-foreground">{row.label}</span>
+            <span
               className={cn(
-                'm-0 min-w-0 text-[0.8125rem] text-foreground',
-                row.mono && 'font-mono tabular-nums',
+                'rounded-sm border border-[var(--ap-line-strong)] bg-background/70 px-2 py-0.5 text-foreground',
+                row.mono && 'tabular-nums',
                 row.breakAll && 'break-all',
               )}
             >
               {row.value}
-            </dd>
-          </div>
+            </span>
+          </li>
         ))}
-      </dl>
+      </ul>
 
       <Separator />
 

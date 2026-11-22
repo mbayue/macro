@@ -33,10 +33,10 @@ export function TopContextBar() {
   return (
     <div
       data-slot="shell-context-bar"
-      className="shell-glass-bar border-b border-border px-4 py-2 min-[861px]:sticky min-[861px]:top-0 min-[861px]:z-20 min-[861px]:px-10 min-[861px]:py-2.5 print:hidden"
+      className="shell-glass-bar border-b border-border px-4 py-2.5 min-[861px]:sticky min-[861px]:top-0 min-[861px]:z-20 min-[861px]:px-10 print:hidden"
     >
-      <div className="mx-auto flex w-full max-w-[1440px] items-center justify-between gap-4">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
+      <div className="flex w-full items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5">
           <span className="hidden min-[1280px]:inline-flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
             <span>Macro</span>
             <span aria-hidden="true">/</span>
@@ -45,12 +45,12 @@ export function TopContextBar() {
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
             <span className="text-xs text-muted-foreground min-[861px]:sr-only">Target</span>
             <span
-              className="max-w-[240px] truncate rounded-sm border border-border bg-background/80 px-2 py-0.5 font-mono text-xs text-foreground sm:max-w-xs"
+              className="max-w-[240px] truncate rounded-sm border border-[var(--ap-line-strong)] bg-surface px-2 py-0.5 font-mono text-xs text-foreground sm:max-w-xs"
               title={state.target.host ?? undefined}
             >
               {state.target.host ?? 'Demo Target'}
             </span>
-            <Badge variant={state.target.kind === 'verified' ? 'ok' : 'outline'}>
+            <Badge variant={state.target.kind === 'verified' ? 'ok' : 'outline'} className="font-mono">
               {state.target.badgeLabel}
             </Badge>
             {state.target.pendingHost !== null ? (
@@ -65,21 +65,23 @@ export function TopContextBar() {
               </a>
             ) : null}
           </div>
+        </div>
 
+        <div className="hidden min-[861px]:flex shrink-0 items-center gap-2">
           <div
             role="group"
             aria-label="Usage quota"
-            className="hidden min-[861px]:inline-flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1 text-xs"
+            className="inline-flex items-center gap-1.5 rounded-sm border border-[var(--ap-line-strong)] bg-surface px-2.5 py-1 font-mono text-xs"
           >
             {quota !== null ? (
               <>
                 <span className="text-muted-foreground">Plans left</span>
-                <span className="font-mono text-foreground tabular-nums">{quota.planning}</span>
+                <span className="text-foreground tabular-nums">{quota.planning}</span>
                 <span className="text-muted-foreground" aria-hidden="true">
                   ·
                 </span>
                 <span className="text-muted-foreground">Runs left</span>
-                <span className="font-mono text-foreground tabular-nums">{quota.dailyRuns}</span>
+                <span className="text-foreground tabular-nums">{quota.dailyRuns}</span>
                 {quota.scopeLabel !== null ? (
                   <>
                     <span className="text-muted-foreground" aria-hidden="true">
@@ -93,20 +95,18 @@ export function TopContextBar() {
               <span className="text-muted-foreground">Loading quota…</span>
             ) : null}
           </div>
-        </div>
 
-        <div className="hidden min-[861px]:flex shrink-0 items-center gap-2">
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={actions.openQuickJump}
-            className="border-bar bg-background text-muted-foreground hover:text-foreground"
+            className="border-[var(--ap-line-strong)] bg-surface font-mono text-xs text-foreground hover:bg-secondary"
           >
             <SearchIcon data-icon="inline-start" />
             <span>Quick Jump</span>
-            <kbd className="ml-1 rounded-sm border border-bar bg-surface px-1.5 py-0.5 font-mono text-[11px] leading-none text-muted-foreground">
-              {meta.shortcutHint}
+            <kbd className="ml-0.5 rounded-sm text-[11px] leading-none text-muted-foreground">
+              · {meta.shortcutHint}
             </kbd>
           </Button>
 
@@ -116,15 +116,16 @@ export function TopContextBar() {
                 <Button
                   type="button"
                   variant="outline"
-                  size="icon-sm"
+                  size="sm"
                   onClick={actions.toggleTheme}
                   aria-label={state.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
                   aria-pressed={state.theme === 'dark'}
-                  className="border-bar bg-background"
+                  className="border-[var(--ap-line-strong)] bg-surface text-xs text-foreground hover:bg-secondary"
                 />
               }
             >
-              {state.theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+              {state.theme === 'dark' ? <SunIcon data-icon="inline-start" /> : <MoonIcon data-icon="inline-start" />}
+              <span>{state.theme === 'dark' ? 'Light' : 'Dark'}</span>
             </TooltipTrigger>
             <TooltipContent side="bottom">
               {state.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
@@ -139,16 +140,10 @@ export function TopContextBar() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="max-w-[210px] border-bar bg-background"
+                    className="max-w-[210px] border-[var(--ap-line-strong)] bg-surface text-xs text-foreground hover:bg-secondary"
                   />
                 }
               >
-                <span
-                  className="inline-flex size-4 shrink-0 items-center justify-center rounded-sm bg-secondary font-mono text-[11px] font-medium text-foreground"
-                  aria-hidden="true"
-                >
-                  {(state.identityLabel ?? 'U').slice(0, 1).toUpperCase()}
-                </span>
                 <span className="truncate">{state.identityLabel}</span>
                 <ChevronDownIcon data-icon="inline-end" />
               </DropdownMenuTrigger>
@@ -203,7 +198,7 @@ export function TopContextBar() {
               nativeButton={false}
               variant="outline"
               size="sm"
-              className="border-bar bg-background"
+              className="border-[var(--ap-line-strong)] bg-surface text-xs text-foreground hover:bg-secondary"
             >
               <UserIcon data-icon="inline-start" />
               Sign in

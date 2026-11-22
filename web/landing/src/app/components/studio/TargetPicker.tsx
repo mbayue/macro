@@ -27,7 +27,7 @@ export function TargetPicker({
   const demoHost = webOrigin.replace(/^https?:\/\//, '');
 
   return (
-    <div className="flex flex-col items-start gap-2 min-[861px]:items-end">
+    <div className="flex flex-wrap items-center gap-2 min-[861px]:justify-end">
       <div
         className="inline-flex w-full flex-wrap items-center gap-0.5 rounded-md border border-[var(--ap-line-strong)] bg-surface p-0.5 min-[640px]:w-auto"
         role="radiogroup"
@@ -80,42 +80,39 @@ export function TargetPicker({
       </div>
 
       {targetMode === 'own' ? (
-        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs">
-          {verifiedOrigin !== null ? (
-            <>
-              <span className="font-mono text-foreground break-all">{verifiedOrigin.origin}</span>
-              <Badge variant="ok">Verified</Badge>
-              <Button render={<a href="#/domains" />} nativeButton={false} variant="secondary" size="sm" className="h-7 px-2.5 text-xs">
-                Manage domain
-                <ArrowRightIcon data-icon="inline-end" />
-              </Button>
-            </>
-          ) : me === null ? (
-            <span className="text-muted-foreground">
-              <a href="#/sign-in" className="text-foreground underline underline-offset-4 hover:text-accent-text">
-                Sign in
-              </a>{' '}
-              to verify your site and run private own-site tests.
-            </span>
-          ) : (
-            <>
-              <Badge variant="warn">{pendingHost ? 'Verification pending' : 'Verification required'}</Badge>
-              <span className={pendingHost ? 'text-muted-foreground' : 'text-bad'}>
-                {pendingHost ? (
-                  <>
-                    Finish verifying <span className="font-mono text-foreground">{pendingHost}</span>.
-                  </>
-                ) : (
-                  'Domain verification required before drafting.'
-                )}
-              </span>
-              <Button render={<a href="#/domains" />} nativeButton={false} variant="secondary" size="sm" className="h-7 px-2.5 text-xs">
-                {pendingHost ? 'Continue verification' : 'Verify a domain'}
-                <ArrowRightIcon data-icon="inline-end" />
-              </Button>
-            </>
-          )}
-        </div>
+        verifiedOrigin !== null ? (
+          <Button
+            render={<a href="#/domains" />}
+            nativeButton={false}
+            variant="outline"
+            size="sm"
+            className="h-9 border-[var(--ap-line-strong)] bg-surface px-2.5 text-xs hover:bg-secondary"
+          >
+            Manage domain
+            <ArrowRightIcon data-icon="inline-end" />
+          </Button>
+        ) : me === null ? (
+          <a
+            href="#/sign-in"
+            className="rounded-sm border border-[var(--ap-line-strong)] bg-surface px-2.5 py-1.5 text-xs font-medium text-foreground no-underline hover:bg-secondary"
+          >
+            Sign in to verify
+          </a>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <Badge variant="warn">{pendingHost ? 'Verification pending' : 'Verification required'}</Badge>
+            <Button
+              render={<a href="#/domains" />}
+              nativeButton={false}
+              variant="outline"
+              size="sm"
+              className="h-8 border-[var(--ap-line-strong)] bg-surface px-2.5 text-xs hover:bg-secondary"
+            >
+              {pendingHost ? 'Continue verification' : 'Verify a domain'}
+              <ArrowRightIcon data-icon="inline-end" />
+            </Button>
+          </div>
+        )
       ) : null}
     </div>
   );

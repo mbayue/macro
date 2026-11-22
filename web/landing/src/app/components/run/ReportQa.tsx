@@ -16,7 +16,7 @@ const QUICK_QUESTIONS = [
 
 /** AI-labelled Report Q&A panel grounded strictly in measured CapacityReport metrics. */
 export const ReportQa = memo(function ReportQa({ report }: { report: CapacityReport }) {
-  const { available, availability, busy, completed, error, reply, run, stop } = useHybridPrompt();
+  const { available, canRun, availability, remoteConfig, busy, completed, error, reply, run, stop } = useHybridPrompt();
   const [question, setQuestion] = useState('');
   const headingId = useId();
   const inputId = useId();
@@ -28,12 +28,12 @@ export const ReportQa = memo(function ReportQa({ report }: { report: CapacityRep
   if (!available) return null;
 
   async function ask(q: string) {
-    if (busy) return;
+    if (busy || !canRun) return;
     const trimmed = q.trim();
     if (!trimmed) return;
     setQuestion(trimmed);
     await run(
-      buildReportQaPrompt(report, trimmed),
+      buildReportQaPrompt(report, trimmed, remoteConfig.reportQaSystemInstruction),
       'Answering question from measured report metrics.',
       'Answer ready',
     );
@@ -46,7 +46,11 @@ export const ReportQa = memo(function ReportQa({ report }: { report: CapacityRep
           <span>Report Q&amp;A</span>
           <Badge variant="secondary">AI</Badge>
         </h2>
-        {reply ? <HybridBadge origin={reply.origin} /> : <HybridAvailabilityBadge availability={availability} />}
+        {reply ? (
+          <HybridBadge origin={reply.origin} cloudModel={remoteConfig.cloudModel} />
+        ) : (
+          <HybridAvailabilityBadge availability={availability} cloudModel={remoteConfig.cloudModel} />
+        )}
       </div>
       <p className="m-0 text-sm text-muted-foreground">
         Ask follow-up questions about these measured stage and route metrics. Prefers on-device Gemini Nano with cloud Gemini fallback.
@@ -60,7 +64,7 @@ export const ReportQa = memo(function ReportQa({ report }: { report: CapacityRep
             variant="outline"
             size="sm"
             className="border-bar bg-background text-foreground aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
-            aria-disabled={busy || undefined}
+            aria-disabled={busy || !canRun || undefined}
             onClick={() => void ask(q)}
           >
             {q}
@@ -84,7 +88,7 @@ export const ReportQa = memo(function ReportQa({ report }: { report: CapacityRep
           type="text"
           autoComplete="off"
           value={question}
-          readOnly={busy}
+          readOnly={busy || !canRun}
           aria-busy={busy || undefined}
           placeholder="Ask about latency, breaking point, or route errors…"
           onChange={(e) => setQuestion(e.target.value)}
@@ -94,7 +98,7 @@ export const ReportQa = memo(function ReportQa({ report }: { report: CapacityRep
           type="submit"
           variant="secondary"
           className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
-          aria-disabled={busy || question.trim() === '' || undefined}
+          aria-disabled={busy || !canRun || question.trim() === '' || undefined}
         >
           Ask
         </Button>

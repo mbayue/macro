@@ -75,7 +75,8 @@ flowchart LR
 | --- | --- | --- |
 | **Scenario Assistant** | Refines plain-English traffic descriptions (injecting realistic ramp-ups, peak spikes, and catalog mixes) before plan generation. | **Zero server quota & instant latency:** Developers iterate freely on traffic drafts right on their machine without consuming server planning limits or sending unapproved drafts over the wire. |
 | **Report Q&A** | Answers conversational questions about completed runs grounded strictly in measured metrics (`p95` latencies, breaking points, route errors), with client-side Number Guard checks. | **Strict grounding & privacy:** Uses the structured `CapacityReport` numbers directly in the browser to explain results without hallucinations. |
-| **Origin Transparency** | Pre-flight availability badge (`On-Device Model: Gemini Nano`, `Gemini Nano downloading`, `Cloud Model: Gemini`) and **Stop** stream control. | Users can see where their prompt will run before clicking and cancel streams mid-flight. |
+| **Origin Transparency** | Pre-flight availability badge (`On-Device Model: Gemini Nano`, `Gemini Nano downloading`, `On-Device Only: Unavailable`, `Cloud Model: <model>`) and **Stop** stream control. | Users can see where their prompt will run before clicking and cancel streams mid-flight. |
+| **Remote Config Tuning** | Manages `hybrid_ai_enabled`, `hybrid_inference_mode`, `hybrid_cloud_model`, `scenario_assistant_instruction`, and `report_qa_system_instruction` via `firebase/remote-config` ([`remoteconfig.template.json`](remoteconfig.template.json)), with built-in safe defaults. | Swap cloud fallback models, switch inference modes, tune prompts, or trip an emergency kill switch without redeploying—while staying offline-safe. |
 | **App Check Hardening** | Protects cloud inference fallbacks with `ReCaptchaEnterpriseProvider` and limited-use App Check tokens. | Defends the project backend from unauthorized abuse. |
 
 ### Running Gemini Nano Locally in Chrome

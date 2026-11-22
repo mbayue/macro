@@ -78,7 +78,7 @@ describe('security headers on every response', () => {
     expect(res.headers.get('content-security-policy')).toBe(CSP);
   });
 
-  test('the CSP allows only self, Cloudflare challenges/insights, and Firebase AI Logic / App Check endpoints', () => {
+  test('the CSP allows only self, Cloudflare challenges/insights, and Firebase AI Logic / App Check / Remote Config endpoints', () => {
     expect(CSP).not.toContain('unsafe-inline');
     expect(CSP).not.toContain('unsafe-eval');
     expect(CSP).toContain("default-src 'self'");
@@ -87,6 +87,8 @@ describe('security headers on every response', () => {
     expect(CSP).toContain('https://firebasevertexai.googleapis.com');
     expect(CSP).toContain('https://content-firebaseappcheck.googleapis.com');
     expect(CSP).toContain('https://firebaseappcheck.googleapis.com');
+    expect(CSP).toContain('https://firebaseremoteconfig.googleapis.com');
+    expect(CSP).toContain('https://firebaseinstallations.googleapis.com');
     expect(CSP).toContain("frame-ancestors 'none'");
     expect(CSP).toContain("base-uri 'none'");
   });

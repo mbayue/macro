@@ -1,0 +1,39 @@
+{
+  "parameters": {
+    "hybrid_ai_enabled": {
+      "defaultValue": {
+        "value": "true"
+      },
+      "description": "Kill switch for client-side Hybrid Inference (Scenario Assistant and Report Q&A).",
+      "valueType": "BOOLEAN"
+    },
+    "hybrid_inference_mode": {
+      "defaultValue": {
+        "value": "prefer_on_device"
+      },
+      "description": "Firebase AI Logic InferenceMode: prefer_on_device, only_on_device, prefer_in_cloud, or only_in_cloud.",
+      "valueType": "STRING"
+    },
+    "hybrid_cloud_model": {
+      "defaultValue": {
+        "value": "gemini-2.5-flash"
+      },
+      "description": "Gemini model used for Cloud Fallback in Firebase AI Logic Hybrid Inference.",
+      "valueType": "STRING"
+    },
+    "scenario_assistant_instruction": {
+      "defaultValue": {
+        "value": "Refine this traffic description with clear ramp-up and peak stages, realistic catalog route mix, and exact virtual user counts and durations."
+      },
+      "description": "Default refinement goal for the Scenario Assistant in Test Studio.",
+      "valueType": "STRING"
+    },
+    "report_qa_system_instruction": {
+      "defaultValue": {
+        "value": "You are Macro Report Q&A. Answer the user question concisely using ONLY the measured metrics below."
+      },
+      "description": "Grounding system instruction prefix for Report Q&A (still verified by client-side Number Guard).",
+      "valueType": "STRING"
+    }
+  }
+}

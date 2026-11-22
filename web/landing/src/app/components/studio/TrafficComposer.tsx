@@ -5,7 +5,7 @@ import { useHybridPrompt } from '../../hooks/useHybridPrompt.ts';
 import type { ApiError } from '../../lib/api.ts';
 import { buildScenarioPrompt } from '../../lib/hybrid-ai.ts';
 import { HybridAvailabilityBadge } from '../HybridBadge.tsx';
-import { DEFAULT_SCENARIO_REFINEMENT, ScenarioAssistant } from '../ScenarioAssistant.tsx';
+import { ScenarioAssistant } from '../ScenarioAssistant.tsx';
 import { AlertRegion, Busy } from '../ui.tsx';
 import { type StudioBusy, trafficSubmitProblem } from './studio-view.ts';
 import { TelemetryPanel } from './TelemetryFrame.tsx';
@@ -67,9 +67,13 @@ export function TrafficComposer({
   const invalid = shownProblem !== '';
 
   function refineDirectly() {
-    if (!idle || assistant.busy) return;
+    if (!idle || assistant.busy || !assistant.canRun) return;
     void assistant.run(
-      buildScenarioPrompt({ draft: text, instruction: DEFAULT_SCENARIO_REFINEMENT, routes: assistantRoutes }),
+      buildScenarioPrompt({
+        draft: text,
+        instruction: assistant.remoteConfig.scenarioAssistantInstruction,
+        routes: assistantRoutes,
+      }),
       'Refining traffic description with Hybrid AI.',
       'Suggestion ready',
     );
@@ -101,7 +105,12 @@ export function TrafficComposer({
             <label id="traffic-event-label" htmlFor="traffic-event" className="font-display text-[1.125rem] font-semibold tracking-[-0.025em] text-foreground">
               Traffic Description
             </label>
-            {assistant.available ? <HybridAvailabilityBadge availability={assistant.availability} /> : null}
+            {assistant.available ? (
+              <HybridAvailabilityBadge
+                availability={assistant.availability}
+                cloudModel={assistant.remoteConfig.cloudModel}
+              />
+            ) : null}
           </div>
           <p id="traffic-event-hint" className="text-sm text-muted-foreground">
             Describe the routes, virtual-user ramp, and stop thresholds in plain English. Nothing reaches the target until you approve.{' '}
@@ -177,7 +186,7 @@ export function TrafficComposer({
               id="traffic-event-count"
               className={cn('font-mono tabular-nums', invalid ? 'font-medium text-bad' : 'text-muted-foreground')}
             >
-              {fmt(count)} / {fmt(max)} chars{assistant.available ? ' · Scenario Assistant ready' : ''}
+              {fmt(count)} / {fmt(max)} chars{assistant.canRun ? ' · Scenario Assistant ready' : ''}
             </span>
             <span id="traffic-event-problem" className="font-medium text-bad" role="status">
               {shownProblem}
@@ -200,7 +209,7 @@ export function TrafficComposer({
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={!idle || assistant.busy}
+                disabled={!idle || assistant.busy || !assistant.canRun}
                 aria-busy={assistant.busy || undefined}
                 className="h-[34px] rounded-md border-[var(--ap-line-strong)] bg-surface px-3 text-[0.8125rem] font-medium text-foreground hover:bg-secondary"
                 onClick={refineDirectly}

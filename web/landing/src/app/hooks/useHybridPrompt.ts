@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  DEFAULT_HYBRID_REMOTE_CONFIG,
   createFirebaseHybridRunner,
   detectOnDeviceAvailability,
+  fetchHybridRemoteConfig,
+  resolveHybridAvailability,
   runHybridPrompt,
+  type HybridRemoteConfig,
   type HybridReply,
   type OnDeviceAvailability,
 } from '../lib/hybrid-ai.ts';
@@ -10,12 +14,13 @@ import { useApp } from '../context.tsx';
 
 /**
  * Shared React hook for client-side Hybrid Inference panels.
- * Handles lazy runner creation, pre-flight availability detection, cancellation, and live announcements.
+ * Handles lazy runner creation, Firebase Remote Config activation, pre-flight availability detection, cancellation, and live announcements.
  */
 export function useHybridPrompt() {
   const { config, announce } = useApp();
   const firebase = config.firebase ?? null;
-  const [availability, setAvailability] = useState<OnDeviceAvailability | null>(null);
+  const [onDeviceStatus, setOnDeviceStatus] = useState<Exclude<OnDeviceAvailability, 'on-device-unavailable'> | null>(null);
+  const [remoteConfig, setRemoteConfig] = useState<HybridRemoteConfig>(DEFAULT_HYBRID_REMOTE_CONFIG);
   const [busy, setBusy] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +41,10 @@ export function useHybridPrompt() {
     if (firebase === null) return;
     let cancelled = false;
     void detectOnDeviceAvailability().then((status) => {
-      if (!cancelled && alive.current) setAvailability(status);
+      if (!cancelled && alive.current) setOnDeviceStatus(status);
+    });
+    void fetchHybridRemoteConfig(firebase).then((rc) => {
+      if (!cancelled && alive.current) setRemoteConfig(rc);
     });
     return () => {
       cancelled = true;
@@ -44,9 +52,15 @@ export function useHybridPrompt() {
   }, [firebase]);
 
   const runner = useMemo(
-    () => (firebase ? createFirebaseHybridRunner(firebase) : null),
-    [firebase],
+    () => (firebase ? createFirebaseHybridRunner(firebase, remoteConfig) : null),
+    [firebase, remoteConfig.mode, remoteConfig.cloudModel],
   );
+
+  const availability: OnDeviceAvailability | null = onDeviceStatus
+    ? resolveHybridAvailability(onDeviceStatus, remoteConfig.mode)
+    : null;
+  const available = firebase !== null && runner !== null && remoteConfig.enabled;
+  const canRun = available && availability !== 'on-device-unavailable';
 
   function stop(): void {
     if (!busy) return;
@@ -57,7 +71,7 @@ export function useHybridPrompt() {
   }
 
   async function run(prompt: string, busyAnnouncement: string, readyLabel: string): Promise<void> {
-    if (!runner || busy) return;
+    if (!runner || !canRun || busy) return;
     const mine = ++seq.current;
     const controller = new AbortController();
     abortRef.current = controller;
@@ -85,8 +99,10 @@ export function useHybridPrompt() {
   }
 
   return {
-    available: firebase !== null && runner !== null,
+    available,
+    canRun,
     availability,
+    remoteConfig,
     busy,
     completed,
     error,

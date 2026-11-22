@@ -9,6 +9,7 @@ Macro runs server-side LLM calls for test planning, supervision, and report narr
 
 ## Client Safeguards
 
-- **Pre-flight availability detection**: Probes `LanguageModel.availability()` on mount so Scenario Assistant and Report Q&A surface `On-Device Model: Gemini Nano`, `Gemini Nano downloading`, or `Cloud Model: Gemini` before a prompt runs.
+- **Pre-flight availability detection**: Probes `LanguageModel.availability()` on mount and combines it with Remote Config's active `hybrid_inference_mode` so Scenario Assistant and Report Q&A surface `On-Device Model: Gemini Nano`, `Gemini Nano downloading`, `On-Device Only: Unavailable`, or `Cloud Model: <hybrid_cloud_model>` before a prompt runs.
+- **Firebase Remote Config tuning**: Fetches and activates `remoteconfig.template.json` parameters (`hybrid_ai_enabled`, `hybrid_inference_mode`, `hybrid_cloud_model`, `scenario_assistant_instruction`, `report_qa_system_instruction`) once per session with a 5 s timeout and built-in defaults, allowing model rollouts, mode switches, prompt tuning, and an emergency kill switch without redeploying. CSP `connect-src` allows `https://firebaseremoteconfig.googleapis.com` and `https://firebaseinstallations.googleapis.com`; offline or blocked fetches silently fall back to defaults.
 - **Stream cancellation**: Passes an `AbortController` signal into `generateContentStream` / `generateContent` so clicking **Stop** aborts the request and preserves any streamed partial text.
 - **Client-side Number Guard**: Verifies completed Report Q&A replies against `CapacityReport` numbers (`allowedNumbers` + `guardText`) and warns when unverified numbers appear.

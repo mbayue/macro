@@ -1,15 +1,20 @@
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { InferenceSource } from 'firebase/ai';
+import { InferenceMode, InferenceSource } from 'firebase/ai';
 import type { CapacityReport } from '../src/report/build.ts';
-import { HybridAvailabilityBadge } from '../web/landing/src/app/components/HybridBadge.tsx';
+import { HybridAvailabilityBadge, HybridBadge } from '../web/landing/src/app/components/HybridBadge.tsx';
 import {
   AI_HELPER_UNAVAILABLE,
+  DEFAULT_HYBRID_REMOTE_CONFIG,
   buildReportQaPrompt,
   buildScenarioPrompt,
   detectOnDeviceAvailability,
   mapInferenceSource,
+  parseHybridRemoteConfig,
+  resolveHybridAvailability,
   runHybridPrompt,
   summarizeReportForQa,
   verifyReportQaReply,
@@ -146,6 +151,15 @@ describe('summarizeReportForQa & buildReportQaPrompt', () => {
     const prompt = buildReportQaPrompt(SAMPLE_REPORT, 'Why did stage 2 fail?');
     expect(prompt).toContain('Why did stage 2 fail?');
     expect(prompt).toContain('1,611 ms');
+
+    const custom = buildReportQaPrompt(
+      SAMPLE_REPORT,
+      'Which route failed?',
+      'Be ultra brief and cite the exact route ID.',
+    );
+    expect(custom).toContain('Be ultra brief and cite the exact route ID.');
+    expect(custom).toContain('1,611 ms');
+    expect(custom).toContain('Never invent numbers');
   });
 });
 
@@ -262,5 +276,101 @@ describe('HybridAvailabilityBadge', () => {
       createElement(HybridAvailabilityBadge, { availability: 'cloud-fallback' }),
     );
     expect(cloud).toContain('Cloud Model: Gemini');
+
+    const cloudNamed = renderToStaticMarkup(
+      createElement(HybridAvailabilityBadge, {
+        availability: 'cloud-fallback',
+        cloudModel: 'gemini-2.5-flash',
+      }),
+    );
+    expect(cloudNamed).toContain('Cloud Model: gemini-2.5-flash');
+    expect(cloudNamed).not.toMatch(/\sstyle=/i);
+
+    const unavailable = renderToStaticMarkup(
+      createElement(HybridAvailabilityBadge, { availability: 'on-device-unavailable' }),
+    );
+    expect(unavailable).toContain('On-Device Only: Unavailable');
+    expect(unavailable).not.toMatch(/\sstyle=/i);
+
+    const originCloud = renderToStaticMarkup(
+      createElement(HybridBadge, { origin: 'cloud', cloudModel: 'gemini-2.5-flash' }),
+    );
+    expect(originCloud).toContain('Cloud Model: gemini-2.5-flash');
+    expect(originCloud).not.toMatch(/\sstyle=/i);
+  });
+});
+
+describe('parseHybridRemoteConfig', () => {
+  test('returns safe defaults when remote values are empty or invalid', () => {
+    expect(parseHybridRemoteConfig({})).toEqual(DEFAULT_HYBRID_REMOTE_CONFIG);
+    expect(
+      parseHybridRemoteConfig({
+        hybrid_ai_enabled: 'true',
+        hybrid_inference_mode: 'bogus_mode',
+        hybrid_cloud_model: '   ',
+        scenario_assistant_instruction: '',
+        report_qa_system_instruction: '   ',
+      }),
+    ).toEqual(DEFAULT_HYBRID_REMOTE_CONFIG);
+  });
+
+  test('applies valid remote overrides including kill switch and mode', () => {
+    const parsed = parseHybridRemoteConfig({
+      hybrid_ai_enabled: 'false',
+      hybrid_inference_mode: 'only_in_cloud',
+      hybrid_cloud_model: 'gemini-2.5-flash-lite',
+      scenario_assistant_instruction: 'Focus on checkout spikes.',
+      report_qa_system_instruction: 'Answer in one sentence using only measured numbers.',
+    });
+    expect(parsed).toEqual({
+      enabled: false,
+      mode: InferenceMode.ONLY_IN_CLOUD,
+      cloudModel: 'gemini-2.5-flash-lite',
+      scenarioAssistantInstruction: 'Focus on checkout spikes.',
+      reportQaSystemInstruction: 'Answer in one sentence using only measured numbers.',
+    });
+  });
+});
+
+describe('resolveHybridAvailability', () => {
+  test('honors Remote Config inference mode over raw on-device probe', () => {
+    expect(resolveHybridAvailability('ready', InferenceMode.PREFER_ON_DEVICE)).toBe('ready');
+    expect(resolveHybridAvailability('downloading', InferenceMode.PREFER_ON_DEVICE)).toBe('downloading');
+    expect(resolveHybridAvailability('cloud-fallback', InferenceMode.PREFER_ON_DEVICE)).toBe('cloud-fallback');
+
+    expect(resolveHybridAvailability('ready', InferenceMode.ONLY_IN_CLOUD)).toBe('cloud-fallback');
+    expect(resolveHybridAvailability('ready', InferenceMode.PREFER_IN_CLOUD)).toBe('cloud-fallback');
+
+    expect(resolveHybridAvailability('ready', InferenceMode.ONLY_ON_DEVICE)).toBe('ready');
+    expect(resolveHybridAvailability('downloading', InferenceMode.ONLY_ON_DEVICE)).toBe('downloading');
+    expect(resolveHybridAvailability('cloud-fallback', InferenceMode.ONLY_ON_DEVICE)).toBe('on-device-unavailable');
+  });
+});
+
+describe('remoteconfig.template.json', () => {
+  test('defines all 5 Hybrid AI parameters matching in-app defaults', () => {
+    const rawJson = readFileSync(join(import.meta.dir, '..', 'remoteconfig.template.json'), 'utf8');
+    const template = JSON.parse(rawJson) as {
+      parameters: Record<string, { defaultValue: { value: string }; valueType: string; description: string }>;
+    };
+    const keys = [
+      'hybrid_ai_enabled',
+      'hybrid_inference_mode',
+      'hybrid_cloud_model',
+      'scenario_assistant_instruction',
+      'report_qa_system_instruction',
+    ] as const;
+
+    const rawValues: Record<string, string> = {};
+    for (const key of keys) {
+      expect(template.parameters[key]).toBeDefined();
+      expect(template.parameters[key]!.description.length).toBeGreaterThan(0);
+      rawValues[key] = template.parameters[key]!.defaultValue.value;
+    }
+
+    expect(rawValues.hybrid_ai_enabled).toBe('true');
+    expect(rawValues.hybrid_inference_mode).toBe('prefer_on_device');
+    expect(rawValues.hybrid_cloud_model).toBe('gemini-2.5-flash');
+    expect(parseHybridRemoteConfig(rawValues)).toEqual(DEFAULT_HYBRID_REMOTE_CONFIG);
   });
 });

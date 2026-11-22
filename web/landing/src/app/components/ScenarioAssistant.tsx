@@ -1,10 +1,10 @@
 import { Button } from '@/components/ui/button';
 import type { useHybridPrompt } from '../hooks/useHybridPrompt.ts';
+import { DEFAULT_SCENARIO_ASSISTANT_INSTRUCTION } from '../lib/hybrid-ai.ts';
 import { HybridStopButton } from './HybridBadge.tsx';
 import { AlertRegion, Busy } from './ui.tsx';
 
-export const DEFAULT_SCENARIO_REFINEMENT =
-  'Refine this traffic description with clear ramp-up and peak stages, realistic catalog route mix, and exact virtual user counts and durations.';
+export const DEFAULT_SCENARIO_REFINEMENT = DEFAULT_SCENARIO_ASSISTANT_INSTRUCTION;
 
 interface Props {
   disabled: boolean;

@@ -41,10 +41,21 @@ export function StageProfile({
     });
   }, [stages, max]);
 
+  const peakIndex = stages.reduce((best, s, i) => (s.vus >= (stages[best]?.vus ?? 0) ? i : best), 0);
+
   return (
-    <div ref={ref} className={cn('profile', compact && 'profile--compact')} aria-hidden="true">
+    <div
+      ref={ref}
+      className={cn('profile', compact && 'profile--compact', mode === 'preview' && 'profile--preview')}
+      aria-hidden="true"
+    >
       {stages.map((s, i) => {
-        const stateClass = mode === 'preview' && s.state === 'planned' ? '' : `profile__stage--${s.state}`;
+        const stateClass =
+          mode === 'preview'
+            ? i === peakIndex
+              ? 'profile__stage--peak'
+              : ''
+            : `profile__stage--${s.state}`;
         return (
           <div key={i} data-stage={i} className={cn('profile__stage border-b border-border', stateClass)}>
             <span className="profile__bar">

@@ -1,20 +1,22 @@
 import { SquareIcon } from 'lucide-react';
+import { Badge as UiBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { InferenceOrigin, OnDeviceAvailability } from '../lib/hybrid-ai.ts';
-import { Badge } from './ui.tsx';
+
+const TAG_CLASS = 'px-2 py-[3px] font-mono text-xs leading-[1.2]';
 
 /** Displays whether Hybrid Inference ran on-device (Gemini Nano) or in cloud (Gemini). */
 export function HybridBadge({ origin }: { origin: InferenceOrigin }) {
-  if (origin === 'on-device') return <Badge tone="ok">On-device · Gemini Nano</Badge>;
-  if (origin === 'cloud') return <Badge>Cloud · Gemini</Badge>;
-  return <Badge>Hybrid AI</Badge>;
+  if (origin === 'on-device') return <UiBadge variant="ok" className={TAG_CLASS}>On-Device Model: Gemini Nano</UiBadge>;
+  if (origin === 'cloud') return <UiBadge variant="ok" className={TAG_CLASS}>Cloud Model: Gemini</UiBadge>;
+  return <UiBadge variant="outline" className={TAG_CLASS}>Hybrid AI</UiBadge>;
 }
 
 /** Displays pre-flight Chrome Built-in AI availability before a prompt runs. */
 export function HybridAvailabilityBadge({ availability }: { availability: OnDeviceAvailability | null }) {
-  if (availability === 'ready') return <Badge tone="ok">On-device ready</Badge>;
-  if (availability === 'downloading') return <Badge tone="warn">Gemini Nano downloading</Badge>;
-  if (availability === 'cloud-fallback') return <Badge>Cloud fallback</Badge>;
+  if (availability === 'ready') return <UiBadge variant="ok" className={TAG_CLASS}>On-Device Model: Gemini Nano</UiBadge>;
+  if (availability === 'downloading') return <UiBadge variant="warn" className={TAG_CLASS}>Gemini Nano downloading</UiBadge>;
+  if (availability === 'cloud-fallback') return <UiBadge variant="ok" className={TAG_CLASS}>Cloud Model: Gemini</UiBadge>;
   return null;
 }
 

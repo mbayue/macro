@@ -37,7 +37,7 @@ export function TelemetryPanel({
   return (
     <section
       className={cn(
-        'relative flex min-w-0 flex-col gap-3.5 rounded-md border p-5 sm:px-6',
+        'relative flex min-w-0 flex-col gap-3.5 rounded-md border p-5 sm:p-6',
         tone === 'live'
           ? 'border-transparent bg-primary text-primary-foreground'
           : tone === 'bad'
@@ -80,11 +80,11 @@ export function DitherBanner({
   return (
     <div
       className={cn(
-        'relative -mx-5 -mt-5 mb-1 h-[92px] overflow-hidden rounded-t-[5px] border-b border-border sm:-mx-6 print:hidden',
+        'relative -mx-5 -mt-5 mb-1 h-[92px] overflow-hidden rounded-t-[5px] border-b border-border sm:-mx-6 sm:-mt-6 print:hidden',
         className,
       )}
     >
-      <img className="dither-banner-img" src={src} alt="" aria-hidden="true" />
+      <img className="dither-banner-img" src={src} width={1920} height={1280} alt="" aria-hidden="true" />
       <div className="dither-banner-caption absolute right-3 bottom-2.5 left-3 flex items-center justify-between gap-2 rounded-sm px-2.5 py-1 font-mono text-[11px] text-foreground">
         <span className="truncate">{label}</span>
         {meta ? <strong className="shrink-0 font-medium">{meta}</strong> : null}

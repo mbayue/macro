@@ -250,7 +250,7 @@ describe('verifyReportQaReply', () => {
 describe('HybridAvailabilityBadge', () => {
   test('renders pre-flight status labels without inline styles', () => {
     const ready = renderToStaticMarkup(createElement(HybridAvailabilityBadge, { availability: 'ready' }));
-    expect(ready).toContain('On-device ready');
+    expect(ready).toContain('On-Device Model: Gemini Nano');
     expect(ready).not.toMatch(/\sstyle=/i);
 
     const downloading = renderToStaticMarkup(
@@ -261,6 +261,6 @@ describe('HybridAvailabilityBadge', () => {
     const cloud = renderToStaticMarkup(
       createElement(HybridAvailabilityBadge, { availability: 'cloud-fallback' }),
     );
-    expect(cloud).toContain('Cloud fallback');
+    expect(cloud).toContain('Cloud Model: Gemini');
   });
 });

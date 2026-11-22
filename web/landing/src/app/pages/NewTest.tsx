@@ -4,7 +4,7 @@
  * Nothing reaches the target until "Approve & Run".
  */
 import { useEffect, useRef, useState } from 'react';
-import type { AccountDraft, DemoTrendsResponse, PlanResponse, QuotaResponse } from '../../../../../src/api-types.ts';
+import type { AccountDraft, DemoTrendsResponse, PlanResponse } from '../../../../../src/api-types.ts';
 import {
   clearReviewState,
   clearSignedOutDraft,
@@ -17,7 +17,8 @@ import {
   stashSignedOutDraft,
   takeLocalDraft,
 } from '../lib/auth-api.ts';
-import { type ApiError, type ApiResult, getDemoTrends, getQuota, postPlan, VERIFICATION_ERROR } from '../lib/api.ts';
+import { type ApiError, type ApiResult, getDemoTrends, postPlan, VERIFICATION_ERROR } from '../lib/api.ts';
+import { ModelCalls } from '../components/ModelCalls.tsx';
 import { NextUp } from '../components/NextUp.tsx';
 import { TurnstileBox, useTurnstile } from '../components/Turnstile.tsx';
 import { Badge } from '@/components/ui/badge';
@@ -27,7 +28,7 @@ import { useApp } from '../context.tsx';
 import { ApproveBar, GateSidebar } from '../components/studio/GateSidebar.tsx';
 import { PlanBrief, PlanReview } from '../components/studio/PlanReview.tsx';
 import { TargetPicker } from '../components/studio/TargetPicker.tsx';
-import { StageBand } from '../components/studio/TelemetryFrame.tsx';
+import { StageBand, TelemetryPanel } from '../components/studio/TelemetryFrame.tsx';
 import { TrafficComposer } from '../components/studio/TrafficComposer.tsx';
 import {
   isApprovable,
@@ -62,8 +63,7 @@ export function NewTest() {
   const draftHydrated = useRef(false);
   const draftTurnstile = useTurnstile();
   const [demoTrends, setDemoTrends] = useState<DemoTrendsResponse | null>(null);
-  const [quota, setQuota] = useState<QuotaResponse | null>(null);
-  const [checksDiffer, setChecksDiffer] = useState(false);
+  const [pendingRouteIds, setPendingRouteIds] = useState<string[] | null>(null);
 
   useEffect(() => () => void (alive.current = false), []);
 
@@ -79,14 +79,6 @@ export function NewTest() {
     });
     return () => abort.abort();
   }, []);
-
-  useEffect(() => {
-    const abort = new AbortController();
-    void getQuota(abort.signal).then((res) => {
-      if (!abort.signal.aborted && res.ok) setQuota(res.data);
-    });
-    return () => abort.abort();
-  }, [me?.user.id, review?.planHash]);
 
   useEffect(() => {
     const ownerUserId = me?.user.id ?? null;
@@ -213,7 +205,7 @@ export function NewTest() {
     setPlanError(null);
     if (routeIds === undefined) {
       setReview(null);
-      setChecksDiffer(false);
+      setPendingRouteIds(null);
     }
     announce('Drafting a plan.');
     let result: ApiResult<PlanResponse>;
@@ -236,6 +228,7 @@ export function NewTest() {
     if (result.ok) {
       clearSignedOutDraft();
       setReview(result.data);
+      setPendingRouteIds(null);
       setReviewSeq((s) => s + 1);
       setEditing(false);
     } else {
@@ -347,11 +340,43 @@ export function NewTest() {
               stale={editing && changedSinceDraft}
               busy={busy}
               onEdit={editDescription}
-              onRevise={(ids) => lastSubmitted !== null && void startPlanning(lastSubmitted, ids)}
-              onChecksDiffer={setChecksDiffer}
+              onPendingRoutesChange={setPendingRouteIds}
             />
           ) : busy === null && !ownNeedsVerify ? (
-            <NextUp />
+            <>
+              <NextUp />
+              {targetMode === 'demo' && demoTrends?.available && demoTrends.routes.length > 0 ? (
+                <TelemetryPanel ticks="bar" aria-labelledby="demo-baseline-heading">
+                  <div className="flex flex-col gap-1">
+                    <h2 id="demo-baseline-heading" className="m-0 font-display text-[1.125rem] font-semibold tracking-[-0.025em] text-foreground">
+                      30-day demo baseline
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      Observed across public demo runs over the last 30 days.
+                    </p>
+                  </div>
+                  <dl className="m-0 grid grid-cols-[max-content_minmax(0,1fr)] items-center gap-x-4 gap-y-2 text-xs">
+                    {demoTrends.routes.slice(0, 6).map((r) => {
+                      const errPct = typeof r.errorRatePct === 'number' ? r.errorRatePct.toFixed(1) : '0.0';
+                      const health = r.status ?? 'steady';
+                      return (
+                        <div key={r.route} className="contents">
+                          <dt className="font-mono text-muted-foreground">{r.route}</dt>
+                          <dd className="m-0 flex flex-wrap items-center justify-end gap-2 font-mono text-foreground tabular-nums">
+                            <span>
+                              {r.avgMs !== null ? `${Math.round(r.avgMs)} ms` : 'n/a'} · {errPct}% err
+                            </span>
+                            <Badge variant={health === 'degraded' ? 'destructive' : health === 'spiky' ? 'warn' : 'ok'}>
+                              {health}
+                            </Badge>
+                          </dd>
+                        </div>
+                      );
+                    })}
+                  </dl>
+                </TelemetryPanel>
+              ) : null}
+            </>
           ) : null}
         </div>
 
@@ -360,27 +385,32 @@ export function NewTest() {
           activeOrigin={activeOrigin}
           targetMode={targetMode}
           verifiedOrigin={verifiedOrigin}
-          quota={quota}
-          demoTrends={demoTrends}
           sampleRunId={config.sampleRunId}
           busy={busy}
           reviewSeq={reviewSeq}
-          checksDiffer={checksDiffer}
+          pendingRouteIds={pendingRouteIds}
           alive={alive}
           startFromBar={startFromBar}
           onBusyChange={setBusy}
           onCancelPlan={cancelPlan}
+          onRevisePlan={(ids) => lastSubmitted !== null && void startPlanning(lastSubmitted, ids)}
           onStarted={onStarted}
           onInViewChange={setPanelInView}
         />
       </div>
 
+      {review !== null ? <ModelCalls calls={review.modelCalls} /> : null}
+
       {approvable && review?.plan ? (
         <ApproveBar
           plan={review.plan}
           hidden={panelInView}
-          disabled={!idle || checksDiffer}
+          disabled={!idle}
+          needsRevise={pendingRouteIds !== null}
           onApprove={() => startFromBar.current?.()}
+          onRevise={() => {
+            if (lastSubmitted !== null && pendingRouteIds !== null) void startPlanning(lastSubmitted, pendingRouteIds);
+          }}
         />
       ) : null}
     </div>

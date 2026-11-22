@@ -201,7 +201,7 @@ export function AlertRegion({
     <div
       id={id}
       className={cn(
-        has ? 'grid gap-1.5 rounded-md border border-bad px-3.5 py-3 text-[0.8125rem] text-foreground' : 'border-0 p-0',
+        has ? 'grid gap-1.5 rounded-md border border-bad px-3.5 py-3 text-[0.8125rem] text-foreground' : 'sr-only',
         className,
       )}
       role="alert"

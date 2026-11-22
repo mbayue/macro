@@ -6,11 +6,9 @@ import { journeyGroups, journeyLabel, type JourneyRow } from '../../../../../../
 import type { TestPlan } from '../../../../../../src/types.ts';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { useApp } from '../../context.tsx';
 import { fmtGrouped, parseErrorText } from '../../lib/format.ts';
-import { ModelCalls } from '../ModelCalls.tsx';
 import { StageProfile } from '../StageProfile.tsx';
 import { TableWrap, ViolationsTable } from '../ui.tsx';
 import {
@@ -72,15 +70,13 @@ export function PlanReview({
   stale,
   busy,
   onEdit,
-  onRevise,
-  onChecksDiffer,
+  onPendingRoutesChange,
 }: {
   res: PlanResponse;
   stale: boolean;
   busy: StudioBusy;
   onEdit: () => void;
-  onRevise: (routeIds: string[]) => void;
-  onChecksDiffer: (differ: boolean) => void;
+  onPendingRoutesChange: (routeIds: string[] | null) => void;
 }) {
   const { announce } = useApp();
   const heading = useRef<HTMLHeadingElement>(null);
@@ -168,14 +164,11 @@ export function PlanReview({
             <JourneyChecks
               routes={res.routes}
               disabled={busy !== null}
-              onRevise={onRevise}
-              onChecksDiffer={onChecksDiffer}
+              onPendingRoutesChange={onPendingRoutesChange}
             />
           ) : null}
         </>
       )}
-
-      <ModelCalls calls={res.modelCalls} />
     </section>
   );
 }
@@ -252,35 +245,33 @@ function PlanDetails({
               aria-hidden="true"
             />
           </summary>
-          <div className="max-w-[520px]">
-            <TableWrap label="Stages">
-              <table className="data-table">
-                <caption className="sr-only">Stages</caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Stage</th>
-                    <th scope="col" className="num">
-                      VUs
+          <TableWrap label="Stages">
+            <table className="data-table">
+              <caption className="sr-only">Stages</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Stage</th>
+                  <th scope="col" className="num">
+                    VUs
+                  </th>
+                  <th scope="col" className="num">
+                    Duration (s)
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {plan.stages.map((s, i) => (
+                  <tr key={i}>
+                    <th scope="row" className="idx font-mono tabular-nums">
+                      {i + 1}
                     </th>
-                    <th scope="col" className="num">
-                      Duration (s)
-                    </th>
+                    <td className="num font-mono tabular-nums">{fmt(s.vus)}</td>
+                    <td className="num font-mono tabular-nums">{s.durationSec}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {plan.stages.map((s, i) => (
-                    <tr key={i}>
-                      <th scope="row" className="idx font-mono tabular-nums">
-                        {i + 1}
-                      </th>
-                      <td className="num font-mono tabular-nums">{fmt(s.vus)}</td>
-                      <td className="num font-mono tabular-nums">{s.durationSec}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </TableWrap>
-          </div>
+                ))}
+              </tbody>
+            </table>
+          </TableWrap>
         </details>
       </div>
 
@@ -429,13 +420,11 @@ function JourneyPick({
 function JourneyChecks({
   routes,
   disabled,
-  onRevise,
-  onChecksDiffer,
+  onPendingRoutesChange,
 }: {
   routes: PlanResponse['routes'];
   disabled: boolean;
-  onRevise: (routeIds: string[]) => void;
-  onChecksDiffer: (differ: boolean) => void;
+  onPendingRoutesChange: (routeIds: string[] | null) => void;
 }) {
   const groups = journeyGroups(routes.map((row) => ({ ...row, defaultOn: row.defaultOn === true })));
   const [checked, setChecked] = useState<ReadonlySet<string>>(
@@ -443,8 +432,7 @@ function JourneyChecks({
   );
 
   // A revised plan returns a new routes list; re-sync the checkboxes to its
-  // defaultOn flags, or the stale selection keeps checksDiffer true forever
-  // and "Approve & Run" stays disabled.
+  // defaultOn flags, or the stale selection keeps pendingRouteIds set forever.
   useEffect(() => {
     setChecked(new Set(routes.filter((row) => row.defaultOn === true).map((row) => row.id)));
   }, [routes]);
@@ -458,8 +446,15 @@ function JourneyChecks({
   const differ = current !== baseline;
 
   useEffect(() => {
-    onChecksDiffer(differ);
-  }, [differ, onChecksDiffer]);
+    if (!differ) {
+      onPendingRoutesChange(null);
+      return;
+    }
+    onPendingRoutesChange([
+      'r1',
+      ...routes.filter((row) => row.path !== '/' && checked.has(row.id)).map((row) => row.id),
+    ]);
+  }, [differ, checked, routes, onPendingRoutesChange]);
 
   function toggle(id: string) {
     setChecked((prev) => {
@@ -561,31 +556,8 @@ function JourneyChecks({
 
       {/* Always in the page, so the prompt to revise is announced when the checks change. */}
       <p className="sr-only" aria-live="polite">
-        {differ ? 'Revise the plan to use these checks.' : ''}
+        {differ ? 'Route selection changed. Use Revise the plan in the sidebar to update the plan.' : ''}
       </p>
-      {differ ? (
-        <div className="flex flex-col gap-3 pt-1">
-          <Separator />
-          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-            <p className="m-0 flex-1 text-sm text-foreground">
-              Revise the plan to use these checks.
-            </p>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={disabled}
-              onClick={() =>
-                onRevise([
-                  'r1',
-                  ...routes.filter((row) => row.path !== '/' && checked.has(row.id)).map((row) => row.id),
-                ])
-              }
-            >
-              Revise the plan
-            </Button>
-          </div>
-        </div>
-      ) : null}
     </TelemetryPanel>
   );
 }

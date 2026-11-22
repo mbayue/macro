@@ -1,8 +1,11 @@
 import { type RefObject, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useHybridPrompt } from '../../hooks/useHybridPrompt.ts';
 import type { ApiError } from '../../lib/api.ts';
-import { ScenarioAssistant } from '../ScenarioAssistant.tsx';
+import { buildScenarioPrompt } from '../../lib/hybrid-ai.ts';
+import { HybridAvailabilityBadge } from '../HybridBadge.tsx';
+import { DEFAULT_SCENARIO_REFINEMENT, ScenarioAssistant } from '../ScenarioAssistant.tsx';
 import { AlertRegion, Busy } from '../ui.tsx';
 import { type StudioBusy, trafficSubmitProblem } from './studio-view.ts';
 import { TelemetryPanel } from './TelemetryFrame.tsx';
@@ -59,8 +62,18 @@ export function TrafficComposer({
   const idle = busy === null;
   // Set when the user submits text that cannot be drafted; the error then shows even for an empty box.
   const [attempted, setAttempted] = useState(false);
+  const assistant = useHybridPrompt();
   const shownProblem = problem !== '' ? problem : attempted ? trafficSubmitProblem(text, min, max) : '';
   const invalid = shownProblem !== '';
+
+  function refineDirectly() {
+    if (!idle || assistant.busy) return;
+    void assistant.run(
+      buildScenarioPrompt({ draft: text, instruction: DEFAULT_SCENARIO_REFINEMENT, routes: assistantRoutes }),
+      'Refining traffic description with Hybrid AI.',
+      'Suggestion ready',
+    );
+  }
 
   function submit() {
     if (!idle) return;
@@ -83,10 +96,13 @@ export function TrafficComposer({
           submit();
         }}
       >
-        <div className="flex flex-col gap-1">
-          <label id="traffic-event-label" htmlFor="traffic-event" className="font-display text-[1.125rem] font-semibold tracking-[-0.025em] text-foreground">
-            Traffic Description
-          </label>
+        <div className="flex flex-col gap-1.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label id="traffic-event-label" htmlFor="traffic-event" className="font-display text-[1.125rem] font-semibold tracking-[-0.025em] text-foreground">
+              Traffic Description
+            </label>
+            {assistant.available ? <HybridAvailabilityBadge availability={assistant.availability} /> : null}
+          </div>
           <p id="traffic-event-hint" className="text-sm text-muted-foreground">
             Describe the routes, virtual-user ramp, and stop thresholds in plain English. Nothing reaches the target until you approve.{' '}
             <kbd className="rounded-sm border border-bar bg-background px-1.5 py-0.5 font-mono text-[11px] text-foreground">
@@ -97,24 +113,33 @@ export function TrafficComposer({
         </div>
 
         {examples.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-1.5 text-sm" role="group" aria-label="Example traffic descriptions">
-            {examples.map((ex) => (
-              <Button
-                key={ex.label}
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={!idle}
-                className="h-8 rounded-sm border border-transparent px-2.5 text-xs text-muted-foreground hover:border-[var(--ap-line-strong)] hover:bg-secondary hover:text-foreground max-[860px]:min-h-10"
-                onClick={() => {
-                  setAttempted(false);
-                  onTextChange(ex.text);
-                  textareaRef.current?.focus();
-                }}
-              >
-                {ex.label}
-              </Button>
-            ))}
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Example traffic descriptions">
+            {examples.map((ex) => {
+              const active = text.trim() === ex.text.trim();
+              return (
+                <Button
+                  key={ex.label}
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={!idle}
+                  aria-pressed={active}
+                  className={cn(
+                    'min-h-8 rounded-sm border px-3 text-[0.8125rem] font-medium transition-colors max-[860px]:min-h-10',
+                    active
+                      ? 'border-[var(--ap-line-strong)] bg-secondary text-foreground hover:bg-secondary'
+                      : 'border-transparent bg-transparent text-muted-foreground hover:border-[var(--ap-line-strong)] hover:bg-secondary/60 hover:text-foreground',
+                  )}
+                  onClick={() => {
+                    setAttempted(false);
+                    onTextChange(ex.text);
+                    textareaRef.current?.focus();
+                  }}
+                >
+                  {ex.label}
+                </Button>
+              );
+            })}
           </div>
         ) : null}
 
@@ -152,7 +177,7 @@ export function TrafficComposer({
               id="traffic-event-count"
               className={cn('font-mono tabular-nums', invalid ? 'font-medium text-bad' : 'text-muted-foreground')}
             >
-              {fmt(count)} / {fmt(max)} chars
+              {fmt(count)} / {fmt(max)} chars{assistant.available ? ' · Scenario Assistant ready' : ''}
             </span>
             <span id="traffic-event-problem" className="font-medium text-bad" role="status">
               {shownProblem}
@@ -161,17 +186,35 @@ export function TrafficComposer({
 
           <div className="flex flex-wrap items-center gap-2">
             {hasReview && editing ? (
-              <Button type="button" variant="outline" size="sm" className="border-bar" disabled={!idle} onClick={onKeepPlan}>
+              <Button type="button" variant="outline" size="sm" className="h-[34px] rounded-md border-[var(--ap-line-strong)] bg-surface px-3 text-[0.8125rem]" disabled={!idle} onClick={onKeepPlan}>
                 Keep the current plan
               </Button>
             ) : null}
             {showRetry ? (
-              <Button type="button" variant="secondary" size="sm" disabled={!idle} onClick={onRetry}>
+              <Button type="button" variant="secondary" size="sm" className="h-[34px] rounded-md px-3 text-[0.8125rem]" disabled={!idle} onClick={onRetry}>
                 Retry planning
               </Button>
             ) : null}
-            <Button type="submit" disabled={!idle}>
-              {hasReview ? 'Draft a new plan' : 'Draft a plan'}
+            {assistant.available ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!idle || assistant.busy}
+                aria-busy={assistant.busy || undefined}
+                className="h-[34px] rounded-md border-[var(--ap-line-strong)] bg-surface px-3 text-[0.8125rem] font-medium text-foreground hover:bg-secondary"
+                onClick={refineDirectly}
+              >
+                {assistant.busy ? 'Refining…' : 'Refine with Scenario Assistant'}
+              </Button>
+            ) : null}
+            <Button
+              type="submit"
+              size="sm"
+              disabled={!idle}
+              className="h-[34px] rounded-md bg-foreground px-3.5 text-[0.8125rem] font-medium text-background hover:bg-foreground/90"
+            >
+              {hasReview ? 'Re-draft Test Plan' : 'Draft a plan'}
             </Button>
           </div>
         </div>
@@ -184,12 +227,13 @@ export function TrafficComposer({
           <span className="text-xs text-muted-foreground">Write at least {min} characters to draft.</span>
         ) : null}
 
-        <ScenarioAssistant
-          draft={text}
-          routes={assistantRoutes}
-          disabled={!idle}
-          onApply={onApplyAssistant}
-        />
+        {assistant.available ? (
+          <ScenarioAssistant
+            disabled={!idle}
+            prompt={assistant}
+            onApply={onApplyAssistant}
+          />
+        ) : null}
 
         <AlertRegion error={planError} />
       </form>

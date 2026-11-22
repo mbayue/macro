@@ -26,35 +26,35 @@ function Page({ title, lead, facts, sections }: { title: string; lead: string; f
       <main
         id="top"
         data-legal
-        className={`grid px-7 pt-12 split:px-8 split:pt-16 min-[68.75rem]:grid-cols-[minmax(0,760px)_minmax(0,340px)] min-[68.75rem]:justify-center min-[68.75rem]:gap-x-24`}
+        className="lp-container lp-legal-main"
       >
-        <StageBand size="strip" className="mb-12 split:mb-16" />
-        <header>
-          <h1 className="text-(length:--step-head)">{title}</h1>
-          <p className="mt-3 text-(length:--step-small) text-muted">Last updated {UPDATED}</p>
-          <p className="mt-7 max-w-[40ch] text-(length:--step-lead) leading-[1.4]">{lead}</p>
+        <header className="lp-legal-head">
+          <div className="lp-stage-band" aria-hidden="true">
+            <span /><span /><span /><span />
+          </div>
+          <h1 className="lp-display mt-5">{title}</h1>
+          <p className="lp-mono mt-3 text-[0.8125rem] text-muted">Last updated {UPDATED}</p>
+          <p className="lp-lead mt-5">{lead}</p>
         </header>
 
-        <aside className={`mt-10 min-[68.75rem]:col-start-2 min-[68.75rem]:row-span-3 min-[68.75rem]:row-start-1 min-[68.75rem]:mt-0`} aria-label="Summary">
-          <div
-            className={`grid gap-10 min-[68.75rem]:sticky min-[68.75rem]:top-8 min-[68.75rem]:max-h-[calc(100vh-64px)] min-[68.75rem]:overflow-y-auto min-[68.75rem]:overscroll-contain min-[68.75rem]:[scrollbar-width:thin]`}
-          >
-            <section className="rounded bg-surface p-5 split:p-6" aria-labelledby="in-short">
-              <h2 id="in-short" className="font-text text-(length:--step-body) leading-[1.2] font-medium tracking-normal text-accent-text">
+        <aside className="lp-legal-aside" aria-label="Summary">
+          <div className="lp-legal-sticky">
+            <section className="lp-legal-card" aria-labelledby="in-short">
+              <h2 id="in-short" className="lp-mono text-[0.8125rem] font-medium tracking-normal text-accent-text">
                 In short
               </h2>
-              <dl className="mt-[18px] mb-0 grid gap-4">
+              <dl className="lp-kv-list mt-4">
                 {facts.map((f) => (
-                  <div key={f.term}>
-                    <dt className="text-(length:--step-small) text-muted">{f.term}</dt>
-                    <dd className="m-0 mt-0.5 text-(length:--step-small) leading-[1.45] [overflow-wrap:anywhere] [&_a]:underline">{f.detail}</dd>
+                  <div key={f.term} className="lp-legal-fact">
+                    <dt className="lp-mono text-[0.75rem] text-muted">{f.term}</dt>
+                    <dd className="m-0 mt-1 text-[0.875rem] leading-[1.45] [overflow-wrap:anywhere] [&_a]:underline">{f.detail}</dd>
                   </div>
                 ))}
               </dl>
             </section>
-            <nav className={`hidden min-[68.75rem]:block`} aria-label="On this page" data-legal-toc>
-              <p className="text-(length:--step-small) text-muted">On this page</p>
-              <ol className="m-0 mt-3 grid list-none p-0 text-(length:--step-small)">
+            <nav className="lp-legal-toc" aria-label="On this page" data-legal-toc>
+              <p className="lp-mono text-[0.75rem] text-muted">On this page</p>
+              <ol className="m-0 mt-3 grid list-none p-0 text-[0.875rem]">
                 {sections.map((s) => (
                   <li key={s.id}>
                     <a
@@ -74,10 +74,10 @@ function Page({ title, lead, facts, sections }: { title: string; lead: string; f
           </div>
         </aside>
 
-        <div className={`${PROSE} min-[68.75rem]:col-start-1 min-[68.75rem]:row-start-3`} data-legal-body>
+        <div className={`${PROSE} lp-legal-body`} data-legal-body>
           {sections.map((s) => (
-            <section key={s.id} id={s.id} className="mt-10 scroll-mt-8 split:mt-14">
-              <h2 className="font-text text-(length:--step-lead) font-medium tracking-[-0.01em]">{s.title}</h2>
+            <section key={s.id} id={s.id} className="lp-legal-sec">
+              <h2 className="lp-legal-h2">{s.title}</h2>
               {s.body}
             </section>
           ))}

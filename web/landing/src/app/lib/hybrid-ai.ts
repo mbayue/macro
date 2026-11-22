@@ -266,7 +266,7 @@ export async function runHybridPrompt(
   }
 }
 
-export function getOrCreateFirebaseApp(config: FirebaseWebConfig): FirebaseApp {
+function getOrCreateFirebaseApp(config: FirebaseWebConfig): FirebaseApp {
   const apps = getApps();
   const existing = apps.find((a) => a.options.appId === config.appId);
   if (existing) return existing;
@@ -280,7 +280,7 @@ export function getOrCreateFirebaseApp(config: FirebaseWebConfig): FirebaseApp {
   return apps.length === 0 ? initializeApp(options) : initializeApp(options, `macro-${config.appId}`);
 }
 
-export function ensureAppCheck(app: FirebaseApp, siteKey: string): void {
+function ensureAppCheck(app: FirebaseApp, siteKey: string): void {
   if (appCheckInitialized.has(app.name)) return;
   const metaEnv = (import.meta as { env?: { DEV?: boolean; VITE_APP_CHECK_DEBUG_TOKEN?: string } }).env;
   if (typeof self !== 'undefined' && metaEnv?.DEV) {
@@ -292,6 +292,13 @@ export function ensureAppCheck(app: FirebaseApp, siteKey: string): void {
     isTokenAutoRefreshEnabled: true,
   });
   appCheckInitialized.add(app.name);
+}
+
+/** Returns the shared FirebaseApp for this web config and initializes App Check once when configured. */
+export function getFirebaseAppWithAppCheck(config: FirebaseWebConfig): FirebaseApp {
+  const app = getOrCreateFirebaseApp(config);
+  if (config.appCheckSiteKey) ensureAppCheck(app, config.appCheckSiteKey);
+  return app;
 }
 
 const remoteConfigCache = new Map<string, Promise<HybridRemoteConfig>>();
@@ -356,8 +363,7 @@ function getOrCreateHybridModel(
   });
   let model = modelCache.get(cacheKey);
   if (!model) {
-    const app = getOrCreateFirebaseApp(config);
-    if (config.appCheckSiteKey) ensureAppCheck(app, config.appCheckSiteKey);
+    const app = getFirebaseAppWithAppCheck(config);
     const ai = getAI(app, {
       backend: new GoogleAIBackend(),
       ...(config.appCheckSiteKey ? { useLimitedUseAppCheckTokens: true } : {}),

@@ -15,7 +15,7 @@ import {
   type Firestore,
 } from 'firebase/firestore';
 import type { FirebaseWebConfig } from '../../../../../src/api-types.ts';
-import { ensureAppCheck, getOrCreateFirebaseApp } from './hybrid-ai.ts';
+import { getFirebaseAppWithAppCheck } from './hybrid-ai.ts';
 
 export interface ScenarioTemplate {
   label: string;
@@ -66,8 +66,7 @@ export function parseScenarioTemplates(
 function getOrCreateFirestore(config: FirebaseWebConfig): Firestore {
   const cached = firestoreCache.get(config.appId);
   if (cached) return cached;
-  const app = getOrCreateFirebaseApp(config);
-  if (config.appCheckSiteKey) ensureAppCheck(app, config.appCheckSiteKey);
+  const app = getFirebaseAppWithAppCheck(config);
   let db: Firestore;
   try {
     db = initializeFirestore(app, { localCache: persistentLocalCache() });

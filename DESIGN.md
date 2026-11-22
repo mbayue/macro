@@ -25,27 +25,27 @@ colors:
   bad-light: "#b3261e"
 typography:
   display:
-    fontFamily: "Stack Sans Headline, system-ui, sans-serif"
-    fontWeight: 300
-    letterSpacing: "-0.022em"
+    fontFamily: "Space Grotesk, system-ui, sans-serif"
+    fontWeight: 600
+    letterSpacing: "-0.034em"
   title:
-    fontFamily: "Stack Sans Headline, system-ui, sans-serif"
+    fontFamily: "Space Grotesk, system-ui, sans-serif"
     fontSize: "2.25rem"
-    fontWeight: 300
-    lineHeight: 1.1
-    letterSpacing: "-0.02em"
+    fontWeight: 600
+    lineHeight: 1.08
+    letterSpacing: "-0.034em"
   section-title:
-    fontFamily: "Stack Sans Headline, system-ui, sans-serif"
+    fontFamily: "Space Grotesk, system-ui, sans-serif"
     fontSize: "1.75rem"
-    fontWeight: 300
+    fontWeight: 600
     lineHeight: 1.1
-    letterSpacing: "-0.02em"
-  figure:
-    fontFamily: "Stack Sans Headline, system-ui, sans-serif"
-    fontSize: "2.75rem"
-    fontWeight: 300
-    lineHeight: 1
     letterSpacing: "-0.03em"
+  figure:
+    fontFamily: "Space Grotesk, system-ui, sans-serif"
+    fontSize: "2.75rem"
+    fontWeight: 600
+    lineHeight: 1
+    letterSpacing: "-0.034em"
   heading:
     fontFamily: "Stack Sans Text, system-ui, sans-serif"
     fontSize: "1.0625rem"
@@ -118,9 +118,10 @@ Macro looks like a well-kept test bench: a dark evergreen field where the instru
 Dark is the default (the HTML ships `data-theme="dark"`); light is a full alternate theme on cream, chosen per person and stored in the browser (`macro-theme`). Every token exists in both, and print styles (`@media print`) lock the Capacity Report deliverable onto the light cream palette.
 
 **Key Characteristics:**
-- Flat surfaces, zero shadows, zero gradients; depth comes strictly from three tonal steps and 1px hairline borders.
+- Flat cards and panels with zero box shadows; depth comes from three tonal steps, 1px hairline borders, a frosted sticky **Top Context Bar**, and subtle Bayer-dithered Sanok atmospheric accents (`220px` header band behind `<main>` and `92px` card banners).
+- Permanent dark-evergreen desktop rail (`#001e2b` / `#21313a`) in both Light and Dark themes with a monochrome `M` `BrandMark`, so **`+ New test`** is the single spring-green focal point in the rail.
 - One accent, spring green, used as a fill. Where the accent must be text, a chart line, or a focus ring, it becomes forest in light mode.
-- Numbers lead: page titles and headline figures in Stack Sans Headline 300, controls and prose in Stack Sans Text, and instrument readouts, IDs, quotas, and SVG axis ticks in self-hosted Geist Mono (`tabular-nums`).
+- Numbers lead: page titles and headline figures in Space Grotesk 600 (`-0.034em` tracking), controls and prose in Stack Sans Text (`400` / `500`, with `strong, b { font-weight: 500; }` preventing faux-bold), and instrument readouts, IDs, quotas, and SVG axis ticks in self-hosted Geist Mono (`tabular-nums`).
 - State colours (`ok`, `warn`, `bad`) only where they carry meaning, always accompanied by status words.
 - Strict CSP compliance (`style-src 'self'`): zero inline `<style>` tags and zero `style=""` attributes; dynamic bar geometry (`StageProfile`, `TileProgress`) updates CSS custom properties via DOM refs.
 
@@ -145,27 +146,27 @@ An evergreen ground paired with a single spring-green accent, mirrored on cream 
 
 ## Typography
 
-**Display Font:** Stack Sans Headline 300 (self-hosted, OFL)
-**Body Font:** Stack Sans Text 400 and 500 (self-hosted, OFL)
-**Telemetry & Code Font:** Geist Mono 400 (self-hosted, OFL; preloaded only in `/app/`), with `tabular-nums` for numerical readouts, quotas, latencies, timestamps, IDs, hosts, routes, paths, hashes, and SVG axis ticks.
+**Display Font:** Space Grotesk 600 (self-hosted, OFL)
+**Body Font:** Stack Sans Text 400 and 500 (self-hosted, OFL; `strong, b` locked to `500` to avoid browser faux-bold)
+**Telemetry & Code Font:** Geist Mono 400 (self-hosted, OFL), with `tabular-nums` for numerical readouts, quotas, latencies, timestamps, IDs, hosts, routes, paths, hashes, and SVG axis ticks.
 
 ### Hierarchy
-- **Display** (300, fluid on the landing page only): landing headlines.
-- **Title** (300, `2.25rem` desktop / `1.75rem` at `<= 860px`, line-height `1.1`): app page titles and run headings.
-- **Figure** (300, `2.75rem`, line-height `1`): live tile readings; the completed report's **Safe Capacity** figure scales up with `clamp(3rem, 2.4rem + 2.2vw, 5rem)`.
+- **Display** (600, fluid on the landing page): landing headlines.
+- **Title** (600, `2.25rem` desktop / `1.75rem` at `<= 860px`, line-height `1.08`, tracking `-0.034em`): app page titles and run headings, anchored by the compact `StageBand` (`1 : 2 : 4 : 8`) motif.
+- **Figure** (600, `2.75rem`, line-height `1`, tracking `-0.034em`): live tile readings; the completed report's **Safe Capacity** figure scales up with `clamp(3rem, 2.4rem + 2.2vw, 5rem)`.
 - **Heading** (500, `1.0625rem`, line-height `1.3`): panel and section headings in the app.
 - **Body** (400, `0.9375rem`, line-height `1.5`): app text; prose blocks capped at `64ch`–`72ch`.
 - **Label** (400/500, `0.8125rem`): table headers, key-value terms, tile labels; never uppercase-tracked.
 - **Telemetry Readout** (Geist Mono 400, `tabular-nums`, `11px`–`0.875rem`): quota counters (`N of M` left), run IDs, stage indices, latencies, and chart axis ticks.
 
 ### Named Rules
-**The Readings Rule.** Headline 300 is for titles and signature figures only; controls, labels, and prose stay in Stack Sans Text, and instrument metrics/identifiers use Geist Mono with `tabular-nums`.
+**The Readings Rule.** Space Grotesk 600 is for titles and signature figures only; controls, labels, and prose stay in Stack Sans Text, and instrument metrics/identifiers use Geist Mono with `tabular-nums`.
 
 ## Layout & Breakpoints
 
 The workspace uses three primary responsive thresholds checked across `1440px`, `1180px`, and `860px`:
 
-- **Desktop (`>= 1180px`, checked at `1440px`):** A sticky collapsible left rail (`240px` expanded, `64px` collapsed icon-only, preference persisted in `localStorage` under `macro.railCollapsed.v1`) sits beside a flex column holding the sticky **Top Context Bar**, `<main>` (centered up to `1600px` with `40px` horizontal padding), and the footer. Task pages (**Test Studio**, **Containment Probe**) render a two-column split (`minmax(0, 1fr)` main + `minmax(300px, 380px)` sticky right sidebar). KPI tiles (`SignatureTiles` and `KpiStrip`) render 4-up, and the Overview telemetry board renders the `RouteChart` beside the `What happened` feed.
+- **Desktop (`>= 1180px`, checked at `1440px`):** A permanent dark-evergreen sticky collapsible left rail (`240px` expanded, `64px` collapsed icon-only, preference persisted in `localStorage` under `macro.railCollapsed.v1`) sits beside a flex column holding the frosted sticky **Top Context Bar**, a `220px` CSS-switched Bayer-dithered atmospheric header band (`sanok-trucks.webp` light / `dark-horizon.webp` dark, hidden in print) behind `<main>` (centered up to `1440px` with `40px` horizontal padding), and the footer. Task pages (**Test Studio**, **Containment Probe**) render a two-column split (`minmax(0, 1fr)` main + `minmax(300px, 380px)` sticky right sidebar). KPI tiles (`SignatureTiles` and `KpiStrip`) render 4-up, and the Overview telemetry board renders the `RouteChart` beside the `What happened` feed.
 - **Compact Desktop / Tablet (`861px`–`1179px`, checked at `1180px` / below `1180px`):** The desktop rail remains sticky on the left, while two-column splits stack to a single column with the sidebar last, KPI tiles switch to 2-up (`sm:grid-cols-2`), the Overview board stacks vertically, and **Test Studio** displays a fixed bottom `ApproveBar` (`left: var(--rail)`) whenever the **Approve & Run** gate scrolls out of view.
 - **Mobile (`<= 860px`, checked at `860px`):** The desktop rail hides and becomes a sticky **MobileTopBar** with a **Quick Jump** button and a menu trigger opening a left-side `Sheet` containing full navigation, active target status, theme toggle, account controls, and legal links. The `/api/quota` readout hides from the **Top Context Bar**, page titles step down from `2.25rem` to `1.75rem`, `<main>` padding tightens to `24px 16px 0`, and Journey tables stack each row into a 2-column card. At `< 640px`, KPI tiles stack 1-up.
 
@@ -183,8 +184,9 @@ One corner language: `6px` (`rounded-md`) on buttons, panels, tiles, inputs, dia
 ## Components & App Screens
 
 ### Shell Navigation
-- **Desktop Rail & Mobile Sheet:** Macro monogram + wordmark, spring-green **New test** button (`#/`), quiet navigation links (**Test Studio** `#/`, **Runs Table** `#/runs`, **Containment Probe** `#/probe`, **Domains** `#/domains`, **Account** `#/account` or `#/sign-in`), and footer legal links (**About Macro**, **Privacy**, **Terms**). Current route gets `surface-2` fill, foreground text, and a hairline `--accent-text` bar indicator. Collapsing on desktop shows `Tooltip` labels on icons.
-- **Top Context Bar:** Sticky header showing the active target host and `Demo` / `Verified` badge (plus a pending verification link to `#/domains` when present), `/api/quota` planning and daily run counters (`Plans left N of M`, `Runs left N of M` in Geist Mono, the same framing as the Test Studio **Usage quota** card, labelled `per IP` when signed out, hidden at `<= 860px`), **Quick Jump** trigger (`Ctrl+K` / `⌘K`), theme toggle, and account dropdown (`Sign in` when signed out; identity, links, and `Sign out` when signed in).
+- **Desktop Rail & Mobile Sheet:** Permanent dark-evergreen desktop rail (`#001e2b` / `#21313a`) in both themes with monochrome `M` `BrandMark` + wordmark, spring-green **New test** button (`#/`), quiet navigation links (**Test Studio** `#/`, **Runs Table** `#/runs`, **Containment Probe** `#/probe`, **Domains** `#/domains`, **Account** `#/account` or `#/sign-in`), and footer legal links (**About Macro**, **Privacy**, **Terms**). Current route gets `#21313a` fill, `#ffffff` text, and a subtle hairline indicator (never spring green). Collapsing on desktop shows `Tooltip` labels on icons.
+- **Top Context Bar:** Frosted sticky header (`var(--ap-glass)`, `backdrop-filter: blur(14px)`) showing `Macro / <Screen Title>` breadcrumb in Geist Mono, active target host and `Demo` / `Verified` badge (plus a pending verification link to `#/domains` when present), `/api/quota` planning and daily run counters (`Plans left N of M`, `Runs left N of M` in Geist Mono, labelled `per IP` when signed out, hidden at `<= 860px`), **Quick Jump** trigger (`Ctrl+K` / `⌘K`), theme toggle, and account dropdown (`Sign in` when signed out; identity, links, and `Sign out` when signed in). Never duplicates rail routes as tabs.
+- **Atmospheric Dither Accents:** `220px` CSS-switched Bayer-dithered header band behind `<main>` (`sanok-trucks.webp` light / `dark-horizon.webp` dark, covered by `--ap-scrim`) and `92px` Bayer-dithered banner strips with frosted mono captions on `GateSidebar`, `ProbeStart`/`Probe`, `Domains`, and `SignIn` (all `print:hidden`).
 - **Quick Jump (`Ctrl/Cmd+K`):** Keyboard-driven `CommandDialog` listing main routes (including **Domains** `#/domains`), recent runs (`/api/account/runs` when signed in, browser storage when signed out), and global actions (**New test**, **Toggle theme**, **Sign in** / **Sign out**), with loop navigation and clean focus restoration when dismissed.
 
 ### Test Studio (`#/`)
@@ -220,8 +222,8 @@ One corner language: `6px` (`rounded-md`) on buttons, panels, tiles, inputs, dia
 - **Do** use the shared `tokens.css` / `tailwind.css` semantic tokens for any new surface in both themes.
 
 ### Don't:
-- **Don't** add shadows, gradients, glass, or glows.
-- **Don't** put a badge or label above a heading as an eyebrow.
+- **Don't** add box shadows or glows; keep frosted glass strictly limited to the sticky **Top Context Bar** and `DitherBanner` caption chips.
+- **Don't** put a badge or label above a heading as an eyebrow (the compact `StageBand` motif is the only header accent).
 - **Don't** use spring green as text on a light ground; use forest (`--accent-text`).
 - **Don't** show internal requirement terms (`Supervisor_Agent`, `Stop_Thresholds`) in copy.
 - **Don't** emit `<style>` tags or inline `style=""` attributes (enforced by `CSP style-src 'self'` and `build-web-check.ts`).

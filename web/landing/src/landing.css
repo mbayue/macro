@@ -1,7 +1,6 @@
 /*
  * Landing-only Tailwind v4 entry, on the shared tokens (tokens.css): the one stylesheet of the home,
- * legal and 404 pages. Scopes Space Grotesk 600 and Geist Mono 400 to landing pages so /app/ stays
- * on Stack Sans Headline 300 (DESIGN.md).
+ * legal and 404 pages. Space Grotesk 600 comes from tokens.css; Geist Mono 400 is declared here.
  */
 @layer theme, base, components, utilities;
 
@@ -14,13 +13,6 @@
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-@font-face {
-  font-family: "Space Grotesk";
-  src: url("/landing/fonts/space-grotesk-600.woff2") format("woff2");
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
 @font-face {
   font-family: "Geist Mono";
   src: url("/landing/fonts/geist-mono-400.woff2") format("woff2");

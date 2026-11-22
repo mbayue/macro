@@ -30,7 +30,7 @@
 
 @theme inline {
   --font-sans: "Stack Sans Text", system-ui, sans-serif;
-  --font-display: "Stack Sans Headline", system-ui, sans-serif;
+  --font-display: "Space Grotesk", system-ui, sans-serif;
   --font-heading: var(--font-sans);
   --font-mono: "Geist Mono", ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
 
@@ -128,14 +128,29 @@
     --sidebar-accent-foreground: var(--ink);
     --sidebar-border: var(--surface-2);
     --sidebar-ring: var(--accent-text);
+    --ap-glass: rgba(253, 255, 245, 0.88);
+    --ap-glass-border: rgba(0, 30, 43, 0.15);
+    --ap-scrim:
+      radial-gradient(ellipse 68% 55% at 50% 25%, rgba(253, 255, 245, 0.86) 0%, rgba(253, 255, 245, 0.56) 60%, rgba(253, 255, 245, 0.2) 100%),
+      linear-gradient(180deg, rgba(253, 255, 245, 0.2) 0%, var(--bg) 100%);
   }
 
   :root[data-theme="dark"] {
     --warn: #f2c46d;
+    --ap-glass: rgba(6, 22, 33, 0.88);
+    --ap-glass-border: rgba(255, 255, 255, 0.14);
+    --ap-scrim:
+      radial-gradient(ellipse 68% 55% at 50% 25%, rgba(0, 30, 43, 0.88) 0%, rgba(0, 30, 43, 0.56) 60%, rgba(0, 30, 43, 0.2) 100%),
+      linear-gradient(180deg, rgba(0, 30, 43, 0.2) 0%, var(--bg) 100%);
   }
 
   body {
     font-size: 0.9375rem;
+  }
+
+  strong,
+  b {
+    font-weight: 500;
   }
 
   /* Keyboard focus and anchor jumps land below the sticky bars: the phone header (61px), or on
@@ -207,12 +222,115 @@
     gap: 10px;
   }
 
+  .boot-mark {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius);
+    background: var(--ink);
+    color: var(--bg);
+    font-family: var(--display);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1;
+  }
+
   .boot-brand {
     font-family: var(--display);
     font-size: 1.375rem;
-    font-weight: 500;
-    letter-spacing: -0.02em;
+    font-weight: 600;
+    letter-spacing: -0.03em;
     color: var(--ink);
+  }
+
+  /* ---- Fullscreen Atmospheric Workbench primitives ---- */
+  .shell-glass-bar {
+    background: var(--ap-glass);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .atmo-band {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 220px;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .atmo-band-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 42%;
+    image-rendering: pixelated;
+  }
+
+  .atmo-band-light {
+    display: block;
+  }
+
+  .atmo-band-dark {
+    display: none;
+  }
+
+  :root[data-theme="dark"] .atmo-band-light {
+    display: none;
+  }
+
+  :root[data-theme="dark"] .atmo-band-dark {
+    display: block;
+  }
+
+  .atmo-band-scrim {
+    position: absolute;
+    inset: 0;
+    background: var(--ap-scrim);
+  }
+
+  .dither-banner-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 45%;
+    image-rendering: pixelated;
+  }
+
+  .dither-banner-caption {
+    background: var(--ap-glass);
+    border: 1px solid var(--ap-glass-border);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .stage-band {
+    display: inline-grid;
+    grid-template-columns: 1fr 2fr 4fr 8fr;
+    gap: 3px;
+    width: 96px;
+    height: 5px;
+  }
+
+  .stage-band span {
+    border-radius: 2px;
+    background: var(--accent-text);
+  }
+
+  .stage-band span:nth-child(1) {
+    opacity: 0.3;
+  }
+
+  .stage-band span:nth-child(2) {
+    opacity: 0.52;
+  }
+
+  .stage-band span:nth-child(3) {
+    opacity: 0.76;
+  }
+
+  .stage-band span:nth-child(4) {
+    opacity: 1;
   }
 
   .boot-indicator {

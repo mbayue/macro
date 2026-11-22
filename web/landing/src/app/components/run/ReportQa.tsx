@@ -1,9 +1,11 @@
-import { memo, useId, useMemo, useState } from 'react';
+import { memo, useEffect, useId, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { CapacityReport } from '../../../../../../src/report/build.ts';
+import { useApp } from '../../context.tsx';
 import { useHybridPrompt } from '../../hooks/useHybridPrompt.ts';
 import { buildReportQaPrompt, verifyReportQaReply } from '../../lib/hybrid-ai.ts';
+import { fetchQaPrompts } from '../../lib/scenario-templates.ts';
 import { HybridStatusBadge, HybridStopButton } from '../HybridBadge.tsx';
 import { TelemetryPanel } from '../studio/TelemetryFrame.tsx';
 import { AlertRegion, Busy } from '../ui.tsx';
@@ -16,14 +18,28 @@ const QUICK_QUESTIONS = [
 
 /** AI-labelled Report Q&A panel grounded strictly in measured CapacityReport metrics. */
 export const ReportQa = memo(function ReportQa({ report }: { report: CapacityReport }) {
+  const { config } = useApp();
   const { available, canRun, availability, remoteConfig, busy, completed, error, reply, run, stop } = useHybridPrompt();
   const [question, setQuestion] = useState('');
+  const [quickQuestions, setQuickQuestions] = useState<readonly string[]>(QUICK_QUESTIONS);
   const headingId = useId();
   const inputId = useId();
   const numberCheck = useMemo(
     () => (completed && reply ? verifyReportQaReply(reply.text, report) : null),
     [completed, reply, report],
   );
+
+  useEffect(() => {
+    const firebase = config.firebase;
+    if (!firebase) return;
+    let cancelled = false;
+    void fetchQaPrompts(firebase, QUICK_QUESTIONS).then((prompts) => {
+      if (!cancelled) setQuickQuestions(prompts);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [config.firebase]);
 
   if (!available) return null;
 
@@ -53,7 +69,7 @@ export const ReportQa = memo(function ReportQa({ report }: { report: CapacityRep
       </p>
 
       <div className="flex flex-wrap items-center gap-2 print:hidden" role="group" aria-label="Suggested report questions">
-        {QUICK_QUESTIONS.map((q) => (
+        {quickQuestions.map((q) => (
           <Button
             key={q}
             type="button"

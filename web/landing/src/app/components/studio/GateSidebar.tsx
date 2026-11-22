@@ -6,6 +6,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { cn, reducedMotion } from '@/lib/utils';
 import { useApp } from '../../context.tsx';
 import { type ApiError, postApprove, VERIFICATION_ERROR } from '../../lib/api.ts';
+import type { FeaturedRunItem } from '../../lib/scenario-templates.ts';
 import { GateRules } from '../GateRules.tsx';
 import { fmtGrouped } from '../../lib/format.ts';
 import { TurnstileBox, useTurnstile } from '../Turnstile.tsx';
@@ -28,6 +29,7 @@ export interface GateSidebarProps {
   targetMode: TargetMode;
   verifiedOrigin: { origin: string; host: string } | null;
   sampleRunId: string | null | undefined;
+  featuredRuns?: readonly FeaturedRunItem[] | undefined;
   busy: StudioBusy;
   reviewSeq: number;
   pendingRouteIds: string[] | null;
@@ -50,6 +52,7 @@ export function GateSidebar({
   targetMode,
   verifiedOrigin,
   sampleRunId,
+  featuredRuns,
   busy,
   reviewSeq,
   pendingRouteIds,
@@ -103,22 +106,35 @@ export function GateSidebar({
         />
       )}
 
-      {review === null && targetMode === 'demo' && sampleRunId ? (
+      {review === null && targetMode === 'demo' && ((featuredRuns && featuredRuns.length > 0) || sampleRunId) ? (
         <TelemetryPanel ticks="bar" aria-labelledby="sample-report-heading">
           <h2 id="sample-report-heading" className="m-0 font-display text-[1.125rem] font-semibold tracking-[-0.025em] text-foreground">
-            Sample report
+            {featuredRuns && featuredRuns.length > 1 ? 'Sample reports' : 'Sample report'}
           </h2>
           <p className="text-sm text-muted-foreground">
-            Inspect a completed public demo run with stages, charts, and capacity verdict.
+            {featuredRuns?.[0]?.summary ?? 'Inspect a completed public demo run with stages, charts, and capacity verdict.'}
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              render={<a href={`#/run/${sampleRunId}`} />}
-              nativeButton={false}
-              variant="secondary"
-            >
-              View sample report
-            </Button>
+            {featuredRuns && featuredRuns.length > 0 ? (
+              featuredRuns.map((item) => (
+                <Button
+                  key={item.runId}
+                  render={<a href={`#/run/${item.runId}`} />}
+                  nativeButton={false}
+                  variant="secondary"
+                >
+                  {item.label}
+                </Button>
+              ))
+            ) : (
+              <Button
+                render={<a href={`#/run/${sampleRunId}`} />}
+                nativeButton={false}
+                variant="secondary"
+              >
+                View sample report
+              </Button>
+            )}
           </div>
         </TelemetryPanel>
       ) : null}

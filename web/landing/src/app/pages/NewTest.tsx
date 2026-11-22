@@ -18,7 +18,14 @@ import {
   takeLocalDraft,
 } from '../lib/auth-api.ts';
 import { type ApiError, type ApiResult, getDemoTrends, postPlan, VERIFICATION_ERROR } from '../lib/api.ts';
-import { fetchScenarioTemplates, type ScenarioTemplate } from '../lib/scenario-templates.ts';
+import {
+  fetchFeaturedRuns,
+  fetchScenarioTemplates,
+  subscribeActiveAnnouncement,
+  type ActiveAnnouncement,
+  type FeaturedRunItem,
+  type ScenarioTemplate,
+} from '../lib/scenario-templates.ts';
 import { ModelCalls } from '../components/ModelCalls.tsx';
 import { NextUp } from '../components/NextUp.tsx';
 import { TurnstileBox, useTurnstile } from '../components/Turnstile.tsx';
@@ -57,6 +64,13 @@ export function NewTest() {
   const [panelInView, setPanelInView] = useState(true);
   const [targetMode, setTargetMode] = useState<TargetMode>(() => initialReview?.targetMode ?? 'demo');
   const [examples, setExamples] = useState<readonly ScenarioTemplate[]>(() => config.examples);
+  const [featuredRuns, setFeaturedRuns] = useState<readonly FeaturedRunItem[]>(() =>
+    config.sampleRunId
+      ? [{ runId: config.sampleRunId, label: 'View sample report', summary: 'Inspect a completed public demo run with stages, charts, and capacity verdict.' }]
+      : [],
+  );
+  const [announcement, setAnnouncement] = useState<ActiveAnnouncement | null>(null);
+  const [dismissedAnnouncement, setDismissedAnnouncement] = useState<string | null>(null);
   const [lastEditedAt, setLastEditedAt] = useState(() => Date.now());
   const textarea = useRef<HTMLTextAreaElement>(null);
   const focusComposer = useRef(false);
@@ -68,10 +82,20 @@ export function NewTest() {
     void fetchScenarioTemplates(firebase, config.examples).then((templates) => {
       if (!cancelled) setExamples(templates);
     });
+    const fallbackRuns: readonly FeaturedRunItem[] = config.sampleRunId
+      ? [{ runId: config.sampleRunId, label: 'View sample report', summary: 'Inspect a completed public demo run with stages, charts, and capacity verdict.' }]
+      : [];
+    void fetchFeaturedRuns(firebase, fallbackRuns).then((runs) => {
+      if (!cancelled) setFeaturedRuns(runs);
+    });
+    const unsubAnnouncement = subscribeActiveAnnouncement(firebase, (next) => {
+      if (!cancelled) setAnnouncement(next);
+    });
     return () => {
       cancelled = true;
+      unsubAnnouncement();
     };
-  }, [config.firebase, config.examples]);
+  }, [config.firebase, config.examples, config.sampleRunId]);
   const startFromBar = useRef<(() => void) | null>(null);
   const alive = useRef(true);
   const draftHydrated = useRef(false);
@@ -298,6 +322,32 @@ export function NewTest() {
         ) : null}
       </header>
 
+      {announcement && dismissedAnnouncement !== announcement.message ? (
+        <div
+          role="status"
+          className={cn(
+            'flex flex-wrap items-center justify-between gap-3 rounded-md border px-4 py-2.5 text-sm',
+            announcement.tone === 'warn'
+              ? 'border-warn/50 bg-warn/10 text-foreground'
+              : 'border-bar bg-surface text-foreground',
+          )}
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant={announcement.tone === 'warn' ? 'warn' : 'secondary'}>
+              {announcement.tone === 'warn' ? 'Notice' : 'Update'}
+            </Badge>
+            <span>{announcement.message}</span>
+          </div>
+          <button
+            type="button"
+            className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-[2px] focus-visible:outline-offset-[2px] focus-visible:outline-ring"
+            onClick={() => setDismissedAnnouncement(announcement.message)}
+          >
+            Dismiss
+          </button>
+        </div>
+      ) : null}
+
       {config.runtimeError ? (
         <div className="grid justify-items-start gap-1.5 rounded-md border border-bad px-4 py-3.5 text-sm" role="status">
           <Badge variant="destructive">Runtime problem</Badge>
@@ -400,6 +450,7 @@ export function NewTest() {
           targetMode={targetMode}
           verifiedOrigin={verifiedOrigin}
           sampleRunId={config.sampleRunId}
+          featuredRuns={featuredRuns}
           busy={busy}
           reviewSeq={reviewSeq}
           pendingRouteIds={pendingRouteIds}

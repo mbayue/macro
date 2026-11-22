@@ -5,18 +5,43 @@ rules_version = '2';
 // ===============================================================
 //
 // Collection: scenario_templates
-// Document ID: slug (e.g., "campaign-spike", "live-mention")
+// Document ID: slug (e.g., "campaign-spike", "flash-drop")
 // Fields:
 //   - label: string (required, 1..60 chars) - Short chip label in Test Studio
 //   - text: string (required, 10..1000 chars) - Plain-English Traffic Description
 //   - order: number (required, 0..1000) - Ascending display order
 //   - active: bool (required) - Whether shown in Test Studio
 //
+// Collection: qa_prompts
+// Document ID: slug (e.g., "pass-or-fail", "slowest-route")
+// Fields:
+//   - question: string (required, 5..140 chars) - Suggested Report Q&A prompt
+//   - order: number (required, 0..1000) - Ascending display order
+//   - active: bool (required) - Whether shown in Report Q&A
+//
+// Collection: featured_runs
+// Document ID: slug (e.g., "demo-200vu-spike")
+// Fields:
+//   - runId: string (required, 8..64 chars) - Public Macro Run ID
+//   - label: string (required, 1..60 chars) - Short button label
+//   - summary: string (required, 5..160 chars) - One-line verdict/context note
+//   - order: number (required, 0..1000) - Ascending display order
+//   - active: bool (required) - Whether shown in Test Studio Sample Reports
+//
+// Collection: announcements
+// Document ID: slug (e.g., "maintenance")
+// Fields:
+//   - message: string (required, 5..240 chars) - Banner text
+//   - tone: string (required, "info" | "warn") - Banner severity tone
+//   - order: number (required, 0..1000) - Ascending priority order
+//   - active: bool (required) - Whether displayed live via onSnapshot
+//
 // Access pattern:
-//   - Public read-only curated templates (zero PII), explicitly approved for
-//     signed-out Test Studio usage and protected by Firebase App Check.
+//   - All four collections are public read-only, zero-PII catalog data
+//     explicitly approved for signed-out Test Studio / Report Q&A usage
+//     and protected by Firebase App Check.
 //   - List queries are bounded to at most 20 documents per request.
-//   - All client writes are denied; templates are managed via admin tooling.
+//   - All client writes are denied; content is managed via admin tooling.
 // ===============================================================
 
 service cloud.firestore {
@@ -36,21 +61,71 @@ service cloud.firestore {
         data[field].size() <= maxLen;
     }
 
-    // Domain validator for scenario_templates documents.
+    function validOrder(data) {
+      return data.order is number && data.order >= 0 && data.order <= 1000;
+    }
+
     function isValidScenarioTemplate(data) {
       return hasOnlyAllowedFields(data, ['label', 'text', 'order', 'active']) &&
         hasRequiredFields(data, ['label', 'text', 'order', 'active']) &&
         validStringLength(data, 'label', 1, 60) &&
         validStringLength(data, 'text', 10, 1000) &&
-        data.order is number && data.order >= 0 && data.order <= 1000 &&
+        validOrder(data) &&
         data.active is bool;
     }
 
-    // Curated public read-only scenario templates for Test Studio (zero PII).
+    function isValidQaPrompt(data) {
+      return hasOnlyAllowedFields(data, ['question', 'order', 'active']) &&
+        hasRequiredFields(data, ['question', 'order', 'active']) &&
+        validStringLength(data, 'question', 5, 140) &&
+        validOrder(data) &&
+        data.active is bool;
+    }
+
+    function isValidFeaturedRun(data) {
+      return hasOnlyAllowedFields(data, ['runId', 'label', 'summary', 'order', 'active']) &&
+        hasRequiredFields(data, ['runId', 'label', 'summary', 'order', 'active']) &&
+        validStringLength(data, 'runId', 8, 64) &&
+        validStringLength(data, 'label', 1, 60) &&
+        validStringLength(data, 'summary', 5, 160) &&
+        validOrder(data) &&
+        data.active is bool;
+    }
+
+    function isValidAnnouncement(data) {
+      return hasOnlyAllowedFields(data, ['message', 'tone', 'order', 'active']) &&
+        hasRequiredFields(data, ['message', 'tone', 'order', 'active']) &&
+        validStringLength(data, 'message', 5, 240) &&
+        data.tone in ['info', 'warn'] &&
+        validOrder(data) &&
+        data.active is bool;
+    }
+
     match /scenario_templates/{templateId} {
       allow get: if true;
       allow list: if request.query.limit != null && request.query.limit <= 20;
       allow create, update: if false && isValidScenarioTemplate(request.resource.data);
+      allow delete: if false;
+    }
+
+    match /qa_prompts/{promptId} {
+      allow get: if true;
+      allow list: if request.query.limit != null && request.query.limit <= 20;
+      allow create, update: if false && isValidQaPrompt(request.resource.data);
+      allow delete: if false;
+    }
+
+    match /featured_runs/{docId} {
+      allow get: if true;
+      allow list: if request.query.limit != null && request.query.limit <= 20;
+      allow create, update: if false && isValidFeaturedRun(request.resource.data);
+      allow delete: if false;
+    }
+
+    match /announcements/{announcementId} {
+      allow get: if true;
+      allow list: if request.query.limit != null && request.query.limit <= 20;
+      allow create, update: if false && isValidAnnouncement(request.resource.data);
       allow delete: if false;
     }
 

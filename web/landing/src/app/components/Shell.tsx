@@ -75,7 +75,7 @@ function ShellLayout({
   return (
     <div
       data-slot="app-shell"
-      className="grid min-h-screen grid-cols-1 [--rail:240px] data-[rail-collapsed=true]:[--rail:64px] min-[861px]:grid-cols-[var(--rail)_minmax(0,1fr)] print:block"
+      className="grid min-h-dvh grid-cols-1 [--rail:240px] data-[rail-collapsed=true]:[--rail:64px] min-[861px]:grid-cols-[var(--rail)_minmax(0,1fr)] print:block"
       data-rail-collapsed={state.railCollapsed ? 'true' : 'false'}
     >
       <a
@@ -92,28 +92,36 @@ function ShellLayout({
 
       <DesktopRail />
 
-      <div className="flex min-h-screen min-w-0 flex-col">
+      <div className="flex min-h-dvh min-w-0 flex-col">
         <MobileTopBar />
         <TopContextBar />
 
-        <main
-          id="main"
-          className="flex min-w-0 flex-1 flex-col px-4 pt-6 focus:outline-none min-[861px]:px-10 min-[861px]:pt-8 print:px-0 print:pt-0"
-          ref={mainRef}
-          tabIndex={-1}
-        >
-          {children}
-          <footer
-            data-slot="app-footer"
-            className="mx-auto mt-auto w-full max-w-[1600px] pt-12 pb-5 text-xs text-muted-foreground print:hidden"
+        <div className="relative flex min-w-0 flex-1 flex-col">
+          <div className="atmo-band print:hidden" aria-hidden="true">
+            <img className="atmo-band-img atmo-band-light" src="/landing/img/dither/sanok-trucks.webp" alt="" />
+            <img className="atmo-band-img atmo-band-dark" src="/landing/img/dither/dark-horizon.webp" alt="" />
+            <div className="atmo-band-scrim" />
+          </div>
+
+          <main
+            id="main"
+            className="relative z-10 flex min-w-0 flex-1 flex-col px-4 pt-6 focus:outline-none min-[861px]:px-10 min-[861px]:pt-8 print:px-0 print:pt-0"
+            ref={mainRef}
+            tabIndex={-1}
           >
-            <p className="border-t border-border pt-3.5">
-              {me?.verifiedOrigin
-                ? `You can load-test ${typeof me.verifiedOrigin === 'string' ? me.verifiedOrigin : me.verifiedOrigin.host} (verified) or the public demo shop.`
-                : 'Demo Target tests work signed out. Own-site tests need a signed-in account and a verified origin.'}
-            </p>
-          </footer>
-        </main>
+            {children}
+            <footer
+              data-slot="app-footer"
+              className="mx-auto mt-auto w-full max-w-[1440px] pt-12 pb-5 text-xs text-muted-foreground print:hidden"
+            >
+              <p className="border-t border-border pt-3.5">
+                {me?.verifiedOrigin
+                  ? `You can load-test ${typeof me.verifiedOrigin === 'string' ? me.verifiedOrigin : me.verifiedOrigin.host} (verified) or the public demo shop.`
+                  : 'Demo Target tests work signed out. Own-site tests need a signed-in account and a verified origin.'}
+              </p>
+            </footer>
+          </main>
+        </div>
       </div>
 
       <QuickJump />

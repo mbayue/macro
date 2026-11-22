@@ -167,13 +167,38 @@ export function isNavRouteActive(navId: NavRouteId, route: Route): boolean {
     case 'new':
       return route.view === 'new';
     case 'runs':
-      return route.view === 'runs';
+      return route.view === 'runs' || route.view === 'run' || route.view === 'compare';
     case 'probe':
       return route.view === 'probe-start' || route.view === 'probe';
     case 'domains':
       return route.view === 'domains';
     case 'account':
       return route.view === 'account' || route.view === 'sign-in';
+  }
+}
+
+/** Returns the canonical Top Context Bar breadcrumb title for the active route. */
+export function formatRouteBreadcrumb(route: Route): string {
+  switch (route.view) {
+    case 'new':
+      return 'Test Studio';
+    case 'runs':
+      return 'Runs Table';
+    case 'run':
+      return `Runs Table / Run ${route.id.slice(0, 8)}`;
+    case 'compare':
+      return 'Run Compare';
+    case 'probe-start':
+    case 'probe':
+      return 'Containment Probe';
+    case 'domains':
+      return 'Domains';
+    case 'account':
+      return 'Account';
+    case 'sign-in':
+      return 'Sign in';
+    case 'notfound':
+      return 'Not found';
   }
 }
 

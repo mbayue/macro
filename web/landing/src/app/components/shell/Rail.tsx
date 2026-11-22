@@ -72,13 +72,13 @@ export function DesktopRail() {
     <aside
       data-slot="shell-rail"
       className={cn(
-        'hidden min-[861px]:flex sticky top-0 h-screen shrink-0 flex-col border-r border-border bg-surface transition-[width] duration-150 motion-reduce:transition-none print:hidden',
+        'hidden min-[861px]:flex sticky top-0 h-dvh shrink-0 flex-col border-r border-rail-line bg-rail-bg text-rail-muted transition-[width] duration-150 motion-reduce:transition-none print:hidden',
         collapsed ? 'w-16 items-center px-3 py-4' : 'w-[240px] px-3.5 py-5',
       )}
     >
       <div
         className={cn(
-          'flex w-full shrink-0 items-center',
+          'flex w-full shrink-0 items-center border-b border-rail-line',
           collapsed ? 'flex-col gap-2 pb-3' : 'justify-between gap-2 pb-4',
         )}
       >
@@ -89,20 +89,20 @@ export function DesktopRail() {
                 <a
                   href="#/"
                   aria-label="Macro — Test Studio"
-                  className="inline-flex size-10 items-center justify-center rounded-md no-underline hover:bg-secondary focus-visible:outline-[3px] focus-visible:outline-offset-[3px] focus-visible:outline-ring"
+                  className="inline-flex size-10 items-center justify-center rounded-md no-underline hover:bg-white/8 focus-visible:outline-[3px] focus-visible:outline-offset-[3px] focus-visible:outline-primary"
                 />
               }
             >
-              <BrandMark />
+              <BrandMark surface="rail" />
             </TooltipTrigger>
             <TooltipContent side="right">Macro — Test Studio</TooltipContent>
           </Tooltip>
         ) : (
           <a
             href="#/"
-            className="inline-flex items-center gap-2.5 rounded-md px-1.5 py-1 font-display text-[1.375rem] leading-none font-medium tracking-[-0.02em] text-foreground no-underline focus-visible:outline-[3px] focus-visible:outline-offset-[3px] focus-visible:outline-ring"
+            className="inline-flex items-center gap-2.5 rounded-md px-1.5 py-1 font-display text-[1.25rem] leading-none font-semibold tracking-[-0.03em] text-rail-ink no-underline focus-visible:outline-[3px] focus-visible:outline-offset-[3px] focus-visible:outline-primary"
           >
-            <BrandMark />
+            <BrandMark surface="rail" />
             <span>Macro</span>
           </a>
         )}
@@ -117,7 +117,7 @@ export function DesktopRail() {
                 onClick={actions.toggleRailCollapsed}
                 aria-label={collapsed ? 'Expand navigation rail' : 'Collapse navigation rail'}
                 aria-expanded={!collapsed}
-                className="text-muted-foreground hover:text-foreground"
+                className="text-rail-muted hover:bg-white/8 hover:text-rail-ink focus-visible:outline-primary"
               />
             }
           >
@@ -127,7 +127,7 @@ export function DesktopRail() {
         </Tooltip>
       </div>
 
-      <div className={cn('mb-3 w-full', collapsed && 'flex justify-center')}>
+      <div className={cn('mt-3 mb-3 w-full', collapsed && 'flex justify-center')}>
         {collapsed ? (
           <Tooltip>
             <TooltipTrigger
@@ -136,7 +136,7 @@ export function DesktopRail() {
                   href="#/"
                   aria-label="New test"
                   onClick={onNewTestClick}
-                  className={cn(buttonVariants({ variant: 'default', size: 'icon' }))}
+                  className={cn(buttonVariants({ variant: 'default', size: 'icon' }), 'focus-visible:outline-primary')}
                 />
               }
             >
@@ -149,7 +149,7 @@ export function DesktopRail() {
             render={<a href="#/" onClick={onNewTestClick} />}
             nativeButton={false}
             variant="default"
-            className="w-full justify-start"
+            className="w-full justify-start focus-visible:outline-primary"
           >
             <PlusIcon data-icon="inline-start" />
             New test
@@ -163,9 +163,11 @@ export function DesktopRail() {
             const active = isNavRouteActive(item.id, state.route);
             const Icon = item.icon;
             const linkClass = cn(
-              'relative flex items-center rounded-md text-[0.8125rem] font-medium no-underline transition-[background-color,color] duration-150 motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-ring',
+              'relative flex items-center rounded-md border text-[0.8125rem] font-medium no-underline transition-[background-color,color,border-color] duration-150 motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-primary',
               collapsed ? 'size-10 justify-center px-0' : 'min-h-10 gap-2.5 px-2.5',
-              active ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
+              active
+                ? 'border-white/16 bg-rail-line text-rail-ink'
+                : 'border-transparent text-rail-muted hover:bg-white/8 hover:text-rail-ink',
             );
 
             if (collapsed) {
@@ -193,9 +195,6 @@ export function DesktopRail() {
             return (
               <li key={item.id}>
                 <a href={item.href} aria-current={active ? 'page' : undefined} className={linkClass}>
-                  {active ? (
-                    <span className="h-4 w-0.5 shrink-0 rounded-xs bg-accent-text" aria-hidden="true" />
-                  ) : null}
                   <Icon className="size-4 shrink-0" aria-hidden="true" />
                   <span className="truncate">{item.label}</span>
                 </a>
@@ -205,7 +204,7 @@ export function DesktopRail() {
         </ul>
       </nav>
 
-      <div className={cn('mt-auto w-full border-t border-border pt-3', collapsed && 'flex justify-center')}>
+      <div className={cn('mt-auto w-full border-t border-rail-line pt-3', collapsed && 'flex justify-center')}>
         {collapsed ? (
           <Tooltip>
             <TooltipTrigger
@@ -213,7 +212,7 @@ export function DesktopRail() {
                 <a
                   href="/"
                   aria-label="About Macro"
-                  className="inline-flex size-10 items-center justify-center rounded-md text-muted-foreground no-underline hover:bg-secondary hover:text-foreground focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-ring"
+                  className="inline-flex size-10 items-center justify-center rounded-md text-rail-muted no-underline hover:bg-white/8 hover:text-rail-ink focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-primary"
                 />
               }
             >
@@ -222,11 +221,11 @@ export function DesktopRail() {
             <TooltipContent side="right">About Macro</TooltipContent>
           </Tooltip>
         ) : (
-          <ul className="m-0 flex list-none items-center justify-between gap-2 px-1.5 text-xs text-muted-foreground">
+          <ul className="m-0 flex list-none items-center justify-between gap-2 px-1.5 text-xs text-rail-muted">
             <li>
               <a
                 href="/"
-                className="rounded-sm py-1 text-muted-foreground no-underline hover:text-foreground hover:underline underline-offset-4 focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-ring"
+                className="rounded-sm py-1 text-rail-muted no-underline hover:text-rail-ink hover:underline underline-offset-4 focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-primary"
               >
                 About Macro
               </a>
@@ -234,7 +233,7 @@ export function DesktopRail() {
             <li>
               <a
                 href="/privacy"
-                className="rounded-sm py-1 text-muted-foreground no-underline hover:text-foreground hover:underline underline-offset-4 focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-ring"
+                className="rounded-sm py-1 text-rail-muted no-underline hover:text-rail-ink hover:underline underline-offset-4 focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-primary"
               >
                 Privacy
               </a>
@@ -242,7 +241,7 @@ export function DesktopRail() {
             <li>
               <a
                 href="/terms"
-                className="rounded-sm py-1 text-muted-foreground no-underline hover:text-foreground hover:underline underline-offset-4 focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-ring"
+                className="rounded-sm py-1 text-rail-muted no-underline hover:text-rail-ink hover:underline underline-offset-4 focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-primary"
               >
                 Terms
               </a>
@@ -272,7 +271,7 @@ export function MobileTopBar() {
     >
       <a
         href="#/"
-        className="inline-flex min-h-10 items-center gap-2 rounded-md px-1 font-display text-[1.25rem] leading-none font-medium tracking-[-0.02em] text-foreground no-underline focus-visible:outline-[3px] focus-visible:outline-offset-[3px] focus-visible:outline-ring"
+        className="inline-flex min-h-10 items-center gap-2 rounded-md px-1 font-display text-[1.25rem] leading-none font-semibold tracking-[-0.03em] text-foreground no-underline focus-visible:outline-[3px] focus-visible:outline-offset-[3px] focus-visible:outline-ring"
       >
         <BrandMark />
         <span>Macro</span>
@@ -308,7 +307,7 @@ export function MobileTopBar() {
 
           <SheetContent side="left" className="w-[min(86vw,320px)] gap-0 p-0">
             <SheetHeader className="border-b border-border px-4 py-3.5 text-left">
-              <SheetTitle className="flex items-center gap-2.5 font-display text-[1.25rem] font-medium tracking-[-0.02em]">
+              <SheetTitle className="flex items-center gap-2.5 font-display text-[1.25rem] font-semibold tracking-[-0.03em]">
                 <BrandMark />
                 <span>Macro</span>
               </SheetTitle>

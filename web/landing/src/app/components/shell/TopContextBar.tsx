@@ -22,24 +22,30 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useShell } from './ShellContext.tsx';
-import { formatQuotaReadout } from './shell-view.ts';
+import { formatQuotaReadout, formatRouteBreadcrumb } from './shell-view.ts';
 
-/** Sticky workspace context bar: target host + badge, `/api/quota` readout, Quick Jump, theme, and account. */
+/** Frosted sticky workspace context bar: breadcrumb, target host + badge, `/api/quota` readout, Quick Jump, theme, and account. */
 export function TopContextBar() {
   const { state, actions, meta } = useShell();
   const quota = formatQuotaReadout(state.quota);
+  const breadcrumb = formatRouteBreadcrumb(state.route);
 
   return (
     <div
       data-slot="shell-context-bar"
-      className="border-b border-border bg-surface px-4 py-2 min-[861px]:sticky min-[861px]:top-0 min-[861px]:z-20 min-[861px]:px-10 min-[861px]:py-2.5 print:hidden"
+      className="shell-glass-bar border-b border-border px-4 py-2 min-[861px]:sticky min-[861px]:top-0 min-[861px]:z-20 min-[861px]:px-10 min-[861px]:py-2.5 print:hidden"
     >
-      <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-4">
+      <div className="mx-auto flex w-full max-w-[1440px] items-center justify-between gap-4">
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
+          <span className="hidden min-[861px]:inline-flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
+            <span>Macro</span>
+            <span aria-hidden="true">/</span>
+            <span className="font-medium text-foreground">{breadcrumb}</span>
+          </span>
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="text-xs text-muted-foreground">Target</span>
+            <span className="text-xs text-muted-foreground min-[861px]:sr-only">Target</span>
             <span
-              className="max-w-[240px] truncate font-mono text-xs text-foreground sm:max-w-xs"
+              className="max-w-[240px] truncate rounded-sm border border-border bg-background/80 px-2 py-0.5 font-mono text-xs text-foreground sm:max-w-xs"
               title={state.target.host ?? undefined}
             >
               {state.target.host ?? 'Demo Target'}

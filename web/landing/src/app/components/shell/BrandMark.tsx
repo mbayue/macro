@@ -1,15 +1,21 @@
-/** Macro monogram mark shared by the workspace rail and mobile header. */
-export function BrandMark() {
+import { cn } from '@/lib/utils';
+
+/**
+ * Monochrome Macro monogram mark shared by the permanent dark rail (`surface="rail"`)
+ * and themed headers/sheets (`surface="default"`), leaving `+ New test` as the single spring-green accent.
+ */
+export function BrandMark({ surface = 'default' }: { surface?: 'default' | 'rail' }) {
   return (
-    <svg className="size-6 shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect width="24" height="24" rx="6" fill="#00ed64" />
-      <path
-        d="M7 17V7l5 6 5-6v10"
-        stroke="#001e2b"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <span
+      aria-hidden="true"
+      className={cn(
+        'inline-grid size-7 shrink-0 place-items-center rounded-md font-display text-[0.9375rem] leading-none font-semibold',
+        surface === 'rail'
+          ? 'border border-white/18 bg-white/12 text-rail-ink'
+          : 'bg-foreground text-background',
+      )}
+    >
+      M
+    </span>
   );
 }

@@ -1,10 +1,12 @@
 import { describe, expect, test } from 'bun:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { BrandMark } from '../web/landing/src/app/components/shell/BrandMark.tsx';
 import { useOptionalShell } from '../web/landing/src/app/components/shell/ShellContext.tsx';
 import {
   formatIdentityLabel,
   formatQuotaReadout,
+  formatRouteBreadcrumb,
   formatShortcutHint,
   isNavRouteActive,
   mapAccountRunsToQuickJump,
@@ -278,11 +280,12 @@ describe('Quick Jump run mappers', () => {
 });
 
 describe('shell navigation and identity helpers', () => {
-  test('isNavRouteActive highlights matching routes only', () => {
+  test('isNavRouteActive highlights matching routes including run and compare under Runs Table', () => {
     expect(isNavRouteActive('new', { view: 'new' })).toBe(true);
     expect(isNavRouteActive('new', { view: 'runs' })).toBe(false);
     expect(isNavRouteActive('runs', { view: 'runs' })).toBe(true);
-    expect(isNavRouteActive('runs', { view: 'run', id: 'r1', tab: 'overview' })).toBe(false);
+    expect(isNavRouteActive('runs', { view: 'run', id: 'r1', tab: 'overview' })).toBe(true);
+    expect(isNavRouteActive('runs', { view: 'compare', a: 'r1', b: 'r2' })).toBe(true);
     expect(isNavRouteActive('probe', { view: 'probe-start' })).toBe(true);
     expect(isNavRouteActive('probe', { view: 'probe', id: 'p1' })).toBe(true);
     expect(isNavRouteActive('domains', { view: 'domains' })).toBe(true);
@@ -290,6 +293,28 @@ describe('shell navigation and identity helpers', () => {
     expect(isNavRouteActive('account', { view: 'account' })).toBe(true);
     expect(isNavRouteActive('account', { view: 'sign-in' })).toBe(true);
     expect(isNavRouteActive('account', { view: 'notfound' })).toBe(false);
+  });
+
+  test('formatRouteBreadcrumb returns canonical GLOSSARY screen titles for every route', () => {
+    expect(formatRouteBreadcrumb({ view: 'new' })).toBe('Test Studio');
+    expect(formatRouteBreadcrumb({ view: 'runs' })).toBe('Runs Table');
+    expect(formatRouteBreadcrumb({ view: 'run', id: 'd28cacd61234', tab: 'overview' })).toBe('Runs Table / Run d28cacd6');
+    expect(formatRouteBreadcrumb({ view: 'compare', a: 'r1', b: 'r2' })).toBe('Run Compare');
+    expect(formatRouteBreadcrumb({ view: 'probe-start' })).toBe('Containment Probe');
+    expect(formatRouteBreadcrumb({ view: 'probe', id: 'p1' })).toBe('Containment Probe');
+    expect(formatRouteBreadcrumb({ view: 'domains' })).toBe('Domains');
+    expect(formatRouteBreadcrumb({ view: 'account' })).toBe('Account');
+    expect(formatRouteBreadcrumb({ view: 'sign-in' })).toBe('Sign in');
+    expect(formatRouteBreadcrumb({ view: 'notfound' })).toBe('Not found');
+  });
+
+  test('BrandMark renders monochrome M mark without spring-green fill', () => {
+    const railHtml = renderToStaticMarkup(createElement(BrandMark, { surface: 'rail' }));
+    expect(railHtml).toContain('>M<');
+    expect(railHtml).not.toContain('#00ed64');
+    const defaultHtml = renderToStaticMarkup(createElement(BrandMark));
+    expect(defaultHtml).toContain('>M<');
+    expect(defaultHtml).not.toContain('#00ed64');
   });
 
   test('formatIdentityLabel prefers non-empty githubLogin then falls back to email', () => {

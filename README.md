@@ -60,12 +60,14 @@ Macro incorporates client-side **Hybrid Inference** via the official **Firebase 
 ```mermaid
 flowchart LR
   subgraph Client["Developer Browser (Chrome)"]
-    U[Developer Prompt] --> SDK["Firebase AI Logic<br/>InferenceMode.PREFER_ON_DEVICE"]
+    RC["Firebase Remote Config<br/>mode · model · prompts · kill switch"] --> SDK
+    FS["Cloud Firestore (persistentLocalCache)<br/>scenario_templates"] --> UI
+    U[Developer Prompt] --> SDK["Firebase AI Logic + App Check<br/>InferenceMode.PREFER_ON_DEVICE"]
     SDK -->|Gemini Nano Available| NANO["Chrome Prompt API<br/><b>On-Device (Gemini Nano)</b>"]
-    SDK -.->|Fallback| CLOUD["Google Cloud<br/><b>Gemini Flash</b>"]
+    SDK -.->|Fallback| CLOUD["Google Cloud<br/><b>Gemini 3.8 Flash</b>"]
     NANO --> STREAM["Real-Time Token Stream"]
     CLOUD --> STREAM
-    STREAM --> UI["Scenario Assistant / Report Q&A<br/><b>HybridBadge: on-device or cloud</b>"]
+    STREAM --> UI["Scenario Assistant / Report Q&A<br/><b>HybridStatusBadge</b>"]
   end
 ```
 
@@ -88,7 +90,14 @@ To run client-side inference on-device using Chrome's built-in Gemini Nano:
    - `chrome://flags/#prompt-api-for-gemini-nano` → **Enabled**
    - `chrome://flags/#optimization-guide-on-device-model` → **Enabled BypassPrefRequirement**
 2. In `chrome://components`, verify the **Optimization Guide On Device Model** component is downloaded and up to date.
-3. In Macro's **Test Studio**, open **Scenario Assistant** or **Report Q&A**: prompts execute directly on-device with real-time streaming, marked with the **`On-device · Gemini Nano`** badge.
+3. In Macro's **Test Studio**, open **Scenario Assistant** or **Report Q&A**: prompts execute directly on-device with real-time streaming, marked with the **`On-Device Model: Gemini Nano`** badge (or automatically fall back to **`Cloud Model: Gemini 3.8 Flash`** if on-device execution is unavailable).
+
+### Deploying Firebase Remote Config & Firestore Rules
+
+```bash
+npx -y firebase-tools@latest deploy --only remoteconfig
+npx -y firebase-tools@latest deploy --only firestore:rules
+```
 
 ## Quickstart & Demo Walkthrough
 
@@ -225,10 +234,10 @@ Invites are delivered via Resend. The first sign-in from an invited address auto
 
 ## Testing
 
-`bun test` runs the unit and property suite ([fast-check](https://fast-check.dev)). Tests cover the plan parser, policy gate against an independent reference model, script generation, proxy decisions, sandbox lifecycle with mock Docker, metrics and verdicts, agent fallbacks, number verification, run comparison, account auth, origin verification (DNS TXT, well-known, Domain Connect), route discovery, drafts, run privacy, quota enforcement, account deletion, and security headers.
+`bun test` runs the unit and property suite ([fast-check](https://fast-check.dev)). Tests cover the plan parser, policy gate against an independent reference model, script generation, proxy decisions, sandbox lifecycle with mock Docker, metrics and verdicts, agent fallbacks, number verification, run comparison, account auth, origin verification (DNS TXT, well-known, Domain Connect), route discovery, drafts, run privacy, quota enforcement, account deletion, Hybrid AI / Remote Config / Firestore template parsing, and security headers.
 
 `bun run test:vm` runs the real-container suite (`test/vm/`) against a real Docker daemon: verifying k6 stage execution, egress proxy filtering, OOM enforcement on memory limits, timeout termination, startup sweep of orphaned resources, and end-to-end containment probes. The suite is opt-in (`MACRO_VM_TEST=1`) and verifies real runtime behavior safely. GitHub Actions runs both suites on push ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
 
 ## License
 
-MIT. Built with Bun, k6, gVisor, Caddy, zod, fast-check, Cloudflare Turnstile, and Firebase AI Logic.
+MIT. Built with Bun, k6, gVisor, Caddy, zod, fast-check, Cloudflare Turnstile, and Firebase (AI Logic, App Check, Remote Config, Cloud Firestore).

@@ -33,7 +33,7 @@ flowchart LR
 | Auth & Own-Site | `src/auth/`, `src/security/` | Optional GitHub & Google OAuth, magic-link email, signed sessions, origin verification (`verify-origin.ts`, `domain-connect.ts`), Turnstile & client IP checks |
 | Persistence | `src/store/db.ts`, `src/metrics/tiger.ts` | SQLite source of truth (`DATA_DIR`), optional best-effort Tiger Cloud per-second sample mirror |
 | Web Frontend | `web/landing/` | Prerendered landing/legal pages (`src/`) + client-rendered React 19 `/app/` workspace (`src/app/` with TanStack Router hash URLs, Tailwind CSS v4 tokens, shadcn/ui on Base UI, self-hosted Geist Mono) |
-| Hybrid AI (Client) | `web/landing/src/app/lib/hybrid-ai.ts`, `ScenarioAssistant.tsx`, `ReportQa.tsx` | Client-side Firebase AI Logic (`PREFER_ON_DEVICE`: on-device Gemini Nano with cloud Gemini fallback) |
+| Hybrid AI & Firebase (Client) | `web/landing/src/app/lib/hybrid-ai.ts`, `scenario-templates.ts`, `HybridBadge.tsx`, `ScenarioAssistant.tsx`, `ReportQa.tsx`, `remoteconfig.template.json`, `firestore.rules` | Client-side Firebase AI Logic (`PREFER_ON_DEVICE`: Gemini Nano with Gemini 3.8 Flash cloud fallback), App Check limited-use tokens, Firebase Remote Config tuning, and offline-cached Cloud Firestore `scenario_templates` |
 | Build & Scripts | `scripts/` | Web build (`build-web.ts`), CSP/React 19/layout checks (`build-web-check.ts`), E2E & local stage/probe helpers |
 
 ## Development Commands

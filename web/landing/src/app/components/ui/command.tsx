@@ -35,7 +35,7 @@ function CommandDialog({
   return (
     <Dialog {...props}>
       <DialogContent
-        className={cn('top-1/4 translate-y-0 overflow-hidden rounded-md p-0', className)}
+        className={cn('top-1/4 translate-y-0 overflow-hidden rounded-md p-0 duration-0 data-open:animate-none data-closed:animate-none', className)}
         showCloseButton={showCloseButton}
         {...(initialFocus !== undefined ? { initialFocus } : {})}
         {...(finalFocus !== undefined ? { finalFocus } : {})}
@@ -74,7 +74,7 @@ function CommandList({ className, ...props }: React.ComponentProps<typeof Comman
     <CommandPrimitive.List
       data-slot="command-list"
       className={cn(
-        'max-h-72 scroll-py-1 overflow-x-hidden overflow-y-auto p-1 focus-visible:outline-[2px] focus-visible:outline-ring',
+        'max-h-72 scroll-py-1 overflow-x-hidden overflow-y-auto overscroll-contain p-1 focus-visible:outline-[2px] focus-visible:outline-ring',
         className,
       )}
       {...props}

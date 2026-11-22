@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @import "../tokens.css" layer(base);
 
+@layer base {
+  a, button, input, textarea, select {
+    touch-action: manipulation;
+  }
+}
+
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 @custom-variant data-horizontal (&:where([data-orientation="horizontal"], [data-horizontal]));
 @custom-variant data-vertical (&:where([data-orientation="vertical"], [data-vertical]));
@@ -455,6 +461,40 @@
   .profile--compact {
     height: 92px;
     padding-bottom: 28px;
+  }
+
+  .profile--preview {
+    gap: 10px;
+    height: 112px;
+    padding-top: 6px;
+    padding-bottom: 26px;
+  }
+
+  .profile--preview .profile__stage {
+    flex: 1 1 0;
+    border-bottom: 0;
+  }
+
+  .profile--preview .profile__bar {
+    background: var(--accent);
+    opacity: 0.36;
+  }
+
+  .profile--preview .profile__stage--peak .profile__bar {
+    opacity: 1;
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
+
+  .profile--preview .profile__label {
+    text-align: center;
+    font-size: 0.72rem;
+  }
+
+  .profile--preview .profile__stage--peak .profile__label,
+  .profile--preview .profile__stage--peak .profile__label b {
+    color: var(--ink);
+    font-weight: 500;
   }
 
   .profile__stage {

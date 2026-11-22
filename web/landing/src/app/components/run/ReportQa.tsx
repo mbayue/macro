@@ -80,7 +80,9 @@ export const ReportQa = memo(function ReportQa({ report }: { report: CapacityRep
         </label>
         <input
           id={inputId}
+          name="question"
           type="text"
+          autoComplete="off"
           value={question}
           readOnly={busy}
           aria-busy={busy || undefined}
@@ -108,7 +110,7 @@ export const ReportQa = memo(function ReportQa({ report }: { report: CapacityRep
           <div className="flex flex-col gap-2 rounded-md border border-bar bg-background p-3.5">
             {busy ? (
               <div className="flex items-center justify-between gap-2">
-                <span className="font-mono text-xs text-muted-foreground animate-pulse">Streaming answer…</span>
+                <span className="font-mono text-xs text-muted-foreground animate-pulse motion-reduce:animate-none">Streaming answer…</span>
               </div>
             ) : null}
             <p className="m-0 text-sm leading-relaxed whitespace-pre-wrap text-foreground">{reply.text}</p>

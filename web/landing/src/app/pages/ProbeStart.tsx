@@ -104,7 +104,10 @@ export function ProbeStart() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="data-table" aria-label="The five escape attempts">
+          <table
+            className="data-table [&_tbody_tr:last-child>*]:border-b [&_tbody_tr:last-child>*]:border-border"
+            aria-label="The five escape attempts"
+          >
             <thead>
               <tr>
                 <th>Check</th>
@@ -115,9 +118,9 @@ export function ProbeStart() {
             <tbody>
               {PROBE_ACTIONS.map((a) => (
                 <tr key={a.id}>
-                  <td className="idx font-mono text-xs text-muted-foreground">({a.id})</td>
-                  <th scope="row" className="font-medium text-foreground">{a.label}</th>
-                  <td className="text-muted-foreground">{ACTION_EXPLANATIONS[a.id]}</td>
+                  <td className="idx align-baseline font-mono text-sm text-muted-foreground">({a.id})</td>
+                  <th scope="row" className="align-baseline font-medium text-foreground">{a.label}</th>
+                  <td className="align-baseline text-muted-foreground">{ACTION_EXPLANATIONS[a.id]}</td>
                 </tr>
               ))}
             </tbody>

@@ -370,7 +370,7 @@ describe('remoteconfig.template.json', () => {
 
     expect(rawValues.hybrid_ai_enabled).toBe('true');
     expect(rawValues.hybrid_inference_mode).toBe('prefer_on_device');
-    expect(rawValues.hybrid_cloud_model).toBe('gemini-2.5-flash');
+    expect(rawValues.hybrid_cloud_model).toBe('gemini-3.8-flash');
     expect(parseHybridRemoteConfig(rawValues)).toEqual(DEFAULT_HYBRID_REMOTE_CONFIG);
   });
 });

@@ -17,7 +17,7 @@
     },
     "hybrid_cloud_model": {
       "defaultValue": {
-        "value": "gemini-2.5-flash"
+        "value": "gemini-3.8-flash"
       },
       "description": "Gemini model used for Cloud Fallback in Firebase AI Logic Hybrid Inference.",
       "valueType": "STRING"

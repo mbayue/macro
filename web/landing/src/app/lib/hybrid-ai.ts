@@ -52,7 +52,7 @@ export const DEFAULT_REPORT_QA_SYSTEM_INSTRUCTION =
 export const DEFAULT_HYBRID_REMOTE_CONFIG: HybridRemoteConfig = {
   enabled: true,
   mode: InferenceMode.PREFER_ON_DEVICE,
-  cloudModel: 'gemini-2.5-flash',
+  cloudModel: 'gemini-3.8-flash',
   scenarioAssistantInstruction: DEFAULT_SCENARIO_ASSISTANT_INSTRUCTION,
   reportQaSystemInstruction: DEFAULT_REPORT_QA_SYSTEM_INSTRUCTION,
 };
@@ -355,10 +355,49 @@ function getOrCreateHybridModel(
   return model;
 }
 
+async function executeModelPrompt(
+  model: GenerativeModel,
+  prompt: string,
+  onChunk?: (text: string) => void,
+  signal?: AbortSignal,
+): Promise<HybridReply> {
+  const requestOptions = signal ? { signal } : undefined;
+  if (typeof model.generateContentStream === 'function') {
+    const result = await model.generateContentStream(prompt, requestOptions);
+    let fullText = '';
+    for await (const chunk of result.stream) {
+      if (signal?.aborted) break;
+      const chunkText = chunk.text();
+      fullText += chunkText;
+      onChunk?.(fullText);
+    }
+    if (signal?.aborted) {
+      return { text: fullText, origin: 'unknown' };
+    }
+    const response = await result.response;
+    return {
+      text: fullText || response.text(),
+      origin: mapInferenceSource(response.inferenceSource),
+    };
+  }
+  const result = await model.generateContent(prompt, requestOptions);
+  if (signal?.aborted) {
+    return { text: '', origin: 'unknown' };
+  }
+  const text = result.response.text();
+  onChunk?.(text);
+  return {
+    text,
+    origin: mapInferenceSource(result.response.inferenceSource),
+  };
+}
+
 /**
  * Creates a HybridRunner backed by Firebase AI Logic with Remote Config mode and cloud model settings.
  * SDK initialization is deferred until the first prompt is executed.
  * Streams content in real-time via `generateContentStream` when available.
+ * If `PREFER_ON_DEVICE` fails at runtime (e.g., Chrome reports Nano available but session creation fails),
+ * automatically retries once via `ONLY_IN_CLOUD`.
  */
 export function createFirebaseHybridRunner(
   config: FirebaseWebConfig,
@@ -366,34 +405,21 @@ export function createFirebaseHybridRunner(
 ): HybridRunner {
   return async (prompt: string, onChunk?: (text: string) => void, signal?: AbortSignal): Promise<HybridReply> => {
     const model = getOrCreateHybridModel(config, remoteConfig);
-    const requestOptions = signal ? { signal } : undefined;
-    if (typeof model.generateContentStream === 'function') {
-      const result = await model.generateContentStream(prompt, requestOptions);
-      let fullText = '';
-      for await (const chunk of result.stream) {
-        if (signal?.aborted) break;
-        const chunkText = chunk.text();
-        fullText += chunkText;
-        onChunk?.(fullText);
+    try {
+      return await executeModelPrompt(model, prompt, onChunk, signal);
+    } catch (err) {
+      if (
+        remoteConfig.mode !== InferenceMode.PREFER_ON_DEVICE ||
+        signal?.aborted ||
+        (err instanceof DOMException && err.name === 'AbortError')
+      ) {
+        throw err;
       }
-      if (signal?.aborted) {
-        return { text: fullText, origin: 'unknown' };
-      }
-      const response = await result.response;
-      return {
-        text: fullText || response.text(),
-        origin: mapInferenceSource(response.inferenceSource),
-      };
+      const cloudModel = getOrCreateHybridModel(config, {
+        ...remoteConfig,
+        mode: InferenceMode.ONLY_IN_CLOUD,
+      });
+      return executeModelPrompt(cloudModel, prompt, onChunk, signal);
     }
-    const result = await model.generateContent(prompt, requestOptions);
-    if (signal?.aborted) {
-      return { text: '', origin: 'unknown' };
-    }
-    const text = result.response.text();
-    onChunk?.(text);
-    return {
-      text,
-      origin: mapInferenceSource(result.response.inferenceSource),
-    };
   };
 }

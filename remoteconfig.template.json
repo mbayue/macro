@@ -1,4 +1,5 @@
 {
+  "conditions": [],
   "parameters": {
     "hybrid_ai_enabled": {
       "defaultValue": {
@@ -35,5 +36,6 @@
       "description": "Grounding system instruction prefix for Report Q&A (still verified by client-side Number Guard).",
       "valueType": "STRING"
     }
-  }
+  },
+  "parameterGroups": {}
 }

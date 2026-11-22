@@ -90,6 +90,17 @@ export function parseHybridRemoteConfig(raw: HybridRemoteConfigRaw): HybridRemot
   };
 }
 
+/** Formats a Gemini model ID (e.g. "gemini-3.8-flash") into a readable label ("Gemini 3.8 Flash"). */
+export function formatCloudModelLabel(modelId?: string): string {
+  const cleaned = modelId?.trim().replace(/^models\//i, '') ?? '';
+  if (!cleaned) return 'Gemini';
+  return cleaned
+    .split('-')
+    .filter(Boolean)
+    .map((part) => (/^[a-z]/i.test(part) ? part[0]!.toUpperCase() + part.slice(1) : part))
+    .join(' ');
+}
+
 /** Resolves the pre-flight availability label by combining Chrome's Nano status with the active InferenceMode. */
 export function resolveHybridAvailability(
   onDeviceStatus: Exclude<OnDeviceAvailability, 'on-device-unavailable'>,

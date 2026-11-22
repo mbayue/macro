@@ -1,7 +1,7 @@
 import { SquareIcon } from 'lucide-react';
 import { Badge as UiBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import type { InferenceOrigin, OnDeviceAvailability } from '../lib/hybrid-ai.ts';
+import { formatCloudModelLabel, type InferenceOrigin, type OnDeviceAvailability } from '../lib/hybrid-ai.ts';
 
 const TAG_CLASS = 'px-2 py-[3px] font-mono text-xs leading-[1.2]';
 
@@ -9,8 +9,7 @@ const TAG_CLASS = 'px-2 py-[3px] font-mono text-xs leading-[1.2]';
 export function HybridBadge({ origin, cloudModel }: { origin: InferenceOrigin; cloudModel?: string }) {
   if (origin === 'on-device') return <UiBadge variant="ok" className={TAG_CLASS}>On-Device Model: Gemini Nano</UiBadge>;
   if (origin === 'cloud') {
-    const label = cloudModel?.trim() || 'Gemini';
-    return <UiBadge variant="ok" className={TAG_CLASS}>Cloud Model: {label}</UiBadge>;
+    return <UiBadge variant="ok" className={TAG_CLASS}>Cloud Model: {formatCloudModelLabel(cloudModel)}</UiBadge>;
   }
   return <UiBadge variant="outline" className={TAG_CLASS}>Hybrid AI</UiBadge>;
 }
@@ -29,8 +28,7 @@ export function HybridAvailabilityBadge({
     return <UiBadge variant="warn" className={TAG_CLASS}>On-Device Only: Unavailable</UiBadge>;
   }
   if (availability === 'cloud-fallback') {
-    const label = cloudModel?.trim() || 'Gemini';
-    return <UiBadge variant="ok" className={TAG_CLASS}>Cloud Model: {label}</UiBadge>;
+    return <UiBadge variant="ok" className={TAG_CLASS}>Cloud Model: {formatCloudModelLabel(cloudModel)}</UiBadge>;
   }
   return null;
 }

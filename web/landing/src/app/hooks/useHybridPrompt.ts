@@ -91,6 +91,11 @@ export function useHybridPrompt() {
     if (res.ok) {
       setReply(res.reply);
       setCompleted(true);
+      if (res.reply.origin === 'cloud') {
+        setOnDeviceStatus('cloud-fallback');
+      } else if (res.reply.origin === 'on-device') {
+        setOnDeviceStatus('ready');
+      }
       announce(`${readyLabel} (${res.reply.origin}).`);
     } else if (!res.aborted) {
       setError(res.error);

@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { useHybridPrompt } from '../../hooks/useHybridPrompt.ts';
 import type { ApiError } from '../../lib/api.ts';
 import { buildScenarioPrompt } from '../../lib/hybrid-ai.ts';
-import { HybridAvailabilityBadge } from '../HybridBadge.tsx';
+import { HybridAvailabilityBadge, HybridBadge } from '../HybridBadge.tsx';
 import { ScenarioAssistant } from '../ScenarioAssistant.tsx';
 import { AlertRegion, Busy } from '../ui.tsx';
 import { type StudioBusy, trafficSubmitProblem } from './studio-view.ts';
@@ -106,10 +106,14 @@ export function TrafficComposer({
               Traffic Description
             </label>
             {assistant.available ? (
-              <HybridAvailabilityBadge
-                availability={assistant.availability}
-                cloudModel={assistant.remoteConfig.cloudModel}
-              />
+              assistant.reply ? (
+                <HybridBadge origin={assistant.reply.origin} cloudModel={assistant.remoteConfig.cloudModel} />
+              ) : (
+                <HybridAvailabilityBadge
+                  availability={assistant.availability}
+                  cloudModel={assistant.remoteConfig.cloudModel}
+                />
+              )
             ) : null}
           </div>
           <p id="traffic-event-hint" className="text-sm text-muted-foreground">

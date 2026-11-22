@@ -12,6 +12,7 @@ import {
   buildReportQaPrompt,
   buildScenarioPrompt,
   detectOnDeviceAvailability,
+  formatCloudModelLabel,
   mapInferenceSource,
   parseHybridRemoteConfig,
   resolveHybridAvailability,
@@ -280,10 +281,10 @@ describe('HybridAvailabilityBadge', () => {
     const cloudNamed = renderToStaticMarkup(
       createElement(HybridAvailabilityBadge, {
         availability: 'cloud-fallback',
-        cloudModel: 'gemini-2.5-flash',
+        cloudModel: 'gemini-3.8-flash',
       }),
     );
-    expect(cloudNamed).toContain('Cloud Model: gemini-2.5-flash');
+    expect(cloudNamed).toContain('Cloud Model: Gemini 3.8 Flash');
     expect(cloudNamed).not.toMatch(/\sstyle=/i);
 
     const unavailable = renderToStaticMarkup(
@@ -293,10 +294,20 @@ describe('HybridAvailabilityBadge', () => {
     expect(unavailable).not.toMatch(/\sstyle=/i);
 
     const originCloud = renderToStaticMarkup(
-      createElement(HybridBadge, { origin: 'cloud', cloudModel: 'gemini-2.5-flash' }),
+      createElement(HybridBadge, { origin: 'cloud', cloudModel: 'gemini-3.8-flash' }),
     );
-    expect(originCloud).toContain('Cloud Model: gemini-2.5-flash');
+    expect(originCloud).toContain('Cloud Model: Gemini 3.8 Flash');
     expect(originCloud).not.toMatch(/\sstyle=/i);
+  });
+});
+
+describe('formatCloudModelLabel', () => {
+  test('formats Gemini model IDs into human-readable titles', () => {
+    expect(formatCloudModelLabel('gemini-3.8-flash')).toBe('Gemini 3.8 Flash');
+    expect(formatCloudModelLabel('models/gemini-3.5-flash-lite')).toBe('Gemini 3.5 Flash Lite');
+    expect(formatCloudModelLabel('gemini-2.5-pro')).toBe('Gemini 2.5 Pro');
+    expect(formatCloudModelLabel('')).toBe('Gemini');
+    expect(formatCloudModelLabel(undefined)).toBe('Gemini');
   });
 });
 

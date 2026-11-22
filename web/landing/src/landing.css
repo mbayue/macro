@@ -327,7 +327,9 @@
   .lp-mini-btn:active { transform: scale(0.96); }
   .lp-mini-btn[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 
-  /* Limits table & open FAQ */
+  /* Pricing, limits table & open FAQ */
+  .lp-plan-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .lp-plan-featured { border-color: var(--line-strong); background: var(--surface-2); }
   .lp-table { width: 100%; border-collapse: collapse; font-size: 0.9375rem; }
   .lp-table th, .lp-table td { text-align: left; padding: 14px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
   .lp-table th { font-weight: 500; color: var(--muted); font-size: 0.8125rem; }
@@ -367,7 +369,7 @@
     .lp-rail { flex-direction: row; justify-content: space-between; padding: 10px 14px; border-right: 0; border-bottom: 1px solid var(--ui-line); }
     .lp-rail-btn { width: 44px; height: 44px; }
     .lp-tab, .lp-mini-btn { min-height: 44px; }
-    .lp-window-split, .lp-node-rail { grid-template-columns: 1fr; }
+    .lp-window-split, .lp-node-rail, .lp-plan-grid { grid-template-columns: 1fr; }
     .lp-photo-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .lp-rule-row { grid-template-columns: 1fr auto; }
     .lp-rule-detail { grid-column: 1 / -1; color: var(--muted); font-size: 0.8125rem; }

@@ -1,16 +1,28 @@
 import { describe, expect, test } from 'bun:test';
-import { decode, home, select } from './helpers.ts';
+import { decode, home, href, select } from './helpers.ts';
 
-describe('home page limits & open FAQ', () => {
-  const LIMITS = 'section#vd-limits';
+describe('home page pricing, limits & open FAQ', () => {
+  const PRICING = 'section#vd-pricing';
 
-  test('renders the Demo Target vs Own Site table', async () => {
-    const h2 = await select(home, `${LIMITS} h2`);
-    expect(h2.map((h) => h.text)).toEqual(['Free on Demo Target, verified for Own Site']);
-    const text = decode((await select(home, `${LIMITS} table`))[0]?.text ?? '');
-    expect(text).toContain('yue.macro.my.id');
-    expect(text).toContain('1 verified HTTPS origin');
-    expect(text).toContain('Domain Connect, DNS TXT, or /.well-known/');
+  test('renders the early-access $0 Self-host and Hosted cards plus Demo Target vs Own Site table', async () => {
+    const h2 = await select(home, `${PRICING} h2`);
+    expect(h2.map((h) => h.text)).toEqual(['Free while in early access']);
+
+    const planTitles = (await select(home, `${PRICING} .lp-plan-grid article h3`)).map((h) => h.text);
+    expect(planTitles).toEqual(['Self-host', 'Hosted early access']);
+    for (const card of await select(home, `${PRICING} .lp-plan-grid article`)) {
+      expect(card.text).toContain('$0');
+    }
+    const planLinks = (await select(home, `${PRICING} .lp-plan-grid a`)).map((a) => [a.text, href(a)]);
+    expect(planLinks).toEqual([
+      ['View on GitHub', 'https://github.com/mbayue/macro'],
+      ['Open Test Studio', '/app/'],
+    ]);
+
+    const table = decode((await select(home, `${PRICING} table`))[0]?.text ?? '');
+    expect(table).toContain('yue.macro.my.id');
+    expect(table).toContain('1 verified HTTPS origin');
+    expect(table).toContain('Domain Connect, DNS TXT, or /.well-known/');
   });
 
   test('renders 4 open product-specific FAQs at #vd-faq without an accordion', async () => {

@@ -2,14 +2,14 @@ import { describe, expect, test } from 'bun:test';
 import { home, href, select } from './helpers.ts';
 
 describe('home page hero & interactive workbench', () => {
-  test('renders the floating site header with Pipeline, Proof, Limits, FAQ links, theme toggle, and Open Studio', async () => {
+  test('renders the floating site header with Pipeline, Proof, Pricing, FAQ links, theme toggle, and Open Studio', async () => {
     const header = await select(home, 'header[aria-label="Site"]');
     expect(header.length).toBe(1);
     const navAnchors = (await select(home, 'header nav[aria-label="Primary"] a')).map((a) => [a.text, href(a)]);
     expect(navAnchors).toEqual([
       ['Pipeline', '#vd-pipeline'],
       ['Proof', '#vd-proof'],
-      ['Limits', '#vd-limits'],
+      ['Pricing', '#vd-pricing'],
       ['FAQ', '#vd-faq'],
     ]);
     expect((await select(home, 'header button[aria-label="Dark mode"][data-theme-toggle]')).length).toBe(1);

@@ -31,7 +31,7 @@ import {
   verdictLine,
 } from '../components/run/report-tabs.ts';
 import { type ProfileStage, StageProfile } from '../components/StageProfile.tsx';
-import { TelemetryPanel } from '../components/studio/TelemetryFrame.tsx';
+import { StageBand, TelemetryPanel } from '../components/studio/TelemetryFrame.tsx';
 import { TurnstileBox } from '../components/Turnstile.tsx';
 import { AlertRegion, ApiErrorText, ConfirmButton, DASH, KeyValues, PageSkeleton, StatusBadge, TableWrap } from '../components/ui.tsx';
 import { useApp } from '../context.tsx';
@@ -133,10 +133,13 @@ export function RunPage({ id }: { id: string }) {
   }
   if (state.kind === 'error') {
     return (
-      <section className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6">
-        <h1 className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] text-balance text-foreground max-[860px]:text-[1.75rem]">
-          Run
-        </h1>
+      <section className="mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-6">
+        <div className="grid gap-2">
+          <StageBand />
+          <h1 className="m-0 font-display text-[2.25rem] leading-[1.08] font-semibold tracking-[-0.034em] text-balance text-foreground max-[860px]:text-[1.75rem]">
+            Run
+          </h1>
+        </div>
         <TelemetryPanel tone="bad" ticks="bad" role="alert" className="gap-3 bg-card">
           <ApiErrorText error={state.error} />
         </TelemetryPanel>
@@ -159,10 +162,11 @@ export function RunPage({ id }: { id: string }) {
   const reason = model.run.statusReason === null ? null : plainReason(model.run.statusReason);
 
   return (
-    <div className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6 print:max-w-none">
+    <div className="mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-6 print:max-w-none">
       <header className="flex flex-col justify-between gap-6 min-[861px]:flex-row min-[861px]:items-start print:hidden">
         <div className="flex min-w-0 flex-col gap-2">
-          <h1 className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] break-words text-balance text-foreground max-[860px]:text-[1.75rem]">
+          <StageBand />
+          <h1 className="m-0 font-display text-[2.25rem] leading-[1.08] font-semibold tracking-[-0.034em] break-words text-balance text-foreground max-[860px]:text-[1.75rem]">
             {model.plan?.name ?? report?.planName ?? 'Load test'}
           </h1>
           <p className="m-0 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-muted-foreground">
@@ -347,7 +351,7 @@ export function RunPage({ id }: { id: string }) {
                     <div className="flex flex-col gap-3 pt-2">
                       <h2
                         id="report-heading"
-                        className="m-0 font-display text-[1.75rem] leading-[1.1] font-light tracking-[-0.02em] text-foreground"
+                        className="m-0 font-display text-[1.75rem] leading-[1.08] font-semibold tracking-[-0.034em] text-foreground"
                       >
                         Capacity report
                       </h2>

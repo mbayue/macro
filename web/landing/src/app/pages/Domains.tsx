@@ -1,7 +1,7 @@
 /** Domains page (`#/domains`): add, verify, or remove your verified HTTPS origin. */
 import { ArrowRightIcon, GlobeIcon, LockIcon, SearchIcon, ShieldCheckIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { TelemetryPanel } from '../components/studio/TelemetryFrame.tsx';
+import { DitherBanner, StageBand, TelemetryPanel } from '../components/studio/TelemetryFrame.tsx';
 import { VerifyPanel } from '../components/VerifyPanel.tsx';
 import { useApp } from '../context.tsx';
 
@@ -34,9 +34,10 @@ export function Domains() {
   const { me } = useApp();
 
   return (
-    <div className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6">
+    <div className="mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-6">
       <header className="grid gap-2">
-        <h1 className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] text-balance text-foreground max-[860px]:text-[1.75rem]">
+        <StageBand />
+        <h1 className="m-0 font-display text-[2.25rem] leading-[1.08] font-semibold tracking-[-0.034em] text-balance text-foreground max-[860px]:text-[1.75rem]">
           Domains
         </h1>
         <p className="m-0 max-w-[64ch] text-muted-foreground">
@@ -93,6 +94,11 @@ export function Domains() {
 
         <aside aria-label="Domain rules and limits" className="flex min-w-0 flex-col gap-4 min-[1180px]:sticky min-[1180px]:top-20">
           <TelemetryPanel ticks="bar" aria-labelledby="domains-limits-heading">
+            <DitherBanner
+              src="/landing/img/dither/sanok-static.webp"
+              label="Domain rules & limits"
+              meta="Single-origin allowlist"
+            />
             <h2 id="domains-limits-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
               Domain rules &amp; limits
             </h2>

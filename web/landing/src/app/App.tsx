@@ -30,8 +30,8 @@ class ScreenBoundary extends Component<{ resetKey: string; children: ReactNode }
   override render() {
     if (this.state.failed) {
       return (
-        <section className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6">
-          <h1 className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] text-balance text-foreground max-[860px]:text-[1.75rem]">
+        <section className="mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-6">
+          <h1 className="m-0 font-display text-[2.25rem] leading-[1.08] font-semibold tracking-[-0.034em] text-balance text-foreground max-[860px]:text-[1.75rem]">
             Something went wrong
           </h1>
           <TelemetryPanel tone="bad" ticks="bad" role="alert" className="gap-3 bg-card">
@@ -139,8 +139,8 @@ function RootLayout() {
     screen = <PageSkeleton title="Loading Macro workspace…" showSplit={isSplitRoute(route)} />;
   } else if (boot.kind === 'error' || !ctx) {
     screen = (
-      <section className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6">
-        <h1 className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] text-balance text-foreground max-[860px]:text-[1.75rem]">
+      <section className="mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-6">
+        <h1 className="m-0 font-display text-[2.25rem] leading-[1.08] font-semibold tracking-[-0.034em] text-balance text-foreground max-[860px]:text-[1.75rem]">
           Something went wrong
         </h1>
         <TelemetryPanel tone="bad" ticks="bad" role="alert" className="gap-4 bg-card">

@@ -66,12 +66,12 @@ export function SignatureTiles({
             </span>
             <span
               className={cn(
-                'font-display leading-none font-light break-words tabular-nums',
+                'font-display leading-none font-semibold break-words tabular-nums',
                 isHeroSafe
                   ? 'text-[clamp(3rem,2.4rem+2.2vw,5rem)] tracking-[-0.04em]'
                   : isLongText
-                    ? 'text-[1.375rem] leading-[1.1] tracking-[-0.015em] min-[861px]:text-[1.75rem]'
-                    : 'text-[2.125rem] tracking-[-0.03em] min-[861px]:text-[2.75rem]',
+                    ? 'text-[1.375rem] leading-[1.1] tracking-[-0.02em] min-[861px]:text-[1.75rem]'
+                    : 'text-[2.125rem] tracking-[-0.034em] min-[861px]:text-[2.75rem]',
                 isLive ? 'text-primary-foreground' : VALUE_TONE_CLASS[item.tone],
               )}
             >

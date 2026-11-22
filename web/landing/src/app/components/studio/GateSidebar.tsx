@@ -20,7 +20,7 @@ import {
   type StudioBusy,
   type TargetMode,
 } from './studio-view.ts';
-import { CornerTicks, TelemetryPanel } from './TelemetryFrame.tsx';
+import { CornerTicks, DitherBanner, TelemetryPanel } from './TelemetryFrame.tsx';
 
 const fmt = fmtGrouped;
 
@@ -101,6 +101,11 @@ export function GateSidebar({
           aria-labelledby="sidebar-gate-verdict"
           className="gap-2.5"
         >
+          <DitherBanner
+            src="/landing/img/dither/sanok-span.webp"
+            label="Policy Gate & Stage Preview"
+            meta={gateStatus.label}
+          />
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 id="sidebar-gate-verdict" className="m-0 font-sans text-sm font-medium text-muted-foreground">
               Policy Gate
@@ -113,6 +118,19 @@ export function GateSidebar({
               {review.gate.violations.length} rule {review.gate.violations.length === 1 ? 'violation' : 'violations'}
             </p>
           ) : null}
+        </TelemetryPanel>
+      ) : null}
+
+      {review === null ? (
+        <TelemetryPanel ticks="bar" aria-label="Policy Gate preview" className="gap-2.5">
+          <DitherBanner
+            src="/landing/img/dither/sanok-span.webp"
+            label="Policy Gate & Stage Preview"
+            meta="Ready"
+          />
+          <p className="m-0 text-xs text-muted-foreground">
+            Every drafted plan is checked against fixed target, stage, VU, and stop-threshold rules before you approve.
+          </p>
         </TelemetryPanel>
       ) : null}
 
@@ -314,7 +332,7 @@ function ApprovePanel({
           id="approve-title"
           ref={heading}
           tabIndex={-1}
-          className="m-0 font-display text-[1.75rem] leading-[1.1] font-light tracking-[-0.02em] text-primary-foreground"
+          className="m-0 font-display text-[1.75rem] leading-[1.08] font-semibold tracking-[-0.034em] text-primary-foreground"
         >
           Approve &amp; Run
         </h2>

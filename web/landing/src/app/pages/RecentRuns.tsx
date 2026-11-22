@@ -23,7 +23,7 @@ import {
   STATUS_FILTER_OPTIONS,
   togglePickedRun,
 } from '../components/compare/runs-table-view.ts';
-import { TelemetryPanel } from '../components/studio/TelemetryFrame.tsx';
+import { StageBand, TelemetryPanel } from '../components/studio/TelemetryFrame.tsx';
 import { StatusBadge, TableWrap } from '../components/ui.tsx';
 import { useApp } from '../context.tsx';
 import { getRun } from '../lib/api.ts';
@@ -212,9 +212,10 @@ export function RecentRunsPage() {
   );
 
   return (
-    <div className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6">
+    <div className="mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-6">
       <header className="grid gap-2">
-        <h1 className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] text-balance text-foreground max-[860px]:text-[1.75rem]">
+        <StageBand />
+        <h1 className="m-0 font-display text-[2.25rem] leading-[1.08] font-semibold tracking-[-0.034em] text-balance text-foreground max-[860px]:text-[1.75rem]">
           Runs Table
         </h1>
         <p className="m-0 max-w-[64ch] text-muted-foreground">

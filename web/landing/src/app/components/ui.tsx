@@ -71,7 +71,7 @@ export function PageSkeleton({
 }) {
   return (
     <section
-      className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6"
+      className="mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-6"
       role="status"
       aria-busy="true"
       aria-label={title}

@@ -27,6 +27,7 @@ import { useApp } from '../context.tsx';
 import { ApproveBar, GateSidebar } from '../components/studio/GateSidebar.tsx';
 import { PlanBrief, PlanReview } from '../components/studio/PlanReview.tsx';
 import { TargetPicker } from '../components/studio/TargetPicker.tsx';
+import { StageBand } from '../components/studio/TelemetryFrame.tsx';
 import { TrafficComposer } from '../components/studio/TrafficComposer.tsx';
 import {
   isApprovable,
@@ -269,9 +270,10 @@ export function NewTest() {
   };
 
   return (
-    <div className={cn('mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6', approvable && 'max-[1179px]:pb-24')}>
+    <div className={cn('mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-6', approvable && 'max-[1179px]:pb-24')}>
       <header className="grid gap-2">
-        <h1 className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] text-balance text-foreground max-[860px]:text-[1.75rem]">
+        <StageBand />
+        <h1 className="m-0 font-display text-[2.25rem] leading-[1.08] font-semibold tracking-[-0.034em] text-balance text-foreground max-[860px]:text-[1.75rem]">
           Test Studio
         </h1>
         <p className="max-w-[64ch] text-muted-foreground">

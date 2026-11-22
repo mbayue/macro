@@ -8,7 +8,7 @@ import type { MeResponse } from '../../../../../src/api-types.ts';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { TelemetryPanel } from '../components/studio/TelemetryFrame.tsx';
+import { DitherBanner, StageBand, TelemetryPanel } from '../components/studio/TelemetryFrame.tsx';
 import { useOptionalShell } from '../components/shell/ShellContext.tsx';
 import { Busy, ConfirmButton } from '../components/ui.tsx';
 import { useApp } from '../context.tsx';
@@ -170,11 +170,12 @@ export function AccountPanel({
   const identity = me.user.githubLogin ?? me.user.email;
 
   return (
-    <section className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6" aria-labelledby="account-heading">
+    <section className="mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-6" aria-labelledby="account-heading">
       <header className="grid gap-2">
+        <StageBand />
         <h1
           id="account-heading"
-          className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] text-balance text-foreground max-[860px]:text-[1.75rem]"
+          className="m-0 font-display text-[2.25rem] leading-[1.08] font-semibold tracking-[-0.034em] text-balance text-foreground max-[860px]:text-[1.75rem]"
         >
           Account
         </h1>
@@ -274,6 +275,11 @@ export function AccountPanel({
 
         <aside aria-label="Account and data summary" className="flex min-w-0 flex-col gap-4 min-[1180px]:sticky min-[1180px]:top-20">
           <TelemetryPanel ticks="bar" aria-labelledby="account-data-heading">
+            <DitherBanner
+              src="/landing/img/dither/sanok-workers.webp"
+              label="Account & data"
+              meta="Private runs & drafts"
+            />
             <h2 id="account-data-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
               Account &amp; data
             </h2>
@@ -393,11 +399,12 @@ export function SignIn() {
   }
 
   return (
-    <section className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6" aria-labelledby="signin-heading">
+    <section className="mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-6" aria-labelledby="signin-heading">
       <header className="grid gap-2">
+        <StageBand />
         <h1
           id="signin-heading"
-          className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] text-balance text-foreground max-[860px]:text-[1.75rem]"
+          className="m-0 font-display text-[2.25rem] leading-[1.08] font-semibold tracking-[-0.034em] text-balance text-foreground max-[860px]:text-[1.75rem]"
         >
           Sign in
         </h1>
@@ -406,7 +413,8 @@ export function SignIn() {
         </p>
       </header>
 
-      <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 items-start gap-6 min-[1180px]:grid-cols-[minmax(0,1fr)_minmax(300px,380px)]">
+        <div className="flex min-w-0 flex-col gap-4">
         {githubEmailError ? (
           <TelemetryPanel tone="bad" ticks="bad" role="alert" className="gap-2 bg-card">
             <div className="flex flex-wrap items-center gap-2">
@@ -475,6 +483,34 @@ export function SignIn() {
           onSubmit={(e) => void onMagic(e)}
           onBack={() => navigate('/')}
         />
+        </div>
+
+        <aside aria-label="What signing in unlocks" className="flex min-w-0 flex-col gap-4 min-[1180px]:sticky min-[1180px]:top-20">
+          <TelemetryPanel ticks="bar" aria-labelledby="signin-benefits-heading">
+            <DitherBanner
+              src="/landing/img/dither/sanok-trucks.webp"
+              label="No credit card required"
+              meta="Demo & Own Site"
+            />
+            <h2 id="signin-benefits-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+              What signing in unlocks
+            </h2>
+            <dl className="m-0 grid gap-3">
+              <div className="grid gap-0.5">
+                <dt className="text-xs font-medium text-muted-foreground">Verified Own Site</dt>
+                <dd className="m-0 text-sm text-foreground">Verify 1 HTTPS origin via Domain Connect, DNS TXT, or /.well-known/.</dd>
+              </div>
+              <div className="grid gap-0.5 border-t border-border pt-2.5">
+                <dt className="text-xs font-medium text-muted-foreground">Runs Table retention</dt>
+                <dd className="m-0 text-sm text-foreground">Store up to 50 private runs with side-by-side Run Compare.</dd>
+              </div>
+              <div className="grid gap-0.5 border-t border-border pt-2.5">
+                <dt className="text-xs font-medium text-muted-foreground">Draft sync</dt>
+                <dd className="m-0 text-sm text-foreground">Keep your Traffic Description saved across sessions.</dd>
+              </div>
+            </dl>
+          </TelemetryPanel>
+        </aside>
       </div>
     </section>
   );

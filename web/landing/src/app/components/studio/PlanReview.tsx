@@ -122,7 +122,7 @@ export function PlanReview({
           id="review-title"
           ref={heading}
           tabIndex={-1}
-          className="m-0 font-display text-[1.75rem] leading-[1.1] font-light tracking-[-0.02em] text-foreground"
+          className="m-0 font-display text-[1.75rem] leading-[1.08] font-semibold tracking-[-0.034em] text-foreground"
         >
           Draft plan
         </h2>
@@ -196,7 +196,7 @@ function PlanDetails({
 
   return (
     <TelemetryPanel ticks="bar" className="gap-4.5">
-      <p className="m-0 min-w-0 font-display text-[1.625rem] leading-[1.15] font-light tracking-[-0.015em] break-words text-foreground">
+      <p className="m-0 min-w-0 font-display text-[1.625rem] leading-[1.12] font-semibold tracking-[-0.03em] break-words text-foreground">
         {plan.name}
       </p>
 

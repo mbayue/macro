@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import { TelemetryPanel } from '../components/studio/TelemetryFrame.tsx';
+import { DitherBanner, StageBand, TelemetryPanel } from '../components/studio/TelemetryFrame.tsx';
 import { TurnstileBox, useTurnstile } from '../components/Turnstile.tsx';
 import { ApiErrorText, Busy } from '../components/ui.tsx';
 import { useApp } from '../context.tsx';
@@ -47,9 +47,10 @@ export function ProbeStart() {
   const allowedHost = `${config.webOrigin.replace(/^https:\/\//, '')}:443`;
 
   return (
-    <div className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6">
+    <div className="mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-6">
       <header className="grid gap-2">
-        <h1 className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] text-balance text-foreground max-[860px]:text-[1.75rem]">
+        <StageBand />
+        <h1 className="m-0 font-display text-[2.25rem] leading-[1.08] font-semibold tracking-[-0.034em] text-balance text-foreground max-[860px]:text-[1.75rem]">
           Containment Probe
         </h1>
         <p className="m-0 max-w-[64ch] text-muted-foreground">
@@ -78,6 +79,11 @@ export function ProbeStart() {
 
         <aside className="flex min-w-0 flex-col gap-4 min-[1180px]:sticky min-[1180px]:top-20" aria-label="Run the probe">
           <TelemetryPanel ticks="bar" aria-labelledby="probe-run-heading" className="gap-4 bg-card">
+            <DitherBanner
+              src="/landing/img/dither/sanok-workers.webp"
+              label="Containment Probe · Sandbox"
+              meta="5 actions"
+            />
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 id="probe-run-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
                 Run the probe

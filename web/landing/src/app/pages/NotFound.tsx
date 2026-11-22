@@ -5,11 +5,11 @@ import { TelemetryPanel } from '../components/studio/TelemetryFrame.tsx';
 /** Fallback view (`*`) when the hash route does not match any app screen. */
 export function NotFound() {
   return (
-    <section className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6" aria-labelledby="not-found-heading">
+    <section className="mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-6" aria-labelledby="not-found-heading">
       <header className="grid gap-2">
         <h1
           id="not-found-heading"
-          className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] text-balance text-foreground max-[860px]:text-[1.75rem]"
+          className="m-0 font-display text-[2.25rem] leading-[1.08] font-semibold tracking-[-0.034em] text-balance text-foreground max-[860px]:text-[1.75rem]"
         >
           Page not found
         </h1>

@@ -52,3 +52,43 @@ export function TelemetryPanel({
     </section>
   );
 }
+
+/** Compact 4-segment `1 : 2 : 4 : 8` stage band motif anchored above primary screen headings. */
+export function StageBand({ className }: { className?: string }) {
+  return (
+    <div className={cn('stage-band', className)} aria-hidden="true">
+      <span />
+      <span />
+      <span />
+      <span />
+    </div>
+  );
+}
+
+/** Flush 92px Bayer-dithered banner strip with frosted mono caption bar inside a `TelemetryPanel`. */
+export function DitherBanner({
+  src,
+  label,
+  meta,
+  className,
+}: {
+  src: string;
+  label: string;
+  meta?: string | undefined;
+  className?: string | undefined;
+}) {
+  return (
+    <div
+      className={cn(
+        'relative -mx-5 -mt-5 mb-1 h-[92px] overflow-hidden rounded-t-[5px] border-b border-border sm:-mx-6 print:hidden',
+        className,
+      )}
+    >
+      <img className="dither-banner-img" src={src} alt="" aria-hidden="true" />
+      <div className="dither-banner-caption absolute right-3 bottom-2.5 left-3 flex items-center justify-between gap-2 rounded-sm px-2.5 py-1 font-mono text-[11px] text-foreground">
+        <span className="truncate">{label}</span>
+        {meta ? <strong className="shrink-0 font-medium">{meta}</strong> : null}
+      </div>
+    </div>
+  );
+}

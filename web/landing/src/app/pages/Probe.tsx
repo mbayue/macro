@@ -10,7 +10,7 @@ import type { ProbeActionResult, ProbeVerdict } from '../../../../../src/k6/prob
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { CornerTicks, TelemetryPanel } from '../components/studio/TelemetryFrame.tsx';
+import { CornerTicks, DitherBanner, StageBand, TelemetryPanel } from '../components/studio/TelemetryFrame.tsx';
 import { ApiErrorText, Busy, StatusBadge, TableWrap } from '../components/ui.tsx';
 import { useApp } from '../context.tsx';
 import { type ApiError, getRun } from '../lib/api.ts';
@@ -145,12 +145,13 @@ export function ProbePage({ id }: { id: string }) {
   }, [id, attempt, announce, navigate]);
 
   return (
-    <div className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] gap-6">
+    <div className="mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-6">
       <header className="grid gap-2">
+        <StageBand />
         <h1
           ref={heading}
           tabIndex={-1}
-          className="m-0 font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] text-balance text-foreground focus-visible:outline-none max-[860px]:text-[1.75rem]"
+          className="m-0 font-display text-[2.25rem] leading-[1.08] font-semibold tracking-[-0.034em] text-balance text-foreground focus-visible:outline-none max-[860px]:text-[1.75rem]"
         >
           Containment Probe
         </h1>
@@ -192,6 +193,11 @@ export function ProbePage({ id }: { id: string }) {
         <aside className="flex min-w-0 flex-col gap-4 min-[1180px]:sticky min-[1180px]:top-20" aria-label="About this probe">
           {state.kind === 'ready' ? (
             <TelemetryPanel ticks="bar" aria-labelledby="probe-info-heading" className="bg-card">
+              <DitherBanner
+                src="/landing/img/dither/sanok-workers.webp"
+                label="Containment Probe · Sandbox"
+                meta={state.run.runtime}
+              />
               <h2 id="probe-info-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
                 This probe
               </h2>

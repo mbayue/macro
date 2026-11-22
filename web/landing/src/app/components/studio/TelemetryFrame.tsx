@@ -42,12 +42,12 @@ export function TelemetryPanel({
           ? 'border-transparent bg-primary text-primary-foreground'
           : tone === 'bad'
             ? 'border-bad bg-surface text-foreground'
-            : 'border-border bg-surface text-foreground',
+            : 'border-[var(--ap-line-strong)] bg-surface text-foreground',
         className,
       )}
       {...props}
     >
-      {ticks ? <CornerTicks tone={ticks} /> : null}
+      {ticks && ticks !== 'bar' ? <CornerTicks tone={ticks} /> : null}
       {children}
     </section>
   );

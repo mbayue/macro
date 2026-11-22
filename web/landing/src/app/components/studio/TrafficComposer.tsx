@@ -84,13 +84,11 @@ export function TrafficComposer({
         }}
       >
         <div className="flex flex-col gap-1">
-          <label id="traffic-event-label" htmlFor="traffic-event" className="text-[1.0625rem] font-medium text-foreground">
-            Traffic description
+          <label id="traffic-event-label" htmlFor="traffic-event" className="font-display text-[1.125rem] font-semibold tracking-[-0.025em] text-foreground">
+            Traffic Description
           </label>
           <p id="traffic-event-hint" className="text-sm text-muted-foreground">
-            Describe the traffic you expect: say who arrives, when, and what they do.{' '}
-            <span className="font-mono text-xs tabular-nums">{min}</span> to{' '}
-            <span className="font-mono text-xs tabular-nums">{fmt(max)}</span> characters. Press{' '}
+            Describe the routes, virtual-user ramp, and stop thresholds in plain English. Nothing reaches the target until you approve.{' '}
             <kbd className="rounded-sm border border-bar bg-background px-1.5 py-0.5 font-mono text-[11px] text-foreground">
               Ctrl+Enter
             </kbd>{' '}
@@ -98,10 +96,32 @@ export function TrafficComposer({
           </p>
         </div>
 
+        {examples.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-1.5 text-sm" role="group" aria-label="Example traffic descriptions">
+            {examples.map((ex) => (
+              <Button
+                key={ex.label}
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!idle}
+                className="border-bar bg-background text-xs hover:border-bar-hover max-[860px]:min-h-10"
+                onClick={() => {
+                  setAttempted(false);
+                  onTextChange(ex.text);
+                  textareaRef.current?.focus();
+                }}
+              >
+                {ex.label}
+              </Button>
+            ))}
+          </div>
+        ) : null}
+
         <textarea
           id="traffic-event"
           ref={textareaRef}
-          rows={6}
+          rows={5}
           autoComplete="off"
           value={text}
           readOnly={!idle}
@@ -110,7 +130,7 @@ export function TrafficComposer({
           aria-invalid={invalid}
           placeholder="e.g. Ramp from 20 to 150 shoppers over 3 minutes browsing the catalog and opening product pages."
           className={cn(
-            'min-h-36 w-full resize-y rounded-md border bg-background px-3.5 py-3 text-[1.0625rem] leading-relaxed text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-[2px] focus-visible:outline-offset-[1px] focus-visible:outline-ring read-only:opacity-70',
+            'min-h-32 w-full resize-y rounded-md border bg-background px-3.5 py-3 text-[0.9375rem] leading-relaxed text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-[2px] focus-visible:outline-offset-[1px] focus-visible:outline-ring read-only:opacity-70',
             invalid ? 'border-bad' : 'border-bar',
           )}
           onChange={(e) => {
@@ -126,41 +146,42 @@ export function TrafficComposer({
           }}
         />
 
-        <div className="flex min-h-[1.5em] flex-wrap items-center justify-between gap-3 text-xs">
-          <span
-            id="traffic-event-count"
-            className={cn('font-mono tabular-nums', invalid ? 'font-medium text-bad' : 'text-muted-foreground')}
-          >
-            {fmt(count)} / {fmt(max)}
-          </span>
-          <span id="traffic-event-problem" className="font-medium text-bad" role="status">
-            {shownProblem}
-          </span>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span
+              id="traffic-event-count"
+              className={cn('font-mono tabular-nums', invalid ? 'font-medium text-bad' : 'text-muted-foreground')}
+            >
+              {fmt(count)} / {fmt(max)} chars
+            </span>
+            <span id="traffic-event-problem" className="font-medium text-bad" role="status">
+              {shownProblem}
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {hasReview && editing ? (
+              <Button type="button" variant="outline" size="sm" className="border-bar" disabled={!idle} onClick={onKeepPlan}>
+                Keep the current plan
+              </Button>
+            ) : null}
+            {showRetry ? (
+              <Button type="button" variant="secondary" size="sm" disabled={!idle} onClick={onRetry}>
+                Retry planning
+              </Button>
+            ) : null}
+            <Button type="submit" disabled={!idle}>
+              {hasReview ? 'Draft a new plan' : 'Draft a plan'}
+            </Button>
+          </div>
         </div>
 
-        {examples.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-2 text-sm" role="group" aria-label="Examples">
-            <span className="text-xs text-muted-foreground max-[860px]:basis-full">
-              Examples fill the text box only:
-            </span>
-            {examples.map((ex) => (
-              <Button
-                key={ex.label}
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={!idle}
-                className="border-bar bg-background hover:border-bar-hover max-[860px]:min-h-10"
-                onClick={() => {
-                  setAttempted(false);
-                  onTextChange(ex.text);
-                  textareaRef.current?.focus();
-                }}
-              >
-                {ex.label}
-              </Button>
-            ))}
-          </div>
+        {busy === 'planning' ? (
+          <Busy>Drafting a plan. This can take up to a minute.</Busy>
+        ) : ownNeedsVerify ? (
+          <span className="text-xs text-muted-foreground">Verify your site above before drafting.</span>
+        ) : idle && count === 0 && !attempted ? (
+          <span className="text-xs text-muted-foreground">Write at least {min} characters to draft.</span>
         ) : null}
 
         <ScenarioAssistant
@@ -169,29 +190,6 @@ export function TrafficComposer({
           disabled={!idle}
           onApply={onApplyAssistant}
         />
-
-        <div className="flex flex-wrap items-center gap-3 pt-1">
-          <Button type="submit" disabled={!idle}>
-            {hasReview ? 'Draft a new plan' : 'Draft a plan'}
-          </Button>
-          {hasReview && editing ? (
-            <Button type="button" variant="outline" className="border-bar" disabled={!idle} onClick={onKeepPlan}>
-              Keep the current plan
-            </Button>
-          ) : null}
-          {showRetry ? (
-            <Button type="button" variant="secondary" disabled={!idle} onClick={onRetry}>
-              Retry planning
-            </Button>
-          ) : null}
-          {busy === 'planning' ? (
-            <Busy>Drafting a plan. This can take up to a minute.</Busy>
-          ) : ownNeedsVerify ? (
-            <span className="text-sm text-muted-foreground">Verify your site above before drafting.</span>
-          ) : idle && count === 0 && !attempted ? (
-            <span className="text-sm text-muted-foreground">Write at least {min} characters to draft.</span>
-          ) : null}
-        </div>
 
         <AlertRegion error={planError} />
       </form>

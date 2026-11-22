@@ -270,15 +270,25 @@ export function NewTest() {
   };
 
   return (
-    <div className={cn('mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-6', approvable && 'max-[1179px]:pb-24')}>
-      <header className="grid gap-2">
-        <StageBand />
-        <h1 className="m-0 font-display text-[2.25rem] leading-[1.08] font-semibold tracking-[-0.034em] text-balance text-foreground max-[860px]:text-[1.75rem]">
-          Test Studio
-        </h1>
-        <p className="max-w-[64ch] text-muted-foreground">
-          Describe the traffic you expect. Macro drafts a staged plan, fixed rules check it, and nothing runs until you approve.
-        </p>
+    <div className={cn('mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-5', approvable && 'max-[1179px]:pb-24')}>
+      <header className="flex flex-col justify-between gap-4 min-[861px]:flex-row min-[861px]:items-end">
+        <div className="grid gap-1.5">
+          <StageBand />
+          <h1 className="m-0 font-display text-[2.25rem] leading-[1.08] font-semibold tracking-[-0.034em] text-balance text-foreground max-[860px]:text-[1.75rem]">
+            Test Studio
+          </h1>
+        </div>
+
+        {showComposer ? (
+          <TargetPicker
+            targetMode={targetMode}
+            webOrigin={config.webOrigin}
+            me={me}
+            verifiedOrigin={verifiedOrigin}
+            disabled={!idle}
+            onChooseTarget={chooseTarget}
+          />
+        ) : null}
       </header>
 
       {config.runtimeError ? (
@@ -288,19 +298,10 @@ export function NewTest() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 items-start gap-6 min-[1180px]:grid-cols-[minmax(0,1fr)_minmax(300px,380px)]">
+      <div className="grid grid-cols-1 items-start gap-5 min-[1180px]:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.95fr)]">
         <div className="flex min-w-0 flex-col gap-4">
           {showComposer ? (
-            <>
-              <TargetPicker
-                targetMode={targetMode}
-                webOrigin={config.webOrigin}
-                me={me}
-                verifiedOrigin={verifiedOrigin}
-                disabled={!idle}
-                onChooseTarget={chooseTarget}
-              />
-              <TrafficComposer
+            <TrafficComposer
                 text={text}
                 min={min}
                 max={max}
@@ -326,13 +327,12 @@ export function NewTest() {
                 onSubmitDraft={() => void startPlanning(text.trim())}
                 onKeepPlan={keepPlan}
                 onRetry={() => lastSubmitted !== null && void startPlanning(lastSubmitted)}
-                onApplyAssistant={(nextDraft) => {
-                  setText(nextDraft);
-                  setLastEditedAt(Date.now());
-                  textarea.current?.focus();
-                }}
-              />
-            </>
+              onApplyAssistant={(nextDraft) => {
+                setText(nextDraft);
+                setLastEditedAt(Date.now());
+                textarea.current?.focus();
+              }}
+            />
           ) : (
             <PlanBrief text={lastSubmitted ?? text} origin={activeOrigin} disabled={!idle} onEdit={editDescription} />
           )}

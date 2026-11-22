@@ -4,6 +4,7 @@
  * descriptions that can pass. Once a plan is ready to approve, the rules fold away under the
  * approve panel (`folded`).
  */
+import type { ReactNode } from 'react';
 import { ChevronDownIcon } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -74,15 +75,17 @@ function Rules({ targetOrigin }: { targetOrigin?: string | null | undefined }) {
 export function GateRules({
   folded = false,
   targetOrigin,
+  banner,
 }: {
   folded?: boolean;
   targetOrigin?: string | null | undefined;
+  banner?: ReactNode | undefined;
 }) {
   if (folded) {
     return (
-      <details className="group rounded-md border border-border bg-surface p-5 sm:px-6">
+      <details className="group rounded-md border border-[var(--ap-line-strong)] bg-surface p-5 sm:px-6">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-sm py-0.5 focus-visible:outline-[3px] focus-visible:outline-offset-[3px] focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
-          <h2 className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">{TITLE}</h2>
+          <h2 className="m-0 font-display text-[1.0625rem] font-semibold tracking-[-0.02em] text-foreground">{TITLE}</h2>
           <ChevronDownIcon
             className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none"
             aria-hidden="true"
@@ -98,8 +101,9 @@ export function GateRules({
 
   return (
     <TelemetryPanel ticks="bar" aria-labelledby="gate-rules-heading">
+      {banner}
       <div className="flex flex-col gap-1.5">
-        <h2 id="gate-rules-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+        <h2 id="gate-rules-heading" className="m-0 font-display text-[1.125rem] font-semibold tracking-[-0.025em] text-foreground">
           {TITLE}
         </h2>
         <p className="text-sm text-muted-foreground">{NOTE}</p>

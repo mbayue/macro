@@ -121,20 +121,19 @@ export function GateSidebar({
         </TelemetryPanel>
       ) : null}
 
-      {review === null ? (
-        <TelemetryPanel ticks="bar" aria-label="Policy Gate preview" className="gap-2.5">
-          <DitherBanner
-            src="/landing/img/dither/sanok-span.webp"
-            label="Policy Gate & Stage Preview"
-            meta="Ready"
-          />
-          <p className="m-0 text-xs text-muted-foreground">
-            Every drafted plan is checked against fixed target, stage, VU, and stop-threshold rules before you approve.
-          </p>
-        </TelemetryPanel>
-      ) : null}
-
-      <GateRules folded={review !== null} targetOrigin={activeOrigin} />
+      <GateRules
+        folded={review !== null}
+        targetOrigin={activeOrigin}
+        banner={
+          review === null ? (
+            <DitherBanner
+              src="/landing/img/dither/sanok-span.webp"
+              label="Policy Gate & Stage Preview"
+              meta="Ready"
+            />
+          ) : undefined
+        }
+      />
 
       {review === null ? (
         <>

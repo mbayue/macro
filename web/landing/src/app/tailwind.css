@@ -134,6 +134,7 @@
     --sidebar-ring: var(--accent-text);
     --ap-glass: rgba(253, 255, 245, 0.88);
     --ap-glass-border: rgba(0, 30, 43, 0.15);
+    --ap-line-strong: rgba(0, 30, 43, 0.22);
     --ap-scrim:
       radial-gradient(ellipse 68% 58% at 32% 30%, rgba(253, 255, 245, 0.90) 0%, rgba(253, 255, 245, 0.64) 58%, rgba(253, 255, 245, 0.24) 100%),
       linear-gradient(180deg, rgba(253, 255, 245, 0.24) 0%, var(--bg) 100%);
@@ -143,6 +144,7 @@
     --warn: #f2c46d;
     --ap-glass: rgba(6, 22, 33, 0.88);
     --ap-glass-border: rgba(255, 255, 255, 0.14);
+    --ap-line-strong: rgba(255, 255, 255, 0.18);
     --ap-scrim:
       radial-gradient(ellipse 68% 55% at 50% 25%, rgba(0, 30, 43, 0.88) 0%, rgba(0, 30, 43, 0.56) 60%, rgba(0, 30, 43, 0.2) 100%),
       linear-gradient(180deg, rgba(0, 30, 43, 0.2) 0%, var(--bg) 100%);
@@ -625,6 +627,7 @@
       --thumb-edge: #001e2b;
       --ap-glass: #fdfff5;
       --ap-glass-border: #e4e8e0;
+      --ap-line-strong: #c8cfc4;
       --ap-scrim: none;
     }
 

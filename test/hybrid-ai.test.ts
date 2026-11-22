@@ -362,8 +362,13 @@ describe('remoteconfig.template.json', () => {
   test('defines all 5 Hybrid AI parameters matching in-app defaults', () => {
     const rawJson = readFileSync(join(import.meta.dir, '..', 'remoteconfig.template.json'), 'utf8');
     const template = JSON.parse(rawJson) as {
+      conditions?: unknown;
+      parameterGroups?: unknown;
       parameters: Record<string, { defaultValue: { value: string }; valueType: string; description: string }>;
     };
+    expect(Array.isArray(template.conditions)).toBe(true);
+    expect(template.parameterGroups !== null && typeof template.parameterGroups === 'object' && !Array.isArray(template.parameterGroups)).toBe(true);
+
     const keys = [
       'hybrid_ai_enabled',
       'hybrid_inference_mode',
@@ -382,6 +387,8 @@ describe('remoteconfig.template.json', () => {
     expect(rawValues.hybrid_ai_enabled).toBe('true');
     expect(rawValues.hybrid_inference_mode).toBe('prefer_on_device');
     expect(rawValues.hybrid_cloud_model).toBe('gemini-3.8-flash');
+    expect(rawValues.hybrid_cloud_model).not.toMatch(/^gemini-[12]\./i);
+    expect(DEFAULT_HYBRID_REMOTE_CONFIG.cloudModel).not.toMatch(/^gemini-[12]\./i);
     expect(parseHybridRemoteConfig(rawValues)).toEqual(DEFAULT_HYBRID_REMOTE_CONFIG);
   });
 });

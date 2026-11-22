@@ -20,6 +20,10 @@ When building or reviewing `/app/` UI, tokens, typography, or CSP styling, read 
 
 For module boundaries and commands see `docs/architecture.md`; for review-time UI, telemetry, and React 19 standards see `CODING_STANDARDS.md`.
 
+### Firebase
+
+For Firebase AI Logic, App Check, Remote Config, or CLI deploys (`npx -y firebase-tools@latest`), load `firebase-basics`, `firebase-ai-logic-basics`, or `firebase-remote-config-basics` first.
+
 ### Windows, screenshots and deploy
 
 Before running shell commands, worktrees, dev servers, screenshots or a deploy on this Windows PC, read `docs/agents/windows.md`.

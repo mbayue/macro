@@ -59,7 +59,8 @@ if (-not $healthy) { Fail 'macro-api did not report healthy within 2 minutes' }
 
 if (-not $SkipPurge) {
   Step 'Purging the Cloudflare cache'
-  cf cache purge --zone $Zone --body '{\"purge_everything\":true}' --force | Out-Null
+  $purgeBody = if ($PSVersionTable.PSVersion.Major -ge 7) { '{"purge_everything":true}' } else { '{\"purge_everything\":true}' }
+  cf cache purge --zone $Zone --body $purgeBody --force | Out-Null
   if ($LASTEXITCODE -ne 0) { Fail 'cache purge (run cf auth login?)' }
 }
 

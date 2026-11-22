@@ -22,7 +22,7 @@ For module boundaries and commands see `docs/architecture.md`; for review-time U
 
 ### Firebase
 
-For Firebase AI Logic, App Check, Remote Config, or CLI deploys (`npx -y firebase-tools@latest`), load `firebase-basics`, `firebase-ai-logic-basics`, or `firebase-remote-config-basics` first.
+For Firebase AI Logic, App Check, Remote Config, Cloud Firestore (`firestore.rules`), or CLI deploys (`npx -y firebase-tools@latest`), load `firebase-basics`, `firebase-ai-logic-basics`, `firebase-remote-config-basics`, `firebase-firestore`, `firestore-rules-creation`, or `firebase-security-rules-auditor` first.
 
 ### Windows, screenshots and deploy
 

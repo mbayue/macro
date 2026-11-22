@@ -1,19 +1,10 @@
 /**
  * Client-side Cloud Firestore Scenario Library (`scenario_templates`).
- * Uses offline persistence (`persistentLocalCache`) so curated Traffic Description templates
- * remain available offline alongside On-Device Model (Gemini Nano), falling back to built-in examples.
+ * Dynamically loads `firebase/firestore` off the critical render path and uses offline persistence
+ * (`persistentLocalCache`) so curated Traffic Description templates remain available offline
+ * alongside On-Device Model (Gemini Nano), falling back to built-in examples.
  */
-import {
-  collection,
-  getDocs,
-  getFirestore,
-  initializeFirestore,
-  limit,
-  orderBy,
-  persistentLocalCache,
-  query,
-  type Firestore,
-} from 'firebase/firestore';
+import type { Firestore } from 'firebase/firestore';
 import type { FirebaseWebConfig } from '../../../../../src/api-types.ts';
 import { getFirebaseAppWithAppCheck } from './hybrid-ai.ts';
 
@@ -63,20 +54,6 @@ export function parseScenarioTemplates(
   return deduped.length > 0 ? deduped : fallback;
 }
 
-function getOrCreateFirestore(config: FirebaseWebConfig): Firestore {
-  const cached = firestoreCache.get(config.appId);
-  if (cached) return cached;
-  const app = getFirebaseAppWithAppCheck(config);
-  let db: Firestore;
-  try {
-    db = initializeFirestore(app, { localCache: persistentLocalCache() });
-  } catch {
-    db = getFirestore(app);
-  }
-  firestoreCache.set(config.appId, db);
-  return db;
-}
-
 /**
  * Fetches curated scenario templates from Cloud Firestore (`scenario_templates`),
  * cached once per app session with a 4 s timeout and silent fallback to built-in examples.
@@ -91,10 +68,26 @@ export function fetchScenarioTemplates(
   const pending = (async (): Promise<readonly ScenarioTemplate[]> => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      const db = getOrCreateFirestore(config);
-      const q = query(collection(db, 'scenario_templates'), orderBy('order', 'asc'), limit(12));
+      const firestoreMod = await import('firebase/firestore');
+      let db = firestoreCache.get(config.appId);
+      if (!db) {
+        const app = getFirebaseAppWithAppCheck(config);
+        try {
+          db = firestoreMod.initializeFirestore(app, {
+            localCache: firestoreMod.persistentLocalCache(),
+          });
+        } catch {
+          db = firestoreMod.getFirestore(app);
+        }
+        firestoreCache.set(config.appId, db);
+      }
+      const q = firestoreMod.query(
+        firestoreMod.collection(db, 'scenario_templates'),
+        firestoreMod.orderBy('order', 'asc'),
+        firestoreMod.limit(12),
+      );
       const snap = await Promise.race([
-        getDocs(q),
+        firestoreMod.getDocs(q),
         new Promise<never>((_, reject) => {
           timer = setTimeout(() => reject(new Error('Firestore scenario templates timed out')), 4_000);
         }),

@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   parseScenarioTemplates,
   type ScenarioTemplate,
@@ -32,5 +34,20 @@ describe('parseScenarioTemplates', () => {
     expect(
       parseScenarioTemplates([{ label: 'Inactive', text: 'Valid length text here.', order: 1, active: false }], FALLBACK),
     ).toEqual(FALLBACK);
+  });
+});
+
+describe('firestore.rules & firebase.json', () => {
+  test('wires firestore.rules with default-deny, bounded list limit, and no open client writes', () => {
+    const root = join(import.meta.dir, '..');
+    const firebaseJson = JSON.parse(readFileSync(join(root, 'firebase.json'), 'utf8')) as {
+      firestore?: { rules?: string };
+    };
+    expect(firebaseJson.firestore?.rules).toBe('firestore.rules');
+
+    const rules = readFileSync(join(root, 'firestore.rules'), 'utf8');
+    expect(rules).toContain('allow read, write: if false;');
+    expect(rules).toContain('request.query.limit');
+    expect(rules).not.toMatch(/allow\s+(write|create|update|delete)\s*:\s*if\s+true\b/);
   });
 });

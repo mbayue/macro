@@ -20,9 +20,9 @@ House rules, checked in review (the mechanical ones also by `validateWebSource`,
 - Stylesheet entry: `landing.css` (Tailwind v4 on `tokens.css`, declaring `Space Grotesk 600` and `Geist Mono 400`). Phone layout is the base; desktop goes under `split:` (860 px) or media queries in `@layer components`.
 - `components/StageBand.tsx`: `<StageBand upTo size tone />`; `STAGE_SEGMENTS` is the single source of the 1 : 2 : 4 : 8 weights.
 - `pages/Home.tsx` lists the 5 beats in page order:
-  1. `HeroWorkbench` (island): floating nav + `ThemeToggle`, dithered hero backdrop (switched via CSS `dark:block` / `dark:hidden` for zero hydration flash), H1 + CTAs, and 3-tab interactive workbench (`Capacity Report`, `Policy Gate`, `Containment 5/5`) with clickable left rail.
+  1. `HeroWorkbench` (island): floating nav + `ThemeToggle`, dithered hero backdrop (switched via CSS `dark:block` / `dark:hidden` for zero hydration flash), H1 + CTAs, and fixed-height (`520px` desktop) 3-tab interactive workbench (`Capacity Report` matching `/app/`'s 4-KPI + `What happened` feed, 2-column `Policy Gate` with real 500 VU cap and in-place `Draft a plan` / `Approve & Run`, and `Containment 5/5` with real `(a)`–`(e)` checks) with clickable `/app/`-matched left rail.
   2. `Pipeline` (island): 4-node deterministic execution chain (`01 Traffic Description` -> `02 Policy Gate` -> `03 gVisor + Egress Proxy` -> `04 Number Guard`).
-  3. `SanokProof` (island): 4 interactive Bayer-dithered Sanok bridge plates + Hybrid Inference & Number Guard quote + real `d28cacd6` per-route p95 breakdown (`store_home`, `catalog_list`, `product_detail`).
+  3. `SanokProof` (island): 4 interactive Bayer-dithered Sanok bridge plates (fixed caption `min-height: 102px` to prevent height jumps) + Hybrid Inference & Number Guard quote + real `d28cacd6` per-route p95 breakdown (`store_home`, `catalog_list`, `product_detail`).
   4. `LimitsFaq` (static HTML): `Demo Target` vs. `Own Site` table beside 4 open product-specific FAQs.
   5. `Close` (static HTML): dithered closing CTA backdrop + `SiteFooter` (compact single-row footer).
 - Entrance motion: `data-reveal` (and `data-i` for stagger) handled by `reveal.ts`; content stays visible if the script fails. Motion uses transform and opacity only; `prefers-reduced-motion: reduce` disables press/entrance transforms.

@@ -77,7 +77,7 @@ rounded:
 spacing:
   tile-gap: "8px"
   panel-x: "24px"
-  panel-y: "20px"
+  panel-y: "24px"
   section: "24px"
 components:
   button-primary:
@@ -99,7 +99,7 @@ components:
   panel:
     backgroundColor: "{colors.evergreen-surface}"
     rounded: "{rounded.md}"
-    padding: "20px 24px"
+    padding: "24px"
   tile-live:
     backgroundColor: "{colors.spring}"
     textColor: "{colors.ink-dark}"
@@ -185,27 +185,27 @@ One corner language: `6px` (`rounded-md`) on buttons, panels, tiles, inputs, dia
 
 ### Shell Navigation
 - **Desktop Rail & Mobile Sheet:** Permanent dark-evergreen desktop rail (`#001e2b` / `#21313a`) in both themes with monochrome `M` `BrandMark` + wordmark, spring-green **New test** button (`#/`), quiet navigation links (**Test Studio** `#/`, **Runs Table** `#/runs`, **Containment Probe** `#/probe`, **Domains** `#/domains`, **Account** `#/account` or `#/sign-in`), and footer legal links (**About Macro**, **Privacy**, **Terms**). Current route gets `#21313a` fill, `#ffffff` text, and a subtle hairline indicator (never spring green). Collapsing on desktop shows `Tooltip` labels on icons.
-- **Top Context Bar:** Frosted sticky header (`var(--ap-glass)`, `backdrop-filter: blur(14px)`) showing `Macro / <Screen Title>` breadcrumb in Geist Mono, active target host and `Demo` / `Verified` badge (plus a pending verification link to `#/domains` when present), `/api/quota` planning and daily run counters (`Plans left N of M`, `Runs left N of M` in Geist Mono, labelled `per IP` when signed out, hidden at `<= 860px`), **Quick Jump** trigger (`Ctrl+K` / `⌘K`), theme toggle, and account dropdown (`Sign in` when signed out; identity, links, and `Sign out` when signed in). Never duplicates rail routes as tabs.
+- **Top Context Bar:** Single-line `59px` frosted sticky header (`var(--ap-glass)`, `backdrop-filter: blur(14px)`) aligned seamlessly with the `59px` rail brand header, showing `Macro / <Screen Title>` breadcrumb (`15px` Geist Mono, truncated cleanly), active target host and `Demo` / `Verified` badge (plus a pending verification link to `#/domains` when present), `/api/quota` planning and daily run counters (`Plans left N of M`, `Runs left N of M` in Geist Mono, labelled `per IP` when signed out, hidden at `<= 860px`), and `34px`-tall **Quick Jump** trigger (`Ctrl+K` / `⌘K`), theme toggle, and static informational email pill when signed in (`Sign in` link when signed out; account management lives in the **Account** rail route). Never duplicates rail routes as tabs.
 - **Atmospheric Dither Accents:** `220px` CSS-switched Bayer-dithered header band behind `<main>` (`sanok-trucks.webp` light / `dark-horizon.webp` dark, covered by `--ap-scrim`) and `92px` Bayer-dithered banner strips with frosted mono captions on `GateSidebar`, `ProbeStart`/`Probe`, `Domains`, and `SignIn` (all `print:hidden`).
-- **Quick Jump (`Ctrl/Cmd+K`):** Keyboard-driven `CommandDialog` listing main routes (including **Domains** `#/domains`), recent runs (`/api/account/runs` when signed in, browser storage when signed out), and global actions (**New test**, **Toggle theme**, **Sign in** / **Sign out**), with loop navigation and clean focus restoration when dismissed.
+- **Quick Jump (`Ctrl/Cmd+K`):** Instant-open (`duration-0`, `overscroll-contain`) keyboard-driven `CommandDialog` listing main routes (including **Domains** `#/domains`), recent runs (`/api/account/runs` when signed in, browser storage when signed out), and global actions (**New test**, **Toggle theme**, **Sign in** / **Sign out**), with loop navigation and clean focus restoration when dismissed.
 
 ### Test Studio (`#/`)
-- **Left Column:** **Target environment** picker (**Demo Target** vs **Own Site**, linking to **Domains** `#/domains` for DNS TXT / `/.well-known/` / Domain Connect verification), **Traffic description** composer with live code-point counter, example buttons, and **Scenario Assistant** (`HybridBadge` for on-device Gemini Nano / cloud Gemini), folding into `PlanBrief` + `PlanReview` (**Policy Gate** verdict, stage bars, journey table, `JourneyChecks`, and `Model calls`) once drafted.
-- **Sticky Right Column (`GateSidebar`):** **Policy Gate** verdict summary, collapsible/expanded `GateRules` (`Target`, stage/VU/duration bounds, route catalog), `Stage & VU preview`, and spring-green **Approve & Run** gate with Turnstile inside (`ApproveBar` docks at bottom `< 1180px` when off-screen).
+- **Left Column:** **Traffic Description** composer with header Hybrid AI availability badge (`On-Device Model: Gemini Nano` / `Cloud Model: Gemini`), `aria-pressed` example tabs, live code-point counter, one-click **Refine with Scenario Assistant**, and dark-ink **Draft a plan** button (plus **After you draft** and **30-day demo baseline** below on Demo Target). Once drafted, folds into `PlanBrief` + `PlanReview` (**Policy Gate** status badge, stage bars with full-width expandable table, journey table, and `JourneyChecks`), with always-open **Model calls** spanning full-width below the two-column grid.
+- **Sticky Right Column (`GateSidebar`):** Before drafting, shows `GateRules` (with flush dither banner) + **Sample report** on Demo Target. Once drafted, merges into a single unified **Policy Gate Verdict** card (flush dither banner, verdict badge, Turnstile, spring-green **Approve & Run** — swapping to **Revise the plan** whenever route checkboxes change — **Cancel**, and always-open **What the policy gate allows** limits footer; `ApproveBar` docks at bottom `< 1180px` when off-screen).
 
 ### Live Run & Capacity Report (`#/run/:id?tab=overview|stages|ai|audit`)
 - **Tabs & Sticky KPI Strip:** `?tab=overview|stages|ai|audit` (unknown values fall back to `overview`). **AI Insights & Report Q&A** stays disabled while the run is live (`available when the report is ready`). Scrolling past the full **SignatureTiles** on Overview or switching to another tab reveals the sticky one-line **KPI Strip** above the tabs (`stage-or-safe`, `p95-or-breaking`, `error-or-route`, `safe-or-peak` with source stage/limit notes).
 - **Overview:** Four **SignatureTiles** (spring green highlights the live running stage with `TileProgress`, then **Safe Capacity** at display scale when ended), restyled hand-written SVG `RouteChart` (`p95 latency per route` using semantic strokes and Geist Mono ticks) beside `What happened` feed (`Feed`), `StageProfile` bar, `ReportMeta`, CSV & Print/PDF `ReportExport`, and `Run again and compare` (`RunsPanel`, using a Base UI `Dialog` confirmation modal for **Run this plan again?**), which fetches `/api/compare` and embeds `CompareView` inline alongside an **Open full compare view** link (`#/compare/:a/:b`).
 - **Stages & Routes:** `LiveStages` / `ReportStages` with expandable per-stage route breakdowns and per-second SVG `SecondChart` (`During the stage`).
 - **AI Insights & Report Q&A:** AI-labelled explanation and suggestions (`AiSection`) plus **Report Q&A** (`ReportQa`) with pre-flight `HybridAvailabilityBadge`, `HybridStopButton`, and client-side Number Guard verification on completed replies.
-- **Audit Log:** **Policy Gate** & plan approval metadata, **Supervisor** decisions, containment events, and collapsible `Model calls`.
+- **Audit Log:** **Policy Gate** & plan approval metadata, **Supervisor** decisions, containment events, and always-open `Model calls`.
 
 ### Runs Table (`#/runs`) & Run Compare (`#/compare/:a/:b`)
 - **Runs Table:** Loads `/api/account/runs` (up to 50) when signed in or browser recent runs (up to 10) when signed out; supports client-side search (plan name or run ID), type filter (`All`, `Load tests`, `Probes`), status filter (`All`, `Completed`, `Running`, `Stopped / Halted`, `Failed`), and two-row checkbox selection gating **Compare selected runs**.
 - **Run Compare:** Shared `CompareView` component used both at `#/compare/:a/:b` and inline in Capacity Report `RunsPanel`; handles loading skeletons, error retries, `"Different plans"` warning banner when plan IDs differ, baseline vs later summary cards, headline comparison, and per-stage comparison tables.
 
 ### Containment Probe, Domains, Sign-in & Account
-- **Containment Probe (`#/probe`, `#/probe/:id`):** Five escape-attempt cards `(a)`–`(e)`, sticky run panel with Turnstile, live probe polling/SSE feed, spring-green passed verdict (`5/5 actions contained`), and actions/containment tables.
+- **Containment Probe (`#/probe`, `#/probe/:id`):** Full-width launch panel with flush dither banner, runtime/cap mono badges, Turnstile + **Run containment probe**, and baseline-aligned `(a)`–`(e)` escape-attempt table; live probe polling/SSE feed, spring-green passed verdict (`5/5 actions contained`), and actions/containment tables.
 - **Domains (`#/domains`, aliases `#/verify`, `#/verify-panel`):** Two-column layout (`VerifyPanel` + **How own-site testing works** on the left; **Domain rules & limits** sticky sidebar on the right) enforcing one verified HTTPS origin per account via Domain Connect, DNS TXT (`_macro-verify`), or `/.well-known/macro-site-verification`.
 - **Sign in (`#/sign-in`) & Account (`#/account`):** Google / GitHub OAuth links, accessible magic-link email form (`aria-invalid`, `aria-describedby`, cooldown badge), two-column signed-in layout (**Session active** + **Delete account** `ConfirmButton` on the left; **Account & data** sticky sidebar on the right), and a shared **Sign out?** `Dialog` confirmation across all sign-out triggers.
 

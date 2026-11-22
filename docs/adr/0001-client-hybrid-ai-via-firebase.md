@@ -9,6 +9,6 @@ Macro runs server-side LLM calls for test planning, supervision, and report narr
 
 ## Client Safeguards
 
-- **Pre-flight availability detection**: Probes `LanguageModel.availability()` on mount so Scenario Assistant and Report Q&A surface `On-device ready`, `Gemini Nano downloading`, or `Cloud fallback` before a prompt runs.
+- **Pre-flight availability detection**: Probes `LanguageModel.availability()` on mount so Scenario Assistant and Report Q&A surface `On-Device Model: Gemini Nano`, `Gemini Nano downloading`, or `Cloud Model: Gemini` before a prompt runs.
 - **Stream cancellation**: Passes an `AbortController` signal into `generateContentStream` / `generateContent` so clicking **Stop** aborts the request and preserves any streamed partial text.
 - **Client-side Number Guard**: Verifies completed Report Q&A replies against `CapacityReport` numbers (`allowedNumbers` + `guardText`) and warns when unverified numbers appear.

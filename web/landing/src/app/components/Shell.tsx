@@ -75,7 +75,7 @@ function ShellLayout({
   return (
     <div
       data-slot="app-shell"
-      className="grid min-h-dvh grid-cols-1 [--rail:240px] data-[rail-collapsed=true]:[--rail:64px] min-[861px]:grid-cols-[var(--rail)_minmax(0,1fr)] print:block"
+      className="grid min-h-dvh grid-cols-1 min-[861px]:grid-cols-[240px_minmax(0,1fr)] min-[861px]:data-[rail-collapsed=true]:grid-cols-[64px_minmax(0,1fr)] min-[861px]:transition-[grid-template-columns] min-[861px]:duration-150 motion-reduce:transition-none print:block"
       data-rail-collapsed={state.railCollapsed ? 'true' : 'false'}
     >
       <a
@@ -98,8 +98,8 @@ function ShellLayout({
 
         <div className="relative flex min-w-0 flex-1 flex-col">
           <div className="atmo-band print:hidden" aria-hidden="true">
-            <img className="atmo-band-img atmo-band-light" src="/landing/img/dither/sanok-trucks.webp" alt="" />
-            <img className="atmo-band-img atmo-band-dark" src="/landing/img/dither/dark-horizon.webp" alt="" />
+            <img className="atmo-band-img atmo-band-light" src="/landing/img/dither/sanok-trucks.webp" width={1920} height={1280} alt="" />
+            <img className="atmo-band-img atmo-band-dark" src="/landing/img/dither/dark-horizon.webp" width={1920} height={1280} alt="" />
             <div className="atmo-band-scrim" />
           </div>
 

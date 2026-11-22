@@ -1,4 +1,4 @@
-import { PlusIcon, TablePropertiesIcon } from 'lucide-react';
+import { PanelsTopLeftIcon, PlusIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TelemetryPanel } from '../components/studio/TelemetryFrame.tsx';
 
@@ -27,7 +27,7 @@ export function NotFound() {
             Test Studio
           </Button>
           <Button render={<a href="#/runs" />} nativeButton={false} variant="secondary">
-            <TablePropertiesIcon data-icon="inline-start" />
+            <PanelsTopLeftIcon data-icon="inline-start" />
             Runs Table
           </Button>
         </div>

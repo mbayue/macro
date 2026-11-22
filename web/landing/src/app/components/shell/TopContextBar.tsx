@@ -1,25 +1,6 @@
-import {
-  AlertCircleIcon,
-  ChevronDownIcon,
-  LogOutIcon,
-  MoonIcon,
-  SearchIcon,
-  SunIcon,
-  TablePropertiesIcon,
-  UserIcon,
-} from 'lucide-react';
+import { AlertCircleIcon, UserIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuLinkItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useShell } from './ShellContext.tsx';
 import { formatQuotaReadout, formatRouteBreadcrumb } from './shell-view.ts';
@@ -33,24 +14,24 @@ export function TopContextBar() {
   return (
     <div
       data-slot="shell-context-bar"
-      className="shell-glass-bar border-b border-border px-4 py-2.5 min-[861px]:sticky min-[861px]:top-0 min-[861px]:z-20 min-[861px]:px-10 print:hidden"
+      className="shell-glass-bar flex min-h-[59px] items-center border-b border-border px-4 py-2.5 min-[861px]:sticky min-[861px]:top-0 min-[861px]:z-20 min-[861px]:px-10 print:hidden"
     >
       <div className="flex w-full items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5">
-          <span className="hidden min-[1280px]:inline-flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
-            <span>Macro</span>
-            <span aria-hidden="true">/</span>
-            <span className="max-w-[240px] truncate font-medium text-foreground">{breadcrumb}</span>
+        <div className="flex min-w-0 flex-nowrap items-center gap-2.5 overflow-hidden">
+          <span className="hidden min-[1280px]:inline-flex min-w-0 items-center gap-1.5 font-mono text-[0.9375rem] text-muted-foreground">
+            <span className="shrink-0">Macro</span>
+            <span className="shrink-0" aria-hidden="true">/</span>
+            <span className="max-w-[200px] truncate font-medium text-foreground">{breadcrumb}</span>
           </span>
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <div className="flex min-w-0 shrink-0 flex-nowrap items-center gap-2">
             <span className="text-xs text-muted-foreground min-[861px]:sr-only">Target</span>
             <span
-              className="max-w-[240px] truncate rounded-sm border border-[var(--ap-line-strong)] bg-surface px-2 py-0.5 font-mono text-xs text-foreground sm:max-w-xs"
+              className="inline-flex max-w-[180px] items-center truncate rounded-sm border border-[var(--ap-line-strong)] bg-surface px-2 py-[3px] font-mono text-xs leading-[1.2] text-foreground min-[1440px]:max-w-[240px]"
               title={state.target.host ?? undefined}
             >
               {state.target.host ?? 'Demo Target'}
             </span>
-            <Badge variant={state.target.kind === 'verified' ? 'ok' : 'outline'} className="font-mono">
+            <Badge variant={state.target.kind === 'verified' ? 'ok' : 'outline'} className="shrink-0 px-2 py-[3px] font-mono text-xs leading-[1.2]">
               {state.target.badgeLabel}
             </Badge>
             {state.target.pendingHost !== null ? (
@@ -67,11 +48,11 @@ export function TopContextBar() {
           </div>
         </div>
 
-        <div className="hidden min-[861px]:flex shrink-0 items-center gap-2">
+        <div className="hidden min-[861px]:flex shrink-0 items-center gap-2.5">
           <div
             role="group"
             aria-label="Usage quota"
-            className="inline-flex items-center gap-1.5 rounded-sm border border-[var(--ap-line-strong)] bg-surface px-2.5 py-1 font-mono text-xs"
+            className="inline-flex items-center gap-1.5 rounded-sm border border-[var(--ap-line-strong)] bg-surface px-2 py-[3px] font-mono text-xs leading-[1.2]"
           >
             {quota !== null ? (
               <>
@@ -96,19 +77,13 @@ export function TopContextBar() {
             ) : null}
           </div>
 
-          <Button
+          <button
             type="button"
-            variant="outline"
-            size="sm"
             onClick={actions.openQuickJump}
-            className="border-[var(--ap-line-strong)] bg-surface font-mono text-xs text-foreground hover:bg-secondary"
+            className="inline-flex h-[34px] cursor-pointer items-center gap-1.5 rounded-md border border-[var(--ap-line-strong)] bg-surface px-3 font-mono text-xs leading-[1.2] text-foreground transition-[background-color,transform] duration-150 hover:bg-secondary active:scale-[0.97] focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-ring motion-reduce:transition-none"
           >
-            <SearchIcon data-icon="inline-start" />
-            <span>Quick Jump</span>
-            <kbd className="ml-0.5 rounded-sm text-[11px] leading-none text-muted-foreground">
-              · {meta.shortcutHint}
-            </kbd>
-          </Button>
+            <span>Quick Jump · {meta.shortcutHint}</span>
+          </button>
 
           <Tooltip>
             <TooltipTrigger
@@ -120,12 +95,11 @@ export function TopContextBar() {
                   onClick={actions.toggleTheme}
                   aria-label={state.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
                   aria-pressed={state.theme === 'dark'}
-                  className="border-[var(--ap-line-strong)] bg-surface text-xs text-foreground hover:bg-secondary"
+                  className="h-[34px] rounded-md border-[var(--ap-line-strong)] bg-surface px-3 font-sans text-[0.8125rem] font-medium text-foreground hover:bg-secondary"
                 />
               }
             >
-              {state.theme === 'dark' ? <SunIcon data-icon="inline-start" /> : <MoonIcon data-icon="inline-start" />}
-              <span>{state.theme === 'dark' ? 'Light' : 'Dark'}</span>
+              {state.theme === 'dark' ? 'Light' : 'Dark'}
             </TooltipTrigger>
             <TooltipContent side="bottom">
               {state.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
@@ -133,72 +107,19 @@ export function TopContextBar() {
           </Tooltip>
 
           {state.me !== null ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="max-w-[210px] border-[var(--ap-line-strong)] bg-surface text-xs text-foreground hover:bg-secondary"
-                  />
-                }
-              >
-                <span className="truncate">{state.identityLabel}</span>
-                <ChevronDownIcon data-icon="inline-end" />
-              </DropdownMenuTrigger>
-
-              <DropdownMenuContent align="end" sideOffset={6} className="min-w-52">
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel className="font-normal">
-                    <span className="block truncate font-medium text-foreground">{state.identityLabel}</span>
-                    {state.me.verifiedOrigin ? (
-                      <span
-                        className="block truncate font-mono text-[11px] text-muted-foreground"
-                        title={state.me.verifiedOrigin.host}
-                      >
-                        {state.me.verifiedOrigin.host}
-                      </span>
-                    ) : null}
-                  </DropdownMenuLabel>
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                  <DropdownMenuLinkItem href="#/account">
-                    <UserIcon />
-                    Account
-                  </DropdownMenuLinkItem>
-                  <DropdownMenuLinkItem href="#/runs">
-                    <TablePropertiesIcon />
-                    Runs Table
-                  </DropdownMenuLinkItem>
-                  {state.target.pendingHost !== null ? (
-                    <DropdownMenuLinkItem href="#/domains">
-                      <AlertCircleIcon />
-                      Finish verifying {state.target.pendingHost}
-                    </DropdownMenuLinkItem>
-                  ) : null}
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                  <DropdownMenuItem
-                    variant="destructive"
-                    disabled={state.signingOut}
-                    onClick={() => void actions.signOut()}
-                  >
-                    <LogOutIcon />
-                    {state.signingOut ? 'Signing out…' : 'Sign out'}
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <span
+              className="inline-flex h-[34px] max-w-[220px] items-center rounded-md border border-[var(--ap-line-strong)] bg-surface px-3 font-sans text-[0.8125rem] font-medium text-foreground"
+              title={state.identityLabel ?? undefined}
+            >
+              <span className="truncate">{state.identityLabel}</span>
+            </span>
           ) : (
             <Button
               render={<a href="#/sign-in" />}
               nativeButton={false}
               variant="outline"
               size="sm"
-              className="border-[var(--ap-line-strong)] bg-surface text-xs text-foreground hover:bg-secondary"
+              className="h-[34px] rounded-md border-[var(--ap-line-strong)] bg-surface px-3 font-sans text-[0.8125rem] font-medium text-foreground hover:bg-secondary"
             >
               <UserIcon data-icon="inline-start" />
               Sign in

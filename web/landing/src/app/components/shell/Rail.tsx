@@ -8,12 +8,12 @@ import {
   MoonIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
+  PanelsTopLeftIcon,
   PlusIcon,
   SearchIcon,
   ShieldCheckIcon,
   SlidersHorizontalIcon,
   SunIcon,
-  TablePropertiesIcon,
   UserIcon,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -45,7 +45,7 @@ function useNavItems(): NavItem[] {
   const { state } = useShell();
   return [
     { id: 'new', label: 'Test Studio', href: '#/', icon: SlidersHorizontalIcon },
-    { id: 'runs', label: 'Runs Table', href: '#/runs', icon: TablePropertiesIcon },
+    { id: 'runs', label: 'Runs Table', href: '#/runs', icon: PanelsTopLeftIcon },
     { id: 'probe', label: 'Containment Probe', href: '#/probe', icon: ShieldCheckIcon },
     { id: 'domains', label: 'Domains', href: '#/domains', icon: GlobeIcon },
     { id: 'account', label: 'Account', href: state.me !== null ? '#/account' : '#/sign-in', icon: UserIcon },
@@ -72,14 +72,14 @@ export function DesktopRail() {
     <aside
       data-slot="shell-rail"
       className={cn(
-        'hidden min-[861px]:flex sticky top-0 h-dvh shrink-0 flex-col border-r border-rail-line bg-rail-bg text-rail-muted transition-[width] duration-150 motion-reduce:transition-none print:hidden',
-        collapsed ? 'w-16 items-center px-3 py-4' : 'w-[240px] px-3.5 py-5',
+        'hidden min-[861px]:flex sticky top-0 z-30 h-dvh w-full shrink-0 flex-col overflow-hidden border-r border-rail-line bg-rail-bg text-rail-muted print:hidden',
+        collapsed ? 'items-center px-2 pb-4' : 'px-3.5 pb-5',
       )}
     >
       <div
         className={cn(
-          'flex w-full shrink-0 items-center border-b border-rail-line',
-          collapsed ? 'flex-col gap-2 pb-3' : 'justify-between gap-2 pb-4',
+          'flex h-[59px] w-full shrink-0 items-center border-b border-rail-line',
+          collapsed ? 'justify-center' : 'justify-between gap-2',
         )}
       >
         {collapsed ? (
@@ -98,34 +98,59 @@ export function DesktopRail() {
             <TooltipContent side="right">Macro — Test Studio</TooltipContent>
           </Tooltip>
         ) : (
-          <a
-            href="#/"
-            className="inline-flex items-center gap-2.5 rounded-md px-1.5 py-1 font-display text-[1.25rem] leading-none font-semibold tracking-[-0.03em] text-rail-ink no-underline focus-visible:outline-[3px] focus-visible:outline-offset-[3px] focus-visible:outline-primary"
-          >
-            <BrandMark surface="rail" />
-            <span>Macro</span>
-          </a>
-        )}
+          <>
+            <a
+              href="#/"
+              className="inline-flex items-center gap-2.5 rounded-md px-1.5 py-1 font-display text-[1.25rem] leading-none font-semibold tracking-[-0.03em] text-rail-ink no-underline focus-visible:outline-[3px] focus-visible:outline-offset-[3px] focus-visible:outline-primary"
+            >
+              <BrandMark surface="rail" />
+              <span>Macro</span>
+            </a>
 
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                onClick={actions.toggleRailCollapsed}
-                aria-label={collapsed ? 'Expand navigation rail' : 'Collapse navigation rail'}
-                aria-expanded={!collapsed}
-                className="text-rail-muted hover:bg-white/8 hover:text-rail-ink aria-expanded:bg-transparent aria-expanded:text-rail-muted aria-expanded:hover:bg-white/8 aria-expanded:hover:text-rail-ink focus-visible:outline-primary"
-              />
-            }
-          >
-            {collapsed ? <PanelLeftOpenIcon /> : <PanelLeftCloseIcon />}
-          </TooltipTrigger>
-          <TooltipContent side="right">{collapsed ? 'Expand rail' : 'Collapse rail'}</TooltipContent>
-        </Tooltip>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={actions.toggleRailCollapsed}
+                    aria-label="Collapse navigation rail"
+                    aria-expanded={true}
+                    className="text-rail-muted hover:bg-white/8 hover:text-rail-ink aria-expanded:bg-transparent aria-expanded:text-rail-muted aria-expanded:hover:bg-white/8 aria-expanded:hover:text-rail-ink focus-visible:outline-primary"
+                  />
+                }
+              >
+                <PanelLeftCloseIcon />
+              </TooltipTrigger>
+              <TooltipContent side="right">Collapse rail</TooltipContent>
+            </Tooltip>
+          </>
+        )}
       </div>
+
+      {collapsed ? (
+        <div className="mt-3 flex justify-center">
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={actions.toggleRailCollapsed}
+                  aria-label="Expand navigation rail"
+                  aria-expanded={false}
+                  className="text-rail-muted hover:bg-white/8 hover:text-rail-ink focus-visible:outline-primary"
+                />
+              }
+            >
+              <PanelLeftOpenIcon />
+            </TooltipTrigger>
+            <TooltipContent side="right">Expand rail</TooltipContent>
+          </Tooltip>
+        </div>
+      ) : null}
 
       <div className={cn('mt-3 mb-3 w-full', collapsed && 'flex justify-center')}>
         {collapsed ? (

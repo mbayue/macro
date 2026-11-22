@@ -10,7 +10,7 @@ import {
   ShieldCheckIcon,
   SlidersHorizontalIcon,
   SunIcon,
-  TablePropertiesIcon,
+  PanelsTopLeftIcon,
   UserIcon,
 } from 'lucide-react';
 import {
@@ -83,7 +83,7 @@ export function QuickJump() {
               keywords={['runs', 'history', 'recent', 'table']}
               onSelect={() => selectRoute('/runs')}
             >
-              <TablePropertiesIcon />
+              <PanelsTopLeftIcon />
               <span>Runs Table</span>
             </CommandItem>
             <CommandItem

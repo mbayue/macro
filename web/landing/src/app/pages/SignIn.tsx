@@ -3,7 +3,7 @@
  * active session actions, and account deletion.
  */
 import { type Ref, useEffect, useId, useRef, useState } from 'react';
-import { ArrowLeftIcon, GlobeIcon, LogOutIcon, MailIcon, TablePropertiesIcon } from 'lucide-react';
+import { ArrowLeftIcon, GlobeIcon, LogOutIcon, MailIcon, PanelsTopLeftIcon } from 'lucide-react';
 import type { MeResponse } from '../../../../../src/api-types.ts';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -74,7 +74,7 @@ export function EmailLinkPanel({
             name="email"
             autoComplete="email"
             spellCheck={false}
-            placeholder="you@company.com…"
+            placeholder="you@company.com"
             required
             value={email}
             onChange={(e) => onEmailChange(e.target.value)}
@@ -208,7 +208,7 @@ export function AccountPanel({
                 Manage domains
               </Button>
               <Button render={<a href="#/runs" />} nativeButton={false} variant="secondary">
-                <TablePropertiesIcon data-icon="inline-start" />
+                <PanelsTopLeftIcon data-icon="inline-start" />
                 View Runs Table
               </Button>
               <Button

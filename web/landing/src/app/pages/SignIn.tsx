@@ -23,6 +23,8 @@ export interface EmailLinkPanelProps {
   error: string | null;
   /** Receives the email field so the page can focus it when a submit is rejected. */
   inputRef?: Ref<HTMLInputElement> | undefined;
+  /** Uses secondary styling when OAuth already holds the primary spring-green button on screen. */
+  secondaryAction?: boolean | undefined;
   onEmailChange: (value: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   onBack: () => void;
@@ -36,6 +38,7 @@ export function EmailLinkPanel({
   wait,
   error,
   inputRef,
+  secondaryAction = false,
   onEmailChange,
   onSubmit,
   onBack,
@@ -49,7 +52,7 @@ export function EmailLinkPanel({
   return (
     <TelemetryPanel ticks="bar" aria-labelledby="signin-email-heading" className="bg-card">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="signin-email-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+        <h2 id="signin-email-heading" className="m-0 font-display text-[1.125rem] font-semibold tracking-[-0.025em] text-foreground">
           Email link
         </h2>
         {wait > 0 ? (
@@ -125,7 +128,7 @@ export function EmailLinkPanel({
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <Button type="submit" disabled={busy || wait > 0}>
+          <Button type="submit" variant={secondaryAction ? 'secondary' : 'default'} disabled={busy || wait > 0}>
             {busy ? (
               <Busy>Sending…</Busy>
             ) : wait > 0 ? (
@@ -170,24 +173,24 @@ export function AccountPanel({
   const identity = me.user.githubLogin ?? me.user.email;
 
   return (
-    <section className="mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-6" aria-labelledby="account-heading">
-      <header className="grid gap-2">
-        <StageBand />
-        <h1
-          id="account-heading"
-          className="m-0 font-display text-[2.25rem] leading-[1.08] font-semibold tracking-[-0.034em] text-balance text-foreground max-[860px]:text-[1.75rem]"
-        >
-          Account
-        </h1>
-        <p className="m-0 max-w-[64ch] text-muted-foreground">
-          You are signed in as <strong className="font-medium break-all text-foreground">{identity}</strong>.
-        </p>
+    <section className="mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-5" aria-labelledby="account-heading">
+      <header className="flex flex-col justify-between gap-3 min-[861px]:flex-row min-[861px]:items-end">
+        <div className="grid gap-1.5">
+          <StageBand />
+          <h1
+            id="account-heading"
+            className="m-0 font-display text-[2.25rem] leading-[1.08] font-semibold tracking-[-0.034em] text-balance text-foreground max-[860px]:text-[1.75rem]"
+          >
+            Account
+          </h1>
+        </div>
+        <Badge variant="ok" className="font-mono">Authenticated · {identity}</Badge>
       </header>
 
-      <div className="grid grid-cols-1 items-start gap-6 min-[1180px]:grid-cols-[minmax(0,1fr)_minmax(300px,380px)]">
+      <div className="grid grid-cols-1 items-start gap-5 min-[1180px]:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.95fr)]">
         <div className="flex min-w-0 flex-col gap-4">
           <TelemetryPanel ticks="bar" aria-labelledby="session-active-heading" className="gap-4 bg-card">
-            <h2 id="session-active-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+            <h2 id="session-active-heading" className="m-0 font-display text-[1.125rem] font-semibold tracking-[-0.025em] text-foreground">
               Session active
             </h2>
 
@@ -229,7 +232,7 @@ export function AccountPanel({
 
           <TelemetryPanel ticks="bar" aria-labelledby="delete-account-heading" className="gap-4 bg-card">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 id="delete-account-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+              <h2 id="delete-account-heading" className="m-0 font-display text-[1.125rem] font-semibold tracking-[-0.025em] text-foreground">
                 Delete account
               </h2>
               <Badge variant="outline">Permanent</Badge>
@@ -280,23 +283,21 @@ export function AccountPanel({
               label="Account & data"
               meta="Private runs & drafts"
             />
-            <h2 id="account-data-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+            <h2 id="account-data-heading" className="m-0 font-display text-[1.125rem] font-semibold tracking-[-0.025em] text-foreground">
               Account &amp; data
             </h2>
-            <dl className="m-0 grid gap-3">
-              <div className="grid gap-0.5">
-                <dt className="text-xs font-medium text-muted-foreground">Email</dt>
-                <dd className="m-0 font-mono text-xs break-all text-foreground">{me.user.email}</dd>
+            <dl className="m-0 grid gap-2.5 text-xs">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-border pb-2.5">
+                <dt className="text-muted-foreground">Email</dt>
+                <dd className="m-0 font-mono break-all text-foreground">{me.user.email}</dd>
               </div>
-              <div className="grid gap-0.5 border-t border-border pt-2.5">
-                <dt className="text-xs font-medium text-muted-foreground">Session cookie</dt>
-                <dd className="m-0 text-sm text-foreground">HttpOnly cookie solely to keep you signed in.</dd>
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-border pb-2.5">
+                <dt className="text-muted-foreground">Session cookie</dt>
+                <dd className="m-0 text-right text-foreground">HttpOnly cookie solely to keep you signed in</dd>
               </div>
-              <div className="grid gap-0.5 border-t border-border pt-2.5">
-                <dt className="text-xs font-medium text-muted-foreground">Account deletion</dt>
-                <dd className="m-0 text-sm text-foreground">
-                  Immediately removes your account, saved draft, verified domain, and private runs.
-                </dd>
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <dt className="text-muted-foreground">Account deletion</dt>
+                <dd className="m-0 text-right text-foreground">Removes draft, domain &amp; private runs</dd>
               </div>
             </dl>
             <p className="m-0 text-xs text-muted-foreground">
@@ -399,21 +400,21 @@ export function SignIn() {
   }
 
   return (
-    <section className="mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-6" aria-labelledby="signin-heading">
-      <header className="grid gap-2">
-        <StageBand />
-        <h1
-          id="signin-heading"
-          className="m-0 font-display text-[2.25rem] leading-[1.08] font-semibold tracking-[-0.034em] text-balance text-foreground max-[860px]:text-[1.75rem]"
-        >
-          Sign in
-        </h1>
-        <p className="m-0 max-w-[64ch] text-muted-foreground">
-          Sign in to verify your site and keep own-site runs private. The demo shop still works signed out.
-        </p>
+    <section className="mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-5" aria-labelledby="signin-heading">
+      <header className="flex flex-col justify-between gap-3 min-[861px]:flex-row min-[861px]:items-end">
+        <div className="grid gap-1.5">
+          <StageBand />
+          <h1
+            id="signin-heading"
+            className="m-0 font-display text-[2.25rem] leading-[1.08] font-semibold tracking-[-0.034em] text-balance text-foreground max-[860px]:text-[1.75rem]"
+          >
+            Sign in
+          </h1>
+        </div>
+        <Badge variant="outline" className="font-mono">Demo Target works signed out</Badge>
       </header>
 
-      <div className="grid grid-cols-1 items-start gap-6 min-[1180px]:grid-cols-[minmax(0,1fr)_minmax(300px,380px)]">
+      <div className="grid grid-cols-1 items-start gap-5 min-[1180px]:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.95fr)]">
         <div className="flex min-w-0 flex-col gap-4">
         {githubEmailError ? (
           <TelemetryPanel tone="bad" ticks="bad" role="alert" className="gap-2 bg-card">
@@ -437,34 +438,29 @@ export function SignIn() {
           </TelemetryPanel>
         ) : null}
 
-        {config.googleSignIn ? (
-          <TelemetryPanel ticks="bar" aria-labelledby="signin-google-heading" className="bg-card">
-            <h2 id="signin-google-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
-              Google
+        {config.googleSignIn || config.githubSignIn ? (
+          <TelemetryPanel ticks="bar" aria-labelledby="signin-oauth-heading" className="bg-card">
+            <h2 id="signin-oauth-heading" className="m-0 font-display text-[1.125rem] font-semibold tracking-[-0.025em] text-foreground">
+              Sign in to verify your Own Site
             </h2>
             <p className="m-0 max-w-[72ch] text-sm text-muted-foreground">
-              Uses your Google account. Macro needs a verified email address.
+              Demo Target tests and Containment Probes work signed out. Sign in with a verified email to verify an HTTPS origin and save up to 50 private runs.
             </p>
             <div className="flex flex-wrap items-center gap-2.5">
-              <Button render={<a href={googleStartHref()} />} nativeButton={false}>
-                Continue with Google
-              </Button>
-            </div>
-          </TelemetryPanel>
-        ) : null}
-
-        {config.githubSignIn ? (
-          <TelemetryPanel ticks="bar" aria-labelledby="signin-github-heading" className="bg-card">
-            <h2 id="signin-github-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
-              GitHub
-            </h2>
-            <p className="m-0 max-w-[72ch] text-sm text-muted-foreground">
-              Uses your GitHub account. Macro needs a verified email address.
-            </p>
-            <div className="flex flex-wrap items-center gap-2.5">
-              <Button render={<a href={githubStartHref()} />} nativeButton={false}>
-                Continue with GitHub
-              </Button>
+              {config.githubSignIn ? (
+                <Button render={<a href={githubStartHref()} />} nativeButton={false}>
+                  Continue with GitHub
+                </Button>
+              ) : null}
+              {config.googleSignIn ? (
+                <Button
+                  render={<a href={googleStartHref()} />}
+                  nativeButton={false}
+                  variant={config.githubSignIn ? 'secondary' : 'default'}
+                >
+                  Continue with Google
+                </Button>
+              ) : null}
             </div>
           </TelemetryPanel>
         ) : null}
@@ -476,6 +472,7 @@ export function SignIn() {
           wait={wait}
           error={error}
           inputRef={emailInput}
+          secondaryAction={Boolean(config.githubSignIn || config.googleSignIn)}
           onEmailChange={(value) => {
             setEmail(value);
             if (error) setError(null);
@@ -492,21 +489,21 @@ export function SignIn() {
               label="No credit card required"
               meta="Demo & Own Site"
             />
-            <h2 id="signin-benefits-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+            <h2 id="signin-benefits-heading" className="m-0 font-display text-[1.125rem] font-semibold tracking-[-0.025em] text-foreground">
               What signing in unlocks
             </h2>
-            <dl className="m-0 grid gap-3">
-              <div className="grid gap-0.5">
-                <dt className="text-xs font-medium text-muted-foreground">Verified Own Site</dt>
-                <dd className="m-0 text-sm text-foreground">Verify 1 HTTPS origin via Domain Connect, DNS TXT, or /.well-known/.</dd>
+            <dl className="m-0 grid gap-2.5 text-xs">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-border pb-2.5">
+                <dt className="text-muted-foreground">Verified Own Site</dt>
+                <dd className="m-0 text-right font-mono text-foreground">1 HTTPS origin via Domain Connect / DNS</dd>
               </div>
-              <div className="grid gap-0.5 border-t border-border pt-2.5">
-                <dt className="text-xs font-medium text-muted-foreground">Runs Table retention</dt>
-                <dd className="m-0 text-sm text-foreground">Store up to 50 private runs with side-by-side Run Compare.</dd>
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-border pb-2.5">
+                <dt className="text-muted-foreground">Runs Table retention</dt>
+                <dd className="m-0 text-right font-mono text-foreground">Up to 50 private runs + Run Compare</dd>
               </div>
-              <div className="grid gap-0.5 border-t border-border pt-2.5">
-                <dt className="text-xs font-medium text-muted-foreground">Draft sync</dt>
-                <dd className="m-0 text-sm text-foreground">Keep your Traffic Description saved across sessions.</dd>
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <dt className="text-muted-foreground">Draft sync</dt>
+                <dd className="m-0 text-right font-mono text-foreground">Saved across sessions</dd>
               </div>
             </dl>
           </TelemetryPanel>

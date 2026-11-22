@@ -1,5 +1,6 @@
 /** Domains page (`#/domains`): add, verify, or remove your verified HTTPS origin. */
 import { ArrowRightIcon, GlobeIcon, LockIcon, SearchIcon, ShieldCheckIcon } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DitherBanner, StageBand, TelemetryPanel } from '../components/studio/TelemetryFrame.tsx';
 import { VerifyPanel } from '../components/VerifyPanel.tsx';
@@ -34,25 +35,25 @@ export function Domains() {
   const { me } = useApp();
 
   return (
-    <div className="mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-6">
-      <header className="grid gap-2">
-        <StageBand />
-        <h1 className="m-0 font-display text-[2.25rem] leading-[1.08] font-semibold tracking-[-0.034em] text-balance text-foreground max-[860px]:text-[1.75rem]">
-          Domains
-        </h1>
-        <p className="m-0 max-w-[64ch] text-muted-foreground">
-          Verify one HTTPS origin you own to run private load tests against your own site in Test Studio.
-        </p>
+    <div className="mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-5">
+      <header className="flex flex-col justify-between gap-3 min-[861px]:flex-row min-[861px]:items-end">
+        <div className="grid gap-1.5">
+          <StageBand />
+          <h1 className="m-0 font-display text-[2.25rem] leading-[1.08] font-semibold tracking-[-0.034em] text-balance text-foreground max-[860px]:text-[1.75rem]">
+            Domains
+          </h1>
+        </div>
+        <Badge variant="ok" className="font-mono">1 verified HTTPS origin per account</Badge>
       </header>
 
-      <div className="grid grid-cols-1 items-start gap-6 min-[1180px]:grid-cols-[minmax(0,1fr)_minmax(300px,380px)]">
+      <div className="grid grid-cols-1 items-start gap-5 min-[1180px]:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.95fr)]">
         <div className="flex min-w-0 flex-col gap-4">
           {me === null ? (
             <TelemetryPanel ticks="bar" aria-labelledby="domains-auth-heading">
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-2 text-foreground">
                   <GlobeIcon className="size-4 text-muted-foreground" aria-hidden="true" />
-                  <h2 id="domains-auth-heading" className="m-0 font-sans text-[1.0625rem] font-medium">
+                  <h2 id="domains-auth-heading" className="m-0 font-display text-[1.125rem] font-semibold tracking-[-0.025em]">
                     Sign in to verify a domain
                   </h2>
                 </div>
@@ -72,7 +73,7 @@ export function Domains() {
           )}
 
           <TelemetryPanel ticks="bar" aria-labelledby="domains-how-heading">
-            <h2 id="domains-how-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+            <h2 id="domains-how-heading" className="m-0 font-display text-[1.125rem] font-semibold tracking-[-0.025em] text-foreground">
               How own-site testing works
             </h2>
             <div className="grid gap-4 sm:grid-cols-3">
@@ -99,14 +100,14 @@ export function Domains() {
               label="Domain rules & limits"
               meta="Single-origin allowlist"
             />
-            <h2 id="domains-limits-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+            <h2 id="domains-limits-heading" className="m-0 font-display text-[1.125rem] font-semibold tracking-[-0.025em] text-foreground">
               Domain rules &amp; limits
             </h2>
-            <dl className="m-0 grid gap-3">
+            <dl className="m-0 grid gap-2.5 text-xs">
               {DOMAIN_LIMITS.map((row) => (
-                <div key={row.term} className="grid gap-0.5 border-t border-border pt-2.5 first:border-t-0 first:pt-0">
-                  <dt className="text-xs font-medium text-muted-foreground">{row.term}</dt>
-                  <dd className="m-0 text-sm text-foreground">{row.detail}</dd>
+                <div key={row.term} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-border pb-2.5 last:border-b-0 last:pb-0">
+                  <dt className="text-muted-foreground">{row.term}</dt>
+                  <dd className="m-0 text-right font-mono text-foreground">{row.detail}</dd>
                 </div>
               ))}
             </dl>

@@ -24,7 +24,7 @@ const STEPS = [
 export function NextUp() {
   return (
     <TelemetryPanel ticks="bar" aria-labelledby="next-steps-heading">
-      <h2 id="next-steps-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+      <h2 id="next-steps-heading" className="m-0 font-display text-[1.125rem] font-semibold tracking-[-0.025em] text-foreground">
         After you draft
       </h2>
       <ol className="m-0 grid list-none grid-cols-1 divide-y divide-border p-0 min-[1180px]:grid-cols-3 min-[1180px]:divide-x min-[1180px]:divide-y-0">

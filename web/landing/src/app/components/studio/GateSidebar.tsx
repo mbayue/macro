@@ -139,7 +139,7 @@ export function GateSidebar({
         <>
           {targetMode === 'demo' && sampleRunId ? (
             <TelemetryPanel ticks="bar" aria-labelledby="sample-report-heading">
-              <h2 id="sample-report-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+              <h2 id="sample-report-heading" className="m-0 font-display text-[1.125rem] font-semibold tracking-[-0.025em] text-foreground">
                 Sample report
               </h2>
               <p className="text-sm text-muted-foreground">

@@ -212,17 +212,22 @@ export function RecentRunsPage() {
   );
 
   return (
-    <div className="mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-6">
-      <header className="grid gap-2">
-        <StageBand />
-        <h1 className="m-0 font-display text-[2.25rem] leading-[1.08] font-semibold tracking-[-0.034em] text-balance text-foreground max-[860px]:text-[1.75rem]">
-          Runs Table
-        </h1>
-        <p className="m-0 max-w-[64ch] text-muted-foreground">
-          {source === 'account'
-            ? 'Runs attached to your Macro account, newest first (up to 50).'
-            : 'Runs and probes opened in this browser (up to 10). The list stays on this device until you sign in.'}
-        </p>
+    <div className="mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-5">
+      <header className="flex flex-col justify-between gap-3 min-[861px]:flex-row min-[861px]:items-end">
+        <div className="grid gap-1.5">
+          <StageBand />
+          <h1 className="m-0 font-display text-[2.25rem] leading-[1.08] font-semibold tracking-[-0.034em] text-balance text-foreground max-[860px]:text-[1.75rem]">
+            Runs Table
+          </h1>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="font-mono">
+            {source === 'account' ? 'Signed in · up to 50 runs' : 'Browser local · up to 10 runs'}
+          </Badge>
+          <Button render={<a href="#/" />} nativeButton={false} size="sm">
+            + New test
+          </Button>
+        </div>
       </header>
 
       {loading ? (

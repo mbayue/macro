@@ -64,7 +64,7 @@ export const Feed = memo(function Feed({
       className="max-h-[360px] grid-rows-[auto_minmax(0,1fr)] min-[1180px]:max-h-[440px]"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1.5">
-        <h2 id="feed-title" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+        <h2 id="feed-title" className="m-0 font-display text-[1.125rem] font-semibold tracking-[-0.025em] text-foreground">
           What happened
         </h2>
         <span className="font-mono text-xs text-muted-foreground">Newest first, UTC</span>

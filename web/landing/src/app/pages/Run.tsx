@@ -162,14 +162,14 @@ export function RunPage({ id }: { id: string }) {
   const reason = model.run.statusReason === null ? null : plainReason(model.run.statusReason);
 
   return (
-    <div className="mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-6 print:max-w-none">
-      <header className="flex flex-col justify-between gap-6 min-[861px]:flex-row min-[861px]:items-start print:hidden">
-        <div className="flex min-w-0 flex-col gap-2">
+    <div className="mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-4 print:max-w-none">
+      <header className="flex flex-col justify-between gap-4 min-[861px]:flex-row min-[861px]:items-start print:hidden">
+        <div className="flex min-w-0 flex-col gap-1.5">
           <StageBand />
-          <h1 className="m-0 font-display text-[2.25rem] leading-[1.08] font-semibold tracking-[-0.034em] break-words text-balance text-foreground max-[860px]:text-[1.75rem]">
+          <h1 className="m-0 font-display text-[2rem] leading-[1.08] font-semibold tracking-[-0.034em] break-words text-balance text-foreground max-[860px]:text-[1.625rem]">
             {model.plan?.name ?? report?.planName ?? 'Load test'}
           </h1>
-          <p className="m-0 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-muted-foreground">
+          <p className="m-0 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
             <span className="inline-flex flex-wrap items-center gap-2">
               <StatusBadge status={model.run.status} />
               {running && stale ? <Badge variant="warn">Progress may be out of date</Badge> : null}
@@ -243,7 +243,7 @@ export function RunPage({ id }: { id: string }) {
       ) : null}
 
       {report ? (
-        <p className="m-0 max-w-[64ch] text-[1.0625rem] leading-[1.4] text-pretty text-foreground min-[861px]:text-[1.375rem]">
+        <p className="m-0 max-w-[78ch] text-sm leading-relaxed text-pretty text-foreground">
           {verdictLine(report, model.routes)}
         </p>
       ) : null}
@@ -268,7 +268,7 @@ export function RunPage({ id }: { id: string }) {
             <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
               <TabsList
                 aria-label="Capacity Report sections"
-                className="flex h-auto w-full flex-wrap justify-start gap-1 border border-border bg-surface p-1 group-data-horizontal/tabs:h-auto sm:w-fit"
+                className="flex h-auto w-full flex-wrap justify-start gap-1 border border-[var(--ap-line-strong)] bg-surface p-1 group-data-horizontal/tabs:h-auto sm:w-fit"
               >
                 {RUN_TAB_ITEMS.map((tab) => {
                   const disabled = tab.id === 'ai' && !hasReport;
@@ -279,7 +279,7 @@ export function RunPage({ id }: { id: string }) {
                       disabled={disabled}
                       aria-describedby={disabled ? aiDisabledNoteId : undefined}
                       title={disabled ? `${tab.label} — ${AI_TAB_DISABLED_REASON}` : undefined}
-                      className="min-h-9 flex-none border border-transparent px-3 py-1.5 data-active:border-bar-hover data-active:bg-background data-active:text-foreground"
+                      className="min-h-8 flex-none border border-transparent px-3 py-1 text-xs data-active:border-[var(--ap-line-strong)] data-active:bg-secondary data-active:text-foreground"
                     >
                       {tab.label}
                     </TabsTrigger>
@@ -319,10 +319,10 @@ export function RunPage({ id }: { id: string }) {
                       </div>
                     ) : null}
 
-                    <div className="grid grid-cols-1 gap-2 min-[1180px]:grid-cols-[minmax(0,1fr)_minmax(300px,400px)] min-[1180px]:items-stretch print:hidden">
+                    <div className="grid grid-cols-1 gap-3 min-[1180px]:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.95fr)] min-[1180px]:items-stretch print:hidden">
                       <TelemetryPanel ticks="bar" aria-labelledby="route-chart-heading">
                         <div className="flex flex-wrap items-baseline justify-between gap-2">
-                          <h2 id="route-chart-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+                          <h2 id="route-chart-heading" className="m-0 font-display text-[1.125rem] font-semibold tracking-[-0.025em] text-foreground">
                             p95 latency per route
                           </h2>
                           <span className="text-xs text-muted-foreground">After each finished stage</span>

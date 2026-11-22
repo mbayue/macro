@@ -1,6 +1,5 @@
 import { memo, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { CornerTicks } from '../studio/TelemetryFrame.tsx';
 import type { KpiStripItem } from './report-tabs.ts';
 
 /** Progress through the running stage along the foot of the spring-green tile, updated via CSSOM. */
@@ -40,13 +39,13 @@ export function SignatureTiles({
   return (
     <div
       ref={ref}
-      className="grid grid-cols-1 gap-2 sm:grid-cols-2 min-[1180px]:grid-cols-4"
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
       role="group"
       aria-label={reportMode ? 'Headline values' : 'Live numbers'}
     >
       {items.map((item) => {
         const isLive = item.tone === 'live';
-        const isHeroSafe = reportMode && item.id === 'stage-or-safe' && item.value.length <= 9;
+        const isBad = item.tone === 'bad';
         const isLongText = item.value.length > 9;
         const fullSub = item.unit ? `${item.unit}, ${item.sourceNote}` : item.sourceNote;
 
@@ -54,24 +53,23 @@ export function SignatureTiles({
           <div
             key={item.id}
             className={cn(
-              'relative flex min-h-[116px] min-w-0 flex-col justify-start gap-1.5 overflow-hidden rounded-md p-4 sm:p-5 min-[861px]:min-h-[136px] min-[861px]:pb-6',
+              'relative flex min-h-[104px] min-w-0 flex-col justify-start gap-1 overflow-hidden rounded-md border p-4',
               isLive
-                ? 'bg-primary text-primary-foreground'
-                : 'border border-border bg-surface text-foreground',
+                ? 'border-primary bg-primary text-primary-foreground'
+                : isBad
+                  ? 'border-bad bg-bad/10 text-foreground'
+                  : 'border-[var(--ap-line-strong)] bg-surface text-foreground',
             )}
           >
-            <CornerTicks tone={isLive ? 'ink' : item.tone === 'bad' ? 'bad' : 'bar'} />
-            <span className={cn('text-[0.8125rem]', isLive ? 'text-accent-ink-soft' : 'text-muted-foreground')}>
+            <span className={cn('text-xs', isLive ? 'text-accent-ink-soft' : 'text-muted-foreground')}>
               {item.label}
             </span>
             <span
               className={cn(
-                'font-display leading-none font-semibold break-words tabular-nums',
-                isHeroSafe
-                  ? 'text-[clamp(3rem,2.4rem+2.2vw,5rem)] tracking-[-0.04em]'
-                  : isLongText
-                    ? 'text-[1.375rem] leading-[1.1] tracking-[-0.02em] min-[861px]:text-[1.75rem]'
-                    : 'text-[2.125rem] tracking-[-0.034em] min-[861px]:text-[2.75rem]',
+                'font-display leading-[1.06] font-semibold break-words tabular-nums',
+                isLongText
+                  ? 'text-[1.25rem] tracking-[-0.02em] min-[861px]:text-[1.5rem]'
+                  : 'text-[1.75rem] tracking-[-0.03em] min-[861px]:text-[2rem]',
                 isLive ? 'text-primary-foreground' : VALUE_TONE_CLASS[item.tone],
               )}
             >
@@ -79,7 +77,7 @@ export function SignatureTiles({
             </span>
             <span
               className={cn(
-                'font-mono text-xs leading-snug tabular-nums',
+                'mt-0.5 font-mono text-[11px] leading-snug tabular-nums',
                 isLive ? 'text-accent-ink-soft' : 'text-muted-foreground',
               )}
             >
@@ -110,8 +108,7 @@ export const KpiStrip = memo(function KpiStrip({ items }: { items: readonly KpiS
       aria-label="Key metrics summary"
       className="relative rounded-md border border-bar bg-surface text-foreground"
     >
-      <CornerTicks tone="bar" />
-      <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 min-[1180px]:flex min-[1180px]:divide-x min-[1180px]:divide-y-0">
+      <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 lg:flex lg:divide-x lg:divide-y-0">
         {items.map((item, idx) => {
           const isLive = item.tone === 'live';
           const readout = item.unit ? `${item.value} ${item.unit}` : item.value;

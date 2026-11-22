@@ -38,8 +38,8 @@ export function HeroWorkbench() {
 
   return (
     <section className="lp-atmo">
-      <img className="lp-atmo-bg lp-atmo-bg-light" src={sanokDitherSrc('trucks')} alt="" aria-hidden="true" />
-      <img className="lp-atmo-bg lp-atmo-bg-dark" src={DARK_HORIZON_SRC} alt="" aria-hidden="true" />
+      <img className="lp-atmo-bg lp-atmo-bg-light" src={sanokDitherSrc('trucks')} width={1920} height={1280} fetchPriority="high" alt="" aria-hidden="true" />
+      <img className="lp-atmo-bg lp-atmo-bg-dark" src={DARK_HORIZON_SRC} width={1920} height={1280} fetchPriority="high" alt="" aria-hidden="true" />
       <div className="lp-scrim" aria-hidden="true" />
 
       <div className="lp-container lp-hero-stack">
@@ -81,25 +81,39 @@ export function HeroWorkbench() {
             <span className="lp-mark lp-mark-rail" aria-hidden="true">M</span>
             <button
               type="button"
-              className={`lp-rail-btn ${heroTab === 'report' ? 'lp-rail-btn-active' : ''}`}
-              aria-label="Capacity Report"
-              aria-pressed={heroTab === 'report'}
-              onClick={() => setHeroTab('report')}
+              className="lp-rail-btn lp-rail-new"
+              aria-label="Preview Test Studio & Policy Gate"
+              title="New test"
+              onClick={() => setHeroTab('gate')}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <path d="M3 12h4l3-7 4 14 3-7h4" />
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" />
               </svg>
             </button>
             <button
               type="button"
               className={`lp-rail-btn ${heroTab === 'gate' ? 'lp-rail-btn-active' : ''}`}
-              aria-label="Policy Gate"
+              aria-label="Test Studio & Policy Gate"
               aria-pressed={heroTab === 'gate'}
               onClick={() => setHeroTab('gate')}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <path d="M9 12l2 2 4-4" />
+                <path d="M4 6h16M4 12h16M4 18h16" />
+                <circle cx="9" cy="6" r="2" fill="currentColor" />
+                <circle cx="15" cy="12" r="2" fill="currentColor" />
+                <circle cx="11" cy="18" r="2" fill="currentColor" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className={`lp-rail-btn ${heroTab === 'report' ? 'lp-rail-btn-active' : ''}`}
+              aria-label="Runs Table & Capacity Report"
+              aria-pressed={heroTab === 'report'}
+              onClick={() => setHeroTab('report')}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <rect x="3" y="4" width="18" height="16" rx="2" />
+                <path d="M3 10h18M9 10v10" />
               </svg>
             </button>
             <button
@@ -111,6 +125,7 @@ export function HeroWorkbench() {
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M12 3l7 4v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V7l7-4z" />
+                <path d="M9 12l2 2 4-4" />
               </svg>
             </button>
           </aside>
@@ -139,7 +154,8 @@ export function HeroWorkbench() {
                 ))}
               </div>
               <div className="lp-row">
-                <span className="lp-tag">https://yue.macro.my.id</span>
+                <span className="lp-tag">yue.macro.my.id</span>
+                <span className="lp-tag">Demo</span>
                 <span className="lp-tag lp-tag-ok">run d28cacd6</span>
               </div>
             </div>
@@ -147,36 +163,36 @@ export function HeroWorkbench() {
             {heroTab === 'report' && (
               <div role="tabpanel" id="wb-panel-report" aria-labelledby="wb-tab-report" className="flex flex-col gap-3.5">
                 <div className="lp-kpi-row">
-                  <div className={`lp-kpi ${stage.status === 'pass' ? 'lp-kpi-live' : 'lp-kpi-bad'}`}>
-                    <div className="lp-kpi-label">Stage {stage.id} ({stage.duration})</div>
-                    <div className="lp-kpi-val lp-mono">{stage.vus} VUs</div>
-                    <div className="lp-kpi-note">{stage.verdictLabel}</div>
+                  <div className="lp-kpi lp-kpi-live">
+                    <div className="lp-kpi-label">Safe Capacity (VUs)</div>
+                    <div className="lp-kpi-val">100 VUs</div>
+                    <div className="lp-kpi-note">Stage 3 · p95 910 ms</div>
                   </div>
-                  <div className="lp-kpi">
-                    <div className="lp-kpi-label">Peak Route p95</div>
-                    <div className="lp-kpi-val lp-mono">{stage.p95Ms.toLocaleString()} ms</div>
+                  <div className="lp-kpi lp-kpi-bad">
+                    <div className="lp-kpi-label">Breaking Point (VUs)</div>
+                    <div className="lp-kpi-val">200 VUs</div>
+                    <div className="lp-kpi-note">Stage 4 · 1,611 ms p95</div>
+                  </div>
+                  <div className="lp-kpi lp-kpi-warn">
+                    <div className="lp-kpi-label">First degraded route</div>
+                    <div className="lp-kpi-val">store_home</div>
                     <div className="lp-kpi-note">Stop limit 1,000 ms</div>
                   </div>
                   <div className="lp-kpi">
-                    <div className="lp-kpi-label">Error Rate</div>
-                    <div className="lp-kpi-val lp-mono">{stage.errorRate}</div>
-                    <div className="lp-kpi-note">{stage.route}</div>
-                  </div>
-                  <div className="lp-kpi">
-                    <div className="lp-kpi-label">Number Guard</div>
-                    <div className="lp-kpi-val lp-mono">6 / 6</div>
-                    <div className="lp-kpi-note">Matched to d28cacd6</div>
+                    <div className="lp-kpi-label">Tested up to</div>
+                    <div className="lp-kpi-val">200 VUs</div>
+                    <div className="lp-kpi-note">4 of 4 Stages · 2:00</div>
                   </div>
                 </div>
                 <div className="lp-window-split">
                   <div className="lp-subpanel">
                     <div className="lp-subpanel-head">
-                      <span>Click a Stage bar to inspect (1 : 2 : 4 : 8)</span>
+                      <span>Stage {stage.id} ({stage.vus} VUs · {stage.p95Ms.toLocaleString()} ms p95)</span>
                       <span className={`lp-tag ${stage.status === 'pass' ? 'lp-tag-ok' : 'lp-tag-bad'}`}>
                         {stage.status === 'pass' ? 'Supervisor: Continue' : 'Supervisor: Halt'}
                       </span>
                     </div>
-                    <div className="lp-bars">
+                    <div className="lp-bars mt-auto">
                       {SAMPLE_STAGES.map((s, idx) => (
                         <button
                           key={s.id}
@@ -193,18 +209,36 @@ export function HeroWorkbench() {
                         </button>
                       ))}
                     </div>
+                    <p className="lp-mono m-0 text-[0.72rem] text-muted-foreground">{stage.supervisorNote}</p>
                   </div>
 
                   <div className="lp-subpanel">
                     <div className="lp-subpanel-head">
-                      <span>Sandbox Guarantees</span>
-                      <span className="lp-tag lp-tag-ok">Approved Plan</span>
+                      <span>What happened</span>
+                      <span className="lp-mono text-xs text-muted-foreground">Newest first</span>
                     </div>
-                    <ul className="lp-kv-list lp-mono">
-                      <li><span>Origin allowlist</span><strong>1 host</strong></li>
-                      <li><span>169.254.169.254</span><strong>denied</strong></li>
-                      <li><span>Memory cap (1 GiB)</span><strong>enforced</strong></li>
-                      <li><span>Number Guard</span><strong>verified</strong></li>
+                    <ul className="lp-event-list">
+                      <li>
+                        <div className="lp-event-row">
+                          <strong>Stop after Stage 4</strong>
+                          <span className="lp-tag lp-tag-bad">stop</span>
+                        </div>
+                        <span className="lp-event-detail">store_home p95 1,611 ms exceeded 1,000 ms limit.</span>
+                      </li>
+                      <li>
+                        <div className="lp-event-row">
+                          <strong>Stage 3 of 4 finished</strong>
+                          <span className="lp-tag lp-tag-ok">pass</span>
+                        </div>
+                        <span className="lp-event-detail">100 VUs · p95 910 ms · errors 0.0%.</span>
+                      </li>
+                      <li>
+                        <div className="lp-event-row">
+                          <strong>Sandbox removed</strong>
+                          <span className="lp-tag">Containment</span>
+                        </div>
+                        <span className="lp-event-detail">Number Guard: 6/6 figures matched to run d28cacd6.</span>
+                      </li>
                     </ul>
                   </div>
                 </div>
@@ -212,21 +246,53 @@ export function HeroWorkbench() {
             )}
 
             {heroTab === 'gate' && (
-              <div role="tabpanel" id="wb-panel-gate" aria-labelledby="wb-tab-gate" className="flex flex-col gap-3">
-                <div className="lp-row" role="group" aria-label="Policy Gate presets">
-                  {POLICY_PRESETS.map((p, idx) => (
+              <div role="tabpanel" id="wb-panel-gate" aria-labelledby="wb-tab-gate" className="lp-window-split">
+                <div className="lp-subpanel flex flex-col gap-3">
+                  <div className="lp-subpanel-head">
+                    <span>Traffic Description</span>
+                    <span className="lp-tag lp-tag-ok">Cloud Model: Gemini</span>
+                  </div>
+                  <div className="lp-row" role="group" aria-label="Policy Gate presets">
+                    {POLICY_PRESETS.map((p, idx) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className={`lp-tab ${idx === presetIdx ? 'lp-tab-pressed' : ''}`}
+                        aria-selected={idx === presetIdx}
+                        aria-pressed={idx === presetIdx}
+                        onClick={() => setPresetIdx(idx)}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="lp-wb-prompt">
+                    {preset.id === 'demo-ramp'
+                      ? 'Ramp traffic on yue.macro.my.id across store_home, catalog_list, and product_detail from 25 to 200 VUs in four 30-second stages. Stop if p95 > 1,000 ms.'
+                      : preset.id === 'over-vu'
+                        ? 'Spike 750 concurrent shoppers onto yue.macro.my.id immediately with no latency or error-rate stop limit.'
+                        : 'Run 50 virtual users against https://shop.example.com without verifying domain ownership.'}
+                  </p>
+                  <div className="lp-subpanel-head mt-auto">
+                    <span className="lp-mono text-xs text-muted-foreground">Scenario Assistant ready</span>
                     <button
-                      key={p.id}
                       type="button"
-                      className={`lp-btn lp-btn-compact ${idx === presetIdx ? 'lp-btn-ink' : 'lp-btn-secondary'}`}
-                      aria-pressed={idx === presetIdx}
-                      onClick={() => setPresetIdx(idx)}
+                      className="lp-btn lp-btn-ink lp-btn-compact"
+                      onClick={() => setPresetIdx((presetIdx + 1) % POLICY_PRESETS.length)}
                     >
-                      {p.label}
+                      Draft a plan
                     </button>
-                  ))}
+                  </div>
                 </div>
-                <div className="lp-subpanel">
+
+                <div className="lp-subpanel flex flex-col gap-3">
+                  <div className="lp-wb-banner">
+                    <img src={sanokDitherSrc('span')} width={1920} height={1280} loading="lazy" alt="" aria-hidden="true" />
+                    <div className="lp-wb-banner-cap">
+                      <span>Policy Gate</span>
+                      <strong>{preset.verdict === 'approved' ? '3/3 rules PASS' : 'BLOCKED'}</strong>
+                    </div>
+                  </div>
                   <div className="lp-subpanel-head">
                     <span className="lp-mono">{preset.target}</span>
                     <span className={`lp-tag ${preset.verdict === 'approved' ? 'lp-tag-ok' : 'lp-tag-bad'}`}>
@@ -242,14 +308,35 @@ export function HeroWorkbench() {
                       </div>
                     ))}
                   </div>
+                  {preset.verdict === 'approved' ? (
+                    <button
+                      type="button"
+                      className="lp-btn lp-btn-primary lp-btn-compact mt-auto w-full"
+                      onClick={() => setHeroTab('report')}
+                    >
+                      Approve &amp; Run
+                    </button>
+                  ) : null}
                 </div>
               </div>
             )}
 
             {heroTab === 'probe' && (
-              <div role="tabpanel" id="wb-panel-probe" aria-labelledby="wb-tab-probe" className="lp-subpanel">
+              <div role="tabpanel" id="wb-panel-probe" aria-labelledby="wb-tab-probe" className="lp-subpanel flex flex-col gap-3">
+                <div className="lp-wb-banner">
+                  <img src={sanokDitherSrc('workers')} width={1920} height={1280} loading="lazy" alt="" aria-hidden="true" />
+                  <div className="lp-wb-banner-cap">
+                    <span>Containment Probe · gVisor runsc + Egress Proxy</span>
+                    <strong>5 / 5 contained</strong>
+                  </div>
+                </div>
                 <div className="lp-subpanel-head">
-                  <span>Containment Probe (5 / 5 actions contained)</span>
+                  <div className="lp-row">
+                    <span className="lp-tag">Runtime: runsc</span>
+                    <span className="lp-tag">Time cap: 60 s</span>
+                    <span className="lp-tag">Memory cap: 1 GiB</span>
+                    <span className="lp-tag">Allowlist: yue.macro.my.id:443</span>
+                  </div>
                   <span className="lp-tag lp-tag-ok">0 egress escapes</span>
                 </div>
                 <div>

@@ -144,18 +144,18 @@ export const POLICY_PRESETS: readonly PolicyPreset[] = [
     verdict: 'approved',
     checks: [
       { rule: 'Target allowlist', detail: 'yue.macro.my.id is the allowlisted Demo Target', pass: true },
-      { rule: 'VU & stage bounds', detail: '4 stages, peak 200 VUs (limit: 6 stages, 200 VUs)', pass: true },
-      { rule: 'Stop thresholds', detail: 'p95 <= 1,000 ms, error rate <= 2.0%, HTTP 429 halt enabled', pass: true },
+      { rule: 'VU & stage bounds', detail: '4 stages, peak 200 VUs (limit: 1 to 6 stages, 1 to 500 VUs)', pass: true },
+      { rule: 'Stop thresholds', detail: 'p95 <= 1,000 ms, error rate <= 2.0%, 30 to 180 s per stage', pass: true },
     ],
   },
   {
     id: 'over-vu',
-    label: 'Over-limit 500 VUs spike',
+    label: 'Over-limit 750 VUs spike',
     target: 'https://yue.macro.my.id',
     verdict: 'rejected',
     checks: [
       { rule: 'Target allowlist', detail: 'yue.macro.my.id is the allowlisted Demo Target', pass: true },
-      { rule: 'VU & stage bounds', detail: '500 VUs exceeds the 200 VU ceiling for Demo Target', pass: false },
+      { rule: 'VU & stage bounds', detail: '750 VUs exceeds the 500 VU per-stage Policy Gate cap', pass: false },
       { rule: 'Stop thresholds', detail: 'Missing latency and error-rate stop thresholds', pass: false },
     ],
   },
@@ -173,11 +173,11 @@ export const POLICY_PRESETS: readonly PolicyPreset[] = [
 ];
 
 export const CONTAINMENT_CHECKS = [
-  { code: '(a)', name: 'Disallowed egress host', attempt: 'HTTPS request to an unverified external domain', result: 'Blocked by egress proxy' },
+  { code: '(a)', name: 'HTTPS request outside allowlist', attempt: 'Connect to a host outside the allowlisted target', result: 'Blocked by egress proxy' },
   { code: '(b)', name: 'Cloud metadata endpoint', attempt: 'GET http://169.254.169.254/latest/meta-data/', result: 'Denied (link-local)' },
-  { code: '(c)', name: 'Private network scan', attempt: 'TCP connect to RFC1918 internal subnet', result: 'Denied (private IP)' },
-  { code: '(d)', name: 'Host secret discovery', attempt: 'Read /proc, env vars, and mounted host paths', result: 'Isolated by gVisor' },
-  { code: '(e)', name: 'Memory over-allocation', attempt: 'Allocate beyond the 1 GiB container cgroup limit', result: 'OOM killed inside sandbox' },
+  { code: '(c)', name: 'Request to the Macro API', attempt: "Call Macro's own API from inside the sandbox", result: 'Blocked by egress proxy' },
+  { code: '(d)', name: 'Environment variable secrets', attempt: 'Check env var names for KEY, SECRET, or TOKEN', result: 'No secrets in sandbox' },
+  { code: '(e)', name: 'Allocate more than 1 GiB', attempt: 'Allocate beyond the 1 GiB sandbox memory cap', result: 'OOM killed inside sandbox' },
 ] as const;
 
 export const PIPELINE_NODES = [

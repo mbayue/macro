@@ -45,7 +45,7 @@ export function SanokProof() {
       <div className="lp-container lp-split-5-7">
         <div data-reveal>
           <figure className="lp-plate">
-            <img src={sanokDitherSrc(activePlate.name)} alt={activePlate.caption} />
+            <img src={sanokDitherSrc(activePlate.name)} width={1920} height={1280} loading="lazy" alt={activePlate.caption} />
             <figcaption className="lp-mono">
               <strong>{activePlate.stage} · {activePlate.title}:</strong> {activePlate.caption}
             </figcaption>
@@ -60,7 +60,7 @@ export function SanokProof() {
                 aria-pressed={idx === plateIdx}
                 onClick={() => setPlateIdx(idx)}
               >
-                <img src={sanokDitherSrc(p.name)} alt="" aria-hidden="true" />
+                <img src={sanokDitherSrc(p.name)} width={300} height={200} loading="lazy" alt="" aria-hidden="true" />
                 <span className="lp-mono">{p.title}</span>
               </button>
             ))}

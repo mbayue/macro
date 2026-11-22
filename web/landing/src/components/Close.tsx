@@ -7,8 +7,8 @@ import { DARK_HORIZON_SRC, sanokDitherSrc } from '../sanok.ts';
 export function Close() {
   return (
     <section className="lp-atmo lp-sec-tight">
-      <img className="lp-atmo-bg lp-atmo-bg-light" src={sanokDitherSrc('workers')} alt="" aria-hidden="true" />
-      <img className="lp-atmo-bg lp-atmo-bg-dark" src={DARK_HORIZON_SRC} alt="" aria-hidden="true" />
+      <img className="lp-atmo-bg lp-atmo-bg-light" src={sanokDitherSrc('workers')} width={1920} height={1280} loading="lazy" alt="" aria-hidden="true" />
+      <img className="lp-atmo-bg lp-atmo-bg-dark" src={DARK_HORIZON_SRC} width={1920} height={1280} loading="lazy" alt="" aria-hidden="true" />
       <div className="lp-scrim" aria-hidden="true" />
 
       <div className="lp-container lp-close-box" data-reveal>

@@ -37,10 +37,10 @@ export function TopContextBar() {
     >
       <div className="mx-auto flex w-full max-w-[1440px] items-center justify-between gap-4">
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
-          <span className="hidden min-[861px]:inline-flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
+          <span className="hidden min-[1280px]:inline-flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
             <span>Macro</span>
             <span aria-hidden="true">/</span>
-            <span className="font-medium text-foreground">{breadcrumb}</span>
+            <span className="max-w-[240px] truncate font-medium text-foreground">{breadcrumb}</span>
           </span>
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
             <span className="text-xs text-muted-foreground min-[861px]:sr-only">Target</span>

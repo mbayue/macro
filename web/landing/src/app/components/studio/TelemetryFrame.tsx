@@ -14,7 +14,7 @@ const TICK_TONE_CLASS: Record<TickTone, string> = {
 export function CornerTicks({ tone = 'bar' }: { tone?: TickTone }) {
   const borderClass = TICK_TONE_CLASS[tone];
   return (
-    <span className="pointer-events-none absolute inset-0" aria-hidden="true">
+    <span className="pointer-events-none absolute inset-0 z-10" aria-hidden="true">
       <span className={cn('absolute top-0 left-0 size-2 rounded-tl-[5px] border-t border-l', borderClass)} />
       <span className={cn('absolute top-0 right-0 size-2 rounded-tr-[5px] border-t border-r', borderClass)} />
       <span className={cn('absolute bottom-0 left-0 size-2 rounded-bl-[5px] border-b border-l', borderClass)} />

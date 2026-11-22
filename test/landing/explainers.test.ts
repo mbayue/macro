@@ -1,41 +1,32 @@
 import { describe, expect, test } from 'bun:test';
-import { decode, home, href, select } from './helpers.ts';
+import { decode, home, select } from './helpers.ts';
 
-describe('home page explainers: measured, then opened, and Hybrid AI', () => {
-  const WHY = 'section[aria-labelledby="why-title"]';
+describe('home page Sanok proof, Hybrid Inference & Number Guard', () => {
+  const PROOF = 'section#vd-proof';
 
-  test('"Measured, then opened" says who decides what: the AI drafts, fixed code decides, the Number Guard checks', async () => {
-    const heading = await select(home, `${WHY} h2`);
-    expect(heading.map((h) => h.text)).toEqual(['Measured, then opened']);
-    const points = (await select(home, `${WHY} li`)).map((li) => li.text);
-    expect(points).toEqual([
-      'The AI drafts the plan and writes the explanation.',
-      'Fixed code decides the target, the limits, the script and the stop rule.',
-      'Every number in the AI text is checked against the measurements, or the text is withheld.',
-    ]);
+  test('renders the 4 Bayer-dithered Sanok bridge plates with static test selected by default', async () => {
+    const h2 = await select(home, `${PROOF} h2`);
+    expect(h2.map((h) => h.text)).toEqual(['On-device AI when available. Measured numbers always.']);
+
+    const thumbs = await select(home, `${PROOF} button.lp-photo-thumb`);
+    expect(thumbs.length).toBe(4);
+    expect(thumbs.map((t) => t.attrs.get('aria-pressed'))).toEqual(['false', 'false', 'true', 'false']);
+
+    const plate = (await select(home, `${PROOF} figure.lp-plate img`))[0];
+    expect(plate?.attrs.get('src')).toBe('/landing/img/dither/sanok-static.webp');
   });
 
-  test('"Measured, then opened" shows a credited Sanok photograph described as the bridge test', async () => {
-    const imgs = await select(home, `${WHY} img`);
-    expect(imgs.length).toBe(1);
-    expect(imgs[0]?.attrs.get('src')).toMatch(/^\/landing\/img\/sanok\//);
-    expect(imgs[0]?.attrs.get('alt')).toMatch(/Sanok bridge/);
-    expect(imgs[0]?.attrs.get('srcset')).toContain('800w');
-  });
-
-  const AI = 'section[aria-labelledby="hybrid-title"]';
-
-  test('Hybrid AI names the On-Device Model, Cloud Fallback, Scenario Assistant and Report Q&A', async () => {
-    const heading = await select(home, `${AI} h2`);
-    expect(heading.map((h) => h.text)).toEqual(['Hybrid AI']);
-    const text = decode((await select(home, AI))[0]?.text ?? '');
-    for (const term of ['Hybrid Inference', 'On-Device Model', 'Gemini Nano', 'Chrome', 'Cloud Fallback', 'Scenario Assistant', 'Report Q&A']) {
+  test('names On-Device Model, Cloud Fallback, Scenario Assistant, Report Q&A and cites real run d28cacd6 per-route p95s', async () => {
+    const text = decode((await select(home, PROOF))[0]?.text ?? '');
+    for (const term of ['Hybrid Inference', 'On-Device Model', 'Cloud Fallback', 'Scenario Assistant', 'Report Q&A', 'Number Guard']) {
       expect(text).toContain(term);
     }
-  });
-
-  test('Hybrid AI links into the app', async () => {
-    const links = (await select(home, `${AI} a`)).map(href);
-    expect(links).toContain('/app/');
+    expect(text).toContain('d28cacd6');
+    expect(text).toContain('store_home');
+    expect(text).toContain('910 ms');
+    expect(text).toContain('catalog_list');
+    expect(text).toContain('226 ms');
+    expect(text).toContain('product_detail');
+    expect(text).toContain('138 ms');
   });
 });

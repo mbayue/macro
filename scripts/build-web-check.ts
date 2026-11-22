@@ -168,9 +168,6 @@ export async function validateWebDist(outDir: string, budget: WeightBudget = WEI
       if (appStylesheets.has(link.href) || APP_CSS_HREF_RE.test(link.href)) {
         errors.push(`${page} references an app stylesheet (${link.href}), which must only load in /app/.`);
       }
-      if (/geist-mono/i.test(link.href)) {
-        errors.push(`${page} references app font (${link.href}), which must only preload/load in /app/.`);
-      }
     }
   }
 

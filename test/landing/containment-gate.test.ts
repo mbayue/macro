@@ -1,42 +1,21 @@
 import { describe, expect, test } from 'bun:test';
-import { decode, home, select } from './helpers.ts';
+import { home, select } from './helpers.ts';
 
-describe('home page containment and gate (#16)', () => {
-  const PROOF = 'section#containment';
+describe('home page deterministic pipeline', () => {
+  const PIPELINE = 'section#vd-pipeline';
 
-  test('Containment lists the five escape attempts the probe blocks, each contained', async () => {
-    const section = (await select(home, PROOF))[0]?.text ?? '';
-    expect(section).toContain('Five escapes, five blocked');
-    expect(section).toContain('Containment Probe');
-    for (const name of ['example.com', '169.254.169.254', 'macro-api:3000', 'KEY, SECRET, TOKEN', 'Over 1 GiB']) {
-      expect(section).toContain(name);
+  test('lists all 4 deterministic execution nodes with Policy Gate selected by default', async () => {
+    const h2 = await select(home, `${PIPELINE} h2`);
+    expect(h2.map((h) => h.text)).toEqual(['How every run stays deterministic and contained']);
+
+    const nodes = await select(home, `${PIPELINE} button.lp-node`);
+    expect(nodes.length).toBe(4);
+    expect(nodes.map((n) => n.attrs.get('aria-pressed'))).toEqual(['false', 'true', 'false', 'false']);
+
+    const section = (await select(home, PIPELINE))[0]?.text ?? '';
+    for (const label of ['Traffic Description', 'Policy Gate', 'gVisor + Egress Proxy', 'Number Guard']) {
+      expect(section).toContain(label);
     }
-    expect(section.match(/Contained/g)?.length).toBe(5);
-  });
-});
-
-describe('home page gate switch (#16)', () => {
-  const GATE = 'section[aria-labelledby="gate-title"]';
-
-  test('offers "Your site" and "Someone else\'s" as a two-option pressed-state switch, "Your site" first and pressed', async () => {
-    const buttons = await select(home, `${GATE} button[aria-pressed]`);
-    expect(buttons.map((b) => decode(b.text))).toEqual(['Your site', 'Someone else\u2019s']);
-    expect(buttons.map((b) => b.attrs.get('aria-pressed'))).toEqual(['true', 'false']);
-  });
-
-  test('announces the answer politely and says yes for the verified demo target', async () => {
-    const h2 = (await select(home, `${GATE} h2[aria-live="polite"]`))[0];
-    expect(h2?.text).toBe('The gate says yes');
-    const section = (await select(home, GATE))[0]?.text ?? '';
-    expect(section).toContain('https://yue.macro.my.id');
-    expect(section).toContain('25, 50, 100, 200 users, 240 s');
-  });
-
-  test('carries the rejection: rule 4.2, target not verified, 0 requests sent, no approve button', async () => {
-    const section = (await select(home, GATE))[0]?.text ?? '';
-    expect(section).toContain('Rule 4.2');
-    expect(section).toContain('is not verified');
-    expect(section).toContain('0 requests sent');
-    expect(section).toContain('no approve button');
+    expect(section).toContain('Approved Plan (locked hash)');
   });
 });

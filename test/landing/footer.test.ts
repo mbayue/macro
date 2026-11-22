@@ -2,13 +2,9 @@ import { describe, expect, test } from 'bun:test';
 import { home, href, select } from './helpers.ts';
 
 describe('home page footer', () => {
-  test('spells MACRO in blocks, named Macro for assistive technology', async () => {
-    const mark = await select(home, 'footer [aria-label="Macro"]');
-    expect(mark.length).toBe(1);
-    expect(mark[0]?.text.replace(/\s/g, '')).toBe('MACRO');
-  });
-
-  test('links to the live demo, GitHub, privacy, terms and email', async () => {
+  test('renders the compact brand tagline and links to Test Studio, GitHub, privacy, terms and email', async () => {
+    const footer = (await select(home, 'footer'))[0]?.text ?? '';
+    expect(footer).toContain('Macro. Load tests that stay contained.');
     const links = (await select(home, 'footer a')).map(href);
     for (const target of ['/app/', 'https://github.com/mbayue/macro', '/privacy', '/terms', 'mailto:hello@macro.my.id']) {
       expect(links).toContain(target);

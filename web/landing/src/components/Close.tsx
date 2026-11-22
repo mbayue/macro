@@ -1,45 +1,29 @@
 /**
- * The close of the home page: one row of three tiles (a Sanok photograph, the wide accent tile with
- * the last action, and a flat surface tile), the outer two running off the page edges, then the
- * waitlist tile under the accent tile. On phones the accent tile is full width with the two side
- * tiles beneath it as a pair.
+ * Beat 5: Atmospheric Closing CTA (static HTML, zero JS).
+ * Uses zero-flash CSS-switched backdrops (Sanok workers in light mode, dark horizon in dark mode).
  */
-import { sanokSrc, sanokSrcSet, SANOK_SIZE } from '../sanok.ts';
-import { Island } from '../islands.tsx';
+import { DARK_HORIZON_SRC, sanokDitherSrc } from '../sanok.ts';
 
 export function Close() {
   return (
-    <section
-      className="section mx-3 grid grid-cols-2 gap-2 split:mx-0 split:grid-cols-[2fr_8fr_2fr]"
-      aria-labelledby="close-title"
-    >
-      <img
-        className="h-[120px] w-full rounded object-cover split:h-[380px] split:rounded-l-none"
-        src={sanokSrc('span', 800)}
-        srcSet={sanokSrcSet('span')}
-        sizes="(min-width: 53.75rem) 17vw, 50vw"
-        width={SANOK_SIZE.width}
-        height={SANOK_SIZE.height}
-        loading="lazy"
-        decoding="async"
-        alt=""
-        data-reveal
-        data-i="1"
-      />
-      <div
-        className="col-span-2 row-start-1 flex flex-col items-start justify-center gap-5 rounded bg-accent p-7 text-accent-ink split:col-span-1 split:col-start-2 split:h-[380px] split:p-10"
-        data-reveal
-      >
-        <h2 id="close-title" className="text-[clamp(36px,3.4vw,56px)] leading-none tracking-[-0.03em]">
-          Load your own deck
-        </h2>
-        <p className="max-w-[44ch] text-lg">Verify your site with a DNS TXT record and run the same four Stages against it, privately.</p>
-        <a className="site-btn site-btn--ink focus-visible:outline-accent-ink" href="/app/">
-          Try the live demo
-        </a>
+    <section className="lp-atmo lp-sec-tight">
+      <img className="lp-atmo-bg lp-atmo-bg-light" src={sanokDitherSrc('workers')} alt="" aria-hidden="true" />
+      <img className="lp-atmo-bg lp-atmo-bg-dark" src={DARK_HORIZON_SRC} alt="" aria-hidden="true" />
+      <div className="lp-scrim" aria-hidden="true" />
+
+      <div className="lp-container lp-close-box" data-reveal>
+        <div className="lp-stage-band" aria-hidden="true">
+          <span /><span /><span /><span />
+        </div>
+        <h2 className="lp-h2">Measure Safe Capacity before launch day</h2>
+        <p className="lp-lead lp-hero-lead">
+          Open Test Studio to draft a Test Plan against yue.macro.my.id or verify your Own Site.
+        </p>
+        <div className="lp-cta-row">
+          <a className="lp-btn lp-btn-primary" href="/app/">Open Test Studio</a>
+          <a className="lp-btn lp-btn-secondary" href="/app/#/probe">Run Containment Probe</a>
+        </div>
       </div>
-      <div className="h-[120px] rounded bg-surface-2 split:h-[380px] split:rounded-r-none" aria-hidden="true" data-reveal data-i="2" />
-      <Island name="waitlist" />
     </section>
   );
 }

@@ -1,35 +1,36 @@
 # Landing pages
 
-The prerendered pages under `web/landing/src/` outside `app/`: home, privacy, terms and 404. `/app/` follows `DESIGN.md` instead; where the two disagree (monospace, `cn()`, the accent rules), these rules win on landing pages.
+The prerendered pages under `web/landing/src/` outside `app/`: home, privacy, terms and 404. `/app/` follows `DESIGN.md` instead; where the two disagree (display typeface, frosted glass cap, framing radius), these rules win on landing pages.
 
 ## Design
 
-The page was designed with tasteskill v2 (direction "One motif", brand palette and type kept). Its one motif is the **stage band**: four filled segments sized 1 : 2 : 4 : 8 like the four Stages (25, 50, 100, 200 users). It is the only ornament, and recurs as the hero strip, the slider track, list bullets and the stepped footer wordmark.
+The home page follows the **Atmospheric Telemetry** direction (`#22`): Bayer-dithered Sanok bridge photography on warm cream (`#fdfff5`) in light mode and a dithered green horizon on deep evergreen (`#001e2b`) in dark mode, paired with an interactive embedded Macro Workbench and the **stage band** motif (four filled segments sized 1 : 2 : 4 : 8 for the four Stages: 25, 50, 100, 200 VUs). Legal and 404 pages stay clean editorial pages sharing the typography, color tokens, header, and compact single-row footer without full-bleed dithered backdrops.
 
 House rules, checked in review (the mechanical ones also by `validateWebSource`, see Checks):
 
-- Flat filled tiles separated by tone steps. Lines and 1px outlined boxes appear only inside `data-ui` product fragments and real tables.
-- One corner radius: plain `rounded` (`--radius` from `tokens.css`). One button shape: `.site-btn`, plus `.site-btn--ink` on accent fields.
-- Theme colour utilities only: `bg surface surface-2 ink muted bar accent accent-ink accent-text accent-hover accent-ink-soft bad ui-bg ui-line ui-field white refusal forest`. New fixed colours become a named token in `landing.css`.
-- The text face for everything, numbers included, with `tabular-nums` where figures align. No monospace.
-- Headings are plain: no label or badge above them, no 01/02/03 numbering. Every headline fits in two lines at every width (check 390, 860, 1280, 1440, 1920).
-- Body text 16px or more, small text 13px or more. No em dash characters in copy.
-- No gradients, glows or shadows on resting elements.
-- Product names follow `GLOSSARY.md` exactly (Approve & Run, Safe Capacity, Containment Probe, Runs Table, Stage).
-- Photos of the Sanok bridge load test are the analogy, never Macro's product; each is credited in the footer (`src/sanok.ts`).
+- **Typography:** `Space Grotesk 600` (self-hosted at `/landing/fonts/space-grotesk-600.woff2`) for display headlines (`h1`, `h2`, `-0.036em` tracking); `Stack Sans Text` (`400` / `500`) for body copy and UI controls; `Geist Mono 400` (`tabular-nums`, `/landing/fonts/geist-mono-400.woff2`) for telemetry readouts, identifiers, badges, and quotas. Scoped in `landing.css` so `/app/` stays on `Stack Sans Headline 300`.
+- **Single deliberate accent:** Spring green (`#00ed64`) is reserved for the primary CTA (**Try the Demo Target** / **Open Test Studio**) and the active **Safe Capacity** reading. Navigation marks stay monochrome, secondary buttons use `--surface` or `--ink`, and active tabs use tonal `surface-2`.
+- **Two-tier radius & glass cap:** `--radius` (`6px`, plain `rounded`) for controls, KPI tiles, subpanels, and tags; `--radius-frame` (`12px`) for the floating header, hero workbench shell, and editorial plates. Frosted glass (`backdrop-filter: blur`) is capped at 2 elements: the floating header and the hero workbench frame.
+- **Theme colour utilities only:** `bg surface surface-2 ink muted bar accent accent-ink accent-text accent-hover accent-ink-soft bad ui-bg ui-line ui-field white refusal forest`. New fixed colours become named tokens in `landing.css`.
+- **Honest copy & evidence:** Product names follow `GLOSSARY.md` exactly (Test Studio, Policy Gate, Approved Plan, Stage, Supervisor, Safe Capacity, Breaking Point, Capacity Report, Number Guard, Containment Probe, Demo Target, Own Site, Hybrid Inference, On-Device Model, Cloud Fallback, Scenario Assistant, Report Q&A). Every figure comes from real measured `run d28cacd6` on `yue.macro.my.id`. No em dash characters in copy.
+- **Sanok bridge analogy:** All four Wikimedia Commons CC BY-SA 4.0 photos by Marsilar (`trucks`, `span`, `static`, `workers`) ship as lossless Bayer-dithered WebPs under `public/landing/img/dither/` (`src/sanok.ts`) and are credited in `SiteFooter`.
 
 ## Building blocks
 
-- Stylesheet entry: `landing.css` (Tailwind v4 on `tokens.css`, no Geist Mono). Phone layout is the base classes; desktop goes under `split:` (860 px).
-- Shared classes in `@layer components` of `landing.css`: `.section` (space between sections), `.section-title` (h2 scale), `.press` (press feedback), `.crossfade`. Add a shared class there only when three or more components need it.
+- Stylesheet entry: `landing.css` (Tailwind v4 on `tokens.css`, declaring `Space Grotesk 600` and `Geist Mono 400`). Phone layout is the base; desktop goes under `split:` (860 px) or media queries in `@layer components`.
 - `components/StageBand.tsx`: `<StageBand upTo size tone />`; `STAGE_SEGMENTS` is the single source of the 1 : 2 : 4 : 8 weights.
-- `pages/Home.tsx` lists the sections in page order. Interactive sections are islands (`islands.tsx`, hydrated by `entry-home.tsx`); the rest stay static HTML. Add a section as its own component and one line in that list.
-- Entrance motion: `data-reveal` (and `data-i` for stagger) handled by `reveal.ts`; content stays visible if the script fails. Motion uses transform and opacity only; `motion.ts` has `prefersReducedMotion`.
-- CSP: no `style=` or `<style>`. Dynamic values go through CSS custom properties set in an effect.
+- `pages/Home.tsx` lists the 5 beats in page order:
+  1. `HeroWorkbench` (island): floating nav + `ThemeToggle`, dithered hero backdrop (switched via CSS `dark:block` / `dark:hidden` for zero hydration flash), H1 + CTAs, and 3-tab interactive workbench (`Capacity Report`, `Policy Gate`, `Containment 5/5`) with clickable left rail.
+  2. `Pipeline` (island): 4-node deterministic execution chain (`01 Traffic Description` -> `02 Policy Gate` -> `03 gVisor + Egress Proxy` -> `04 Number Guard`).
+  3. `SanokProof` (island): 4 interactive Bayer-dithered Sanok bridge plates + Hybrid Inference & Number Guard quote + real `d28cacd6` per-route p95 breakdown (`store_home`, `catalog_list`, `product_detail`).
+  4. `LimitsFaq` (static HTML): `Demo Target` vs. `Own Site` table beside 4 open product-specific FAQs.
+  5. `Close` (static HTML): dithered closing CTA backdrop + `SiteFooter` (compact single-row footer).
+- Entrance motion: `data-reveal` (and `data-i` for stagger) handled by `reveal.ts`; content stays visible if the script fails. Motion uses transform and opacity only; `prefers-reduced-motion: reduce` disables press/entrance transforms.
+- CSP: no `style=` or `<style>`. Dynamic bar heights use `data-bar` attributes or CSS custom properties set in an effect.
 - Conditional classes are template literals; `cn()` lives in `/app/` and would pull clsx and tailwind-merge into the landing bundle.
 
 ## Checks
 
-- `bun run build:web` runs `validateWebSource` and `validateWebDist` (`scripts/build-web-check.ts`): CSP, no Geist Mono or `/app/` bundles on landing pages, landing class rules (no `#rrggbb` or `rounded-[…]` in class names), the `rounded` utility exists in the built CSS, and the weight budget (landing JS 24 KiB, CSS 36 KiB per page).
-- Renderer tests: `test/landing/`, one file per section, in `bun run test:web`.
-- Screenshots: `bun scripts/shots.ts --help` (headless Edge over CDP; tasteskill's `inspect.mjs` cannot start Edge on this Windows PC).
+- `bun run build:web` runs `validateWebSource` and `validateWebDist` (`scripts/build-web-check.ts`): CSP, no `/app/` stylesheets on landing pages, landing class rules (no `#rrggbb` or `rounded-[...]` in class names, no em dashes), the `rounded` utility exists in the built CSS, and the weight budget (landing JS 24 KiB, CSS under 36 KiB per page).
+- Renderer tests: `test/landing/`, in `bun run test:web`.
+- Screenshots: `bun scripts/shots.ts --help` (headless Edge over CDP).

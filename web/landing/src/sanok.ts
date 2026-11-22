@@ -59,3 +59,8 @@ export const sanokSrc = (name: SanokName, width: (typeof WIDTHS)[number] = 1280)
   `/landing/img/sanok/${name}-${width}.jpg`;
 
 export const sanokSrcSet = (name: SanokName): string => WIDTHS.map((w) => `${sanokSrc(name, w)} ${w}w`).join(', ');
+
+/** Lossless 8x8 Bayer-dithered WebP plates for the landing page. */
+export const sanokDitherSrc = (name: SanokName): string => `/landing/img/dither/sanok-${name}.webp`;
+
+export const DARK_HORIZON_SRC = '/landing/img/dither/dark-horizon.webp';

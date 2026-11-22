@@ -1,33 +1,23 @@
 import { Close } from '../components/Close.tsx';
-import { Containment } from '../components/Containment.tsx';
-import { Faq } from '../components/Faq.tsx';
-import { FreePlans } from '../components/FreePlans.tsx';
-import { HybridAi } from '../components/HybridAi.tsx';
+import { LimitsFaq } from '../components/LimitsFaq.tsx';
 import { SiteFooter } from '../components/SiteFooter.tsx';
-import { WhyMeasured } from '../components/WhyMeasured.tsx';
 import { Island } from '../islands.tsx';
 
 /**
- * The home page, prerendered at build time. The hero, Load the deck, the gate switch and the waitlist
- * are islands (islands.tsx), hydrated by entry-home.tsx; everything else stays static HTML. Sections
- * below the hero enter with the scroll reveal (data-reveal, reveal.ts); the hero has its own CSS-only
- * entrance so the first screen never waits for the script.
+ * The home page, prerendered at build time. Beats 1-3 (HeroWorkbench, Pipeline, SanokProof)
+ * hydrate as islands (islands.tsx); Beats 4-5 (LimitsFaq, Close) and SiteFooter stay static HTML.
  */
 export function Home() {
   return (
     <>
-      <a className="skip-link" href="#top">
+      <a className="skip-link" href="#hero-content">
         Skip to content
       </a>
       <main id="top">
         <Island name="hero" />
-        <Island name="load" />
-        <Containment />
-        <Island name="gate" />
-        <WhyMeasured />
-        <HybridAi />
-        <FreePlans />
-        <Faq />
+        <Island name="pipeline" />
+        <Island name="proof" />
+        <LimitsFaq />
         <Close />
       </main>
       <SiteFooter />

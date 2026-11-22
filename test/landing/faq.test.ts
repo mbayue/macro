@@ -1,28 +1,27 @@
 import { describe, expect, test } from 'bun:test';
-import { home, select } from './helpers.ts';
+import { decode, home, select } from './helpers.ts';
 
-describe('home page FAQ', () => {
-  const QUESTIONS = [
-    'Can Macro test my own site today?',
-    'What stops someone using it as a DDoS tool?',
-    'What does the AI decide, and what does code decide?',
-    'Can the AI make up numbers in the report?',
-    'Is Macro free?',
-    'What runs inside the sandbox?',
-    'Where does the traffic come from?',
-  ];
+describe('home page limits & open FAQ', () => {
+  const LIMITS = 'section#vd-limits';
 
-  test('asks every existing question under "Before you ask"', async () => {
-    expect((await select(home, 'h2')).map((h) => h.text)).toContain('Before you ask');
-    expect((await select(home, 'details summary')).map((s) => s.text)).toEqual(QUESTIONS);
+  test('renders the Demo Target vs Own Site table', async () => {
+    const h2 = await select(home, `${LIMITS} h2`);
+    expect(h2.map((h) => h.text)).toEqual(['Free on Demo Target, verified for Own Site']);
+    const text = decode((await select(home, `${LIMITS} table`))[0]?.text ?? '');
+    expect(text).toContain('yue.macro.my.id');
+    expect(text).toContain('1 verified HTTPS origin');
+    expect(text).toContain('Domain Connect, DNS TXT, or /.well-known/');
   });
 
-  test('opens one answer at a time: native details sharing one name, the first open on load', async () => {
-    const cards = await select(home, 'details');
-    expect(cards.length).toBe(QUESTIONS.length);
-    expect(new Set(cards.map((d) => d.attrs.get('name'))).size).toBe(1);
-    expect(cards[0]?.attrs.get('name')).toBeTruthy();
-    expect(cards.map((d) => d.attrs.has('open'))).toEqual(QUESTIONS.map((_, i) => i === 0));
-    expect(cards[0]?.text).toContain('DNS TXT record');
+  test('renders 4 open product-specific FAQs at #vd-faq without an accordion', async () => {
+    const faq = await select(home, '#vd-faq article.lp-faq-item h3');
+    expect(faq.length).toBe(4);
+    expect((await select(home, '#vd-faq details')).length).toBe(0);
+    expect(faq.map((h) => decode(h.text))).toEqual([
+      'How do you prove Macro cannot be pointed at someone else\u2019s site?',
+      'What stops the AI from inventing numbers in the Capacity Report?',
+      'When does Hybrid Inference run on-device versus in the cloud?',
+      'Do I need an account or credit card to try it?',
+    ]);
   });
 });

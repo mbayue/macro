@@ -99,11 +99,11 @@ describe('validateWebDist', () => {
     expect(errors.some((e) => e.includes('extra/page.html') && e.includes('inline script'))).toBe(true);
   });
 
-  test('fails if any landing or legal page references an app stylesheet, Tailwind CSS, or Geist Mono preload', async () => {
+  test('fails if any landing or legal page references an app stylesheet or Tailwind CSS, while allowing Geist Mono preload', async () => {
     const dir = makeValidDist();
     writeFileSync(
       join(dir, 'index.html'),
-      '<!doctype html><html><head><link rel="stylesheet" href="/landing/assets/styles-abc.css"><link rel="stylesheet" crossorigin href="/landing/assets/app-abc.css"></head><body><a href="/app/">Try demo</a></body></html>',
+      '<!doctype html><html><head><link rel="preload" href="/landing/fonts/geist-mono-400.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="/landing/assets/styles-abc.css"><link rel="stylesheet" crossorigin href="/landing/assets/app-abc.css"></head><body><a href="/app/">Try demo</a></body></html>',
     );
     writeFileSync(
       join(dir, 'privacy.html'),
@@ -120,7 +120,7 @@ describe('validateWebDist', () => {
 
     const errors = await validateWebDist(dir);
     expect(errors.some((e) => e.includes('index.html') && e.includes('app stylesheet'))).toBe(true);
-    expect(errors.some((e) => e.includes('privacy.html') && e.includes('geist-mono'))).toBe(true);
+    expect(errors.some((e) => e.includes('geist-mono'))).toBe(false);
     expect(errors.some((e) => e.includes('terms.html') && e.includes('app stylesheet'))).toBe(true);
     expect(errors.some((e) => e.includes('404.html') && e.includes('app stylesheet'))).toBe(true);
   });

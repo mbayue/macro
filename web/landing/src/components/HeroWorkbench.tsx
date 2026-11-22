@@ -51,7 +51,7 @@ export function HeroWorkbench() {
           <nav className="lp-nav-links" aria-label="Primary">
             <a href="#vd-pipeline">Pipeline</a>
             <a href="#vd-proof">Proof</a>
-            <a href="#vd-pricing">Pricing</a>
+            <a href="#vd-limits">Limits</a>
             <a href="#vd-faq">FAQ</a>
           </nav>
           <div className="lp-row">

@@ -217,12 +217,14 @@ export const PIPELINE_NODES = [
 
 export const FREE_LIMITS = [
   {
-    mode: 'Demo Target (signed out)',
+    mode: 'Demo Target',
+    access: 'No sign-in',
     target: 'yue.macro.my.id',
     verification: 'None required',
   },
   {
-    mode: 'Own Site (signed in)',
+    mode: 'Own Site',
+    access: 'Sign-in required',
     target: '1 verified HTTPS origin',
     verification: 'Domain Connect, DNS TXT, or /.well-known/',
   },
@@ -230,18 +232,22 @@ export const FREE_LIMITS = [
 
 export const LANDING_FAQS = [
   {
+    topic: 'Target Ownership',
     q: 'How do you prove Macro cannot be pointed at someone else’s site?',
     a: 'Every non-demo target must pass ownership verification via Domain Connect, a _macro-verify DNS TXT record, or a /.well-known/ file. The egress proxy enforces that single verified origin at the network layer.',
   },
   {
+    topic: 'Number Guard',
     q: 'What stops the AI from inventing numbers in the Capacity Report?',
     a: 'Number Guard inspects AI-generated prose before it is shown. If the text cites any number not present in the measured Stage and route metrics, Macro withholds that prose and shows the measured tables alone.',
   },
   {
+    topic: 'Hybrid Inference',
     q: 'When does Hybrid Inference run on-device versus in the cloud?',
     a: 'Scenario Assistant and Report Q&A check for Chrome’s built-in On-Device Model (Gemini Nano) first. On browsers without it, Macro switches to Cloud Fallback automatically.',
   },
   {
+    topic: 'Early Access',
     q: 'Do I need an account or credit card to try it?',
     a: 'No. You can draft a Test Plan, run a load test against the Demo Target, and execute a live 5/5 Containment Probe directly in Test Studio without signing in.',
   },

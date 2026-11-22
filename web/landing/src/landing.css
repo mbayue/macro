@@ -100,7 +100,9 @@
     --hero-lead: #d5dfdf;
   }
 
+  body { font-synthesis-weight: none; }
   h1, h2 { font-family: var(--display); font-weight: 600; letter-spacing: -0.036em; }
+  strong, b { font-weight: 500; }
   a { text-underline-offset: 0.2em; }
   a, button, input, textarea, select { touch-action: manipulation; }
   section[id] { scroll-margin-top: 84px; }
@@ -351,16 +353,33 @@
   .lp-mini-btn:active { transform: scale(0.96); }
   .lp-mini-btn[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 
-  /* Pricing, limits table & open FAQ */
-  .lp-plan-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  /* Limits cards, mode table & open FAQ grid */
+  .lp-plan-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .lp-plan-card { padding: 20px 22px; justify-content: space-between; border-color: var(--line-strong); overflow: hidden; }
+  .lp-plan-banner {
+    position: relative; height: 84px; margin: -20px -22px 0; overflow: hidden;
+    border-bottom: 1px solid var(--line);
+  }
+  .lp-plan-banner img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 45%; image-rendering: pixelated; opacity: 0.92; }
+  .lp-plan-price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
   .lp-plan-featured { border-color: var(--line-strong); background: var(--surface-2); }
+  .lp-limits-panel { padding: 20px 22px; gap: 10px; border-color: var(--line-strong); }
+  .lp-table-wrap { overflow-x: auto; }
   .lp-table { width: 100%; border-collapse: collapse; font-size: 0.9375rem; }
   .lp-table th, .lp-table td { text-align: left; padding: 14px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .lp-table th:first-child, .lp-table td:first-child { padding-left: 0; }
+  .lp-table th:last-child, .lp-table td:last-child { padding-right: 0; }
+  .lp-table tbody tr:last-child td { border-bottom: 0; padding-bottom: 2px; }
   .lp-table th { font-weight: 500; color: var(--muted); font-size: 0.8125rem; }
-  .lp-faq-list { display: flex; flex-direction: column; gap: 20px; }
-  .lp-faq-item { padding-bottom: 18px; border-bottom: 1px solid var(--line); }
-  .lp-faq-item:last-child { border-bottom: 0; padding-bottom: 0; }
-  .lp-faq-item h3 { font-family: var(--text); font-size: 1rem; font-weight: 500; line-height: 1.35; margin-bottom: 6px; letter-spacing: 0; }
+  .lp-mode-cell { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .lp-faq-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .lp-faq-item {
+    padding: 20px 22px; border-radius: var(--radius);
+    background: var(--surface); border: 1px solid var(--line-strong);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .lp-faq-meta { padding-bottom: 10px; margin-bottom: 2px; border-bottom: 1px solid var(--line); }
+  .lp-faq-item h3 { font-family: var(--text); font-size: 1rem; font-weight: 500; line-height: 1.35; letter-spacing: 0; color: var(--ink); }
   .lp-faq-item p { font-size: 0.9375rem; color: var(--muted); line-height: 1.55; }
 
   /* Legal & 404 editorial telemetry framing */
@@ -412,7 +431,7 @@
     .lp-rail { flex-direction: row; justify-content: space-between; padding: 10px 14px; border-right: 0; border-bottom: 1px solid var(--ui-line); }
     .lp-rail-btn { width: 44px; height: 44px; }
     .lp-tab, .lp-mini-btn { min-height: 44px; }
-    .lp-window-split, .lp-node-rail, .lp-plan-grid { grid-template-columns: 1fr; }
+    .lp-window-split, .lp-node-rail, .lp-plan-grid, .lp-faq-grid { grid-template-columns: 1fr; }
     .lp-photo-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .lp-rule-row { grid-template-columns: 1fr auto; }
     .lp-rule-detail { grid-column: 1 / -1; color: var(--muted); font-size: 0.8125rem; }

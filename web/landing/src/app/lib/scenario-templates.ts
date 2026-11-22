@@ -70,6 +70,24 @@ function finiteOrder(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : Number.MAX_SAFE_INTEGER;
 }
 
+function sortAndDedupe<T extends { order: number }, R>(
+  items: T[],
+  keyOf: (item: T) => string,
+  mapOut: (item: T) => R,
+  fallback: readonly R[],
+): readonly R[] {
+  items.sort((a, b) => a.order - b.order);
+  const seen = new Set<string>();
+  const out: R[] = [];
+  for (const item of items) {
+    const key = keyOf(item);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(mapOut(item));
+  }
+  return out.length > 0 ? out : fallback;
+}
+
 /** Validates, sorts, and deduplicates raw Firestore scenario_templates documents with safe fallback. */
 export function parseScenarioTemplates(
   docs: readonly RawScenarioTemplateDoc[],
@@ -85,19 +103,7 @@ export function parseScenarioTemplates(
     if (text.length < 10 || text.length > 1000) continue;
     valid.push({ label, text, order: finiteOrder(doc.order) });
   }
-
-  valid.sort((a, b) => a.order - b.order);
-
-  const seen = new Set<string>();
-  const deduped: ScenarioTemplate[] = [];
-  for (const item of valid) {
-    const key = item.label.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    deduped.push({ label: item.label, text: item.text });
-  }
-
-  return deduped.length > 0 ? deduped : fallback;
+  return sortAndDedupe(valid, (i) => i.label.toLowerCase(), ({ label, text }) => ({ label, text }), fallback);
 }
 
 /** Validates, sorts, and deduplicates raw Firestore qa_prompts documents with safe fallback. */
@@ -113,19 +119,7 @@ export function parseQaPrompts(
     if (question.length < 5 || question.length > 140) continue;
     valid.push({ question, order: finiteOrder(doc.order) });
   }
-
-  valid.sort((a, b) => a.order - b.order);
-
-  const seen = new Set<string>();
-  const deduped: string[] = [];
-  for (const item of valid) {
-    const key = item.question.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    deduped.push(item.question);
-  }
-
-  return deduped.length > 0 ? deduped : fallback;
+  return sortAndDedupe(valid, (i) => i.question.toLowerCase(), (i) => i.question, fallback);
 }
 
 /** Validates, sorts, and deduplicates raw Firestore featured_runs documents with safe fallback. */
@@ -145,18 +139,7 @@ export function parseFeaturedRuns(
     if (summary.length < 5 || summary.length > 160) continue;
     valid.push({ runId, label, summary, order: finiteOrder(doc.order) });
   }
-
-  valid.sort((a, b) => a.order - b.order);
-
-  const seen = new Set<string>();
-  const deduped: FeaturedRunItem[] = [];
-  for (const item of valid) {
-    if (seen.has(item.runId)) continue;
-    seen.add(item.runId);
-    deduped.push({ runId: item.runId, label: item.label, summary: item.summary });
-  }
-
-  return deduped.length > 0 ? deduped : fallback;
+  return sortAndDedupe(valid, (i) => i.runId, ({ runId, label, summary }) => ({ runId, label, summary }), fallback);
 }
 
 /** Selects the highest-priority active announcement from raw Firestore announcements documents. */
@@ -215,22 +198,27 @@ async function queryOrderedCollection<T>(
   }
 }
 
+function cachedQuery<T>(
+  cache: Map<string, Promise<T>>,
+  config: FirebaseWebConfig,
+  collectionName: string,
+  maxDocs: number,
+  parse: (docs: readonly Record<string, unknown>[]) => T,
+  fallback: T,
+): Promise<T> {
+  const cached = cache.get(config.appId);
+  if (cached) return cached;
+  const pending = queryOrderedCollection(config, collectionName, maxDocs, parse, fallback);
+  cache.set(config.appId, pending);
+  return pending;
+}
+
 /** Fetches curated scenario templates from Cloud Firestore (`scenario_templates`), cached per session. */
 export function fetchScenarioTemplates(
   config: FirebaseWebConfig,
   fallback: readonly ScenarioTemplate[],
 ): Promise<readonly ScenarioTemplate[]> {
-  const cached = templatesCache.get(config.appId);
-  if (cached) return cached;
-  const pending = queryOrderedCollection(
-    config,
-    'scenario_templates',
-    12,
-    (docs) => parseScenarioTemplates(docs, fallback),
-    fallback,
-  );
-  templatesCache.set(config.appId, pending);
-  return pending;
+  return cachedQuery(templatesCache, config, 'scenario_templates', 12, (docs) => parseScenarioTemplates(docs, fallback), fallback);
 }
 
 /** Fetches curated Report Q&A prompts from Cloud Firestore (`qa_prompts`), cached per session. */
@@ -238,17 +226,7 @@ export function fetchQaPrompts(
   config: FirebaseWebConfig,
   fallback: readonly string[],
 ): Promise<readonly string[]> {
-  const cached = qaPromptsCache.get(config.appId);
-  if (cached) return cached;
-  const pending = queryOrderedCollection(
-    config,
-    'qa_prompts',
-    12,
-    (docs) => parseQaPrompts(docs, fallback),
-    fallback,
-  );
-  qaPromptsCache.set(config.appId, pending);
-  return pending;
+  return cachedQuery(qaPromptsCache, config, 'qa_prompts', 12, (docs) => parseQaPrompts(docs, fallback), fallback);
 }
 
 /** Fetches curated featured benchmark runs from Cloud Firestore (`featured_runs`), cached per session. */
@@ -256,21 +234,12 @@ export function fetchFeaturedRuns(
   config: FirebaseWebConfig,
   fallback: readonly FeaturedRunItem[],
 ): Promise<readonly FeaturedRunItem[]> {
-  const cached = featuredRunsCache.get(config.appId);
-  if (cached) return cached;
-  const pending = queryOrderedCollection(
-    config,
-    'featured_runs',
-    6,
-    (docs) => parseFeaturedRuns(docs, fallback),
-    fallback,
-  );
-  featuredRunsCache.set(config.appId, pending);
-  return pending;
+  return cachedQuery(featuredRunsCache, config, 'featured_runs', 6, (docs) => parseFeaturedRuns(docs, fallback), fallback);
 }
 
 /**
  * Subscribes to live status announcements from Cloud Firestore (`announcements`) via `onSnapshot`.
+ * Filters `active == true` (bounded to 20 docs) so historical inactive notices never hide active ones.
  * Silently ignores errors and returns an unsubscribe cleanup function.
  */
 export function subscribeActiveAnnouncement(
@@ -283,7 +252,7 @@ export function subscribeActiveAnnouncement(
   void loadFirestoreDb(config)
     .then(({ mod, db }) => {
       if (closed) return;
-      const q = mod.query(mod.collection(db, 'announcements'), mod.orderBy('order', 'asc'), mod.limit(5));
+      const q = mod.query(mod.collection(db, 'announcements'), mod.where('active', '==', true), mod.limit(20));
       unsub = mod.onSnapshot(
         q,
         (snap) => {

@@ -30,6 +30,7 @@ import { ModelCalls } from '../components/ModelCalls.tsx';
 import { NextUp } from '../components/NextUp.tsx';
 import { TurnstileBox, useTurnstile } from '../components/Turnstile.tsx';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useOptionalShell } from '../components/shell/ShellContext.tsx';
 import { useApp } from '../context.tsx';
@@ -45,6 +46,12 @@ import {
   type TargetMode,
   validateTrafficLength,
 } from '../components/studio/studio-view.ts';
+
+function defaultFeaturedRuns(sampleRunId: string | null | undefined): readonly FeaturedRunItem[] {
+  return sampleRunId
+    ? [{ runId: sampleRunId, label: 'View sample report', summary: 'Inspect a completed public demo run with stages, charts, and capacity verdict.' }]
+    : [];
+}
 
 export function NewTest() {
   const { config, me, navigate, announce } = useApp();
@@ -65,9 +72,7 @@ export function NewTest() {
   const [targetMode, setTargetMode] = useState<TargetMode>(() => initialReview?.targetMode ?? 'demo');
   const [examples, setExamples] = useState<readonly ScenarioTemplate[]>(() => config.examples);
   const [featuredRuns, setFeaturedRuns] = useState<readonly FeaturedRunItem[]>(() =>
-    config.sampleRunId
-      ? [{ runId: config.sampleRunId, label: 'View sample report', summary: 'Inspect a completed public demo run with stages, charts, and capacity verdict.' }]
-      : [],
+    defaultFeaturedRuns(config.sampleRunId),
   );
   const [announcement, setAnnouncement] = useState<ActiveAnnouncement | null>(null);
   const [dismissedAnnouncement, setDismissedAnnouncement] = useState<string | null>(null);
@@ -82,10 +87,7 @@ export function NewTest() {
     void fetchScenarioTemplates(firebase, config.examples).then((templates) => {
       if (!cancelled) setExamples(templates);
     });
-    const fallbackRuns: readonly FeaturedRunItem[] = config.sampleRunId
-      ? [{ runId: config.sampleRunId, label: 'View sample report', summary: 'Inspect a completed public demo run with stages, charts, and capacity verdict.' }]
-      : [];
-    void fetchFeaturedRuns(firebase, fallbackRuns).then((runs) => {
+    void fetchFeaturedRuns(firebase, defaultFeaturedRuns(config.sampleRunId)).then((runs) => {
       if (!cancelled) setFeaturedRuns(runs);
     });
     const unsubAnnouncement = subscribeActiveAnnouncement(firebase, (next) => {
@@ -338,13 +340,15 @@ export function NewTest() {
             </Badge>
             <span>{announcement.message}</span>
           </div>
-          <button
+          <Button
             type="button"
-            className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-[2px] focus-visible:outline-offset-[2px] focus-visible:outline-ring"
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
             onClick={() => setDismissedAnnouncement(announcement.message)}
           >
             Dismiss
-          </button>
+          </Button>
         </div>
       ) : null}
 

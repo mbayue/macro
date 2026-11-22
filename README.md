@@ -61,7 +61,7 @@ Macro incorporates client-side **Hybrid Inference** via the official **Firebase 
 flowchart LR
   subgraph Client["Developer Browser (Chrome)"]
     RC["Firebase Remote Config<br/>mode · model · prompts · kill switch"] --> SDK
-    FS["Cloud Firestore (persistentLocalCache)<br/>scenario_templates"] --> UI
+    FS["Cloud Firestore (persistentLocalCache + onSnapshot)<br/>scenario_templates · qa_prompts · featured_runs · announcements"] --> UI
     U[Developer Prompt] --> SDK["Firebase AI Logic + App Check<br/>InferenceMode.PREFER_ON_DEVICE"]
     SDK -->|Gemini Nano Available| NANO["Chrome Prompt API<br/><b>On-Device (Gemini Nano)</b>"]
     SDK -.->|Fallback| CLOUD["Google Cloud<br/><b>Gemini 3.8 Flash</b>"]

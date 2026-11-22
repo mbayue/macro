@@ -182,8 +182,9 @@ const PRIVACY_SECTIONS: Section[] = [
           </li>
           <li>
             <strong>Google and Firebase</strong> handle Google OAuth sign-in, Firebase App Check client attestation, Firebase Remote
-            Config for client AI settings, Cloud Firestore for public read-only scenario templates (cached locally in your browser),
-            and cloud Gemini inference fallback when on-device Gemini Nano is not available.
+            Config for client AI settings, Cloud Firestore for public read-only scenario templates, report Q&amp;A prompts, featured
+            sample runs, and live status notices (cached locally in your browser), and cloud Gemini inference fallback when on-device
+            Gemini Nano is not available.
           </li>
           <li>
             <strong>GitHub</strong> handles OAuth sign-in if you choose to sign in with GitHub.

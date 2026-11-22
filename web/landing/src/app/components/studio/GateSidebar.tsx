@@ -106,36 +106,43 @@ export function GateSidebar({
         />
       )}
 
-      {review === null && targetMode === 'demo' && ((featuredRuns && featuredRuns.length > 0) || sampleRunId) ? (
+      {review === null && targetMode === 'demo' && featuredRuns && featuredRuns.length > 0 ? (
         <TelemetryPanel ticks="bar" aria-labelledby="sample-report-heading">
           <h2 id="sample-report-heading" className="m-0 font-display text-[1.125rem] font-semibold tracking-[-0.025em] text-foreground">
-            {featuredRuns && featuredRuns.length > 1 ? 'Sample reports' : 'Sample report'}
+            {featuredRuns.length > 1 ? 'Sample reports' : 'Sample report'}
           </h2>
-          <p className="text-sm text-muted-foreground">
-            {featuredRuns?.[0]?.summary ?? 'Inspect a completed public demo run with stages, charts, and capacity verdict.'}
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            {featuredRuns && featuredRuns.length > 0 ? (
-              featuredRuns.map((item) => (
+          {featuredRuns.length === 1 ? (
+            <>
+              <p className="text-sm text-muted-foreground">{featuredRuns[0]!.summary}</p>
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
-                  key={item.runId}
-                  render={<a href={`#/run/${item.runId}`} />}
+                  render={<a href={`#/run/${featuredRuns[0]!.runId}`} />}
                   nativeButton={false}
                   variant="secondary"
                 >
-                  {item.label}
+                  {featuredRuns[0]!.label}
                 </Button>
-              ))
-            ) : (
-              <Button
-                render={<a href={`#/run/${sampleRunId}`} />}
-                nativeButton={false}
-                variant="secondary"
-              >
-                View sample report
-              </Button>
-            )}
-          </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {featuredRuns.map((item) => (
+                <div key={item.runId} className="flex flex-col gap-1.5">
+                  <p className="m-0 text-sm text-muted-foreground">{item.summary}</p>
+                  <div>
+                    <Button
+                      render={<a href={`#/run/${item.runId}`} />}
+                      nativeButton={false}
+                      variant="secondary"
+                      size="sm"
+                    >
+                      {item.label}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </TelemetryPanel>
       ) : null}
     </aside>

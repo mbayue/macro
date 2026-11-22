@@ -305,7 +305,7 @@ describe('formatCloudModelLabel', () => {
   test('formats Gemini model IDs into human-readable titles', () => {
     expect(formatCloudModelLabel('gemini-3.8-flash')).toBe('Gemini 3.8 Flash');
     expect(formatCloudModelLabel('models/gemini-3.5-flash-lite')).toBe('Gemini 3.5 Flash Lite');
-    expect(formatCloudModelLabel('gemini-2.5-pro')).toBe('Gemini 2.5 Pro');
+    expect(formatCloudModelLabel('gemini-3.8-pro')).toBe('Gemini 3.8 Pro');
     expect(formatCloudModelLabel('')).toBe('Gemini');
     expect(formatCloudModelLabel(undefined)).toBe('Gemini');
   });
@@ -329,14 +329,14 @@ describe('parseHybridRemoteConfig', () => {
     const parsed = parseHybridRemoteConfig({
       hybrid_ai_enabled: 'false',
       hybrid_inference_mode: 'only_in_cloud',
-      hybrid_cloud_model: 'gemini-2.5-flash-lite',
+      hybrid_cloud_model: 'gemini-3.5-flash-lite',
       scenario_assistant_instruction: 'Focus on checkout spikes.',
       report_qa_system_instruction: 'Answer in one sentence using only measured numbers.',
     });
     expect(parsed).toEqual({
       enabled: false,
       mode: InferenceMode.ONLY_IN_CLOUD,
-      cloudModel: 'gemini-2.5-flash-lite',
+      cloudModel: 'gemini-3.5-flash-lite',
       scenarioAssistantInstruction: 'Focus on checkout spikes.',
       reportQaSystemInstruction: 'Answer in one sentence using only measured numbers.',
     });

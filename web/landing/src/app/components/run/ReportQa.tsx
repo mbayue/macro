@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import type { CapacityReport } from '../../../../../../src/report/build.ts';
 import { useHybridPrompt } from '../../hooks/useHybridPrompt.ts';
 import { buildReportQaPrompt, verifyReportQaReply } from '../../lib/hybrid-ai.ts';
-import { HybridAvailabilityBadge, HybridBadge, HybridStopButton } from '../HybridBadge.tsx';
+import { HybridStatusBadge, HybridStopButton } from '../HybridBadge.tsx';
 import { TelemetryPanel } from '../studio/TelemetryFrame.tsx';
 import { AlertRegion, Busy } from '../ui.tsx';
 
@@ -46,11 +46,7 @@ export const ReportQa = memo(function ReportQa({ report }: { report: CapacityRep
           <span>Report Q&amp;A</span>
           <Badge variant="secondary">AI</Badge>
         </h2>
-        {reply ? (
-          <HybridBadge origin={reply.origin} cloudModel={remoteConfig.cloudModel} />
-        ) : (
-          <HybridAvailabilityBadge availability={availability} cloudModel={remoteConfig.cloudModel} />
-        )}
+        <HybridStatusBadge reply={reply} availability={availability} cloudModel={remoteConfig.cloudModel} />
       </div>
       <p className="m-0 text-sm text-muted-foreground">
         Ask follow-up questions about these measured stage and route metrics. Prefers on-device Gemini Nano with cloud Gemini fallback.

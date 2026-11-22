@@ -24,7 +24,8 @@ import type { CapacityReport } from '../../../../../src/report/build.ts';
 import { allowedNumbers, guardText, type GuardResult } from '../../../../../src/report/number-guard.ts';
 
 export type InferenceOrigin = 'on-device' | 'cloud' | 'unknown';
-export type OnDeviceAvailability = 'ready' | 'downloading' | 'cloud-fallback' | 'on-device-unavailable';
+export type OnDeviceProbeStatus = 'ready' | 'downloading' | 'cloud-fallback';
+export type HybridAvailability = OnDeviceProbeStatus | 'on-device-unavailable';
 export type LanguageModelProbe = () => Promise<string>;
 
 export interface HybridRemoteConfig {
@@ -34,6 +35,8 @@ export interface HybridRemoteConfig {
   scenarioAssistantInstruction: string;
   reportQaSystemInstruction: string;
 }
+
+export type HybridRunnerConfig = Pick<HybridRemoteConfig, 'mode' | 'cloudModel'>;
 
 export interface HybridRemoteConfigRaw {
   hybrid_ai_enabled?: boolean | string;
@@ -103,9 +106,9 @@ export function formatCloudModelLabel(modelId?: string): string {
 
 /** Resolves the pre-flight availability label by combining Chrome's Nano status with the active InferenceMode. */
 export function resolveHybridAvailability(
-  onDeviceStatus: Exclude<OnDeviceAvailability, 'on-device-unavailable'>,
+  onDeviceStatus: OnDeviceProbeStatus,
   mode: InferenceMode,
-): OnDeviceAvailability {
+): HybridAvailability {
   if (mode === InferenceMode.ONLY_IN_CLOUD || mode === InferenceMode.PREFER_IN_CLOUD) {
     return 'cloud-fallback';
   }
@@ -213,9 +216,7 @@ function defaultLanguageModelProbe(): LanguageModelProbe | null {
 }
 
 /** Checks Chrome Built-in AI (Gemini Nano) availability before running a prompt. */
-export async function detectOnDeviceAvailability(
-  probe?: LanguageModelProbe,
-): Promise<Exclude<OnDeviceAvailability, 'on-device-unavailable'>> {
+export async function detectOnDeviceAvailability(probe?: LanguageModelProbe): Promise<OnDeviceProbeStatus> {
   const fn = probe ?? defaultLanguageModelProbe();
   if (!fn) return 'cloud-fallback';
   try {
@@ -238,6 +239,10 @@ export type HybridPromptResult =
   | { ok: false; aborted: true }
   | { ok: false; aborted?: false; error: string };
 
+function isAbortError(err: unknown, signal?: AbortSignal): boolean {
+  return Boolean(signal?.aborted) || (err instanceof DOMException && err.name === 'AbortError');
+}
+
 /** Executes a hybrid prompt through the provided runner and normalizes errors, aborts, and empty outputs. */
 export async function runHybridPrompt(
   runner: HybridRunner,
@@ -253,7 +258,7 @@ export async function runHybridPrompt(
     if (!text) return { ok: false, error: 'Model returned an empty response.' };
     return { ok: true, reply: { text, origin: reply.origin } };
   } catch (err) {
-    if (signal?.aborted || (err instanceof DOMException && err.name === 'AbortError')) {
+    if (isAbortError(err, signal)) {
       return { ok: false, aborted: true };
     }
     console.error('Hybrid inference error:', err);
@@ -342,12 +347,12 @@ export function fetchHybridRemoteConfig(config: FirebaseWebConfig): Promise<Hybr
 
 function getOrCreateHybridModel(
   config: FirebaseWebConfig,
-  remoteConfig: HybridRemoteConfig = DEFAULT_HYBRID_REMOTE_CONFIG,
+  runnerConfig: HybridRunnerConfig = DEFAULT_HYBRID_REMOTE_CONFIG,
 ): GenerativeModel {
   const cacheKey = JSON.stringify({
     config,
-    mode: remoteConfig.mode,
-    cloudModel: remoteConfig.cloudModel,
+    mode: runnerConfig.mode,
+    cloudModel: runnerConfig.cloudModel,
   });
   let model = modelCache.get(cacheKey);
   if (!model) {
@@ -358,8 +363,8 @@ function getOrCreateHybridModel(
       ...(config.appCheckSiteKey ? { useLimitedUseAppCheckTokens: true } : {}),
     });
     model = getGenerativeModel(ai, {
-      mode: remoteConfig.mode,
-      inCloudParams: { model: remoteConfig.cloudModel },
+      mode: runnerConfig.mode,
+      inCloudParams: { model: runnerConfig.cloudModel },
     });
     modelCache.set(cacheKey, model);
   }
@@ -412,22 +417,18 @@ async function executeModelPrompt(
  */
 export function createFirebaseHybridRunner(
   config: FirebaseWebConfig,
-  remoteConfig: HybridRemoteConfig = DEFAULT_HYBRID_REMOTE_CONFIG,
+  runnerConfig: HybridRunnerConfig = DEFAULT_HYBRID_REMOTE_CONFIG,
 ): HybridRunner {
   return async (prompt: string, onChunk?: (text: string) => void, signal?: AbortSignal): Promise<HybridReply> => {
-    const model = getOrCreateHybridModel(config, remoteConfig);
+    const model = getOrCreateHybridModel(config, runnerConfig);
     try {
       return await executeModelPrompt(model, prompt, onChunk, signal);
     } catch (err) {
-      if (
-        remoteConfig.mode !== InferenceMode.PREFER_ON_DEVICE ||
-        signal?.aborted ||
-        (err instanceof DOMException && err.name === 'AbortError')
-      ) {
+      if (runnerConfig.mode !== InferenceMode.PREFER_ON_DEVICE || isAbortError(err, signal)) {
         throw err;
       }
       const cloudModel = getOrCreateHybridModel(config, {
-        ...remoteConfig,
+        ...runnerConfig,
         mode: InferenceMode.ONLY_IN_CLOUD,
       });
       return executeModelPrompt(cloudModel, prompt, onChunk, signal);

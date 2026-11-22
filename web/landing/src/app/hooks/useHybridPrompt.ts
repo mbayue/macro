@@ -6,9 +6,10 @@ import {
   fetchHybridRemoteConfig,
   resolveHybridAvailability,
   runHybridPrompt,
+  type HybridAvailability,
   type HybridRemoteConfig,
   type HybridReply,
-  type OnDeviceAvailability,
+  type OnDeviceProbeStatus,
 } from '../lib/hybrid-ai.ts';
 import { useApp } from '../context.tsx';
 
@@ -19,7 +20,7 @@ import { useApp } from '../context.tsx';
 export function useHybridPrompt() {
   const { config, announce } = useApp();
   const firebase = config.firebase ?? null;
-  const [onDeviceStatus, setOnDeviceStatus] = useState<Exclude<OnDeviceAvailability, 'on-device-unavailable'> | null>(null);
+  const [onDeviceStatus, setOnDeviceStatus] = useState<OnDeviceProbeStatus | null>(null);
   const [remoteConfig, setRemoteConfig] = useState<HybridRemoteConfig>(DEFAULT_HYBRID_REMOTE_CONFIG);
   const [busy, setBusy] = useState(false);
   const [completed, setCompleted] = useState(false);
@@ -52,11 +53,11 @@ export function useHybridPrompt() {
   }, [firebase]);
 
   const runner = useMemo(
-    () => (firebase ? createFirebaseHybridRunner(firebase, remoteConfig) : null),
+    () => (firebase ? createFirebaseHybridRunner(firebase, { mode: remoteConfig.mode, cloudModel: remoteConfig.cloudModel }) : null),
     [firebase, remoteConfig.mode, remoteConfig.cloudModel],
   );
 
-  const availability: OnDeviceAvailability | null = onDeviceStatus
+  const availability: HybridAvailability | null = onDeviceStatus
     ? resolveHybridAvailability(onDeviceStatus, remoteConfig.mode)
     : null;
   const available = firebase !== null && runner !== null && remoteConfig.enabled;

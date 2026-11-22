@@ -89,6 +89,7 @@ describe('security headers on every response', () => {
     expect(CSP).toContain('https://firebaseappcheck.googleapis.com');
     expect(CSP).toContain('https://firebaseremoteconfig.googleapis.com');
     expect(CSP).toContain('https://firebaseinstallations.googleapis.com');
+    expect(CSP).toContain('https://firestore.googleapis.com');
     expect(CSP).toContain("frame-ancestors 'none'");
     expect(CSP).toContain("base-uri 'none'");
   });

@@ -266,7 +266,7 @@ export async function runHybridPrompt(
   }
 }
 
-function getOrCreateFirebaseApp(config: FirebaseWebConfig): FirebaseApp {
+export function getOrCreateFirebaseApp(config: FirebaseWebConfig): FirebaseApp {
   const apps = getApps();
   const existing = apps.find((a) => a.options.appId === config.appId);
   if (existing) return existing;
@@ -280,7 +280,7 @@ function getOrCreateFirebaseApp(config: FirebaseWebConfig): FirebaseApp {
   return apps.length === 0 ? initializeApp(options) : initializeApp(options, `macro-${config.appId}`);
 }
 
-function ensureAppCheck(app: FirebaseApp, siteKey: string): void {
+export function ensureAppCheck(app: FirebaseApp, siteKey: string): void {
   if (appCheckInitialized.has(app.name)) return;
   const metaEnv = (import.meta as { env?: { DEV?: boolean; VITE_APP_CHECK_DEBUG_TOKEN?: string } }).env;
   if (typeof self !== 'undefined' && metaEnv?.DEV) {

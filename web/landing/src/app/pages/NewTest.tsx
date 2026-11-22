@@ -18,6 +18,7 @@ import {
   takeLocalDraft,
 } from '../lib/auth-api.ts';
 import { type ApiError, type ApiResult, getDemoTrends, postPlan, VERIFICATION_ERROR } from '../lib/api.ts';
+import { fetchScenarioTemplates, type ScenarioTemplate } from '../lib/scenario-templates.ts';
 import { ModelCalls } from '../components/ModelCalls.tsx';
 import { NextUp } from '../components/NextUp.tsx';
 import { TurnstileBox, useTurnstile } from '../components/Turnstile.tsx';
@@ -55,9 +56,22 @@ export function NewTest() {
   const [editing, setEditing] = useState(() => initialReview?.editing ?? false);
   const [panelInView, setPanelInView] = useState(true);
   const [targetMode, setTargetMode] = useState<TargetMode>(() => initialReview?.targetMode ?? 'demo');
+  const [examples, setExamples] = useState<readonly ScenarioTemplate[]>(() => config.examples);
   const [lastEditedAt, setLastEditedAt] = useState(() => Date.now());
   const textarea = useRef<HTMLTextAreaElement>(null);
   const focusComposer = useRef(false);
+
+  useEffect(() => {
+    const firebase = config.firebase;
+    if (!firebase) return;
+    let cancelled = false;
+    void fetchScenarioTemplates(firebase, config.examples).then((templates) => {
+      if (!cancelled) setExamples(templates);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [config.firebase, config.examples]);
   const startFromBar = useRef<(() => void) | null>(null);
   const alive = useRef(true);
   const draftHydrated = useRef(false);
@@ -306,7 +320,7 @@ export function NewTest() {
                 editing={editing}
                 showRetry={showRetry}
                 ownNeedsVerify={ownNeedsVerify}
-                examples={config.examples}
+                examples={examples}
                 assistantRoutes={targetMode === 'demo' ? config.catalog.map((r) => `${r.method} ${r.path}`) : []}
                 planError={planError}
                 textareaRef={textarea}

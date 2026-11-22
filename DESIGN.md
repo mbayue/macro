@@ -47,10 +47,11 @@ typography:
     lineHeight: 1
     letterSpacing: "-0.034em"
   heading:
-    fontFamily: "Stack Sans Text, system-ui, sans-serif"
-    fontSize: "1.0625rem"
-    fontWeight: 500
-    lineHeight: 1.3
+    fontFamily: "Space Grotesk, system-ui, sans-serif"
+    fontSize: "1.125rem"
+    fontWeight: 600
+    lineHeight: 1.25
+    letterSpacing: "-0.025em"
   body:
     fontFamily: "Stack Sans Text, system-ui, sans-serif"
     fontSize: "0.9375rem"
@@ -160,7 +161,7 @@ An evergreen ground paired with a single spring-green accent, mirrored on cream 
 - **Telemetry Readout** (Geist Mono 400, `tabular-nums`, `11px`–`0.875rem`): quota counters (`N of M` left), run IDs, stage indices, latencies, and chart axis ticks.
 
 ### Named Rules
-**The Readings Rule.** Space Grotesk 600 is for titles and signature figures only; controls, labels, and prose stay in Stack Sans Text, and instrument metrics/identifiers use Geist Mono with `tabular-nums`.
+**The Readings Rule.** Space Grotesk 600 is for page titles, panel headings (`1.125rem`, `-0.025em`), and signature KPI figures (`-0.034em`); controls, labels, and prose stay in Stack Sans Text, and instrument metrics/identifiers use Geist Mono with `tabular-nums`.
 
 ## Layout & Breakpoints
 

@@ -209,13 +209,13 @@ export function HeroWorkbench() {
                         </button>
                       ))}
                     </div>
-                    <p className="lp-mono m-0 text-[0.72rem] text-muted-foreground">{stage.supervisorNote}</p>
+                    <p className="lp-mono m-0 text-[0.72rem] text-muted">{stage.supervisorNote}</p>
                   </div>
 
                   <div className="lp-subpanel">
                     <div className="lp-subpanel-head">
                       <span>What happened</span>
-                      <span className="lp-mono text-xs text-muted-foreground">Newest first</span>
+                      <span className="lp-mono text-xs text-muted">Newest first</span>
                     </div>
                     <ul className="lp-event-list">
                       <li>
@@ -274,7 +274,7 @@ export function HeroWorkbench() {
                         : 'Run 50 virtual users against https://shop.example.com without verifying domain ownership.'}
                   </p>
                   <div className="lp-subpanel-head mt-auto">
-                    <span className="lp-mono text-xs text-muted-foreground">Scenario Assistant ready</span>
+                    <span className="lp-mono text-xs text-muted">Scenario Assistant ready</span>
                     <button
                       type="button"
                       className="lp-btn lp-btn-ink lp-btn-compact"

@@ -35,10 +35,10 @@ export function TargetPicker({
       >
         <label
           className={cn(
-            'relative flex min-h-8 w-full cursor-pointer items-center gap-1.5 rounded-sm px-3 py-1 text-xs font-medium select-none transition-[background-color,color] duration-150 motion-reduce:transition-none min-[640px]:w-auto has-[input:disabled]:cursor-not-allowed has-[input:disabled]:opacity-60 has-[input:focus-visible]:outline-[3px] has-[input:focus-visible]:outline-offset-[2px] has-[input:focus-visible]:outline-ring',
+            'relative flex min-h-8 w-full cursor-pointer items-center gap-1.5 rounded-sm border px-3 py-1 text-xs font-medium select-none transition-[background-color,color,border-color] duration-150 motion-reduce:transition-none min-[640px]:w-auto has-[input:disabled]:cursor-not-allowed has-[input:disabled]:opacity-60 has-[input:focus-visible]:outline-[3px] has-[input:focus-visible]:outline-offset-[2px] has-[input:focus-visible]:outline-ring',
             targetMode === 'demo'
-              ? 'bg-secondary text-foreground shadow-[inset_0_0_0_1px_var(--ap-line-strong)]'
-              : 'text-muted-foreground hover:text-foreground',
+              ? 'border-[var(--ap-line-strong)] bg-secondary text-foreground'
+              : 'border-transparent text-muted-foreground hover:text-foreground',
           )}
         >
           <input
@@ -51,15 +51,17 @@ export function TargetPicker({
             className="sr-only"
           />
           <StoreIcon className="size-3.5 shrink-0" aria-hidden="true" />
-          <span>Demo Target ({demoHost})</span>
+          <span>
+            Demo Target (<span className="font-mono tabular-nums" translate="no">{demoHost}</span>)
+          </span>
         </label>
 
         <label
           className={cn(
-            'relative flex min-h-8 w-full cursor-pointer items-center gap-1.5 rounded-sm px-3 py-1 text-xs font-medium select-none transition-[background-color,color] duration-150 motion-reduce:transition-none min-[640px]:w-auto has-[input:disabled]:cursor-not-allowed has-[input:disabled]:opacity-60 has-[input:focus-visible]:outline-[3px] has-[input:focus-visible]:outline-offset-[2px] has-[input:focus-visible]:outline-ring',
+            'relative flex min-h-8 w-full cursor-pointer items-center gap-1.5 rounded-sm border px-3 py-1 text-xs font-medium select-none transition-[background-color,color,border-color] duration-150 motion-reduce:transition-none min-[640px]:w-auto has-[input:disabled]:cursor-not-allowed has-[input:disabled]:opacity-60 has-[input:focus-visible]:outline-[3px] has-[input:focus-visible]:outline-offset-[2px] has-[input:focus-visible]:outline-ring',
             targetMode === 'own'
-              ? 'bg-secondary text-foreground shadow-[inset_0_0_0_1px_var(--ap-line-strong)]'
-              : 'text-muted-foreground hover:text-foreground',
+              ? 'border-[var(--ap-line-strong)] bg-secondary text-foreground'
+              : 'border-transparent text-muted-foreground hover:text-foreground',
           )}
         >
           <input
@@ -72,7 +74,16 @@ export function TargetPicker({
             className="sr-only"
           />
           <GlobeIcon className="size-3.5 shrink-0" aria-hidden="true" />
-          <span>Own Site {verifiedOrigin ? `(${verifiedOrigin.host})` : '(Verified HTTPS)'}</span>
+          <span>
+            Own Site{' '}
+            {verifiedOrigin ? (
+              <>
+                (<span className="font-mono tabular-nums" translate="no">{verifiedOrigin.host}</span>)
+              </>
+            ) : (
+              '(Verified HTTPS)'
+            )}
+          </span>
           {verifiedOrigin !== null ? (
             <span className="size-1.5 shrink-0 rounded-full bg-ok" aria-hidden="true" title="Verified origin" />
           ) : null}

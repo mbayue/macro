@@ -39,7 +39,7 @@ export function SignatureTiles({
   return (
     <div
       ref={ref}
-      className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2 min-[1180px]:grid-cols-4"
       role="group"
       aria-label={reportMode ? 'Headline values' : 'Live numbers'}
     >
@@ -69,7 +69,7 @@ export function SignatureTiles({
                 'font-display leading-[1.06] font-semibold break-words tabular-nums',
                 isLongText
                   ? 'text-[1.25rem] tracking-[-0.02em] min-[861px]:text-[1.5rem]'
-                  : 'text-[1.75rem] tracking-[-0.03em] min-[861px]:text-[2rem]',
+                  : 'text-[1.75rem] tracking-[-0.034em] min-[861px]:text-[2rem]',
                 isLive ? 'text-primary-foreground' : VALUE_TONE_CLASS[item.tone],
               )}
             >

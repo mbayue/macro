@@ -198,7 +198,7 @@ export function ProbePage({ id }: { id: string }) {
                 label="Containment Probe · Sandbox"
                 meta={state.run.runtime}
               />
-              <h2 id="probe-info-heading" className="m-0 font-sans text-[1.0625rem] font-medium text-foreground">
+              <h2 id="probe-info-heading" className="m-0 font-display text-[1.125rem] font-semibold tracking-[-0.025em] text-foreground">
                 This probe
               </h2>
               <dl className="m-0 grid grid-cols-[max-content_minmax(0,1fr)] gap-x-6 gap-y-2 text-sm">

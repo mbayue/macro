@@ -43,7 +43,7 @@ export function Domains() {
             Domains
           </h1>
         </div>
-        <Badge variant="ok" className="bg-surface/90 font-mono backdrop-blur-xs">1 verified HTTPS origin per account</Badge>
+        <Badge variant="ok" className="bg-surface font-mono">1 verified HTTPS origin per account</Badge>
       </header>
 
       <div className="grid grid-cols-1 items-start gap-5 min-[1180px]:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.95fr)]">

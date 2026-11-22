@@ -251,6 +251,25 @@ describe('validateWebSource', () => {
     expect(errors.some((e) => e.includes('Ok.tsx'))).toBe(false);
     expect(errors.some((e) => e.includes('AppHex.tsx'))).toBe(false);
   });
+
+  test('rejects /app/ shadows, JSX backdrop-blur, landing /app/-only tokens, and animate-* without motion-reduce', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'macro-src-retro-'));
+    dirs.push(dir);
+    mkdirSync(join(dir, 'components'), { recursive: true });
+    mkdirSync(join(dir, 'app', 'components'), { recursive: true });
+    writeFileSync(join(dir, 'components', 'BadToken.tsx'), 'export const B = () => <p className="text-muted-foreground" />;\n');
+    writeFileSync(join(dir, 'app', 'components', 'BadShadow.tsx'), 'export const S = () => <div className="shadow-sm" />;\n');
+    writeFileSync(join(dir, 'app', 'components', 'BadBlur.tsx'), 'export const F = () => <div className="backdrop-blur-xs" />;\n');
+    writeFileSync(join(dir, 'app', 'components', 'BadAnim.tsx'), 'export const A = () => <span className="animate-pulse" />;\n');
+    writeFileSync(join(dir, 'app', 'components', 'GoodAnim.tsx'), 'export const G = () => <span className="animate-pulse motion-reduce:animate-none shadow-none" />;\n');
+
+    const errors = await validateWebSource(dir);
+    expect(errors.some((e) => e.includes('components/BadToken.tsx') && e.includes('text-muted-foreground'))).toBe(true);
+    expect(errors.some((e) => e.includes('app/components/BadShadow.tsx') && e.includes('shadow-sm'))).toBe(true);
+    expect(errors.some((e) => e.includes('app/components/BadBlur.tsx') && e.includes('backdrop-blur'))).toBe(true);
+    expect(errors.some((e) => e.includes('app/components/BadAnim.tsx') && e.includes('motion-reduce:'))).toBe(true);
+    expect(errors.some((e) => e.includes('GoodAnim.tsx'))).toBe(false);
+  });
 });
 
 describe('landing CSS has the one radius', () => {

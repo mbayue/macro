@@ -56,9 +56,13 @@ function inspectHtmlTags(html: string): { hasStyleAttr: boolean; hasInlineScript
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx']);
 const JSX_STYLE_PROP_RE = /\bstyle\s*=\s*\{/;
 const LEGACY_REACT_API_RE = /\b(useContext|forwardRef)\s*(?:<[^>]+>)?\s*\(/;
+const APP_SHADOW_RE = /\bshadow-(?!none\b)[a-z0-9[\]_-]+/;
+const APP_BACKDROP_BLUR_RE = /\bbackdrop-blur(?:-[a-z0-9[\]_-]+)?\b/;
+const ANIMATE_CLASS_RE = /\banimate-(?!none\b)[a-z0-9_-]+/;
 /** Landing pages (everything outside app/) use theme colour tokens and the one radius; see docs/landing.md. */
 const LANDING_RAW_HEX_RE = /-\[(#[0-9a-fA-F]{3,8})\]/;
 const LANDING_ARBITRARY_RADIUS_RE = /\brounded(?:-[a-z]+)?-\[/;
+const LANDING_APP_TOKEN_RE = /\b(?:text|bg|border)-(?:muted-foreground|foreground|background|popover(?:-foreground)?|card(?:-foreground)?|primary(?:-foreground)?|secondary(?:-foreground)?|destructive(?:-foreground)?)\b/;
 const EM_DASH = '\u2014';
 
 function stripComments(source: string): string {
@@ -95,7 +99,30 @@ export async function validateWebSource(srcDir: string): Promise<string[]> {
     if (legacyMatch !== null) {
       errors.push(`${relPath} calls legacy React API ${legacyMatch[1]}(); use React 19 use() or ref-as-prop instead.`);
     }
-    if (relPath.startsWith('app/')) continue;
+    if (relPath.endsWith('.tsx')) {
+      for (const line of code.split('\n')) {
+        if (ANIMATE_CLASS_RE.test(line) && !line.includes('motion-reduce:')) {
+          errors.push(`${relPath} uses an animate-* utility without motion-reduce: fallback.`);
+          break;
+        }
+      }
+    }
+    if (relPath.startsWith('app/')) {
+      if (relPath.endsWith('.tsx')) {
+        const shadow = APP_SHADOW_RE.exec(code);
+        if (shadow !== null) {
+          errors.push(`${relPath} uses ${shadow[0]}; /app/ is flat with zero box shadows (DESIGN.md).`);
+        }
+        if (APP_BACKDROP_BLUR_RE.test(code)) {
+          errors.push(`${relPath} uses backdrop-blur in JSX; frosted glass is limited to TopContextBar and DitherBanner in tailwind.css (DESIGN.md).`);
+        }
+      }
+      continue;
+    }
+    const appToken = LANDING_APP_TOKEN_RE.exec(code);
+    if (appToken !== null) {
+      errors.push(`${relPath} uses /app/-only colour utility ${appToken[0]}; use landing theme tokens (docs/landing.md).`);
+    }
     const hex = LANDING_RAW_HEX_RE.exec(code);
     if (hex !== null) {
       errors.push(`${relPath} uses a raw colour ${hex[1]} in a class; use a theme colour token (docs/landing.md).`);

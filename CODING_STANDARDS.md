@@ -15,6 +15,7 @@ These apply to the workspace under `web/landing/src/app/`. Landing pages (home, 
 - **Monospace telemetry:** Numerical readouts, quotas (`N of M` left), IDs, hostnames, durations, latencies, UTC timestamps, and SVG chart axis ticks/labels use `font-mono` with `tabular-nums`.
 - **The One Live Thing Rule:** Spring green (`#00ed64`) marks only the live running stage or primary action on screen (**Approve & Run**, passed **Containment Probe** banner, live **Safe Capacity** reading).
 - **The Forest Swap Rule:** Use `--accent-text` (`spring` in dark mode, `forest` in light mode) whenever the accent appears as text, chart stroke, or focus ring.
+- **Layout-neutral live regions & synced shell transitions:** Keep empty `role="alert"` / `aria-live` containers out of flex/grid flow (`sr-only` when empty) so they never inject phantom bottom gaps, and animate collapsible shell columns on the parent grid (`grid-template-columns`) rather than on `<aside>` width independently.
 
 ## Landing pages (`docs/landing.md`)
 

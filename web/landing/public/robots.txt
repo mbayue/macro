@@ -1,0 +1,32 @@
+# Robots.txt for Macro (https://macro.my.id)
+# RFC 9309 compliant
+
+User-agent: *
+Allow: /
+Disallow: /api/
+
+# AI Search Crawlers (allowed for search and answers)
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+# AI Training Crawlers
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+# Content Signals (https://contentsignals.org/)
+Content-Signal: ai-train=no, search=yes, ai-input=yes
+
+# Sitemaps & Agent Discovery
+Sitemap: https://macro.my.id/sitemap.xml

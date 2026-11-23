@@ -44,7 +44,8 @@ function inspectHtmlTags(html: string): { hasStyleAttr: boolean; hasInlineScript
     if (ATTR_STYLE_RE.test(unquotedAttrs)) {
       hasStyleAttr = true;
     }
-    if (tagName === 'script' && !ATTR_SRC_RE.test(unquotedAttrs)) {
+    const isLdJson = tagName === 'script' && /type\s*=\s*["']application\/ld\+json["']/i.test(attrs);
+    if (tagName === 'script' && !ATTR_SRC_RE.test(unquotedAttrs) && !isLdJson) {
       hasInlineScript = true;
     }
     if (hasStyleAttr && hasInlineScript) break;

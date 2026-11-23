@@ -99,6 +99,16 @@ describe('validateWebDist', () => {
     expect(errors.some((e) => e.includes('extra/page.html') && e.includes('inline script'))).toBe(true);
   });
 
+  test('allows <script type="application/ld+json"> for Schema.org structured data', async () => {
+    const dir = makeValidDist();
+    writeFileSync(
+      join(dir, 'index.html'),
+      '<!doctype html><html><head><script type="application/ld+json">{"@context":"https://schema.org"}</script><link rel="stylesheet" href="/landing/assets/styles-abc.css"></head><body></body></html>',
+    );
+    const errors = await validateWebDist(dir);
+    expect(errors.filter((e) => e.includes('inline script'))).toEqual([]);
+  });
+
   test('fails if any landing or legal page references an app stylesheet or Tailwind CSS, while allowing Geist Mono preload', async () => {
     const dir = makeValidDist();
     writeFileSync(

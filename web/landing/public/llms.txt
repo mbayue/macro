@@ -1,0 +1,31 @@
+# Macro
+
+> Know your breaking point before your users do. An AI agent drafts a staged load test from plain words, deterministic code checks and gates it, you approve it, and k6 executes it inside a gVisor containment sandbox.
+
+Macro is a safe, AI-assisted capacity testing and site breaking-point platform. The model proposes traffic stages, deterministic code enforces policy, and k6 measures real latency and throughput without hallucinated metrics.
+
+- Website: https://macro.my.id
+- Application: https://macro.my.id/app/
+- Demo Target: https://yue.macro.my.id
+- Source Repository: https://github.com/mbayue/macro
+
+## Core Architecture
+
+- **Plan:** The Planner turns natural language traffic descriptions into structured stage plans.
+- **Gate:** A deterministic policy gate enforces exact target matching, known route allowlists, 1 to 6 stages, maximum 500 VUs per stage, and 600s maximum total duration.
+- **Approve:** The approved plan is stored under its SHA-256 hash. The run executes only that exact approved text.
+- **Run:** Each stage renders k6 from a fixed script template and executes in a fresh, isolated sandbox.
+- **Supervise:** A supervisor agent evaluates stage metrics to advise whether to continue or stop; failure thresholds stop the run deterministically regardless of model advice.
+- **Report:** All numbers originate directly from k6 measurements. AI narrative text is validated against measured numbers by Number Guard; any discrepancies cause the text to be withheld.
+
+## Security & Containment Boundaries
+
+- **Process Isolation:** k6 executes under gVisor (`runsc`) as an unprivileged user with read-only root filesystems, dropped capabilities, and no Docker socket access.
+- **Network Isolation:** Sandboxes reside on isolated per-run networks routed only through an egress allowlist proxy permitting HTTPS `CONNECT` on port 443 to the target host. Private IPs, metadata addresses (`169.254.169.254`), and local networks are blocked.
+- **Least-Privilege Docker API:** The API interacts with Docker exclusively through a socket proxy enforcing an endpoint allowlist.
+
+## Client-Side Hybrid AI
+
+- **Firebase AI Logic:** Provides client-side inference prioritizing on-device execution (Chrome Gemini Nano via the Prompt API) with automatic Google Cloud fallback (Gemini 3.8 Flash).
+- **Zero Quota Iteration:** Traffic scenario drafting and report Q&A run on the client without consuming server inference quotas.
+- **Remote Config & App Check:** Managed via Firebase Remote Config templates with kill switches and App Check limited-use token verification.

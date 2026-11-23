@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { existsSync } from 'node:fs';
 import { InferenceClient } from '../src/agents/inference.ts';
 import { createApp, type App } from '../src/server.ts';
 import { Store } from '../src/store/db.ts';
@@ -6,6 +7,7 @@ import { asFetch, testConfig } from './arb-agents.ts';
 
 const config = testConfig();
 const store = new Store(':memory:');
+const webDist = existsSync('web/dist/robots.txt') ? 'web/dist' : 'web/landing/public';
 
 const app: App = createApp({
   store,
@@ -18,7 +20,7 @@ const app: App = createApp({
   }),
   runController: { start: () => {}, stop: () => false, isRunning: () => false },
   probeController: { start: () => {}, stop: () => false, isRunning: () => false },
-  webDist: 'web/dist',
+  webDist,
   log: () => {},
 });
 

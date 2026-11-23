@@ -9,6 +9,7 @@ import { HybridAvailabilityBadge, HybridBadge } from '../web/landing/src/app/com
 import {
   AI_HELPER_UNAVAILABLE,
   DEFAULT_HYBRID_REMOTE_CONFIG,
+  HYBRID_REQUEST_TIMEOUT_MS,
   buildReportQaPrompt,
   buildScenarioPrompt,
   detectOnDeviceAvailability,
@@ -229,6 +230,36 @@ describe('runHybridPrompt', () => {
       controller.signal,
     );
     expect(res).toEqual({ ok: false, aborted: true });
+  });
+
+  test('treats SDK timeout AbortError as an error rather than a user cancel', async () => {
+    const originalError = console.error;
+    const logged: unknown[][] = [];
+    console.error = (...args: unknown[]) => {
+      logged.push(args);
+    };
+    try {
+      const controller = new AbortController();
+      const timeoutErr = new DOMException('Timeout has expired.', 'AbortError');
+      const withSignal = await runHybridPrompt(
+        async () => {
+          throw timeoutErr;
+        },
+        'prompt',
+        undefined,
+        controller.signal,
+      );
+      expect(withSignal).toEqual({ ok: false, error: AI_HELPER_UNAVAILABLE });
+
+      const withoutSignal = await runHybridPrompt(async () => {
+        throw timeoutErr;
+      }, 'prompt');
+      expect(withoutSignal).toEqual({ ok: false, error: AI_HELPER_UNAVAILABLE });
+      expect(logged).toHaveLength(2);
+      expect(HYBRID_REQUEST_TIMEOUT_MS).toBe(30_000);
+    } finally {
+      console.error = originalError;
+    }
   });
 });
 

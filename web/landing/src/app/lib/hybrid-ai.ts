@@ -204,6 +204,9 @@ export function buildReportQaPrompt(
 
 export const AI_HELPER_UNAVAILABLE = "AI helper isn't available right now";
 
+/** Request timeout (ms) for Firebase AI Logic cloud calls; overrides the SDK's 180 s default. */
+export const HYBRID_REQUEST_TIMEOUT_MS = 30_000;
+
 function defaultLanguageModelProbe(): LanguageModelProbe | null {
   if (typeof globalThis === 'undefined') return null;
   const g = globalThis as unknown as {
@@ -239,8 +242,17 @@ export type HybridPromptResult =
   | { ok: false; aborted: true }
   | { ok: false; aborted?: false; error: string };
 
-function isAbortError(err: unknown, signal?: AbortSignal): boolean {
-  return Boolean(signal?.aborted) || (err instanceof DOMException && err.name === 'AbortError');
+function isTimeoutError(err: unknown): boolean {
+  if (!(err instanceof DOMException)) return false;
+  if (err.name === 'TimeoutError') return true;
+  return err.name === 'AbortError' && /timeout/i.test(err.message);
+}
+
+/** Determines whether an error represents intentional cancellation by the caller. */
+function isUserAbort(err: unknown, signal?: AbortSignal): boolean {
+  if (signal?.aborted) return true;
+  if (isTimeoutError(err)) return false;
+  return !signal && err instanceof DOMException && err.name === 'AbortError';
 }
 
 /** Executes a hybrid prompt through the provided runner and normalizes errors, aborts, and empty outputs. */
@@ -258,7 +270,7 @@ export async function runHybridPrompt(
     if (!text) return { ok: false, error: 'Model returned an empty response.' };
     return { ok: true, reply: { text, origin: reply.origin } };
   } catch (err) {
-    if (isAbortError(err, signal)) {
+    if (isUserAbort(err, signal)) {
       return { ok: false, aborted: true };
     }
     console.error('Hybrid inference error:', err);
@@ -368,10 +380,14 @@ function getOrCreateHybridModel(
       backend: new GoogleAIBackend(),
       ...(config.appCheckSiteKey ? { useLimitedUseAppCheckTokens: true } : {}),
     });
-    model = getGenerativeModel(ai, {
-      mode: runnerConfig.mode,
-      inCloudParams: { model: runnerConfig.cloudModel },
-    });
+    model = getGenerativeModel(
+      ai,
+      {
+        mode: runnerConfig.mode,
+        inCloudParams: { model: runnerConfig.cloudModel },
+      },
+      { timeout: HYBRID_REQUEST_TIMEOUT_MS },
+    );
     modelCache.set(cacheKey, model);
   }
   return model;
@@ -383,7 +399,10 @@ async function executeModelPrompt(
   onChunk?: (text: string) => void,
   signal?: AbortSignal,
 ): Promise<HybridReply> {
-  const requestOptions = signal ? { signal } : undefined;
+  const requestOptions = {
+    timeout: HYBRID_REQUEST_TIMEOUT_MS,
+    ...(signal ? { signal } : {}),
+  };
   if (typeof model.generateContentStream === 'function') {
     const result = await model.generateContentStream(prompt, requestOptions);
     let fullText = '';
@@ -430,7 +449,7 @@ export function createFirebaseHybridRunner(
     try {
       return await executeModelPrompt(model, prompt, onChunk, signal);
     } catch (err) {
-      if (runnerConfig.mode !== InferenceMode.PREFER_ON_DEVICE || isAbortError(err, signal)) {
+      if (runnerConfig.mode !== InferenceMode.PREFER_ON_DEVICE || isUserAbort(err, signal) || isTimeoutError(err)) {
         throw err;
       }
       const cloudModel = getOrCreateHybridModel(config, {

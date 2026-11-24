@@ -1,0 +1,12 @@
+{
+  "portVars": [
+    "PORT",
+    "VITE_PORT"
+  ],
+  "worktreeInclude": [
+    ".env"
+  ],
+  "scripts": {
+    "setup": "bun install"
+  }
+}

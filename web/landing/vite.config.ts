@@ -71,10 +71,13 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    port: process.env.VITE_PORT ? Number(process.env.VITE_PORT) : 5173,
     proxy: {
       // MACRO_API points the dev server at another Macro API (e.g. production, read-only review).
-      '/api': { target: process.env['MACRO_API'] ?? 'http://localhost:3000', changeOrigin: true },
+      '/api': {
+        target: process.env['MACRO_API'] ?? `http://localhost:${process.env.PORT ?? 3000}`,
+        changeOrigin: true,
+      },
     },
   },
 });

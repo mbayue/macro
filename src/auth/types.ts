@@ -1,5 +1,12 @@
 /** Shared auth / verification row shapes for Store and HTTP handlers. */
 
+/** OAuth 2.0 client credentials and callback URI shared across providers. */
+export interface OAuthProviderConfig {
+  readonly clientId: string;
+  readonly clientSecret: string;
+  readonly redirectUri: string;
+}
+
 export interface UserRow {
   id: string;
   primaryEmail: string;

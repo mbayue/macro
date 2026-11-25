@@ -1,13 +1,11 @@
 /** Google OAuth URL, code exchange, and verified-email identity resolution (injectable fetch). */
 
-export interface GoogleAuthConfig {
-  readonly clientId: string;
-  readonly clientSecret: string;
-  readonly redirectUri: string;
-}
+import type { OAuthProviderConfig } from './types.ts';
+
+export type GoogleAuthConfig = OAuthProviderConfig;
 
 /** Builds the Google OAuth 2.0 authorization URL for OpenID email sign-in. */
-export function googleAuthorizeUrl(cfg: GoogleAuthConfig, state: string): string {
+export function googleAuthorizeUrl(cfg: OAuthProviderConfig, state: string): string {
   const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
   url.searchParams.set('client_id', cfg.clientId);
   url.searchParams.set('redirect_uri', cfg.redirectUri);
@@ -20,7 +18,7 @@ export function googleAuthorizeUrl(cfg: GoogleAuthConfig, state: string): string
 
 /** Exchanges an authorization code for a Google access token. */
 export async function exchangeGoogleCode(
-  cfg: GoogleAuthConfig,
+  cfg: OAuthProviderConfig,
   code: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<{ accessToken: string } | { error: 'oauth_failed' }> {

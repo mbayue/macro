@@ -3,6 +3,7 @@
 
 import { isAbsolute, join } from 'node:path';
 import type { FirebaseWebConfig } from './api-types.ts';
+import type { OAuthProviderConfig } from './auth/types.ts';
 
 // Pinned digest of grafana/k6 (k6 v2.3.0, linux/amd64), verified on the macro VM under runsc.
 export const K6_IMAGE_DEFAULT = 'grafana/k6@sha256:3e4186aea62e11a45560bfc51e19eeafe82fc07ce069c78aff44b7ff893d9a5e';
@@ -86,20 +87,12 @@ export interface Config {
    * Optional GitHub OAuth client credentials (all-or-nothing).
    * Omitted when unset (GitHub sign-in stays disabled).
    */
-  readonly githubAuth?: {
-    readonly clientId: string;
-    readonly clientSecret: string;
-    readonly redirectUri: string;
-  };
+  readonly githubAuth?: OAuthProviderConfig;
   /**
    * Optional Google OAuth client credentials (all-or-nothing).
    * Omitted when unset (Google sign-in stays disabled).
    */
-  readonly googleAuth?: {
-    readonly clientId: string;
-    readonly clientSecret: string;
-    readonly redirectUri: string;
-  };
+  readonly googleAuth?: OAuthProviderConfig;
 }
 
 export interface ConfigError {
@@ -192,11 +185,15 @@ function parseFirebaseConfig(
   };
 }
 
-function parseGithubAuthConfig(
+function parseOAuthProviderConfig(
   env: Env,
+  prefix: 'GITHUB' | 'GOOGLE',
   fail: (setting: string, reason: string) => void,
-): Config['githubAuth'] {
-  const keys = ['GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'GITHUB_REDIRECT_URI'] as const;
+): OAuthProviderConfig | undefined {
+  const clientKey = `${prefix}_CLIENT_ID`;
+  const secretKey = `${prefix}_CLIENT_SECRET`;
+  const redirectKey = `${prefix}_REDIRECT_URI`;
+  const keys = [clientKey, secretKey, redirectKey] as const;
   const values = Object.fromEntries(keys.map((k) => [k, read(env, k)])) as Record<
     (typeof keys)[number],
     string | undefined
@@ -206,49 +203,22 @@ function parseGithubAuthConfig(
   let missing = false;
   for (const k of keys) {
     if (values[k] === undefined) {
-      fail(k, 'is required when any GITHUB_* setting is provided');
+      fail(k, `is required when any ${prefix}_* setting is provided`);
       missing = true;
     }
   }
   if (missing) return undefined;
 
-  const redirectUri = values.GITHUB_REDIRECT_URI as string;
+  const redirectUri = values[redirectKey] as string;
   if (!isHttpUrl(redirectUri)) {
-    fail('GITHUB_REDIRECT_URI', 'must be an http(s) URL');
+    fail(redirectKey, 'must be an http(s) URL');
     return undefined;
   }
 
   return {
-    clientId: values.GITHUB_CLIENT_ID as string,
-    clientSecret: values.GITHUB_CLIENT_SECRET as string,
+    clientId: values[clientKey] as string,
+    clientSecret: values[secretKey] as string,
     redirectUri,
-  };
-}
-
-function parseGoogleAuthConfig(
-  env: Env,
-  fail: (setting: string, reason: string) => void,
-): Config['googleAuth'] {
-  const keys = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI'] as const;
-  const values = Object.fromEntries(keys.map((k) => [k, read(env, k)])) as Record<
-    (typeof keys)[number],
-    string | undefined
-  >;
-  if (!keys.some((k) => values[k] !== undefined)) return undefined;
-
-  let missing = false;
-  for (const k of keys) {
-    if (values[k] === undefined) {
-      fail(k, 'is required when any GOOGLE_* setting is provided');
-      missing = true;
-    }
-  }
-  if (missing) return undefined;
-
-  return {
-    clientId: values.GOOGLE_CLIENT_ID as string,
-    clientSecret: values.GOOGLE_CLIENT_SECRET as string,
-    redirectUri: values.GOOGLE_REDIRECT_URI as string,
   };
 }
 
@@ -393,8 +363,8 @@ export function parseConfig(env: Env): ConfigResult {
     };
   }
 
-  const githubAuth = parseGithubAuthConfig(env, fail);
-  const googleAuth = parseGoogleAuthConfig(env, fail);
+  const githubAuth = parseOAuthProviderConfig(env, 'GITHUB', fail);
+  const googleAuth = parseOAuthProviderConfig(env, 'GOOGLE', fail);
 
   if (githubAuth !== undefined && auth === undefined) {
     fail('GITHUB_CLIENT_ID', 'requires the core auth settings (SESSION_SECRET, PUBLIC_BASE_URL, RESEND_API_KEY, RESEND_FROM)');

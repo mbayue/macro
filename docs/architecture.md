@@ -23,7 +23,7 @@ flowchart LR
 
 | Area | Path | Responsibility |
 | --- | --- | --- |
-| Entrypoint & Config | `src/main.ts`, `src/config.ts`, `src/server.ts` | Env parsing (`parseConfig`), HTTP/SSE routing, CSP & security headers, static serving |
+| Entrypoint & Config | `src/main.ts`, `src/config.ts`, `src/server.ts`, `src/server/` (`http.ts`, `context.ts`, `static.ts`, `sse.ts`, `routes/`) | Env parsing (`parseConfig`), `createApp` entrypoint, HTTP/cookie/rate-limit utilities, SSE streaming, static serving, and domain route modules (`auth`, `verify`, `runs`, `account`) |
 | Shared Contracts | `src/types.ts`, `src/api-types.ts` | Core domain types and API request/response shapes |
 | Server Agents | `src/agents/` | OpenAI-compatible Serverless Inference client (`inference.ts`), `planner.ts`, `supervisor.ts`, `reporter.ts` |
 | Planning & Gate | `src/plan/` | Route catalog (`catalog.ts`), own-site discovery (`discover.ts`), schema/parser/printer, deterministic `policy.ts` |

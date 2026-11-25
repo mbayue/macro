@@ -1,22 +1,20 @@
 /** GitHub OAuth URL, code exchange, and email resolution (injectable fetch). */
 
-export interface GithubAuthConfig {
-  readonly githubClientId: string;
-  readonly githubClientSecret: string;
-  readonly githubRedirectUri: string;
-}
+import type { OAuthProviderConfig } from './types.ts';
 
-export function githubAuthorizeUrl(cfg: GithubAuthConfig, state: string): string {
+export type GithubAuthConfig = OAuthProviderConfig;
+
+export function githubAuthorizeUrl(cfg: OAuthProviderConfig, state: string): string {
   const url = new URL('https://github.com/login/oauth/authorize');
-  url.searchParams.set('client_id', cfg.githubClientId);
-  url.searchParams.set('redirect_uri', cfg.githubRedirectUri);
+  url.searchParams.set('client_id', cfg.clientId);
+  url.searchParams.set('redirect_uri', cfg.redirectUri);
   url.searchParams.set('scope', 'read:user user:email');
   url.searchParams.set('state', state);
   return url.toString();
 }
 
 export async function exchangeGithubCode(
-  cfg: GithubAuthConfig,
+  cfg: OAuthProviderConfig,
   code: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<{ accessToken: string } | { error: 'oauth_failed' }> {
@@ -28,10 +26,10 @@ export async function exchangeGithubCode(
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        client_id: cfg.githubClientId,
-        client_secret: cfg.githubClientSecret,
+        client_id: cfg.clientId,
+        client_secret: cfg.clientSecret,
         code,
-        redirect_uri: cfg.githubRedirectUri,
+        redirect_uri: cfg.redirectUri,
       }),
     });
     if (!res.ok) return { error: 'oauth_failed' };

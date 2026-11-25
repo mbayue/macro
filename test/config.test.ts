@@ -523,6 +523,15 @@ describe('googleAuth', () => {
       expect(settingsOf(parseConfig(env(patch)))).toEqual([missing]);
     },
   );
+
+  test.each(['not-a-url', 'ftp://macro.my.id/callback', 'javascript:alert(1)'])(
+    'rejects non-HTTP(S) GOOGLE_REDIRECT_URI (%s)',
+    (badUri) => {
+      const result = parseConfig(env({ ...CORE_AUTH_ENV, ...G, GOOGLE_REDIRECT_URI: badUri }));
+      expect(result.ok).toBe(false);
+      expect(settingsOf(result)).toEqual(['GOOGLE_REDIRECT_URI']);
+    },
+  );
 });
 
 describe('absoluteDataDir', () => {

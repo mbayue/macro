@@ -4,7 +4,6 @@
 import { Database } from 'bun:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { ContestedOriginError } from '../auth/types.ts';
 import type {
   AccountDraftRow,
   PendingOriginVerificationRow,
@@ -14,17 +13,34 @@ import type {
 } from '../auth/types.ts';
 import type { DiscoveredRoute } from '../plan/discover.ts';
 import type {
-  DecisionSource,
-  DecisionValue,
-  EventType,
-  RunKind,
   RunStatus,
-  SandboxRuntime,
   StageMetrics,
   StageSample,
-  StageStatus,
   StageVerdict,
 } from '../types.ts';
+import { AuthStore } from './auth.ts';
+import { LimitsStore } from './limits.ts';
+import type { WaitlistRow } from './limits.ts';
+import { PlansStore } from './plans.ts';
+import type { DraftRow, PlanRow, PlanTargetRow } from './plans.ts';
+import { RunsStore } from './runs.ts';
+import type {
+  AgentName,
+  DecisionRow,
+  ModelCallRow,
+  ModelOutcome,
+  NewEvent,
+  NewModelCall,
+  NewRun,
+  ReportAiStatus,
+  ReportRow,
+  RunRow,
+  RunVisibility,
+  StageRow,
+  StoredEvent,
+} from './runs.ts';
+import { configureDatabase, initializeSchema } from './schema.ts';
+import { VerifyStore } from './verify.ts';
 
 export type {
   AccountDraftRow,
@@ -34,583 +50,45 @@ export type {
   VerifiedOriginRow,
 } from '../auth/types.ts';
 export { ContestedOriginError } from '../auth/types.ts';
+export { LIMIT_ROW_TTL_MS, PURGE_INTERVAL_MS } from './limits.ts';
+export type { WaitlistRow } from './limits.ts';
+export type { DraftRow, PlanRow, PlanTargetRow } from './plans.ts';
+export type {
+  AgentName,
+  DecisionRow,
+  ModelCallRow,
+  ModelOutcome,
+  NewEvent,
+  NewModelCall,
+  NewRun,
+  ReportAiStatus,
+  ReportRow,
+  RunRow,
+  RunVisibility,
+  StageRow,
+  StoredEvent,
+} from './runs.ts';
 
-export const LIMIT_ROW_TTL_MS = 24 * 3_600_000;
-export const PURGE_INTERVAL_MS = 3_600_000;
-
-function parseSelectedIds(raw: string | null): string[] | null {
-  if (raw === null || raw === '') return null;
-  let value: unknown;
-  try {
-    value = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-  if (!Array.isArray(value) || !value.every((id) => typeof id === 'string')) return null;
-  return value;
-}
-
-function parseDiscoveredRoutes(raw: string | null): DiscoveredRoute[] | null {
-  if (raw === null || raw === '') return null;
-  let value: unknown;
-  try {
-    value = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-  if (!Array.isArray(value)) return null;
-  const out: DiscoveredRoute[] = [];
-  for (const item of value) {
-    if (typeof item !== 'object' || item === null) return null;
-    if (!('id' in item) || !('kind' in item) || !('path' in item) || !('method' in item)) return null;
-    const { id, kind, path, method } = item;
-    if (typeof id !== 'string' || typeof path !== 'string' || method !== 'GET') return null;
-    if (kind !== 'document' && kind !== 'script' && kind !== 'style' && kind !== 'asset' && kind !== 'page') return null;
-    const storedOn = 'defaultOn' in item ? item.defaultOn : kind !== 'asset';
-    if (typeof storedOn !== 'boolean') return null;
-    out.push({ id, kind, method: 'GET', path, defaultOn: storedOn });
-  }
-  return out;
-}
-
-export type AgentName = 'planner' | 'supervisor' | 'reporter';
-export type ModelOutcome = 'success' | 'error' | 'timeout';
-/** State of the AI section of a stored report. */
-export type ReportAiStatus = 'pending' | 'ready' | 'unavailable';
-
-const SCHEMA = `
-CREATE TABLE IF NOT EXISTS drafts (
-  id TEXT PRIMARY KEY, traffic_event TEXT NOT NULL, created_at INTEGER NOT NULL,
-  origin TEXT, routes_json TEXT, selected_ids_json TEXT
-);
-CREATE TABLE IF NOT EXISTS waitlist (email TEXT PRIMARY KEY, created_at INTEGER NOT NULL, invited_at INTEGER, joined_at INTEGER);
-CREATE TABLE IF NOT EXISTS plans (hash TEXT PRIMARY KEY, text TEXT NOT NULL, approved_at INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS plan_targets (
-  plan_hash TEXT PRIMARY KEY REFERENCES plans(hash),
-  web_origin TEXT NOT NULL,
-  api_origin TEXT NOT NULL,
-  routes_json TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS runs (
-  id TEXT PRIMARY KEY, kind TEXT NOT NULL CHECK (kind IN ('run','probe')),
-  plan_hash TEXT REFERENCES plans(hash), status TEXT NOT NULL, status_reason TEXT,
-  runtime TEXT NOT NULL, started_at INTEGER NOT NULL, ended_at INTEGER,
-  probe_result TEXT,
-  owner_user_id TEXT,
-  visibility TEXT NOT NULL DEFAULT 'public' CHECK (visibility IN ('public','private')),
-  title TEXT
-);
-CREATE INDEX IF NOT EXISTS runs_plan ON runs(plan_hash, started_at DESC);
-CREATE INDEX IF NOT EXISTS runs_started ON runs(started_at);
-CREATE TABLE IF NOT EXISTS stages (
-  run_id TEXT NOT NULL, idx INTEGER NOT NULL, vus INTEGER NOT NULL, duration_sec INTEGER NOT NULL,
-  status TEXT NOT NULL, error_reason TEXT, metrics TEXT, verdict TEXT,
-  generator_saturated INTEGER, started_at INTEGER, ended_at INTEGER,
-  PRIMARY KEY (run_id, idx)
-);
-CREATE TABLE IF NOT EXISTS decisions (
-  run_id TEXT NOT NULL, stage_idx INTEGER NOT NULL, decision TEXT NOT NULL,
-  source TEXT NOT NULL, reason TEXT NOT NULL, reason_withheld INTEGER NOT NULL,
-  PRIMARY KEY (run_id, stage_idx)
-);
-CREATE TABLE IF NOT EXISTS stage_samples (
-  run_id TEXT NOT NULL, stage_idx INTEGER NOT NULL, second INTEGER NOT NULL, route TEXT NOT NULL,
-  requests INTEGER NOT NULL, errors INTEGER NOT NULL, latency_sum_ms REAL NOT NULL, latency_max_ms REAL NOT NULL,
-  PRIMARY KEY (run_id, stage_idx, second, route)
-);
-CREATE INDEX IF NOT EXISTS stage_samples_run ON stage_samples(run_id, stage_idx);
-CREATE TABLE IF NOT EXISTS events (
-  id INTEGER PRIMARY KEY AUTOINCREMENT, run_id TEXT NOT NULL, type TEXT NOT NULL,
-  stage_idx INTEGER, payload TEXT, ts INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS events_run ON events(run_id, id);
-CREATE TABLE IF NOT EXISTS reports (run_id TEXT PRIMARY KEY, body TEXT NOT NULL, ai TEXT, ai_status TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS model_calls (
-  id INTEGER PRIMARY KEY AUTOINCREMENT, draft_id TEXT, run_id TEXT, agent TEXT NOT NULL,
-  model TEXT NOT NULL, outcome TEXT NOT NULL, latency_ms INTEGER NOT NULL,
-  prompt_tokens INTEGER, completion_tokens INTEGER, ts INTEGER NOT NULL
-);
-CREATE TABLE IF NOT EXISTS planning_requests (ip TEXT NOT NULL, ts INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS client_starts (ip TEXT NOT NULL, ts INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS users (
-  id TEXT PRIMARY KEY,
-  primary_email TEXT NOT NULL UNIQUE,
-  github_login TEXT,
-  created_at INTEGER NOT NULL
-);
-CREATE TABLE IF NOT EXISTS auth_identities (
-  provider TEXT NOT NULL CHECK (provider IN ('email','github','google')),
-  provider_subject TEXT NOT NULL,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  PRIMARY KEY (provider, provider_subject)
-);
-CREATE INDEX IF NOT EXISTS auth_identities_user ON auth_identities(user_id);
-CREATE TABLE IF NOT EXISTS sessions (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  created_at INTEGER NOT NULL,
-  last_seen_at INTEGER NOT NULL,
-  expires_at INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id);
-CREATE TABLE IF NOT EXISTS verified_origins (
-  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-  origin TEXT NOT NULL,
-  host TEXT NOT NULL UNIQUE,
-  verified_at INTEGER NOT NULL,
-  token TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS pending_origin_verifications (
-  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-  origin TEXT NOT NULL,
-  host TEXT NOT NULL,
-  token TEXT NOT NULL,
-  created_at INTEGER NOT NULL
-);
-CREATE TABLE IF NOT EXISTS account_drafts (
-  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-  traffic_event TEXT NOT NULL,
-  target_mode TEXT NOT NULL CHECK (target_mode IN ('demo','own')),
-  target_origin TEXT,
-  last_edited_at INTEGER NOT NULL
-);
-CREATE TABLE IF NOT EXISTS magic_link_tokens (
-  token_hash TEXT PRIMARY KEY,
-  email TEXT NOT NULL,
-  user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
-  created_at INTEGER NOT NULL,
-  expires_at INTEGER NOT NULL,
-  used_at INTEGER
-);
-`;
-
-// ---------------------------------------------------------------- public types
-
-export interface DraftRow {
-  id: string;
-  trafficEvent: string;
-  createdAt: number;
-  origin: string | null;
-  routes: DiscoveredRoute[] | null;
-  selectedIds: string[] | null;
-}
-
-export interface PlanTargetRow {
-  planHash: string;
-  webOrigin: string;
-  apiOrigin: string;
-  routes: DiscoveredRoute[];
-}
-
-export interface PlanRow {
-  hash: string;
-  text: string;
-  approvedAt: number;
-}
-
-export type RunVisibility = 'public' | 'private';
-
-export interface RunRow {
-  id: string;
-  kind: RunKind;
-  planHash: string | null;
-  status: RunStatus;
-  statusReason: string | null;
-  runtime: SandboxRuntime;
-  startedAt: number;
-  endedAt: number | null;
-  /** Parsed JSON, probe runs only. */
-  probeResult: unknown;
-  ownerUserId: string | null;
-  visibility: RunVisibility;
-  /** Null on rows created before titles were stored. */
-  title: string | null;
-}
-
-export interface NewRun {
-  id: string;
-  kind: RunKind;
-  planHash: string | null;
-  status?: 'running' | 'queued';
-  runtime: SandboxRuntime;
-  startedAt: number;
-  ownerUserId?: string | null;
-  visibility?: RunVisibility;
-  title?: string | null;
-}
-
-export interface StageRow {
-  runId: string;
-  idx: number;
-  vus: number;
-  durationSec: number;
-  status: StageStatus;
-  errorReason: string | null;
-  metrics: StageMetrics | null;
-  verdict: StageVerdict | null;
-  generatorSaturated: boolean | null;
-  startedAt: number | null;
-  endedAt: number | null;
-}
-
-export interface DecisionRow {
-  runId: string;
-  stageIdx: number;
-  decision: DecisionValue;
-  source: DecisionSource;
-  reason: string;
-  reasonWithheld: boolean;
-}
-
-export interface NewEvent {
-  type: EventType;
-  runId: string;
-  stageIdx?: number;
-  /** Any JSON-serialisable value. */
-  payload?: unknown;
-  ts: number;
-}
-
-export interface StoredEvent {
-  /** SSE event id. */
-  id: number;
-  type: EventType;
-  runId: string;
-  stageIdx?: number;
-  payload: unknown;
-  ts: number;
-}
-
-export interface ReportRow {
-  runId: string;
-  /** Parsed JSON of the Capacity_Report body. */
-  body: unknown;
-  /** Parsed JSON of the AI section, or null. */
-  ai: unknown;
-  aiStatus: ReportAiStatus;
-}
-
-export interface NewModelCall {
-  draftId?: string;
-  runId?: string;
-  agent: AgentName;
-  model: string;
-  outcome: ModelOutcome;
-  latencyMs: number;
-  promptTokens: number | null;
-  completionTokens: number | null;
-  ts: number;
-}
-
-export interface ModelCallRow {
-  id: number;
-  draftId: string | null;
-  runId: string | null;
-  agent: AgentName;
-  model: string;
-  outcome: ModelOutcome;
-  latencyMs: number;
-  promptTokens: number | null;
-  completionTokens: number | null;
-  ts: number;
-}
-
-// ------------------------------------------------------------------ raw rows
-
-interface RawDraft {
-  id: string;
-  traffic_event: string;
-  created_at: number;
-  origin: string | null;
-  routes_json: string | null;
-  selected_ids_json: string | null;
-}
-interface RawPlan { hash: string; text: string; approved_at: number }
-interface RawRun {
-  id: string; kind: RunKind; plan_hash: string | null; status: RunStatus; status_reason: string | null;
-  runtime: SandboxRuntime; started_at: number; ended_at: number | null; probe_result: string | null;
-  owner_user_id: string | null; visibility: RunVisibility; title: string | null;
-}
-interface RawStage {
-  run_id: string; idx: number; vus: number; duration_sec: number; status: StageStatus;
-  error_reason: string | null; metrics: string | null; verdict: StageVerdict | null;
-  generator_saturated: number | null; started_at: number | null; ended_at: number | null;
-}
-interface RawDecision {
-  run_id: string; stage_idx: number; decision: DecisionValue; source: DecisionSource;
-  reason: string; reason_withheld: number;
-}
-interface RawEvent {
-  id: number; run_id: string; type: EventType; stage_idx: number | null; payload: string | null; ts: number;
-}
-interface RawReport { run_id: string; body: string; ai: string | null; ai_status: ReportAiStatus }
-interface RawModelCall {
-  id: number; draft_id: string | null; run_id: string | null; agent: AgentName; model: string;
-  outcome: ModelOutcome; latency_ms: number; prompt_tokens: number | null; completion_tokens: number | null; ts: number;
-}
-interface TsRow { ts: number }
-interface CountRow { n: number }
-interface RawUser {
-  id: string;
-  primary_email: string;
-  github_login: string | null;
-  created_at: number;
-}
-interface RawSession {
-  id: string;
-  user_id: string;
-  created_at: number;
-  last_seen_at: number;
-  expires_at: number;
-}
-interface RawVerifiedOrigin {
-  user_id: string;
-  origin: string;
-  host: string;
-  verified_at: number;
-  token: string;
-}
-interface RawPendingOriginVerification {
-  user_id: string;
-  origin: string;
-  host: string;
-  token: string;
-  created_at: number;
-}
-interface RawAccountDraft {
-  user_id: string;
-  traffic_event: string;
-  target_mode: 'demo' | 'own';
-  target_origin: string | null;
-  last_edited_at: number;
-}
-
-const RUN_COLS =
-  'id, kind, plan_hash, status, status_reason, runtime, started_at, ended_at, probe_result, owner_user_id, visibility, title';
-
-function parseJson(text: string | null): unknown {
-  return text === null ? null : (JSON.parse(text) as unknown);
-}
-
-function toRun(r: RawRun): RunRow {
-  return {
-    id: r.id,
-    kind: r.kind,
-    planHash: r.plan_hash,
-    status: r.status,
-    statusReason: r.status_reason,
-    runtime: r.runtime,
-    startedAt: r.started_at,
-    endedAt: r.ended_at,
-    probeResult: parseJson(r.probe_result),
-    ownerUserId: r.owner_user_id,
-    visibility: r.visibility ?? 'public',
-    title: r.title,
-  };
-}
-
-function toStage(r: RawStage): StageRow {
-  return {
-    runId: r.run_id,
-    idx: r.idx,
-    vus: r.vus,
-    durationSec: r.duration_sec,
-    status: r.status,
-    errorReason: r.error_reason,
-    metrics: parseJson(r.metrics) as StageMetrics | null,
-    verdict: r.verdict,
-    generatorSaturated: r.generator_saturated === null ? null : r.generator_saturated !== 0,
-    startedAt: r.started_at,
-    endedAt: r.ended_at,
-  };
-}
-
-function toEvent(r: RawEvent): StoredEvent {
-  return {
-    id: r.id,
-    type: r.type,
-    runId: r.run_id,
-    ...(r.stage_idx !== null ? { stageIdx: r.stage_idx } : {}),
-    payload: parseJson(r.payload),
-    ts: r.ts,
-  };
-}
-
-function toModelCall(r: RawModelCall): ModelCallRow {
-  return {
-    id: r.id,
-    draftId: r.draft_id,
-    runId: r.run_id,
-    agent: r.agent,
-    model: r.model,
-    outcome: r.outcome,
-    latencyMs: r.latency_ms,
-    promptTokens: r.prompt_tokens,
-    completionTokens: r.completion_tokens,
-    ts: r.ts,
-  };
-}
-
-function toUser(r: RawUser): UserRow {
-  return {
-    id: r.id,
-    primaryEmail: r.primary_email,
-    githubLogin: r.github_login,
-    createdAt: r.created_at,
-  };
-}
-
-function toSession(r: RawSession): SessionRow {
-  return {
-    id: r.id,
-    userId: r.user_id,
-    createdAt: r.created_at,
-    lastSeenAt: r.last_seen_at,
-    expiresAt: r.expires_at,
-  };
-}
-
-function toVerifiedOrigin(r: RawVerifiedOrigin): VerifiedOriginRow {
-  return {
-    userId: r.user_id,
-    origin: r.origin,
-    host: r.host,
-    verifiedAt: r.verified_at,
-    token: r.token,
-  };
-}
-
-function toPendingOriginVerification(r: RawPendingOriginVerification): PendingOriginVerificationRow {
-  return {
-    userId: r.user_id,
-    origin: r.origin,
-    host: r.host,
-    token: r.token,
-    createdAt: r.created_at,
-  };
-}
-
-function toAccountDraft(r: RawAccountDraft): AccountDraftRow {
-  return {
-    userId: r.user_id,
-    trafficEvent: r.traffic_event,
-    targetMode: r.target_mode,
-    targetOrigin: r.target_origin,
-    lastEditedAt: r.last_edited_at,
-  };
-}
-
-function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase();
-}
-
-// --------------------------------------------------------------------- Store
-
+/** Backward-compatible facade over the modularized SQLite persistence domains. */
 export class Store {
   readonly db: Database;
-  private readonly runListeners = new Map<string, Set<() => void>>();
-
-  /** Subscribe to new events or status transitions for a run; returns an unsubscribe callback. */
-  onRunUpdate(runId: string, listener: () => void): () => void {
-    let set = this.runListeners.get(runId);
-    if (set === undefined) {
-      set = new Set();
-      this.runListeners.set(runId, set);
-    }
-    set.add(listener);
-    return () => {
-      set.delete(listener);
-      if (set.size === 0) this.runListeners.delete(runId);
-    };
-  }
-
-  private notifyRun(runId: string): void {
-    const set = this.runListeners.get(runId);
-    if (set === undefined) return;
-    for (const fn of [...set]) {
-      try {
-        fn();
-      } catch {
-        // Listener failures must not break DB writes.
-      }
-    }
-  }
+  private readonly plans: PlansStore;
+  private readonly runs: RunsStore;
+  private readonly limits: LimitsStore;
+  private readonly auth: AuthStore;
+  private readonly verify: VerifyStore;
 
   /** @param path SQLite file path, or `:memory:`. Parent directory is created when missing. */
   constructor(path: string) {
     if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
     this.db = new Database(path, { create: true, strict: true });
-    this.db.exec('PRAGMA journal_mode = WAL;');
-    this.db.exec('PRAGMA synchronous = NORMAL;');
-    this.db.exec('PRAGMA busy_timeout = 5000;');
-    this.db.exec('PRAGMA foreign_keys = ON;');
-    this.db.exec(SCHEMA);
-    this.migrateRunsOwnership();
-    this.migrateDraftDiscovery();
-    this.migrateWaitlistActivation();
-    this.migrateAuthIdentitiesProvider();
-  }
-
-  /** Add ownership columns on DBs created before account privacy. */
-  private migrateRunsOwnership(): void {
-    const cols = this.db
-      .prepare<{ name: string }, []>('PRAGMA table_info(runs)')
-      .all()
-      .map((c) => c.name);
-    if (!cols.includes('owner_user_id')) {
-      this.db.exec('ALTER TABLE runs ADD COLUMN owner_user_id TEXT');
-    }
-    if (!cols.includes('visibility')) {
-      this.db.exec("ALTER TABLE runs ADD COLUMN visibility TEXT NOT NULL DEFAULT 'public'");
-    }
-    if (!cols.includes('title')) {
-      this.db.exec('ALTER TABLE runs ADD COLUMN title TEXT');
-    }
-  }
-
-  /** Add discovery columns on drafts created before own-site journeys. */
-  private migrateDraftDiscovery(): void {
-    const cols = this.db
-      .prepare<{ name: string }, []>('PRAGMA table_info(drafts)')
-      .all()
-      .map((c) => c.name);
-    if (!cols.includes('origin')) this.db.exec('ALTER TABLE drafts ADD COLUMN origin TEXT');
-    if (!cols.includes('routes_json')) this.db.exec('ALTER TABLE drafts ADD COLUMN routes_json TEXT');
-    if (!cols.includes('selected_ids_json')) this.db.exec('ALTER TABLE drafts ADD COLUMN selected_ids_json TEXT');
-  }
-
-  /** Add invite-tracking columns on waitlist rows created before activation. */
-  private migrateWaitlistActivation(): void {
-    const cols = this.db
-      .prepare<{ name: string }, []>('PRAGMA table_info(waitlist)')
-      .all()
-      .map((c) => c.name);
-    if (!cols.includes('invited_at')) this.db.exec('ALTER TABLE waitlist ADD COLUMN invited_at INTEGER');
-    if (!cols.includes('joined_at')) this.db.exec('ALTER TABLE waitlist ADD COLUMN joined_at INTEGER');
-  }
-
-  private migrateAuthIdentitiesProvider(): void {
-    const row = this.db
-      .prepare<{ sql: string | null }, []>(
-        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'auth_identities'",
-      )
-      .get();
-    if (!row?.sql || row.sql.includes("'google'")) return;
-    this.db.exec(`
-      BEGIN IMMEDIATE;
-      CREATE TABLE auth_identities_next (
-        provider TEXT NOT NULL CHECK (provider IN ('email','github','google')),
-        provider_subject TEXT NOT NULL,
-        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        PRIMARY KEY (provider, provider_subject)
-      );
-      INSERT INTO auth_identities_next (provider, provider_subject, user_id)
-      SELECT provider, provider_subject, user_id FROM auth_identities;
-      DROP TABLE auth_identities;
-      ALTER TABLE auth_identities_next RENAME TO auth_identities;
-      CREATE INDEX IF NOT EXISTS auth_identities_user ON auth_identities(user_id);
-      COMMIT;
-    `);
+    configureDatabase(this.db);
+    initializeSchema(this.db);
+    this.plans = new PlansStore(this.db);
+    this.runs = new RunsStore(this.db);
+    this.limits = new LimitsStore(this.db);
+    this.auth = new AuthStore(this.db);
+    this.verify = new VerifyStore(this.db);
   }
 
   /** Opens `${dataDir}/macro.db`. */
@@ -630,66 +108,40 @@ export class Store {
     return this.db.transaction(fn).immediate();
   }
 
+  /** Subscribe to new events or status transitions for a run; returns an unsubscribe callback. */
+  onRunUpdate(runId: string, listener: () => void): () => void {
+    return this.runs.onRunUpdate(runId, listener);
+  }
+
   // ------------------------------------------------------------------ drafts
 
   createDraft(draft: { id: string; trafficEvent: string; createdAt: number }): void {
-    this.db
-      .prepare('INSERT INTO drafts (id, traffic_event, created_at) VALUES (?, ?, ?)')
-      .run(draft.id, draft.trafficEvent, draft.createdAt);
+    this.plans.createDraft(draft);
   }
 
   getDraft(id: string): DraftRow | null {
-    const r = this.db
-      .prepare<RawDraft, [string]>(
-        'SELECT id, traffic_event, created_at, origin, routes_json, selected_ids_json FROM drafts WHERE id = ?',
-      )
-      .get(id);
-    if (r === null) return null;
-    const routes = parseDiscoveredRoutes(r.routes_json);
-    return {
-      id: r.id,
-      trafficEvent: r.traffic_event,
-      createdAt: r.created_at,
-      origin: r.origin,
-      routes,
-      selectedIds: parseSelectedIds(r.selected_ids_json) ?? routes?.filter((row) => row.defaultOn).map((row) => row.id) ?? null,
-    };
+    return this.plans.getDraft(id);
   }
 
   latestDiscovery(origin: string): DraftRow | null {
-    const r = this.db
-      .prepare<{ id: string }, [string]>(
-        'SELECT id FROM drafts WHERE origin = ? AND routes_json IS NOT NULL ORDER BY created_at DESC LIMIT 1',
-      )
-      .get(origin);
-    return r === null ? null : this.getDraft(r.id);
+    return this.plans.latestDiscovery(origin);
   }
 
-  setDraftDiscovery(id: string, origin: string, routes: readonly DiscoveredRoute[], selectedIds?: readonly string[]): void {
-    const ids = selectedIds ?? routes.filter((row) => row.defaultOn).map((row) => row.id);
-    this.db
-      .prepare('UPDATE drafts SET origin = ?, routes_json = ?, selected_ids_json = ? WHERE id = ?')
-      .run(origin, JSON.stringify(routes), JSON.stringify(ids), id);
+  setDraftDiscovery(
+    id: string,
+    origin: string,
+    routes: readonly DiscoveredRoute[],
+    selectedIds?: readonly string[],
+  ): void {
+    this.plans.setDraftDiscovery(id, origin, routes, selectedIds);
   }
 
   storePlanTarget(row: PlanTargetRow): void {
-    this.db
-      .prepare(
-        'INSERT OR IGNORE INTO plan_targets (plan_hash, web_origin, api_origin, routes_json) VALUES (?, ?, ?, ?)',
-      )
-      .run(row.planHash, row.webOrigin, row.apiOrigin, JSON.stringify(row.routes));
+    this.plans.storePlanTarget(row);
   }
 
   getPlanTarget(planHash: string): PlanTargetRow | null {
-    const r = this.db
-      .prepare<{ plan_hash: string; web_origin: string; api_origin: string; routes_json: string }, [string]>(
-        'SELECT plan_hash, web_origin, api_origin, routes_json FROM plan_targets WHERE plan_hash = ?',
-      )
-      .get(planHash);
-    if (r === undefined || r === null) return null;
-    const routes = parseDiscoveredRoutes(r.routes_json);
-    if (routes === null) return null;
-    return { planHash: r.plan_hash, webOrigin: r.web_origin, apiOrigin: r.api_origin, routes };
+    return this.plans.getPlanTarget(planHash);
   }
 
   // ------------------------------------------------------------------- plans
@@ -699,45 +151,22 @@ export class Store {
    * left untouched. Returns true when a new row was inserted.
    */
   storeApprovedPlan(plan: { hash: string; text: string; approvedAt: number }): boolean {
-    const res = this.db
-      .prepare('INSERT OR IGNORE INTO plans (hash, text, approved_at) VALUES (?, ?, ?)')
-      .run(plan.hash, plan.text, plan.approvedAt);
-    return res.changes > 0;
+    return this.plans.storeApprovedPlan(plan);
   }
 
   getPlan(hash: string): PlanRow | null {
-    const r = this.db
-      .prepare<RawPlan, [string]>('SELECT hash, text, approved_at FROM plans WHERE hash = ?')
-      .get(hash);
-    return r ? { hash: r.hash, text: r.text, approvedAt: r.approved_at } : null;
+    return this.plans.getPlan(hash);
   }
 
   hasApprovedPlan(hash: string): boolean {
-    return (
-      this.db.prepare<CountRow, [string]>('SELECT COUNT(*) AS n FROM plans WHERE hash = ?').get(hash)?.n === 1
-    );
+    return this.plans.hasApprovedPlan(hash);
   }
 
   // -------------------------------------------------------------------- runs
 
   /** Inserts a run (default `running`). Does not check the run slot; use admitStart for that. */
   createRun(run: NewRun): void {
-    this.db
-      .prepare(
-        `INSERT INTO runs (id, kind, plan_hash, status, runtime, started_at, owner_user_id, visibility, title)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        run.id,
-        run.kind,
-        run.planHash,
-        run.status ?? 'running',
-        run.runtime,
-        run.startedAt,
-        run.ownerUserId ?? null,
-        run.visibility ?? 'public',
-        run.title ?? null,
-      );
+    this.runs.createRun(run);
   }
 
   /**
@@ -745,24 +174,11 @@ export class Store {
    * Never flips visibility. Returns the ids that changed.
    */
   claimPublicRuns(userId: string, runIds: readonly string[]): string[] {
-    const claimed: string[] = [];
-    this.transaction(() => {
-      const update = this.db.prepare(
-        `UPDATE runs SET owner_user_id = ?
-         WHERE id = ? AND visibility = 'public'
-           AND owner_user_id IS NULL`,
-      );
-      for (const id of runIds) {
-        const res = update.run(userId, id);
-        if (res.changes > 0) claimed.push(id);
-      }
-    });
-    return claimed;
+    return this.runs.claimPublicRuns(userId, runIds);
   }
 
   getRun(id: string): RunRow | null {
-    const r = this.db.prepare<RawRun, [string]>(`SELECT ${RUN_COLS} FROM runs WHERE id = ?`).get(id);
-    return r ? toRun(r) : null;
+    return this.runs.getRun(id);
   }
 
   /**
@@ -776,52 +192,26 @@ export class Store {
     reason: string | null,
     endedAt: number,
   ): boolean {
-    const res = this.db
-      .prepare("UPDATE runs SET status = ?, status_reason = ?, ended_at = ? WHERE id = ? AND status = 'running'")
-      .run(status, reason, endedAt, id);
-    if (res.changes > 0) this.notifyRun(id);
-    return res.changes > 0;
+    return this.runs.setRunStatus(id, status, reason, endedAt);
   }
 
   setProbeResult(id: string, result: unknown): void {
-    this.db.prepare('UPDATE runs SET probe_result = ? WHERE id = ?').run(JSON.stringify(result), id);
+    this.runs.setProbeResult(id, result);
   }
 
   /** The run or probe with status `running`, if any. */
   getActiveRun(): RunRow | null {
-    const r = this.db
-      .prepare<RawRun, []>(`SELECT ${RUN_COLS} FROM runs WHERE status = 'running' ORDER BY started_at LIMIT 1`)
-      .get();
-    return r ? toRun(r) : null;
+    return this.runs.getActiveRun();
   }
 
   /** Number of runs currently waiting in the FIFO queue. */
   countQueuedRuns(): number {
-    return this.db.prepare<CountRow, []>("SELECT COUNT(*) AS n FROM runs WHERE status = 'queued'").get()?.n ?? 0;
+    return this.runs.countQueuedRuns();
   }
 
   /** 1-based FIFO queue position for a `queued` run, or null otherwise. */
   getQueuePosition(id: string): number | null {
-    const row = this.db
-      .prepare<{ rowid: number; started_at: number; status: string }, [string]>(
-        'SELECT rowid, started_at, status FROM runs WHERE id = ?',
-      )
-      .get(id);
-    if (!row || row.status !== 'queued') return null;
-    const count = this.db
-      .prepare<CountRow, [number, number, number]>(
-        `SELECT COUNT(*) AS n FROM runs
-         WHERE status = 'queued'
-           AND (started_at < ? OR (started_at = ? AND rowid <= ?))`,
-      )
-      .get(row.started_at, row.started_at, row.rowid);
-    return count?.n ?? 1;
-  }
-
-  /** Notify SSE listeners of all currently queued runs (e.g. after a dequeue or cancel). */
-  private notifyQueuedRuns(): void {
-    const rows = this.db.prepare<{ id: string }, []>("SELECT id FROM runs WHERE status = 'queued'").all();
-    for (const r of rows) this.notifyRun(r.id);
+    return this.runs.getQueuePosition(id);
   }
 
   /**
@@ -829,110 +219,49 @@ export class Store {
    * Returns the promoted RunRow, or null when a run is active or the queue is empty.
    */
   claimNextQueuedRun(startedAt: number): RunRow | null {
-    const claimed = this.transaction((): RunRow | null => {
-      if (this.getActiveRun() !== null) return null;
-      const r = this.db
-        .prepare<RawRun, []>(
-          `SELECT ${RUN_COLS} FROM runs WHERE status = 'queued' ORDER BY started_at ASC, rowid ASC LIMIT 1`,
-        )
-        .get();
-      if (!r) return null;
-      const res = this.db
-        .prepare("UPDATE runs SET status = 'running', started_at = ? WHERE id = ? AND status = 'queued'")
-        .run(startedAt, r.id);
-      if (res.changes === 0) return null;
-      return toRun({ ...r, status: 'running', started_at: startedAt });
-    });
-    if (claimed !== null) {
-      this.notifyRun(claimed.id);
-      this.notifyQueuedRuns();
-    }
-    return claimed;
+    return this.runs.claimNextQueuedRun(startedAt);
   }
 
   /** Cancels a `queued` run before it starts. Returns whether a row changed. */
   stopQueuedRun(id: string, endedAt: number): boolean {
-    const res = this.db
-      .prepare("UPDATE runs SET status = 'stopped', status_reason = NULL, ended_at = ? WHERE id = ? AND status = 'queued'")
-      .run(endedAt, id);
-    if (res.changes > 0) {
-      this.notifyRun(id);
-      this.notifyQueuedRuns();
-    }
-    return res.changes > 0;
+    return this.runs.stopQueuedRun(id, endedAt);
   }
 
   /** Newest first, `limit` defaults to 20. */
   listRunsForPlan(planHash: string, limit = 20): RunRow[] {
-    return this.db
-      .prepare<RawRun, [string, number]>(
-        `SELECT ${RUN_COLS} FROM runs WHERE plan_hash = ? ORDER BY started_at DESC, rowid DESC LIMIT ?`,
-      )
-      .all(planHash, limit)
-      .map(toRun);
+    return this.runs.listRunsForPlan(planHash, limit);
   }
 
   /** Newest first runs owned by the user (claimed or started while signed in). */
   listRunsForOwner(userId: string, limit = 50): RunRow[] {
-    return this.db
-      .prepare<RawRun, [string, number]>(
-        `SELECT ${RUN_COLS} FROM runs WHERE owner_user_id = ? ORDER BY started_at DESC, rowid DESC LIMIT ?`,
-      )
-      .all(userId, limit)
-      .map(toRun);
+    return this.runs.listRunsForOwner(userId, limit);
   }
 
   /** Most recent finished public demo run (`completed` or `halted`) that has a saved report, or null. */
   getLatestPublicCompletedRunId(): string | null {
-    const row = this.db
-      .prepare<{ id: string }, []>(
-        `SELECT r.id FROM runs r
-         JOIN reports rep ON rep.run_id = r.id
-         WHERE r.visibility = 'public' AND r.kind = 'run' AND r.status IN ('completed', 'halted')
-         ORDER BY r.started_at DESC, r.rowid DESC LIMIT 1`,
-      )
-      .get();
-    return row?.id ?? null;
+    return this.runs.getLatestPublicCompletedRunId();
   }
 
   /** Runs and probes with `started_at >= sinceMs`. Pass the UTC day start for the daily limit. */
   countRunsStartedSince(sinceMs: number): number {
-    return (
-      this.db.prepare<CountRow, [number]>('SELECT COUNT(*) AS n FROM runs WHERE started_at >= ?').get(sinceMs)?.n ?? 0
-    );
+    return this.runs.countRunsStartedSince(sinceMs);
   }
 
   /** `started_at` of every run and probe since `sinceMs`, ascending (input for dailyCheck). */
   runStartTimestampsSince(sinceMs: number): number[] {
-    return this.db
-      .prepare<TsRow, [number]>('SELECT started_at AS ts FROM runs WHERE started_at >= ? ORDER BY started_at')
-      .all(sinceMs)
-      .map((r) => r.ts);
+    return this.runs.runStartTimestampsSince(sinceMs);
   }
 
   /** Startup recovery: every `running` run becomes `interrupted`. Returns the number changed. */
   markRunningInterrupted(endedAt: number): number {
-    return this.db
-      .prepare(
-        "UPDATE runs SET status = 'interrupted', status_reason = 'macro-api restarted', ended_at = ? WHERE status = 'running'",
-      )
-      .run(endedAt).changes;
+    return this.runs.markRunningInterrupted(endedAt);
   }
 
   // ------------------------------------------------------------------ stages
 
   /** Inserts the stage row as `running`, or resets an existing row for the same (run, idx). */
   startStage(stage: { runId: string; idx: number; vus: number; durationSec: number; startedAt: number }): void {
-    this.db
-      .prepare(
-        `INSERT INTO stages (run_id, idx, vus, duration_sec, status, started_at)
-         VALUES (?, ?, ?, ?, 'running', ?)
-         ON CONFLICT(run_id, idx) DO UPDATE SET
-           vus = excluded.vus, duration_sec = excluded.duration_sec, status = 'running',
-           error_reason = NULL, metrics = NULL, verdict = NULL, generator_saturated = NULL,
-           started_at = excluded.started_at, ended_at = NULL`,
-      )
-      .run(stage.runId, stage.idx, stage.vus, stage.durationSec, stage.startedAt);
+    this.runs.startStage(stage);
   }
 
   /** Marks the stage `done` with metrics and verdict. Returns whether the row existed. */
@@ -944,226 +273,108 @@ export class Store {
     generatorSaturated?: boolean;
     endedAt: number;
   }): boolean {
-    const sat = stage.generatorSaturated === undefined ? null : stage.generatorSaturated ? 1 : 0;
-    return (
-      this.db
-        .prepare(
-          `UPDATE stages SET status = 'done', metrics = ?, verdict = ?, generator_saturated = ?, ended_at = ?
-           WHERE run_id = ? AND idx = ?`,
-        )
-        .run(JSON.stringify(stage.metrics), stage.verdict, sat, stage.endedAt, stage.runId, stage.idx).changes > 0
-    );
+    return this.runs.finishStage(stage);
   }
 
   /** Marks the stage `error` with a reason. Returns whether the row existed. */
   failStage(stage: { runId: string; idx: number; errorReason: string; endedAt: number }): boolean {
-    return (
-      this.db
-        .prepare("UPDATE stages SET status = 'error', error_reason = ?, ended_at = ? WHERE run_id = ? AND idx = ?")
-        .run(stage.errorReason, stage.endedAt, stage.runId, stage.idx).changes > 0
-    );
+    return this.runs.failStage(stage);
   }
 
   getStage(runId: string, idx: number): StageRow | null {
-    const r = this.db
-      .prepare<RawStage, [string, number]>('SELECT * FROM stages WHERE run_id = ? AND idx = ?')
-      .get(runId, idx);
-    return r ? toStage(r) : null;
+    return this.runs.getStage(runId, idx);
   }
 
   /** All stage rows of a run in index order. */
   getStages(runId: string): StageRow[] {
-    return this.db
-      .prepare<RawStage, [string]>('SELECT * FROM stages WHERE run_id = ? ORDER BY idx')
-      .all(runId)
-      .map(toStage);
+    return this.runs.getStages(runId);
   }
 
   // ----------------------------------------------------------- stage samples
 
   /** Replaces the samples of one stage in a single transaction. */
   storeStageSamples(runId: string, stageIdx: number, samples: readonly StageSample[]): void {
-    const insert = this.db.prepare(
-      `INSERT OR REPLACE INTO stage_samples
-       (run_id, stage_idx, second, route, requests, errors, latency_sum_ms, latency_max_ms)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    );
-    this.transaction(() => {
-      this.db.prepare('DELETE FROM stage_samples WHERE run_id = ? AND stage_idx = ?').run(runId, stageIdx);
-      for (const s of samples) {
-        insert.run(runId, stageIdx, s.second, s.route, s.requests, s.errors, s.latencySumMs, s.latencyMaxMs);
-      }
-    });
+    this.runs.storeStageSamples(runId, stageIdx, samples);
   }
 
   /** One stage's samples ordered by second then route. Empty for stages without samples. */
   readStageSamples(runId: string, stageIdx: number): StageSample[] {
-    return this.db
-      .prepare<
-        { second: number; route: string; requests: number; errors: number; latency_sum_ms: number; latency_max_ms: number },
-        [string, number]
-      >(
-        `SELECT second, route, requests, errors, latency_sum_ms, latency_max_ms
-         FROM stage_samples WHERE run_id = ? AND stage_idx = ? ORDER BY second, route`,
-      )
-      .all(runId, stageIdx)
-      .map((r) => ({
-        second: r.second,
-        route: r.route,
-        requests: r.requests,
-        errors: r.errors,
-        latencySumMs: r.latency_sum_ms,
-        latencyMaxMs: r.latency_max_ms,
-      }));
+    return this.runs.readStageSamples(runId, stageIdx);
   }
 
   // --------------------------------------------------------------- decisions
 
   /** One decision per (run, stage); a repeat replaces the earlier row. */
   saveDecision(d: DecisionRow): void {
-    this.db
-      .prepare(
-        `INSERT OR REPLACE INTO decisions (run_id, stage_idx, decision, source, reason, reason_withheld)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-      )
-      .run(d.runId, d.stageIdx, d.decision, d.source, d.reason, d.reasonWithheld ? 1 : 0);
+    this.runs.saveDecision(d);
   }
 
   getDecisions(runId: string): DecisionRow[] {
-    return this.db
-      .prepare<RawDecision, [string]>('SELECT * FROM decisions WHERE run_id = ? ORDER BY stage_idx')
-      .all(runId)
-      .map((r) => ({
-        runId: r.run_id,
-        stageIdx: r.stage_idx,
-        decision: r.decision,
-        source: r.source,
-        reason: r.reason,
-        reasonWithheld: r.reason_withheld !== 0,
-      }));
+    return this.runs.getDecisions(runId);
   }
 
   // ------------------------------------------------------------------ events
 
   /** Appends an event and returns its id (the SSE event id). */
   appendEvent(e: NewEvent): number {
-    const res = this.db
-      .prepare('INSERT INTO events (run_id, type, stage_idx, payload, ts) VALUES (?, ?, ?, ?, ?)')
-      .run(
-        e.runId,
-        e.type,
-        e.stageIdx ?? null,
-        e.payload === undefined ? null : JSON.stringify(e.payload),
-        e.ts,
-      );
-    const id = Number(res.lastInsertRowid);
-    this.notifyRun(e.runId);
-    return id;
+    return this.runs.appendEvent(e);
   }
 
   /** Events of `runId` with id > afterId, ascending (SSE replay; pass 0 for all). */
   readEventsAfter(runId: string, afterId: number, limit = 1000): StoredEvent[] {
-    return this.db
-      .prepare<RawEvent, [string, number, number]>(
-        'SELECT id, run_id, type, stage_idx, payload, ts FROM events WHERE run_id = ? AND id > ? ORDER BY id LIMIT ?',
-      )
-      .all(runId, afterId, limit)
-      .map(toEvent);
+    return this.runs.readEventsAfter(runId, afterId, limit);
   }
 
   // ----------------------------------------------------------------- reports
 
   /** Inserts or replaces the report for a run. */
   saveReport(r: { runId: string; body: unknown; ai?: unknown; aiStatus: ReportAiStatus }): void {
-    this.db
-      .prepare('INSERT OR REPLACE INTO reports (run_id, body, ai, ai_status) VALUES (?, ?, ?, ?)')
-      .run(r.runId, JSON.stringify(r.body), r.ai === undefined ? null : JSON.stringify(r.ai), r.aiStatus);
+    this.runs.saveReport(r);
   }
 
   /** Sets the AI section of an existing report. Returns whether the report existed. */
   setReportAi(runId: string, ai: unknown, aiStatus: ReportAiStatus): boolean {
-    return (
-      this.db
-        .prepare('UPDATE reports SET ai = ?, ai_status = ? WHERE run_id = ?')
-        .run(ai === undefined || ai === null ? null : JSON.stringify(ai), aiStatus, runId).changes > 0
-    );
+    return this.runs.setReportAi(runId, ai, aiStatus);
   }
 
   getReport(runId: string): ReportRow | null {
-    const r = this.db
-      .prepare<RawReport, [string]>('SELECT run_id, body, ai, ai_status FROM reports WHERE run_id = ?')
-      .get(runId);
-    return r ? { runId: r.run_id, body: parseJson(r.body), ai: parseJson(r.ai), aiStatus: r.ai_status } : null;
+    return this.runs.getReport(runId);
   }
 
   // ------------------------------------------------------------- model calls
 
   recordModelCall(c: NewModelCall): void {
-    this.db
-      .prepare(
-        `INSERT INTO model_calls
-           (draft_id, run_id, agent, model, outcome, latency_ms, prompt_tokens, completion_tokens, ts)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        c.draftId ?? null,
-        c.runId ?? null,
-        c.agent,
-        c.model,
-        c.outcome,
-        Math.round(c.latencyMs),
-        c.promptTokens,
-        c.completionTokens,
-        c.ts,
-      );
+    this.runs.recordModelCall(c);
   }
 
   listModelCallsForDraft(draftId: string): ModelCallRow[] {
-    return this.db
-      .prepare<RawModelCall, [string]>('SELECT * FROM model_calls WHERE draft_id = ? ORDER BY id')
-      .all(draftId)
-      .map(toModelCall);
+    return this.runs.listModelCallsForDraft(draftId);
   }
 
   listModelCallsForRun(runId: string): ModelCallRow[] {
-    return this.db
-      .prepare<RawModelCall, [string]>('SELECT * FROM model_calls WHERE run_id = ? ORDER BY id')
-      .all(runId)
-      .map(toModelCall);
+    return this.runs.listModelCallsForRun(runId);
   }
-
-  // ------------------------------------------------------------ limit tables
 
   // -------------------------------------------------------------- waitlist
 
   /** Adds a normalised email. Returns true when it was new, false when it was already on the list. */
   addWaitlistEmail(email: string, ts: number): boolean {
-    return this.db.prepare('INSERT OR IGNORE INTO waitlist (email, created_at) VALUES (?, ?)').run(email, ts).changes > 0;
+    return this.limits.addWaitlistEmail(email, ts);
   }
 
   /** Every waitlist entry, oldest first, with the invite funnel times. */
-  listWaitlist(): { email: string; createdAt: number; invitedAt: number | null; joinedAt: number | null }[] {
-    return this.db
-      .prepare<{ email: string; created_at: number; invited_at: number | null; joined_at: number | null }, []>(
-        'SELECT email, created_at, invited_at, joined_at FROM waitlist ORDER BY created_at, email',
-      )
-      .all()
-      .map((r) => ({ email: r.email, createdAt: r.created_at, invitedAt: r.invited_at, joinedAt: r.joined_at }));
+  listWaitlist(): WaitlistRow[] {
+    return this.limits.listWaitlist();
   }
 
   /** One waitlist row, or null. */
-  getWaitlist(email: string): { email: string; createdAt: number; invitedAt: number | null; joinedAt: number | null } | null {
-    const r = this.db
-      .prepare<{ email: string; created_at: number; invited_at: number | null; joined_at: number | null }, [string]>(
-        'SELECT email, created_at, invited_at, joined_at FROM waitlist WHERE email = ?',
-      )
-      .get(email);
-    return r === null ? null : { email: r.email, createdAt: r.created_at, invitedAt: r.invited_at, joinedAt: r.joined_at };
+  getWaitlist(email: string): WaitlistRow | null {
+    return this.limits.getWaitlist(email);
   }
 
   /** Marks the invite as sent. Overwrites the time, so a forced re-send moves it. */
   markWaitlistInvited(email: string, ts: number): void {
-    this.db.prepare('UPDATE waitlist SET invited_at = ? WHERE email = ?').run(ts, email);
+    this.limits.markWaitlistInvited(email, ts);
   }
 
   /**
@@ -1171,50 +382,37 @@ export class Store {
    * invited, and had no joined time yet.
    */
   markWaitlistJoined(email: string, ts: number): boolean {
-    return (
-      this.db
-        .prepare('UPDATE waitlist SET joined_at = ? WHERE email = ? AND invited_at IS NOT NULL AND joined_at IS NULL')
-        .run(ts, email).changes > 0
-    );
+    return this.limits.markWaitlistJoined(email, ts);
   }
 
   /** Removes one email (a deletion request). Returns true when a row was deleted. */
   removeWaitlistEmail(email: string): boolean {
-    return this.db.prepare('DELETE FROM waitlist WHERE email = ?').run(email).changes > 0;
+    return this.limits.removeWaitlistEmail(email);
   }
 
+  // ------------------------------------------------------------ limit tables
+
   recordPlanningRequest(ip: string, ts: number): void {
-    this.db.prepare('INSERT INTO planning_requests (ip, ts) VALUES (?, ?)').run(ip, ts);
+    this.limits.recordPlanningRequest(ip, ts);
   }
 
   /** Timestamps for `ip` with ts > sinceMs, ascending. */
   planningRequestTimestamps(ip: string, sinceMs: number): number[] {
-    return this.db
-      .prepare<TsRow, [string, number]>('SELECT ts FROM planning_requests WHERE ip = ? AND ts > ? ORDER BY ts')
-      .all(ip, sinceMs)
-      .map((r) => r.ts);
+    return this.limits.planningRequestTimestamps(ip, sinceMs);
   }
 
   recordClientStart(ip: string, ts: number): void {
-    this.db.prepare('INSERT INTO client_starts (ip, ts) VALUES (?, ?)').run(ip, ts);
+    this.limits.recordClientStart(ip, ts);
   }
 
   /** Timestamps for `ip` with ts > sinceMs, ascending. */
   clientStartTimestamps(ip: string, sinceMs: number): number[] {
-    return this.db
-      .prepare<TsRow, [string, number]>('SELECT ts FROM client_starts WHERE ip = ? AND ts > ? ORDER BY ts')
-      .all(ip, sinceMs)
-      .map((r) => r.ts);
+    return this.limits.clientStartTimestamps(ip, sinceMs);
   }
 
   /** Deletes planning_requests and client_starts rows older than 24 h. Returns rows deleted. */
   purgeOldLimitRows(now: number): number {
-    const cutoff = now - LIMIT_ROW_TTL_MS;
-    return this.transaction(() => {
-      const a = this.db.prepare('DELETE FROM planning_requests WHERE ts < ?').run(cutoff).changes;
-      const b = this.db.prepare('DELETE FROM client_starts WHERE ts < ?').run(cutoff).changes;
-      return a + b;
-    });
+    return this.limits.purgeOldLimitRows(now);
   }
 
   /**
@@ -1222,43 +420,21 @@ export class Store {
    * Returns a function that stops the timer.
    */
   startPurgeTimer(opts: { intervalMs?: number; clock?: () => number } = {}): () => void {
-    const clock = opts.clock ?? Date.now;
-    const timer = setInterval(() => {
-      try {
-        this.purgeOldLimitRows(clock());
-      } catch (err) {
-        console.error('limit-row purge failed:', err instanceof Error ? err.message : 'unknown error');
-      }
-    }, opts.intervalMs ?? PURGE_INTERVAL_MS);
-    timer.unref();
-    return () => clearInterval(timer);
+    return this.limits.startPurgeTimer(opts);
   }
 
   // ------------------------------------------------------------------- auth
 
   createUser(email: string, now: number): UserRow {
-    const primaryEmail = normalizeEmail(email);
-    const id = crypto.randomUUID();
-    this.db
-      .prepare('INSERT INTO users (id, primary_email, github_login, created_at) VALUES (?, ?, NULL, ?)')
-      .run(id, primaryEmail, now);
-    return { id, primaryEmail, githubLogin: null, createdAt: now };
+    return this.auth.createUser(email, now);
   }
 
   findUserByEmail(email: string): UserRow | null {
-    const r = this.db
-      .prepare<RawUser, [string]>(
-        'SELECT id, primary_email, github_login, created_at FROM users WHERE primary_email = ?',
-      )
-      .get(normalizeEmail(email));
-    return r ? toUser(r) : null;
+    return this.auth.findUserByEmail(email);
   }
 
   getUser(id: string): UserRow | null {
-    const r = this.db
-      .prepare<RawUser, [string]>('SELECT id, primary_email, github_login, created_at FROM users WHERE id = ?')
-      .get(id);
-    return r ? toUser(r) : null;
+    return this.auth.getUser(id);
   }
 
   /**
@@ -1266,122 +442,70 @@ export class Store {
    * and all private runs owned by the user; public demo runs are unlinked.
    */
   deleteUser(userId: string): boolean {
-    return this.transaction(() => {
-      const priv = this.db
-        .prepare<{ id: string }, [string]>(
-          "SELECT id FROM runs WHERE owner_user_id = ? AND visibility = 'private'",
-        )
-        .all(userId);
-      for (const { id } of priv) {
-        this.db.prepare('DELETE FROM stage_samples WHERE run_id = ?').run(id);
-        this.db.prepare('DELETE FROM stages WHERE run_id = ?').run(id);
-        this.db.prepare('DELETE FROM decisions WHERE run_id = ?').run(id);
-        this.db.prepare('DELETE FROM events WHERE run_id = ?').run(id);
-        this.db.prepare('DELETE FROM reports WHERE run_id = ?').run(id);
-        this.db.prepare('DELETE FROM model_calls WHERE run_id = ?').run(id);
-        this.db.prepare('DELETE FROM runs WHERE id = ?').run(id);
-      }
-      this.db.prepare('UPDATE runs SET owner_user_id = NULL WHERE owner_user_id = ?').run(userId);
-      const subject = `user:${userId}`;
-      this.db.prepare('DELETE FROM planning_requests WHERE ip = ?').run(subject);
-      this.db.prepare('DELETE FROM client_starts WHERE ip = ?').run(subject);
-      return this.db.prepare('DELETE FROM users WHERE id = ?').run(userId).changes > 0;
-    });
+    return this.auth.deleteUser(userId);
   }
 
   linkIdentity(userId: string, provider: 'email' | 'github' | 'google', providerSubject: string): void {
-    const subject = provider === 'email' ? normalizeEmail(providerSubject) : providerSubject;
-    this.db
-      .prepare(
-        `INSERT INTO auth_identities (provider, provider_subject, user_id) VALUES (?, ?, ?)
-         ON CONFLICT(provider, provider_subject) DO UPDATE SET user_id = excluded.user_id`,
-      )
-      .run(provider, subject, userId);
+    this.auth.linkIdentity(userId, provider, providerSubject);
   }
 
   findUserByIdentity(provider: 'email' | 'github' | 'google', providerSubject: string): UserRow | null {
-    const subject = provider === 'email' ? normalizeEmail(providerSubject) : providerSubject;
-    const r = this.db
-      .prepare<RawUser, [string, string]>(
-        `SELECT u.id, u.primary_email, u.github_login, u.created_at
-         FROM auth_identities i
-         JOIN users u ON u.id = i.user_id
-         WHERE i.provider = ? AND i.provider_subject = ?`,
-      )
-      .get(provider, subject);
-    return r ? toUser(r) : null;
+    return this.auth.findUserByIdentity(provider, providerSubject);
   }
 
   createSession(userId: string, now: number, ttlMs: number): SessionRow {
-    const id = crypto.randomUUID();
-    const expiresAt = now + ttlMs;
-    this.db
-      .prepare(
-        'INSERT INTO sessions (id, user_id, created_at, last_seen_at, expires_at) VALUES (?, ?, ?, ?, ?)',
-      )
-      .run(id, userId, now, now, expiresAt);
-    return { id, userId, createdAt: now, lastSeenAt: now, expiresAt };
+    return this.auth.createSession(userId, now, ttlMs);
   }
 
   getSession(id: string): SessionRow | null {
-    const r = this.db
-      .prepare<RawSession, [string]>(
-        'SELECT id, user_id, created_at, last_seen_at, expires_at FROM sessions WHERE id = ?',
-      )
-      .get(id);
-    return r ? toSession(r) : null;
+    return this.auth.getSession(id);
   }
 
   touchSession(id: string, now: number, ttlMs: number): SessionRow | null {
-    const expiresAt = now + ttlMs;
-    const res = this.db
-      .prepare('UPDATE sessions SET last_seen_at = ?, expires_at = ? WHERE id = ?')
-      .run(now, expiresAt, id);
-    if (res.changes === 0) return null;
-    return this.getSession(id);
+    return this.auth.touchSession(id, now, ttlMs);
   }
 
   deleteSession(id: string): void {
-    this.db.prepare('DELETE FROM sessions WHERE id = ?').run(id);
+    this.auth.deleteSession(id);
   }
 
+  createMagicLinkToken(
+    userId: string | null,
+    email: string,
+    tokenHash: string,
+    now: number,
+    ttlMs: number,
+  ): void {
+    this.auth.createMagicLinkToken(userId, email, tokenHash, now, ttlMs);
+  }
+
+  consumeMagicLinkToken(
+    tokenHash: string,
+    now: number,
+  ): { email: string; userId: string | null } | null {
+    return this.auth.consumeMagicLinkToken(tokenHash, now);
+  }
+
+  setUserGithubLogin(userId: string, login: string | null): void {
+    this.auth.setUserGithubLogin(userId, login);
+  }
+
+  // ----------------------------------------------------------------- verify
+
   setVerifiedOrigin(userId: string, origin: string, host: string, token: string, now: number): void {
-    this.transaction(() => {
-      const owner = this.db
-        .prepare<{ user_id: string }, [string]>('SELECT user_id FROM verified_origins WHERE host = ?')
-        .get(host);
-      if (owner !== null && owner.user_id !== userId) {
-        throw new ContestedOriginError(host);
-      }
-      this.db.prepare('DELETE FROM verified_origins WHERE user_id = ?').run(userId);
-      this.db
-        .prepare(
-          'INSERT INTO verified_origins (user_id, origin, host, verified_at, token) VALUES (?, ?, ?, ?, ?)',
-        )
-        .run(userId, origin, host, now, token);
-    });
+    this.verify.setVerifiedOrigin(userId, origin, host, token, now);
   }
 
   clearVerifiedOrigin(userId: string): void {
-    this.db.prepare('DELETE FROM verified_origins WHERE user_id = ?').run(userId);
+    this.verify.clearVerifiedOrigin(userId);
   }
 
   getVerifiedOrigin(userId: string): VerifiedOriginRow | null {
-    const r = this.db
-      .prepare<RawVerifiedOrigin, [string]>(
-        'SELECT user_id, origin, host, verified_at, token FROM verified_origins WHERE user_id = ?',
-      )
-      .get(userId);
-    return r ? toVerifiedOrigin(r) : null;
+    return this.verify.getVerifiedOrigin(userId);
   }
 
   findVerifiedOriginByHost(host: string): VerifiedOriginRow | null {
-    const r = this.db
-      .prepare<RawVerifiedOrigin, [string]>(
-        'SELECT user_id, origin, host, verified_at, token FROM verified_origins WHERE host = ?',
-      )
-      .get(host);
-    return r ? toVerifiedOrigin(r) : null;
+    return this.verify.findVerifiedOriginByHost(host);
   }
 
   setPendingOriginVerification(
@@ -1391,40 +515,19 @@ export class Store {
     token: string,
     now: number,
   ): void {
-    this.db
-      .prepare(
-        `INSERT INTO pending_origin_verifications (user_id, origin, host, token, created_at)
-         VALUES (?, ?, ?, ?, ?)
-         ON CONFLICT(user_id) DO UPDATE SET
-           origin = excluded.origin,
-           host = excluded.host,
-           token = excluded.token,
-           created_at = excluded.created_at`,
-      )
-      .run(userId, origin, host, token, now);
+    this.verify.setPendingOriginVerification(userId, origin, host, token, now);
   }
 
   getPendingOriginVerification(userId: string): PendingOriginVerificationRow | null {
-    const r = this.db
-      .prepare<RawPendingOriginVerification, [string]>(
-        'SELECT user_id, origin, host, token, created_at FROM pending_origin_verifications WHERE user_id = ?',
-      )
-      .get(userId);
-    return r ? toPendingOriginVerification(r) : null;
+    return this.verify.getPendingOriginVerification(userId);
   }
 
   clearPendingOriginVerification(userId: string): void {
-    this.db.prepare('DELETE FROM pending_origin_verifications WHERE user_id = ?').run(userId);
+    this.verify.clearPendingOriginVerification(userId);
   }
 
   getAccountDraft(userId: string): AccountDraftRow | null {
-    const r = this.db
-      .prepare<RawAccountDraft, [string]>(
-        `SELECT user_id, traffic_event, target_mode, target_origin, last_edited_at
-         FROM account_drafts WHERE user_id = ?`,
-      )
-      .get(userId);
-    return r ? toAccountDraft(r) : null;
+    return this.verify.getAccountDraft(userId);
   }
 
   /**
@@ -1435,68 +538,6 @@ export class Store {
     userId: string,
     draft: Omit<AccountDraftRow, 'userId'>,
   ): { stored: AccountDraftRow } | { conflict: AccountDraftRow } {
-    return this.transaction(() => {
-      const existing = this.getAccountDraft(userId);
-      if (existing !== null && existing.lastEditedAt > draft.lastEditedAt) {
-        return { conflict: existing };
-      }
-      this.db
-        .prepare(
-          `INSERT INTO account_drafts (user_id, traffic_event, target_mode, target_origin, last_edited_at)
-           VALUES (?, ?, ?, ?, ?)
-           ON CONFLICT(user_id) DO UPDATE SET
-             traffic_event = excluded.traffic_event,
-             target_mode = excluded.target_mode,
-             target_origin = excluded.target_origin,
-             last_edited_at = excluded.last_edited_at`,
-        )
-        .run(userId, draft.trafficEvent, draft.targetMode, draft.targetOrigin, draft.lastEditedAt);
-      return {
-        stored: {
-          userId,
-          trafficEvent: draft.trafficEvent,
-          targetMode: draft.targetMode,
-          targetOrigin: draft.targetOrigin,
-          lastEditedAt: draft.lastEditedAt,
-        },
-      };
-    });
-  }
-
-  createMagicLinkToken(
-    userId: string | null,
-    email: string,
-    tokenHash: string,
-    now: number,
-    ttlMs: number,
-  ): void {
-    this.db
-      .prepare(
-        `INSERT INTO magic_link_tokens (token_hash, email, user_id, created_at, expires_at, used_at)
-         VALUES (?, ?, ?, ?, ?, NULL)`,
-      )
-      .run(tokenHash, normalizeEmail(email), userId, now, now + ttlMs);
-  }
-
-  consumeMagicLinkToken(
-    tokenHash: string,
-    now: number,
-  ): { email: string; userId: string | null } | null {
-    return this.transaction(() => {
-      const row = this.db
-        .prepare<{ email: string; user_id: string | null; expires_at: number; used_at: number | null }, [string]>(
-          'SELECT email, user_id, expires_at, used_at FROM magic_link_tokens WHERE token_hash = ?',
-        )
-        .get(tokenHash);
-      if (row === null) return null;
-      if (row.used_at !== null) return null;
-      if (row.expires_at < now) return null;
-      this.db.prepare('UPDATE magic_link_tokens SET used_at = ? WHERE token_hash = ?').run(now, tokenHash);
-      return { email: row.email, userId: row.user_id };
-    });
-  }
-
-  setUserGithubLogin(userId: string, login: string | null): void {
-    this.db.prepare('UPDATE users SET github_login = ? WHERE id = ?').run(login, userId);
+    return this.verify.putAccountDraft(userId, draft);
   }
 }

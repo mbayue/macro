@@ -5,18 +5,17 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import type { AccountDraft, DemoTrendsResponse, PlanResponse } from '../../../../../src/api-types.ts';
+import { getDraft, putDraft } from '../lib/auth-api.ts';
 import {
   clearReviewState,
   clearSignedOutDraft,
-  getDraft,
   loadReviewState,
   loadSignedOutDraft,
-  putDraft,
   stashLocalDraft,
   stashReviewState,
   stashSignedOutDraft,
   takeLocalDraft,
-} from '../lib/auth-api.ts';
+} from '../lib/draft-storage.ts';
 import { type ApiError, type ApiResult, getDemoTrends, postPlan, VERIFICATION_ERROR } from '../lib/api.ts';
 import {
   fetchFeaturedRuns,

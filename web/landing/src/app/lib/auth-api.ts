@@ -1,83 +1,50 @@
-/** Auth client helpers for /api/me, magic link, sign-out, verify, claim. */
+/** Auth, verification, account draft, and account runs HTTP client helpers. */
 import type {
   AccountDraft,
   AccountDraftConflict,
+  AccountRunsResponse,
   ClaimResponse,
   MagicLinkResponse,
   MeResponse,
-  PlanResponse,
   VerifyCheckResponse,
   VerifyClearResponse,
   VerifyStartResponse,
 } from '../../../../../src/api-types.ts';
-import { type ApiError, type ApiResult, INTERNAL_ERROR, NETWORK_ERROR } from './api.ts';
+import { type ApiResult, INTERNAL_ERROR, request } from './api.ts';
 import { loadRecentRuns } from './recent-runs.ts';
 
-async function readJson(res: Response): Promise<unknown> {
-  try {
-    return await res.json();
-  } catch {
-    return null;
-  }
+function parseConflictDraft(json: unknown): AccountDraft | undefined {
+  if (typeof json !== 'object' || json === null || Array.isArray(json)) return undefined;
+  const draft = (json as Partial<AccountDraftConflict>).draft;
+  if (typeof draft !== 'object' || draft === null || Array.isArray(draft)) return undefined;
+  return draft;
 }
 
-function apiErrorFromBody(body: unknown): ApiError {
-  const e = (body as { error?: { code?: string; message?: string } } | null)?.error;
-  return {
-    code: (e?.code as ApiError['code']) ?? 'internal',
-    message: e?.message ?? INTERNAL_ERROR.message,
-  };
+export function getMe(signal?: AbortSignal): Promise<ApiResult<MeResponse | null>> {
+  return request<MeResponse | null>('GET', '/api/me', undefined, signal, {
+    onStatus: (status) => (status === 401 ? { ok: true, data: null } : undefined),
+  });
 }
 
-export async function getMe(): Promise<ApiResult<MeResponse | null>> {
-  try {
-    const res = await fetch('/api/me', { credentials: 'same-origin' });
-    if (res.status === 401) return { ok: true, data: null };
-    if (!res.ok) return { ok: false, error: INTERNAL_ERROR };
-    const body = await readJson(res);
-    return { ok: true, data: body as MeResponse };
-  } catch {
-    return { ok: false, error: NETWORK_ERROR };
-  }
+export function postMagicLink(
+  email: string,
+  returnTo?: string,
+  signal?: AbortSignal,
+): Promise<ApiResult<MagicLinkResponse>> {
+  return request<MagicLinkResponse>(
+    'POST',
+    '/api/auth/magic-link',
+    { email, ...(returnTo !== undefined ? { returnTo } : {}) },
+    signal,
+  );
 }
 
-export async function postMagicLink(email: string, returnTo?: string): Promise<ApiResult<MagicLinkResponse>> {
-  try {
-    const res = await fetch('/api/auth/magic-link', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ email, ...(returnTo !== undefined ? { returnTo } : {}) }),
-    });
-    if (!res.ok) {
-      return { ok: false, error: apiErrorFromBody(await readJson(res)) };
-    }
-    return { ok: true, data: (await readJson(res)) as MagicLinkResponse };
-  } catch {
-    return { ok: false, error: NETWORK_ERROR };
-  }
+export function postSignOut(signal?: AbortSignal): Promise<ApiResult<null>> {
+  return request<null>('POST', '/api/auth/sign-out', undefined, signal, { allowEmpty204: true });
 }
 
-export async function postSignOut(): Promise<ApiResult<null>> {
-  try {
-    const res = await fetch('/api/auth/sign-out', { method: 'POST', credentials: 'same-origin' });
-    if (!res.ok && res.status !== 204) return { ok: false, error: INTERNAL_ERROR };
-    return { ok: true, data: null };
-  } catch {
-    return { ok: false, error: NETWORK_ERROR };
-  }
-}
-
-export async function deleteAccount(): Promise<ApiResult<null>> {
-  try {
-    const res = await fetch('/api/me', { method: 'DELETE', credentials: 'same-origin' });
-    if (!res.ok && res.status !== 204) {
-      return { ok: false, error: apiErrorFromBody(await readJson(res)) };
-    }
-    return { ok: true, data: null };
-  } catch {
-    return { ok: false, error: NETWORK_ERROR };
-  }
+export function deleteAccount(signal?: AbortSignal): Promise<ApiResult<null>> {
+  return request<null>('DELETE', '/api/me', undefined, signal, { allowEmpty204: true });
 }
 
 export function githubStartHref(): string {
@@ -88,235 +55,52 @@ export function googleStartHref(): string {
   return '/api/auth/google/start';
 }
 
-export async function postVerifyStart(host: string): Promise<ApiResult<VerifyStartResponse>> {
-  try {
-    const res = await fetch('/api/verify/start', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ host }),
-    });
-    const body = await readJson(res);
-    if (!res.ok) return { ok: false, error: apiErrorFromBody(body) };
-    return { ok: true, data: body as VerifyStartResponse };
-  } catch {
-    return { ok: false, error: NETWORK_ERROR };
-  }
+export function postVerifyStart(host: string, signal?: AbortSignal): Promise<ApiResult<VerifyStartResponse>> {
+  return request<VerifyStartResponse>('POST', '/api/verify/start', { host }, signal);
 }
 
-export async function postVerifyCheck(): Promise<ApiResult<VerifyCheckResponse>> {
-  try {
-    const res = await fetch('/api/verify/check', { method: 'POST', credentials: 'same-origin' });
-    const body = await readJson(res);
-    if (!res.ok) return { ok: false, error: apiErrorFromBody(body) };
-    return { ok: true, data: body as VerifyCheckResponse };
-  } catch {
-    return { ok: false, error: NETWORK_ERROR };
-  }
+export function postVerifyCheck(signal?: AbortSignal): Promise<ApiResult<VerifyCheckResponse>> {
+  return request<VerifyCheckResponse>('POST', '/api/verify/check', undefined, signal);
 }
 
-export async function postVerifyClear(): Promise<ApiResult<VerifyClearResponse>> {
-  try {
-    const res = await fetch('/api/verify/clear', { method: 'POST', credentials: 'same-origin' });
-    const body = await readJson(res);
-    if (!res.ok) return { ok: false, error: apiErrorFromBody(body) };
-    return { ok: true, data: (body as VerifyClearResponse | null) ?? { ok: true } };
-  } catch {
-    return { ok: false, error: NETWORK_ERROR };
-  }
+export function postVerifyClear(signal?: AbortSignal): Promise<ApiResult<VerifyClearResponse>> {
+  return request<VerifyClearResponse>('POST', '/api/verify/clear', undefined, signal);
 }
 
-export async function getVerifyPending(): Promise<ApiResult<VerifyStartResponse | null>> {
-  try {
-    const res = await fetch('/api/verify/pending', { credentials: 'same-origin' });
-    if (res.status === 404 || res.status === 401) return { ok: true, data: null };
-    const body = await readJson(res);
-    if (!res.ok) return { ok: false, error: apiErrorFromBody(body) };
-    return { ok: true, data: body as VerifyStartResponse };
-  } catch {
-    return { ok: false, error: NETWORK_ERROR };
-  }
+export function getVerifyPending(signal?: AbortSignal): Promise<ApiResult<VerifyStartResponse | null>> {
+  return request<VerifyStartResponse | null>('GET', '/api/verify/pending', undefined, signal, {
+    onStatus: (status) => (status === 404 || status === 401 ? { ok: true, data: null } : undefined),
+  });
 }
 
-export async function postVerifyCancel(): Promise<ApiResult<VerifyClearResponse>> {
-  try {
-    const res = await fetch('/api/verify/cancel', { method: 'POST', credentials: 'same-origin' });
-    const body = await readJson(res);
-    if (!res.ok) return { ok: false, error: apiErrorFromBody(body) };
-    return { ok: true, data: (body as VerifyClearResponse | null) ?? { ok: true } };
-  } catch {
-    return { ok: false, error: NETWORK_ERROR };
-  }
+export function postVerifyCancel(signal?: AbortSignal): Promise<ApiResult<VerifyClearResponse>> {
+  return request<VerifyClearResponse>('POST', '/api/verify/cancel', undefined, signal);
 }
 
-export async function getDraft(): Promise<ApiResult<AccountDraft>> {
-  try {
-    const res = await fetch('/api/draft', { credentials: 'same-origin' });
-    const body = await readJson(res);
-    if (!res.ok) return { ok: false, error: apiErrorFromBody(body) };
-    return { ok: true, data: body as AccountDraft };
-  } catch {
-    return { ok: false, error: NETWORK_ERROR };
-  }
+export function getDraft(signal?: AbortSignal): Promise<ApiResult<AccountDraft>> {
+  return request<AccountDraft>('GET', '/api/draft', undefined, signal);
 }
 
 /** PUT draft; on 409 returns ok with the winning server draft via `conflict`. */
 export async function putDraft(
   draft: AccountDraft,
+  signal?: AbortSignal,
 ): Promise<ApiResult<AccountDraft> & { conflict?: AccountDraft }> {
-  try {
-    const res = await fetch('/api/draft', {
-      method: 'PUT',
-      credentials: 'same-origin',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(draft),
-    });
-    const body = await readJson(res);
-    if (res.status === 409) {
-      const winner = (body as AccountDraftConflict | null)?.draft;
-      if (winner) return { ok: true, data: winner, conflict: winner };
-      return { ok: false, error: INTERNAL_ERROR };
-    }
-    if (!res.ok) return { ok: false, error: apiErrorFromBody(body) };
-    return { ok: true, data: body as AccountDraft };
-  } catch {
-    return { ok: false, error: NETWORK_ERROR };
-  }
+  let conflict: AccountDraft | undefined;
+  const res = await request<AccountDraft>('PUT', '/api/draft', draft, signal, {
+    onStatus(status, json) {
+      if (status !== 409) return undefined;
+      const winner = parseConflictDraft(json);
+      if (!winner) return { ok: false, error: INTERNAL_ERROR };
+      conflict = winner;
+      return { ok: true, data: winner };
+    },
+  });
+  return res.ok && conflict !== undefined ? { ok: true, data: res.data, conflict } : res;
 }
 
-const LOCAL_DRAFT_KEY = 'macro.accountDraft.v1';
-const LOCAL_REVIEW_KEY = 'macro.draftReview.v1';
-
-export interface StashedReview {
-  ownerUserId: string | null;
-  review: PlanResponse;
-  lastSubmitted: string | null;
-  editing: boolean;
-  targetMode: 'demo' | 'own';
-}
-
-export function stashReviewState(state: StashedReview): void {
-  try {
-    sessionStorage.setItem(LOCAL_REVIEW_KEY, JSON.stringify(state));
-  } catch {
-    /* ignore quota / private mode */
-  }
-}
-
-export function loadReviewState(ownerUserId: string | null): StashedReview | null {
-  try {
-    const raw = sessionStorage.getItem(LOCAL_REVIEW_KEY);
-    if (raw === null) return null;
-    const parsed = JSON.parse(raw) as StashedReview;
-    if (
-      typeof parsed !== 'object' ||
-      parsed === null ||
-      parsed.ownerUserId !== ownerUserId ||
-      typeof parsed.review !== 'object' ||
-      parsed.review === null ||
-      typeof parsed.review.draftId !== 'string'
-    ) {
-      return null;
-    }
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-export function clearReviewState(): void {
-  try {
-    sessionStorage.removeItem(LOCAL_REVIEW_KEY);
-  } catch {
-    /* ignore */
-  }
-}
-
-export function stashLocalDraft(draft: AccountDraft): void {
-  try {
-    sessionStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(draft));
-  } catch {
-    /* ignore quota / private mode */
-  }
-}
-
-export function takeLocalDraft(): AccountDraft | null {
-  try {
-    const raw = sessionStorage.getItem(LOCAL_DRAFT_KEY);
-    if (raw === null) return null;
-    sessionStorage.removeItem(LOCAL_DRAFT_KEY);
-    const parsed = JSON.parse(raw) as AccountDraft;
-    if (typeof parsed.trafficEvent !== 'string' || typeof parsed.lastEditedAt !== 'number') return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-/** sessionStorage key for the Traffic Description a signed-out user is typing (signed-in users get a server draft). */
-export const SIGNED_OUT_DRAFT_KEY = 'macro.signedOutDraft.v1';
-const SIGNED_OUT_DRAFT_MAX_CHARS = 20_000;
-
-type DraftStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
-
-function sessionStore(): DraftStorage | null {
-  try {
-    return typeof sessionStorage !== 'undefined' ? sessionStorage : null;
-  } catch {
-    return null;
-  }
-}
-
-/** Keeps a signed-out user's Traffic Description across navigation and reload; empty text removes it. */
-export function stashSignedOutDraft(text: string, storage: DraftStorage | null = sessionStore()): void {
-  if (storage === null) return;
-  try {
-    if (text.trim() === '') storage.removeItem(SIGNED_OUT_DRAFT_KEY);
-    else storage.setItem(SIGNED_OUT_DRAFT_KEY, JSON.stringify({ text }));
-  } catch {
-    /* ignore quota / private mode */
-  }
-}
-
-/** Reads the stashed signed-out Traffic Description, or null when missing or not a valid draft. */
-export function loadSignedOutDraft(storage: DraftStorage | null = sessionStore()): string | null {
-  if (storage === null) return null;
-  try {
-    const raw = storage.getItem(SIGNED_OUT_DRAFT_KEY);
-    if (raw === null) return null;
-    const parsed = JSON.parse(raw) as unknown;
-    if (typeof parsed !== 'object' || parsed === null) return null;
-    const text = (parsed as { text?: unknown }).text;
-    if (typeof text !== 'string' || text.trim() === '' || text.length > SIGNED_OUT_DRAFT_MAX_CHARS) return null;
-    return text;
-  } catch {
-    return null;
-  }
-}
-
-export function clearSignedOutDraft(storage: DraftStorage | null = sessionStore()): void {
-  if (storage === null) return;
-  try {
-    storage.removeItem(SIGNED_OUT_DRAFT_KEY);
-  } catch {
-    /* ignore */
-  }
-}
-
-export async function postClaim(runIds: string[]): Promise<ApiResult<ClaimResponse>> {
-  try {
-    const res = await fetch('/api/auth/claim', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ runIds: runIds.slice(0, 10) }),
-    });
-    const body = await readJson(res);
-    if (!res.ok) return { ok: false, error: apiErrorFromBody(body) };
-    return { ok: true, data: body as ClaimResponse };
-  } catch {
-    return { ok: false, error: NETWORK_ERROR };
-  }
+export function postClaim(runIds: string[], signal?: AbortSignal): Promise<ApiResult<ClaimResponse>> {
+  return request<ClaimResponse>('POST', '/api/auth/claim', { runIds: runIds.slice(0, 10) }, signal);
 }
 
 /** Claim browser-local recent demo runs for the signed-in account. */
@@ -324,4 +108,8 @@ export async function claimRecentBrowserRuns(): Promise<void> {
   const ids = loadRecentRuns().map((r) => r.id).slice(0, 10);
   if (ids.length === 0) return;
   await postClaim(ids);
+}
+
+export function getAccountRuns(signal?: AbortSignal): Promise<ApiResult<AccountRunsResponse>> {
+  return request<AccountRunsResponse>('GET', '/api/account/runs', undefined, signal);
 }

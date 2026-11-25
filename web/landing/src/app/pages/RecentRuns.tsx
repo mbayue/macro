@@ -5,7 +5,6 @@
 import { useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { getRouteApi } from '@tanstack/react-router';
 import { GitCompareIcon, RotateCcwIcon, SearchIcon, XIcon } from 'lucide-react';
-import type { AccountRunsResponse } from '../../../../../src/api-types.ts';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -27,6 +26,7 @@ import { StageBand, TelemetryPanel } from '../components/studio/TelemetryFrame.t
 import { StatusBadge, TableWrap } from '../components/ui.tsx';
 import { useApp } from '../context.tsx';
 import { getRun } from '../lib/api.ts';
+import { getAccountRuns } from '../lib/auth-api.ts';
 import { forgetRun, loadRecentRuns } from '../lib/recent-runs.ts';
 import { compareHref, DEFAULT_RUNS_SEARCH, probeHref, runHref, type RunsSearch } from '../router.ts';
 
@@ -129,37 +129,29 @@ export function RecentRunsPage() {
         setLoading(true);
         setError(null);
       }
-      try {
-        const res = await fetch('/api/account/runs', { credentials: 'same-origin', signal: abort.signal });
-        if (abort.signal.aborted) return;
-        if (res.status === 401 || res.status === 503) {
+      const res = await getAccountRuns(abort.signal);
+      if (abort.signal.aborted) return;
+      if (!res.ok) {
+        if (res.error.code === 'auth_required' || res.error.code === 'auth_unavailable') {
           loadBrowser();
           return;
         }
-        if (!res.ok) {
-          setLoading(false);
-          setError('Could not load your account runs from the server. Check your connection and try again.');
-          return;
-        }
-        const body = (await res.json()) as AccountRunsResponse;
-        if (abort.signal.aborted) return;
-        const mapped = Array.isArray(body.runs)
-          ? body.runs.slice(0, MAX_ACCOUNT_RUNS).map(mapAccountRunRow)
-          : [];
-        setRows(mapped);
-        setPicked((prev) => prunePickedRuns(mapped, prev));
         setLoading(false);
-        setError(null);
-        const hasPending = mapped.some((r) => r.status === 'queued' || r.status === 'running');
-        if (hasPending) {
-          timer = window.setTimeout(() => {
-            if (!abort.signal.aborted) void loadAccount(true);
-          }, 3000);
-        }
-      } catch {
-        if (abort.signal.aborted) return;
-        setLoading(false);
-        setError('Could not reach the server to load your account runs. Check your connection and try again.');
+        setError('Could not load your account runs from the server. Check your connection and try again.');
+        return;
+      }
+      const mapped = Array.isArray(res.data.runs)
+        ? res.data.runs.slice(0, MAX_ACCOUNT_RUNS).map(mapAccountRunRow)
+        : [];
+      setRows(mapped);
+      setPicked((prev) => prunePickedRuns(mapped, prev));
+      setLoading(false);
+      setError(null);
+      const hasPending = mapped.some((r) => r.status === 'queued' || r.status === 'running');
+      if (hasPending) {
+        timer = window.setTimeout(() => {
+          if (!abort.signal.aborted) void loadAccount(true);
+        }, 3000);
       }
     };
 

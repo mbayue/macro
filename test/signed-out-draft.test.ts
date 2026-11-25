@@ -4,7 +4,7 @@ import {
   loadSignedOutDraft,
   SIGNED_OUT_DRAFT_KEY,
   stashSignedOutDraft,
-} from '../web/landing/src/app/lib/auth-api.ts';
+} from '../web/landing/src/app/lib/draft-storage.ts';
 
 function memoryStorage(initial?: Record<string, string>) {
   const store = new Map<string, string>(Object.entries(initial ?? {}));

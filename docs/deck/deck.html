@@ -2,189 +2,867 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Macro: slides</title>
+<title>Macro — Load tests that stay contained</title>
 <style>
-  @font-face { font-family: "Plex Sans"; src: url("../../web/fonts/ibm-plex-sans-400.woff2"); font-weight: 400; } @font-face { font-family: "Plex Sans"; src: url("../../web/fonts/ibm-plex-sans-600.woff2"); font-weight: 600; } @font-face { font-family: "Plex Sans"; src: url("../../web/fonts/ibm-plex-sans-700.woff2"); font-weight: 700; } @font-face { font-family: "Plex Mono"; src: url("../../web/fonts/ibm-plex-mono-400.woff2"); font-weight: 400; } @font-face { font-family: "Plex Mono"; src: url("../../web/fonts/ibm-plex-mono-600.woff2"); font-weight: 600; }
-  @page { size: 1920px 1080px; margin: 0; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { background: #0f1012; }
-  body { font-family: "Plex Sans", "Segoe UI", system-ui, sans-serif; color: #e6edf3; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .slide { width: 1920px; height: 1080px; padding: 90px 120px; position: relative; overflow: hidden; page-break-after: always; break-after: page; background: #0f1012; display: flex; flex-direction: column; }
-  .slide:last-child { page-break-after: auto; break-after: auto; }
-  .kicker { font-family: "Plex Mono", Consolas, monospace; font-size: 26px; color: #ececee; letter-spacing: 0.04em; margin-bottom: 28px; }
-  h1 { font-size: 120px; line-height: 1.02; font-weight: 700; }
-  h2 { font-size: 72px; line-height: 1.1; font-weight: 700; margin-bottom: 48px; max-width: 1500px; }
-  p, li { font-size: 38px; line-height: 1.4; color: #c9d1d9; }
-  .muted { color: #8b949e; }
-  .mono { font-family: "Plex Mono", Consolas, monospace; }
-  .foot { position: absolute; left: 120px; bottom: 50px; font-family: "Plex Mono", Consolas, monospace; font-size: 22px; color: #6e7681; }
-  .num { position: absolute; right: 120px; bottom: 50px; font-family: "Plex Mono", Consolas, monospace; font-size: 22px; color: #6e7681; }
-  .row { display: flex; gap: 60px; align-items: flex-start; flex: 1; }
-  .col { flex: 1; }
-  .card { background: #16171a; border: 2px solid #2a2c31; border-radius: 16px; padding: 34px 40px; }
-  .card h3 { font-size: 40px; margin-bottom: 14px; color: #e6edf3; }
-  .card p { font-size: 32px; }
-  .green { color: #5fd38d; }
-  .amber { color: #f2b544; }
-  .red { color: #ff7a72; }
-  .blue { color: #ececee; }
-  .shot { border: 2px solid #2a2c31; border-radius: 14px; overflow: hidden; background: #0d1117; }
-  .shot img { display: block; }
-  ul { list-style: none; }
-  li { padding: 10px 0 10px 40px; position: relative; }
-  li::before { content: ""; position: absolute; left: 0; top: 26px; width: 16px; height: 16px; background: #ececee; border-radius: 3px; }
-  .flow { display: flex; align-items: stretch; gap: 0; margin-top: 30px; }
-  .step { flex: 1; background: #16171a; border: 2px solid #2a2c31; border-radius: 16px; padding: 30px 28px; }
-  .step b { display: block; font-size: 40px; margin-bottom: 12px; }
-  .step span { font-size: 28px; color: #9aa7b4; line-height: 1.35; display: block; }
-  .arrow { width: 56px; display: flex; align-items: center; justify-content: center; font-size: 44px; color: #ececee; }
-  table { border-collapse: collapse; width: 100%; }
-  td, th { text-align: left; padding: 18px 22px; font-size: 32px; border-bottom: 2px solid #2a2c31; }
-  th { color: #8b949e; font-weight: 600; font-size: 26px; text-transform: none; }
-  .big { font-size: 150px; font-weight: 700; line-height: 1; }
-  .stat { margin-bottom: 36px; }
-  .stat .label { font-size: 30px; color: #8b949e; margin-top: 8px; }
-  .layer { display: flex; gap: 28px; align-items: baseline; padding: 20px 0; border-bottom: 2px solid #2a2c31; }
-  .layer .n { font-family: "Plex Mono", Consolas, monospace; font-size: 34px; color: #ececee; width: 60px; }
-  .layer .t { font-size: 40px; font-weight: 600; width: 520px; }
-  .layer .d { font-size: 32px; color: #9aa7b4; flex: 1; }
+  @font-face {
+    font-family: "Space Grotesk";
+    src: url("../../web/landing/public/landing/fonts/space-grotesk-600.woff2") format("woff2");
+    font-weight: 600;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: "Stack Sans Text";
+    src: url("../../web/landing/public/landing/fonts/stack-sans-text.woff2") format("woff2");
+    font-weight: 400 500;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: "Geist Mono";
+    src: url("../../web/landing/public/landing/fonts/geist-mono-400.woff2") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+  }
+
+  :root {
+    /* Macro DESIGN.md tokens */
+    --bg: #001e2b;
+    --surface: #061621;
+    --surface-2: #21313a;
+    --bar: #616c6d;
+    --ink: #fdfff5;
+    --muted: #9ea2a1;
+    --spring: #00ed64;
+    --ink-on-spring: #001e2b;
+    --warn: #f2c46d;
+    --bad: #ff8a80;
+    --radius: 6px;
+
+    /* Slide-native type scale and spacing (1920x1080) */
+    --hero: 124px;
+    --figure: 136px;
+    --title: 68px;
+    --subtitle: 40px;
+    --body: 32px;
+    --small: 24px;
+    --micro: 20px;
+
+    --pad-top: 96px;
+    --pad-bottom: 84px;
+    --pad-x: 112px;
+    --title-gap: 48px;
+    --item-gap: 24px;
+  }
+
+  @page {
+    size: 1920px 1080px;
+    margin: 0;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html, body {
+    background: #020b10;
+    color: var(--ink);
+    font-family: "Stack Sans Text", system-ui, sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  @media screen {
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+      padding: 32px 0;
+    }
+    .slide-wrap {
+      width: calc(1920px * var(--scale, 1));
+      height: calc(1080px * var(--scale, 1));
+      overflow: hidden;
+    }
+    .slide-wrap > .slide {
+      transform: scale(var(--scale, 1));
+      transform-origin: top left;
+    }
+  }
+
+  @media print {
+    html, body {
+      background: var(--bg);
+    }
+    .slide-wrap {
+      width: 1920px;
+      height: 1080px;
+      page-break-after: always;
+      break-after: page;
+    }
+    .slide-wrap:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+  }
+
+  .slide {
+    width: 1920px;
+    height: 1080px;
+    padding: var(--pad-top) var(--pad-x) var(--pad-bottom);
+    position: relative;
+    overflow: hidden;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Atmospheric full-bleed backdrop for title & closing slides */
+  .slide-backdrop {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.24;
+    pointer-events: none;
+  }
+
+  .slide-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  /* Stage Band motif: 1 : 2 : 4 : 8 */
+  .stage-band {
+    display: flex;
+    gap: 8px;
+    width: 360px;
+    height: 8px;
+    margin-bottom: 28px;
+  }
+  .stage-band span {
+    display: block;
+    height: 100%;
+    border-radius: 2px;
+    background: var(--surface-2);
+  }
+  .stage-band .s1 { flex: 1; background: var(--spring); }
+  .stage-band .s2 { flex: 2; background: var(--spring); }
+  .stage-band .s3 { flex: 4; background: var(--spring); }
+  .stage-band .s4 { flex: 8; background: var(--surface-2); }
+  .stage-band.all-live .s4 { background: var(--spring); }
+
+  .kicker {
+    font-family: "Geist Mono", monospace;
+    font-size: var(--small);
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+
+  h1 {
+    font-family: "Space Grotesk", system-ui, sans-serif;
+    font-size: var(--hero);
+    font-weight: 600;
+    line-height: 1.02;
+    letter-spacing: -0.036em;
+    color: var(--ink);
+  }
+
+  h2 {
+    font-family: "Space Grotesk", system-ui, sans-serif;
+    font-size: var(--title);
+    font-weight: 600;
+    line-height: 1.08;
+    letter-spacing: -0.032em;
+    color: var(--ink);
+    margin-bottom: var(--title-gap);
+    max-width: 1580px;
+  }
+
+  h3 {
+    font-family: "Space Grotesk", system-ui, sans-serif;
+    font-size: var(--subtitle);
+    font-weight: 600;
+    line-height: 1.18;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+    margin-bottom: 16px;
+  }
+
+  p, li {
+    font-size: var(--body);
+    line-height: 1.42;
+    color: var(--ink);
+  }
+
+  .muted { color: var(--muted); }
+  .spring { color: var(--spring); }
+  .warn { color: var(--warn); }
+  .bad { color: var(--bad); }
+
+  .mono {
+    font-family: "Geist Mono", monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .brand-row {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-bottom: 36px;
+  }
+  .brand-mark {
+    width: 72px;
+    height: 72px;
+    display: block;
+  }
+
+  /* Running footer (identical position on every content slide) */
+  .foot {
+    position: absolute;
+    left: var(--pad-x);
+    bottom: 44px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: "Geist Mono", monospace;
+    font-size: var(--micro);
+    color: var(--muted);
+    z-index: 2;
+  }
+  .foot img {
+    width: 24px;
+    height: 24px;
+    display: block;
+  }
+  .num {
+    position: absolute;
+    right: var(--pad-x);
+    bottom: 44px;
+    font-family: "Geist Mono", monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: var(--micro);
+    color: var(--muted);
+    z-index: 2;
+  }
+
+  /* Layout primitives */
+  .row {
+    display: flex;
+    gap: 64px;
+    align-items: flex-start;
+  }
+  .col { flex: 1; min-width: 0; }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--surface-2);
+    border-radius: var(--radius);
+    padding: 36px 40px;
+  }
+
+  .panel-live {
+    background: var(--spring);
+    color: var(--ink-on-spring);
+    border-radius: var(--radius);
+    padding: 36px 40px;
+  }
+  .panel-live .kicker,
+  .panel-live .stat-label,
+  .panel-live p {
+    color: var(--ink-on-spring);
+  }
+
+  ul.clean {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--item-gap);
+  }
+  ul.clean li {
+    padding-left: 34px;
+    position: relative;
+    color: var(--ink);
+  }
+  ul.clean li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 17px;
+    width: 14px;
+    height: 4px;
+    background: var(--bar);
+  }
+
+  /* Horizontal pipeline */
+  .pipeline {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 20px;
+    margin-top: 12px;
+  }
+  .node {
+    background: var(--surface);
+    border: 1px solid var(--surface-2);
+    border-radius: var(--radius);
+    padding: 30px 26px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .node-idx {
+    font-family: "Geist Mono", monospace;
+    font-size: var(--micro);
+    color: var(--muted);
+  }
+  .node-title {
+    font-family: "Space Grotesk", system-ui, sans-serif;
+    font-size: 34px;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+  }
+  .node-copy {
+    font-size: 25px;
+    line-height: 1.4;
+    color: var(--muted);
+  }
+  .node-tag {
+    margin-top: auto;
+    padding-top: 14px;
+    font-family: "Geist Mono", monospace;
+    font-size: 19px;
+    color: var(--bar);
+  }
+  .node-tag.live { color: var(--spring); }
+
+  /* Architectural ledger (6 layers) */
+  .ledger {
+    display: flex;
+    flex-direction: column;
+  }
+  .ledger-row {
+    display: grid;
+    grid-template-columns: 64px 410px 1fr;
+    gap: 24px;
+    align-items: baseline;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--surface-2);
+  }
+  .ledger-row:first-child {
+    border-top: 1px solid var(--surface-2);
+  }
+  .ledger-n {
+    font-family: "Geist Mono", monospace;
+    font-size: 24px;
+    color: var(--spring);
+  }
+  .ledger-t {
+    font-family: "Space Grotesk", system-ui, sans-serif;
+    font-size: 30px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .ledger-d {
+    font-size: 25px;
+    color: var(--muted);
+    line-height: 1.32;
+  }
+
+  /* Dominant figures */
+  .figure {
+    font-family: "Space Grotesk", system-ui, sans-serif;
+    font-size: var(--figure);
+    font-weight: 600;
+    line-height: 0.98;
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-label {
+    font-size: var(--small);
+    color: var(--muted);
+    margin-top: 10px;
+  }
+  .stat-source {
+    font-family: "Geist Mono", monospace;
+    font-size: var(--micro);
+    color: var(--bar);
+    margin-top: 6px;
+  }
+
+  /* Data tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  th, td {
+    text-align: left;
+    padding: 20px 22px;
+    border-bottom: 1px solid var(--surface-2);
+    font-size: 28px;
+  }
+  th {
+    font-family: "Geist Mono", monospace;
+    font-size: 21px;
+    font-weight: 400;
+    color: var(--muted);
+    border-bottom: 1px solid var(--bar);
+  }
+  td.num-cell, th.num-cell {
+    text-align: right;
+    font-family: "Geist Mono", monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Screenshot container (aspect-fit, never cropped) */
+  .shot-frame {
+    background: var(--surface);
+    border: 1px solid var(--surface-2);
+    border-radius: var(--radius);
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .shot-frame img {
+    max-width: 100%;
+    max-height: 600px;
+    width: auto;
+    height: auto;
+    display: block;
+    border-radius: 4px;
+  }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-bottom: 36px;
+  }
+
+  .badge {
+    display: inline-block;
+    font-family: "Geist Mono", monospace;
+    font-size: 20px;
+    padding: 4px 12px;
+    border-radius: 4px;
+    background: var(--surface-2);
+    color: var(--ink);
+  }
+  .badge-live {
+    background: var(--spring);
+    color: var(--ink-on-spring);
+  }
+  .badge-bad {
+    background: #3a1919;
+    color: var(--bad);
+  }
+
+  .meta-strip {
+    margin-top: 36px;
+    font-family: "Geist Mono", monospace;
+    font-size: var(--small);
+    color: var(--muted);
+  }
 </style>
 </head>
 <body>
 
 <!-- 1 Title -->
-<section class="slide" style="justify-content:center;">
-  <div class="kicker">LOAD TESTS THAT STAY CONTAINED</div>
-  <h1>Macro</h1>
-  <p style="font-size:56px; margin-top:36px; max-width:1400px; color:#e6edf3;">How many users can your site take?<br>Ask an agent that cannot hurt anyone.</p>
-  <p class="mono muted" style="margin-top:70px; font-size:32px;">macro.my.id &nbsp;&middot;&nbsp; github.com/mbayue/macro</p>
-</section>
+<div class="slide-wrap">
+  <section class="slide">
+    <img class="slide-backdrop" src="../../web/landing/public/landing/img/dither/dark-horizon.webp" alt="">
+    <div class="slide-content" style="justify-content: center;">
+      <div class="brand-row">
+        <img class="brand-mark" src="../../web/favicon.svg" alt="Macro">
+        <div class="stage-band" style="margin-bottom: 0; width: 280px;">
+          <span class="s1"></span><span class="s2"></span><span class="s3"></span><span class="s4"></span>
+        </div>
+      </div>
+      <div class="kicker">LOAD TESTS THAT STAY CONTAINED</div>
+      <h1>Macro</h1>
+      <p style="font-size: 46px; line-height: 1.28; margin-top: 28px; max-width: 1260px; color: var(--ink);">
+        Describe a traffic event in plain English. Get a safe, policy-gated load test and the exact point where your site breaks.
+      </p>
+      <p class="meta-strip" style="margin-top: 64px;">
+        macro.my.id &nbsp;&middot;&nbsp; github.com/mbayue/macro
+      </p>
+    </div>
+  </section>
+</div>
 
 <!-- 2 Problem -->
-<section class="slide">
-  <div class="kicker">THE PROBLEM</div>
-  <h2>A load-testing agent is also a weapon.</h2>
-  <div class="row">
-    <div class="col">
-      <ul>
-        <li>Teams want to know their breaking point before a launch.</li>
-        <li>An agent that writes and runs load tests can send traffic anywhere.</li>
-        <li>One bad prompt turns a test tool into a DDoS tool.</li>
-        <li>A prompt that says "only test my site" is not a security control.</li>
-      </ul>
-    </div>
-    <div class="col">
-      <div class="card" style="margin-top:20px;">
-        <h3>What Macro does instead</h3>
-        <p>The model proposes. Code decides. The sandbox enforces. The agent never holds a permission it could misuse.</p>
+<div class="slide-wrap">
+  <section class="slide">
+    <div class="slide-content">
+      <div class="kicker">01 &middot; THE PROBLEM</div>
+      <h2>An unconstrained load-test agent is a DDoS weapon.</h2>
+      <div class="row">
+        <div class="col" style="flex: 1.2;">
+          <ul class="clean">
+            <li>Teams need their breaking point before a campaign spike or launch.</li>
+            <li>An agent that writes and executes traffic scripts can target any host on the internet.</li>
+            <li>One prompt injection turns a testing tool into an attack tool.</li>
+            <li>System instructions asking a model to behave are not a security boundary.</li>
+          </ul>
+        </div>
+        <div class="col">
+          <div class="panel">
+            <div class="kicker" style="color: var(--spring);">CORE PRINCIPLE</div>
+            <h3>The model proposes. Code decides.</h3>
+            <p class="muted" style="font-size: 30px;">
+              AI drafts the Test Plan, advises between Stages, and explains the Capacity Report. Targets, limits, k6 scripts, sandbox caps, stop rules, and every measured figure come from deterministic code.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-  <div class="foot">Macro</div><div class="num">2 / 8</div>
-</section>
+    <div class="foot"><img src="../../web/favicon.svg" alt="">Macro</div>
+    <div class="num">2 / 10</div>
+  </section>
+</div>
 
-<!-- 3 Flow -->
-<section class="slide">
-  <div class="kicker">THE IDEA</div>
-  <h2>Plan, approve, run, supervise, explain.</h2>
-  <div class="flow">
-    <div class="step"><b class="blue">Planner</b><span>Turns a plain-language goal into a staged k6 plan. One forced tool call.</span></div>
-    <div class="arrow">&rarr;</div>
-    <div class="step"><b class="amber">Policy Gate</b><span>Code, not a model. Checks target, users, duration. Rejects the rest.</span></div>
-    <div class="arrow">&rarr;</div>
-    <div class="step"><b>You approve</b><span>The plan is hashed. The run executes exactly what you saw.</span></div>
-    <div class="arrow">&rarr;</div>
-    <div class="step"><b class="blue">Supervisor</b><span>After each stage: continue or stop. A rule engine can overrule it.</span></div>
-    <div class="arrow">&rarr;</div>
-    <div class="step"><b class="blue">Reporter</b><span>Explains the result. Every number is checked against measured data.</span></div>
-  </div>
-  <p class="muted" style="margin-top:60px; font-size:34px;">Three agents on Vultr Serverless Inference. Four stages at 25, 50, 100 and 200 virtual users. Each stage is its own sandbox.</p>
-  <div class="foot">Macro</div><div class="num">3 / 8</div>
-</section>
+<!-- 3 Workflow -->
+<div class="slide-wrap">
+  <section class="slide">
+    <div class="slide-content">
+      <div class="kicker">02 &middot; END-TO-END FLOW</div>
+      <h2>Five steps turn a plain description into a verified report.</h2>
+      <div class="pipeline">
+        <div class="node">
+          <div class="node-idx">01</div>
+          <div class="node-title">Traffic Description</div>
+          <div class="node-copy">User describes expected load in Test Studio; Planner drafts 1&ndash;6 Stages via one forced tool call.</div>
+          <div class="node-tag">AI proposes</div>
+        </div>
+        <div class="node">
+          <div class="node-idx">02</div>
+          <div class="node-title">Policy Gate</div>
+          <div class="node-copy">Fixed code validates exact target, known routes, VU cap (&le; 500), and duration (&le; 600 s).</div>
+          <div class="node-tag live">Code decides</div>
+        </div>
+        <div class="node">
+          <div class="node-idx">03</div>
+          <div class="node-title">Approve &amp; Run</div>
+          <div class="node-copy">Approved Plan locks under its SHA-256 hash; k6 renders from a fixed template per Stage.</div>
+          <div class="node-tag live">Human approves</div>
+        </div>
+        <div class="node">
+          <div class="node-idx">04</div>
+          <div class="node-title">Stages &amp; Supervisor</div>
+          <div class="node-copy">Each Stage runs in a fresh gVisor sandbox. Rule engine overrules Supervisor on any threshold breach.</div>
+          <div class="node-tag live">Sandbox enforces</div>
+        </div>
+        <div class="node">
+          <div class="node-idx">05</div>
+          <div class="node-title">Capacity Report</div>
+          <div class="node-copy">Measured Safe Capacity, Breaking Point, and per-route p95. Number Guard withholds ungrounded AI prose.</div>
+          <div class="node-tag live">Code verifies</div>
+        </div>
+      </div>
+      <p class="meta-strip">Nothing reaches any target until the user approves the hash-locked Test Plan.</p>
+    </div>
+    <div class="foot"><img src="../../web/favicon.svg" alt="">Macro</div>
+    <div class="num">3 / 10</div>
+  </section>
+</div>
 
 <!-- 4 Containment -->
-<section class="slide">
-  <div class="kicker">CONTAINMENT</div>
-  <h2>Six layers between model and internet.</h2>
-  <div>
-    <div class="layer"><div class="n">01</div><div class="t">One allowed target</div><div class="d">Only the demo shop. Any other host is rejected before a script exists.</div></div>
-    <div class="layer"><div class="n">02</div><div class="t">Policy Gate</div><div class="d">Caps on virtual users and duration. Deterministic code.</div></div>
-    <div class="layer"><div class="n">03</div><div class="t">gVisor sandbox</div><div class="d">k6 runs under runsc. 1 GiB memory, 1 CPU, 256 processes, no swap.</div></div>
-    <div class="layer"><div class="n">04</div><div class="t">Egress proxy</div><div class="d">Sandbox network has no route out. HTTPS CONNECT to one exact host only.</div></div>
-    <div class="layer"><div class="n">05</div><div class="t">No secrets inside</div><div class="d">The sandbox environment holds only the proxy address.</div></div>
-    <div class="layer"><div class="n">06</div><div class="t">Human and bot checks</div><div class="d">Plan approval, Cloudflare Turnstile, run limits, Number Guard on AI text.</div></div>
-  </div>
-  <div class="foot">Macro</div><div class="num">4 / 8</div>
-</section>
+<div class="slide-wrap">
+  <section class="slide">
+    <div class="slide-content">
+      <div class="kicker">03 &middot; CONTAINMENT ARCHITECTURE</div>
+      <h2 style="margin-bottom: 32px;">Six deterministic layers sit between the model and the network.</h2>
+      <div class="ledger">
+        <div class="ledger-row">
+          <div class="ledger-n">01</div>
+          <div class="ledger-t">Verified targets only</div>
+          <div class="ledger-d">Demo Target allowlist or one user-verified Own Site (DNS TXT, /.well-known/, or Domain Connect).</div>
+        </div>
+        <div class="ledger-row">
+          <div class="ledger-n">02</div>
+          <div class="ledger-t">Policy Gate &amp; plan hash</div>
+          <div class="ledger-d">Deterministic schema, route, VU, and duration checks re-verified against the SHA-256 hash at start.</div>
+        </div>
+        <div class="ledger-row">
+          <div class="ledger-n">03</div>
+          <div class="ledger-t">gVisor sandbox (runsc)</div>
+          <div class="ledger-d">Non-root, read-only rootfs, all capabilities dropped, 1 GiB RAM (no swap), 1 CPU, 256 PIDs.</div>
+        </div>
+        <div class="ledger-row">
+          <div class="ledger-n">04</div>
+          <div class="ledger-t">Egress proxy</div>
+          <div class="ledger-d">Per-run internal Docker network with no external route; HTTPS CONNECT to the exact host on port 443 only.</div>
+        </div>
+        <div class="ledger-row">
+          <div class="ledger-n">05</div>
+          <div class="ledger-t">Docker socket proxy</div>
+          <div class="ledger-d">API holds no Docker socket; proxy blocks exec, build, pull, and volumes. Sandbox sees only proxy URL.</div>
+        </div>
+        <div class="ledger-row">
+          <div class="ledger-n">06</div>
+          <div class="ledger-t">Turnstile &amp; Number Guard</div>
+          <div class="ledger-d">Abuse limits and human verification on public starts; AI report text withheld on any invented number.</div>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><img src="../../web/favicon.svg" alt="">Macro</div>
+    <div class="num">4 / 10</div>
+  </section>
+</div>
 
-<!-- 5 Probe -->
-<section class="slide">
-  <div class="kicker">LIVE PROOF</div>
-  <h2 style="margin-bottom:30px;">Five hostile actions. Five contained.</h2>
-  <div class="row" style="gap:50px;">
-    <div style="width:560px;">
-      <div class="stat"><div class="big green">5/5</div><div class="label">contained, live on the Vultr VM</div></div>
-      <ul>
-        <li style="font-size:32px;">3 egress attempts blocked, including the cloud metadata address</li>
-        <li style="font-size:32px;">Memory above the cap stopped</li>
-        <li style="font-size:32px;">Sandbox removed after</li>
-      </ul>
+<!-- 5 Live Proof (Probe) -->
+<div class="slide-wrap">
+  <section class="slide">
+    <div class="slide-content">
+      <div class="kicker">04 &middot; CONTAINMENT PROBE</div>
+      <h2 style="margin-bottom: 32px;">Five hostile probe actions ran inside gVisor and stayed contained.</h2>
+      <div class="row" style="align-items: center;">
+        <div class="col" style="flex: 0.9;">
+          <div class="figure spring" style="font-size: 112px;">5/5</div>
+          <div class="stat-label" style="margin-bottom: 24px;">hostile actions blocked in a live Containment Probe</div>
+          <ul class="clean" style="gap: 16px;">
+            <li style="font-size: 26px;">HTTPS to disallowed host (<span class="mono">example.com</span>) refused by proxy</li>
+            <li style="font-size: 26px;">Cloud metadata IP (<span class="mono">169.254.169.254</span>) refused as IP literal</li>
+            <li style="font-size: 26px;">Internal Macro API unreachable from sandbox network</li>
+            <li style="font-size: 26px;">Zero <span class="mono">KEY/SECRET/TOKEN</span> values in sandbox env</li>
+            <li style="font-size: 26px;">Memory allocation above 1 GiB OOM-killed and removed</li>
+          </ul>
+        </div>
+        <div class="col" style="flex: 1.1;">
+          <div class="shot-frame">
+            <img src="../../web/landing/public/landing/img/ui-probe-dark.png" alt="Containment Probe passed 5 of 5 actions contained">
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="shot" style="width:1100px; height:700px;">
-      <img src="img/macro-probe.png" style="width:1100px;">
-    </div>
-  </div>
-  <div class="foot">Macro &middot; macro.my.id</div><div class="num">5 / 8</div>
-</section>
+    <div class="foot"><img src="../../web/favicon.svg" alt="">Macro &middot; Containment Probe</div>
+    <div class="num">5 / 10</div>
+  </section>
+</div>
 
-<!-- 6 Result -->
-<section class="slide">
-  <div class="kicker">LIVE RESULT</div>
-  <h2 style="margin-bottom:30px;">Safe at 200 users. Home page slows first.</h2>
-  <div class="row" style="gap:50px;">
-    <div style="width:600px;">
-      <div class="stat"><div class="big blue">200</div><div class="label">virtual users, all four stages passed</div></div>
-      <div class="stat"><div class="big amber" style="font-size:110px;">1,611 ms</div><div class="label">store_home p95 at 200 users (limit 1,500 ms)</div></div>
-      <div class="stat"><div style="font-size:60px; font-weight:700;">4 min 28 s</div><div class="label">from approved plan to report</div></div>
+<!-- 6 Live Result (d28cacd6) -->
+<div class="slide-wrap">
+  <section class="slide">
+    <div class="slide-content">
+      <div class="kicker">05 &middot; MEASURED RESULT &middot; RUN D28CACD6</div>
+      <h2>Run d28cacd6 holds steady at 100 VUs and breaks at 200 VUs.</h2>
+      <div class="kpi-grid">
+        <div class="panel-live">
+          <div class="kicker" style="margin-bottom: 8px;">SAFE CAPACITY</div>
+          <div class="figure" style="font-size: 96px;">100 VUs</div>
+          <div class="stat-label" style="font-family: 'Geist Mono', monospace; font-size: 21px;">from Stage 3 &middot; all routes under 1,500 ms</div>
+        </div>
+        <div class="panel">
+          <div class="kicker" style="margin-bottom: 8px;">BREAKING POINT</div>
+          <div class="figure bad" style="font-size: 96px;">200 VUs</div>
+          <div class="stat-source">from Stage 4 &middot; p95 exceeded 1,500 ms limit</div>
+        </div>
+        <div class="panel">
+          <div class="kicker" style="margin-bottom: 8px;">FIRST DEGRADED ROUTE</div>
+          <div class="figure mono warn" style="font-size: 62px; padding-top: 18px;">store_home</div>
+          <div class="stat-source" style="margin-top: 24px;">1,611 ms p95 &middot; total run 4 min 28 s</div>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Stage</th>
+            <th class="num-cell">Virtual users</th>
+            <th>Observed verdict</th>
+            <th class="num-cell">store_home p95</th>
+            <th class="num-cell">Stop limit</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">Stage 1 &ndash; 3</td>
+            <td class="num-cell">25 &rarr; 50 &rarr; 100 VUs</td>
+            <td><span class="badge badge-live">Passed</span></td>
+            <td class="num-cell">&le; 1,500 ms</td>
+            <td class="num-cell">1,500 ms</td>
+          </tr>
+          <tr>
+            <td class="mono">Stage 4</td>
+            <td class="num-cell">200 VUs</td>
+            <td><span class="badge badge-bad">Halted</span></td>
+            <td class="num-cell bad">1,611 ms</td>
+            <td class="num-cell">1,500 ms</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
-    <div class="shot" style="width:790px; height:676px;">
-      <img src="img/macro-report-bottom.png" style="width:790px;">
-    </div>
-  </div>
-  <div class="foot">Run d28cacd6 &middot; demo shop on a second Vultr VM</div><div class="num">6 / 8</div>
-</section>
+    <div class="foot"><img src="../../web/favicon.svg" alt="">Macro &middot; Demo Target yue.macro.my.id</div>
+    <div class="num">6 / 10</div>
+  </section>
+</div>
 
-<!-- 7 Vultr -->
-<section class="slide">
-  <div class="kicker">BUILT ON VULTR</div>
-  <h2 style="margin-bottom:36px;">Two VMs, three agents, one firewall.</h2>
-  <table>
-    <tr><th style="width:420px;">Vultr product</th><th>What it does in Macro</th></tr>
-    <tr><td class="blue">Cloud Compute: <span class="mono">macro</span></td><td>Macro API, web UI, Caddy, egress proxy, gVisor sandboxes. Singapore, Ubuntu 24.04.</td></tr>
-    <tr><td class="blue">Cloud Compute: <span class="mono">yue-demo</span></td><td>The only allowed target: a full demo shop (web, API, Postgres, Redis).</td></tr>
-    <tr><td class="blue">Serverless Inference</td><td>Planner, Supervisor and Reporter. minimax-m3.1-flash, fallback mimo-v2.6-flash.</td></tr>
-    <tr><td class="blue">Firewall</td><td>Inbound 80 and 443 on the Macro VM limited to Cloudflare ranges.</td></tr>
-  </table>
-  <p class="muted" style="margin-top:40px; font-size:32px;">TypeScript on Bun, k6 pinned by digest, Docker Compose. 422 automated tests, including property tests.</p>
-  <div class="foot">Macro</div><div class="num">7 / 8</div>
-</section>
-
-<!-- 8 Next -->
-<section class="slide">
-  <div class="kicker">WHAT IS NEXT</div>
-  <h2>From one demo target to your own site.</h2>
-  <div class="row">
-    <div class="col">
-      <div class="card" style="margin-bottom:30px;"><h3>Verified targets</h3><p>Prove you own a domain with a DNS TXT record, then test it. Same gate, same sandbox.</p></div>
-      <div class="card"><h3>Regional runs</h3><p>Start throwaway Vultr VMs in other regions, run a stage, destroy them.</p></div>
+<!-- 7 Own Site & Run Compare -->
+<div class="slide-wrap">
+  <section class="slide">
+    <div class="slide-content">
+      <div class="kicker">06 &middot; OWN SITE &amp; ITERATION</div>
+      <h2>Verified own-site testing and Run Compare close the fix loop.</h2>
+      <div class="row">
+        <div class="col">
+          <div class="panel" style="height: 100%;">
+            <div class="kicker">OWN SITE VERIFICATION</div>
+            <h3>Prove ownership, then test privately.</h3>
+            <ul class="clean" style="margin-top: 24px;">
+              <li style="font-size: 28px;">Sign in via GitHub OAuth, Google OAuth, or Resend magic link.</li>
+              <li style="font-size: 28px;">Verify one HTTPS host with DNS TXT, <span class="mono">/.well-known/</span>, or Domain Connect (with Cloudflare detection).</li>
+              <li style="font-size: 28px;">Automatic route discovery reads public pages and scripts so planning stays bound to real URLs.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="col">
+          <div class="panel" style="height: 100%;">
+            <div class="kicker">RUNS TABLE &amp; RUN COMPARE</div>
+            <h3>Re-run the same hash and diff what moved.</h3>
+            <ul class="clean" style="margin-top: 24px;">
+              <li style="font-size: 28px;">Private Own Site Runs and claimed Demo Target Runs live in one filterable Runs Table.</li>
+              <li style="font-size: 28px;">Re-run any Approved Plan by its SHA-256 hash after deploying a backend fix.</li>
+              <li style="font-size: 28px;">Side-by-side Run Compare flags plan mismatches and highlights per-route p95 deltas.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="col">
-      <div class="card" style="margin-bottom:30px;"><h3>Before and after</h3><p>Compare two runs of the same plan after a fix, and show what moved.</p></div>
-      <div class="card"><h3>Try it now</h3><p class="mono blue">macro.my.id</p><p class="mono muted">github.com/mbayue/macro</p></div>
-    </div>
-  </div>
-  <div class="foot">Macro</div><div class="num">8 / 8</div>
-</section>
+    <div class="foot"><img src="../../web/favicon.svg" alt="">Macro</div>
+    <div class="num">7 / 10</div>
+  </section>
+</div>
 
+<!-- 8 Hybrid AI -->
+<div class="slide-wrap">
+  <section class="slide">
+    <div class="slide-content">
+      <div class="kicker">07 &middot; CLIENT-SIDE HYBRID INFERENCE</div>
+      <h2 style="margin-bottom: 32px;">On-device AI refines drafts and answers reports before touching the cloud.</h2>
+      <div class="row">
+        <div class="col">
+          <div class="panel" style="margin-bottom: 20px; padding: 28px 34px;">
+            <div class="kicker" style="color: var(--spring); margin-bottom: 10px;">SCENARIO ASSISTANT &middot; TEST STUDIO</div>
+            <h3 style="font-size: 36px; margin-bottom: 10px;">Sharpen Traffic Descriptions locally.</h3>
+            <p class="muted" style="font-size: 26px;">
+              Refines plain-English descriptions with realistic ramp-ups and route mixes without consuming server planning quota.
+            </p>
+          </div>
+          <div class="panel" style="padding: 28px 34px;">
+            <div class="kicker" style="color: var(--spring); margin-bottom: 10px;">REPORT Q&amp;A &middot; CAPACITY REPORT</div>
+            <h3 style="font-size: 36px; margin-bottom: 10px;">Ask questions grounded in measured metrics.</h3>
+            <p class="muted" style="font-size: 26px;">
+              Answers follow-up questions directly against the run's stage and route numbers, guarded client-side with Number Guard.
+            </p>
+          </div>
+        </div>
+        <div class="col">
+          <div class="panel" style="height: 100%; padding: 30px 36px;">
+            <div class="kicker" style="margin-bottom: 12px;">FIREBASE AI LOGIC &middot; PREFER_ON_DEVICE</div>
+            <h3 style="font-size: 36px;">Transparent execution with graceful fallback.</h3>
+            <ul class="clean" style="margin-top: 20px; gap: 18px;">
+              <li style="font-size: 26px;">Prefers Chrome's <span class="mono">Gemini Nano</span> On-Device Model with zero network round-trips.</li>
+              <li style="font-size: 26px;">Falls back automatically to <span class="mono">Gemini 3.8 Flash</span> Cloud Fallback protected by App Check limited-use tokens.</li>
+              <li style="font-size: 26px;">Live origin badge and Stop control on every stream; Remote Config kill switch and offline-cached Firestore catalog.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><img src="../../web/favicon.svg" alt="">Macro &middot; Hybrid Inference</div>
+    <div class="num">8 / 10</div>
+  </section>
+</div>
+
+<!-- 9 Stack & Verification -->
+<div class="slide-wrap">
+  <section class="slide">
+    <div class="slide-content">
+      <div class="kicker">08 &middot; ARCHITECTURE &amp; VERIFICATION</div>
+      <h2>Modular TypeScript, gVisor isolation, and 988 automated tests.</h2>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 380px;">Layer</th>
+            <th>Implementation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">API &amp; Persistence</td>
+            <td>Bun + TypeScript modular HTTP server (<span class="mono">createApp</span>), SQLite WAL store, optional Tiger Cloud sample mirror.</td>
+          </tr>
+          <tr>
+            <td class="mono">Sandbox &amp; Network</td>
+            <td>Pinned k6 image (<span class="mono">@sha256</span>) under gVisor (<span class="mono">runsc</span>), per-run internal Docker network, egress proxy, Docker socket proxy.</td>
+          </tr>
+          <tr>
+            <td class="mono">Server &amp; Client AI</td>
+            <td>OpenAI-compatible Serverless Inference (forced tool calls) + client Firebase AI Logic (<span class="mono">PREFER_ON_DEVICE</span>).</td>
+          </tr>
+          <tr>
+            <td class="mono">Web Workspace</td>
+            <td>React 19 + Vite + TanStack Router + Base UI, strict CSP (<span class="mono">style-src 'self'</span>), zero inline styles, 24 KiB landing JS budget.</td>
+          </tr>
+          <tr>
+            <td class="mono">Verification</td>
+            <td><span class="spring mono">975</span> passing unit &amp; property tests (<span class="mono">fast-check</span>) + <span class="spring mono">13</span> real-Docker <span class="mono">test:vm</span> containment tests in CI.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="foot"><img src="../../web/favicon.svg" alt="">Macro</div>
+    <div class="num">9 / 10</div>
+  </section>
+</div>
+
+<!-- 10 Closing -->
+<div class="slide-wrap">
+  <section class="slide">
+    <img class="slide-backdrop" src="../../web/landing/public/landing/img/dither/sanok-span.webp" alt="">
+    <div class="slide-content" style="justify-content: center;">
+      <div class="brand-row">
+        <img class="brand-mark" src="../../web/favicon.svg" alt="Macro">
+        <div class="stage-band all-live" style="margin-bottom: 0; width: 280px;">
+          <span class="s1"></span><span class="s2"></span><span class="s3"></span><span class="s4"></span>
+        </div>
+      </div>
+      <div class="kicker">TRY MACRO TODAY</div>
+      <h2>Find your breaking point before launch traffic does.</h2>
+      <p style="font-size: 38px; max-width: 1200px; color: var(--muted); margin-top: 8px;">
+        Run a signed-out test on the Demo Target, inspect a live Containment Probe, or verify your Own Site for private Runs.
+      </p>
+      <div class="row" style="margin-top: 56px; gap: 40px;">
+        <div class="panel-live" style="padding: 28px 40px;">
+          <div class="kicker" style="margin-bottom: 6px;">TEST STUDIO</div>
+          <div class="mono" style="font-size: 38px; font-weight: 600;">macro.my.id/app/</div>
+        </div>
+        <div class="panel" style="padding: 28px 40px;">
+          <div class="kicker" style="margin-bottom: 6px;">OPEN SOURCE (MIT)</div>
+          <div class="mono" style="font-size: 38px; color: var(--ink);">github.com/mbayue/macro</div>
+        </div>
+      </div>
+    </div>
+    <div class="num">10 / 10</div>
+  </section>
+</div>
+
+<script>
+  // Uniformly scale 1920x1080 slides to fit the browser viewport without reflowing.
+  function fitSlides() {
+    var pad = 48;
+    var s = Math.min(1, (window.innerWidth - pad) / 1920, (window.innerHeight - pad) / 1080);
+    document.documentElement.style.setProperty('--scale', String(Math.max(0.2, s)));
+  }
+  fitSlides();
+  window.addEventListener('resize', fitSlides);
+</script>
 </body>
 </html>

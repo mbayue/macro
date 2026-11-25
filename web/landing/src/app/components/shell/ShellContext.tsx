@@ -1,9 +1,10 @@
 import { createContext, type ReactNode, use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { AccountRunsResponse, MeResponse, QuotaResponse } from '../../../../../../src/api-types.ts';
+import type { MeResponse, QuotaResponse } from '../../../../../../src/api-types.ts';
 import { currentTheme, setTheme, type Theme } from '../../../theme.ts';
 import { AppContext } from '../../context.tsx';
 import { getQuota } from '../../lib/api.ts';
-import { clearReviewState, postSignOut } from '../../lib/auth-api.ts';
+import { getAccountRuns, postSignOut } from '../../lib/auth-api.ts';
+import { clearReviewState } from '../../lib/draft-storage.ts';
 import { clearRecentRuns, loadRecentRuns } from '../../lib/recent-runs.ts';
 import { type Route, routeKey } from '../../router.ts';
 import {
@@ -174,26 +175,16 @@ export function ShellProvider({
     }
 
     const abort = new AbortController();
-    void (async () => {
-      try {
-        const res = await fetch('/api/account/runs', { credentials: 'same-origin', signal: abort.signal });
-        if (abort.signal.aborted) return;
-        if (!res.ok) {
-          setRecentRunsSource('browser');
-          setRecentRuns(mapBrowserRunsToQuickJump(loadRecentRuns(), DEFAULT_QUICK_JUMP_RUN_LIMIT));
-          return;
-        }
-        const body = (await res.json()) as AccountRunsResponse;
-        if (abort.signal.aborted) return;
-        setRecentRunsSource('account');
-        setRecentRuns(mapAccountRunsToQuickJump(body.runs, DEFAULT_QUICK_JUMP_RUN_LIMIT));
-      } catch {
-        if (!abort.signal.aborted) {
-          setRecentRunsSource('browser');
-          setRecentRuns(mapBrowserRunsToQuickJump(loadRecentRuns(), DEFAULT_QUICK_JUMP_RUN_LIMIT));
-        }
+    void getAccountRuns(abort.signal).then((res) => {
+      if (abort.signal.aborted) return;
+      if (!res.ok) {
+        setRecentRunsSource('browser');
+        setRecentRuns(mapBrowserRunsToQuickJump(loadRecentRuns(), DEFAULT_QUICK_JUMP_RUN_LIMIT));
+        return;
       }
-    })();
+      setRecentRunsSource('account');
+      setRecentRuns(mapAccountRunsToQuickJump(res.data.runs, DEFAULT_QUICK_JUMP_RUN_LIMIT));
+    });
 
     return () => abort.abort();
   }, [me, activeRouteKey, quickJumpOpen]);

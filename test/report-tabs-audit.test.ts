@@ -5,6 +5,7 @@ import type { RunSnapshot } from '../src/api-types.ts';
 import { buildReport } from '../src/report/build.ts';
 import type { StageMetrics, TestPlan } from '../src/types.ts';
 import { KpiStrip, SignatureTiles } from '../web/landing/src/app/components/run/KpiStrip.tsx';
+import { LatencyLineChart } from '../web/landing/src/app/components/run/LatencyLineChart.tsx';
 import { RouteChart } from '../web/landing/src/app/components/run/RouteChart.tsx';
 import { SecondChart } from '../web/landing/src/app/components/run/SecondChart.tsx';
 import { AI_WITHHELD_NOTE } from '../web/landing/src/app/lib/report-view.ts';
@@ -740,5 +741,204 @@ describe('RouteChart, SecondChart, and shared route end-label layout', () => {
     expect(secondHtml).toContain('>/<');
     expect(secondHtml).toContain('ticks: seconds with errors');
     expect(secondHtml).not.toMatch(/\sstyle=/i);
+  });
+
+  test('RouteChart preserves accessibility IDs, stage X-axis ticks, stop-threshold line/label, stage dots, and empty state', () => {
+    const plan = makePlan();
+    const routes = [
+      { id: 'store_home', path: '/' },
+      { id: 'store_checkout', path: '/checkout' },
+    ];
+    const s1 = makeMetrics(300, 0.1, {
+      store_home: { p95: 250, errorRatePct: 0.1 },
+      store_checkout: { p95: 420, errorRatePct: 0.2 },
+    });
+    const s2 = makeMetrics(650, 0.3, {
+      store_home: { p95: 400, errorRatePct: 0.1 },
+      store_checkout: { p95: 900, errorRatePct: 0.4 },
+    });
+    const stages = [
+      {
+        index: 0,
+        vus: 25,
+        durationSec: 30,
+        status: 'done' as const,
+        errorReason: null,
+        verdict: 'pass' as const,
+        metrics: s1,
+        startedAt: 1_700_000_000_000,
+        endedAt: 1_700_000_030_000,
+      },
+      {
+        index: 1,
+        vus: 50,
+        durationSec: 30,
+        status: 'done' as const,
+        errorReason: null,
+        verdict: 'pass' as const,
+        metrics: s2,
+        startedAt: 1_700_000_031_000,
+        endedAt: 1_700_000_061_000,
+      },
+    ];
+
+    const html = renderToStaticMarkup(createElement(RouteChart, { stages, plan, limitMs: 1200, routes }));
+    expect(html).toContain('aria-labelledby="route-chart-title route-chart-desc"');
+    expect(html).toContain('<title id="route-chart-title">p95 latency per route</title>');
+    expect(html).toContain('<desc id="route-chart-desc">');
+    expect(html).toContain('Stop limit 1200 ms.');
+    expect(html).toContain('font-mono text-[11px] tabular-nums');
+    expect(html).toContain('>Stage 1<');
+    expect(html).toContain('>Stage 2<');
+    expect(html).toContain('>Stage 3<');
+    expect(html).toContain('stroke-bad');
+    expect(html).toContain('stroke-dasharray="6 5"');
+    expect(html).toContain('stop threshold 1200 ms');
+    expect(html).toContain('stroke-accent-text');
+    expect(html).toContain('fill-accent-text');
+    expect(html).toContain('fill-bar');
+    expect(html).toContain('<circle');
+    expect(html).not.toMatch(/\sstyle=/i);
+
+    const threeRouteStages = [
+      {
+        ...stages[0]!,
+        metrics: {
+          ...s1,
+          routes: {
+            ...s1.routes,
+            store_cart: { requests: 200, rps: 6.7, errorRatePct: 0, http429: 0, p50: 80, p95: 190, p99: 240 },
+          },
+        },
+      },
+    ];
+    const threeRouteHtml = renderToStaticMarkup(
+      createElement(RouteChart, {
+        stages: threeRouteStages,
+        plan,
+        limitMs: 1200,
+        routes: [...routes, { id: 'store_cart', path: '/cart' }],
+      }),
+    );
+    expect(threeRouteHtml).toContain('stroke-dasharray="7 4"');
+    expect(threeRouteHtml).toContain('>/cart<');
+
+    const emptyHtml = renderToStaticMarkup(createElement(RouteChart, { stages: [], plan, limitMs: 1200, routes }));
+    expect(emptyHtml).toContain('No stage has finished yet, so there is no latency to draw.');
+    expect(emptyHtml).toContain('Latency appears here when stage 1 finishes.');
+    expect(emptyHtml).toContain('stop threshold 1200 ms');
+    expect(emptyHtml).not.toMatch(/\sstyle=/i);
+  });
+
+  test('SecondChart preserves accessibility IDs, second X-axis ticks, error-second top ticks/legend, and empty state', () => {
+    const routes = [
+      { id: 'store_home', path: '/' },
+      { id: 'store_checkout', path: '/checkout' },
+    ];
+    const stageWithErrors = {
+      index: 1,
+      vus: 50,
+      durationSec: 25,
+      status: 'done' as const,
+      errorReason: null,
+      verdict: 'pass' as const,
+      metrics: null,
+      samples: [
+        { second: 0, route: 'store_home', requests: 10, avgMs: 210, maxMs: 300, errors: 0 },
+        { second: 4, route: 'store_checkout', requests: 12, avgMs: 480, maxMs: 650, errors: 2 },
+        { second: 12, route: 'store_checkout', requests: 11, avgMs: 520, maxMs: 700, errors: 1 },
+      ],
+      startedAt: 1_700_000_000_000,
+      endedAt: 1_700_000_025_000,
+    };
+
+    const html = renderToStaticMarkup(createElement(SecondChart, { stage: stageWithErrors, displayIndex: 2, routes }));
+    expect(html).toContain('aria-labelledby="second-chart-title-2 second-chart-desc-2"');
+    expect(html).toContain('<title id="second-chart-title-2">Average latency per second, stage 2</title>');
+    expect(html).toContain('<desc id="second-chart-desc-2">');
+    expect(html).toContain('Requests failed during these seconds: 4, 12.');
+    expect(html).toContain('font-mono text-[11px] tabular-nums');
+    expect(html).toContain('>0s<');
+    expect(html).toContain('>10s<');
+    expect(html).toContain('>20s<');
+    expect(html).toContain('class="stroke-bad"');
+    expect(html).toContain('ticks: seconds with errors');
+    expect(html).not.toMatch(/\sstyle=/i);
+
+    const cleanStage = {
+      ...stageWithErrors,
+      samples: stageWithErrors.samples.map((s) => ({ ...s, errors: 0 })),
+    };
+    const cleanHtml = renderToStaticMarkup(createElement(SecondChart, { stage: cleanStage, displayIndex: 2, routes }));
+    expect(cleanHtml).toContain('No request failed during the stage.');
+    expect(cleanHtml).not.toContain('ticks: seconds with errors');
+    expect(cleanHtml).not.toContain('class="stroke-bad"');
+
+    const emptyHtml = renderToStaticMarkup(
+      createElement(SecondChart, { stage: { ...stageWithErrors, samples: [] }, displayIndex: 2, routes }),
+    );
+    expect(emptyHtml).toContain('Stage 2 has no per-second samples.');
+    expect(emptyHtml).toContain('No per-second samples were stored for this stage.');
+    expect(emptyHtml).not.toMatch(/\sstyle=/i);
+  });
+
+  test('LatencyLineChart renders gridlines, lead/quiet paths with routeDash, overlay slots, and empty state', () => {
+    const html = renderToStaticMarkup(
+      createElement(LatencyLineChart, {
+        series: [
+          { route: 'r_quiet1', points: [{ x: 1, y: 200 }, { x: 0, y: 100 }] },
+          { route: 'r_quiet2', points: [{ x: 0, y: 150 }, { x: 1, y: 250 }] },
+          { route: 'r_lead', points: [{ x: 0, y: 120 }, { x: 1, y: 400 }] },
+        ],
+        height: 260,
+        xPosition: (val, pw, left) => left + pw * val,
+        xTicks: [
+          { value: 0, label: 'Start' },
+          { value: 1, label: 'End' },
+        ],
+        routes: [
+          { id: 'r_quiet1', path: '/a' },
+          { id: 'r_quiet2', path: '/b' },
+          { id: 'r_lead', path: '/c' },
+        ],
+        titleId: 'custom-title',
+        descId: 'custom-desc',
+        title: 'Custom latency',
+        desc: 'Custom description',
+        emptyText: 'No points yet.',
+        beforePaths: ({ margin }) => createElement('g', { 'data-slot': 'before', 'data-top': margin.top }),
+        afterPaths: () => createElement('g', { 'data-slot': 'after' }),
+        renderPoints: ({ series, isLead }) =>
+          createElement('circle', { key: series.route, r: isLead ? 4 : 3, 'data-route': series.route }),
+      }),
+    );
+
+    expect(html).toContain('viewBox="0 0 720 260"');
+    expect(html).toContain('aria-labelledby="custom-title custom-desc"');
+    expect(html).toContain('<title id="custom-title">Custom latency</title>');
+    expect(html).toContain('<desc id="custom-desc">Custom description</desc>');
+    expect(html).toContain('data-slot="before"');
+    expect(html).toContain('data-slot="after"');
+    expect(html).toContain('data-route="r_lead"');
+    expect(html).toContain('stroke-dasharray="7 4"');
+    expect(html).toContain('>/a<');
+    expect(html).toContain('>/b<');
+    expect(html).toContain('>/c<');
+    expect(html).not.toMatch(/\sstyle=/i);
+
+    const emptyHtml = renderToStaticMarkup(
+      createElement(LatencyLineChart, {
+        series: [],
+        height: 260,
+        xPosition: (val, pw, left) => left + pw * val,
+        xTicks: [{ value: 0, label: 'Start' }],
+        titleId: 'empty-title',
+        descId: 'empty-desc',
+        title: 'Empty latency',
+        desc: 'No data',
+        emptyText: 'No points yet.',
+      }),
+    );
+    expect(emptyHtml).toContain('No points yet.');
   });
 });

@@ -72,6 +72,18 @@ describe('consolidated auth-api HTTP client', () => {
       error: { code: 'auth_required', message: 'Sign in first.' },
     });
 
+    stubFetch(() => new Response(null, { status: 401 }));
+    expect(await getAccountRuns()).toEqual({
+      ok: false,
+      error: { code: 'auth_required', message: 'Sign in to continue.' },
+    });
+
+    stubFetch(() => new Response('Service Unavailable', { status: 503 }));
+    expect(await getAccountRuns()).toEqual({
+      ok: false,
+      error: { code: 'auth_unavailable', message: 'Sign-in is not configured on this server.' },
+    });
+
     stubFetch(() => {
       throw new Error('offline');
     });

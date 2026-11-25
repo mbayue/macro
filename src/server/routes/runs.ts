@@ -212,8 +212,8 @@ export function runsRoutes(ctx: ServerContext): RouteDef[] {
       runtimeError: config.sandbox.runtimeError ?? null,
       examples: EXAMPLES.map((e) => ({ label: e.label, text: e.text })),
       catalog: ROUTE_CATALOG.map((r) => ({ id: r.id, role: r.role, method: r.method, path: r.path })),
-      trafficEventMin: 10,
-      trafficEventMax: 1000,
+      trafficEventMin: TRAFFIC_EVENT_MIN,
+      trafficEventMax: TRAFFIC_EVENT_MAX,
       sampleRunId: store.getLatestPublicCompletedRunId(),
       firebase: config.firebase ?? null,
       githubSignIn: config.auth !== undefined && config.githubAuth !== undefined,
@@ -230,6 +230,23 @@ export function runsRoutes(ctx: ServerContext): RouteDef[] {
     return json(200, body, { 'cache-control': 'no-cache' });
   };
 
+  async function discoverVerifiedOrigin(
+    webOrigin: string,
+  ): Promise<{ ok: true; routes: DiscoveredRoute[] } | { ok: false; res: Response }> {
+    const fetchFn = deps.fetchImpl ?? fetch;
+    const failed = (): Response =>
+      apiError(422, 'discover_failed', `Could not read ${webOrigin}/. Nothing was sent to the planner.`);
+    if (fetchFn === fetch && !(await isPublicHost(new URL(webOrigin).hostname))) {
+      return { ok: false, res: failed() };
+    }
+    const found = await discoverOwnSite(webOrigin, fetchFn);
+    if (!found.ok) {
+      logInternal('discover', new Error(found.reason));
+      return { ok: false, res: failed() };
+    }
+    return { ok: true, routes: found.routes };
+  }
+
   const postDiscover: Handler = async ({ req }) => {
     const read = await readJsonBody(req);
     if (!read.ok) return read.res;
@@ -242,23 +259,8 @@ export function runsRoutes(ctx: ServerContext): RouteDef[] {
     const targetResolved = resolvePlanTarget('own', parsed.data.targetOrigin, auth.user);
     if (!targetResolved.ok) return targetResolved.res;
 
-    const fetchFn = deps.fetchImpl ?? fetch;
-    if (fetchFn === fetch && !(await isPublicHost(new URL(targetResolved.target.webOrigin).hostname))) {
-      return apiError(
-        422,
-        'discover_failed',
-        `Could not read ${targetResolved.target.webOrigin}/. Nothing was sent to the planner.`,
-      );
-    }
-    const found = await discoverOwnSite(targetResolved.target.webOrigin, fetchFn);
-    if (!found.ok) {
-      logInternal('discover', new Error(found.reason));
-      return apiError(
-        422,
-        'discover_failed',
-        `Could not read ${targetResolved.target.webOrigin}/. Nothing was sent to the planner.`,
-      );
-    }
+    const found = await discoverVerifiedOrigin(targetResolved.target.webOrigin);
+    if (!found.ok) return found.res;
 
     const draftId = crypto.randomUUID();
     store.createDraft({ id: draftId, trafficEvent: '', createdAt: now() });
@@ -332,23 +334,8 @@ export function runsRoutes(ctx: ServerContext): RouteDef[] {
       stored = picked.stored;
       forPlanner = picked.selected;
     } else if (ownPlan) {
-      const fetchFn = deps.fetchImpl ?? fetch;
-      if (fetchFn === fetch && !(await isPublicHost(new URL(targetResolved.target.webOrigin).hostname))) {
-        return apiError(
-          422,
-          'discover_failed',
-          `Could not read ${targetResolved.target.webOrigin}/. Nothing was sent to the planner.`,
-        );
-      }
-      const found = await discoverOwnSite(targetResolved.target.webOrigin, fetchFn);
-      if (!found.ok) {
-        logInternal('discover', new Error(found.reason));
-        return apiError(
-          422,
-          'discover_failed',
-          `Could not read ${targetResolved.target.webOrigin}/. Nothing was sent to the planner.`,
-        );
-      }
+      const found = await discoverVerifiedOrigin(targetResolved.target.webOrigin);
+      if (!found.ok) return found.res;
       stored = found.routes;
       forPlanner = found.routes.filter((row) => row.defaultOn);
     }

@@ -10,14 +10,14 @@ import type {
   VerifyClearResponse,
   VerifyStartResponse,
 } from '../../../../../src/api-types.ts';
-import { type ApiResult, INTERNAL_ERROR, request } from './api.ts';
+import { type ApiResult, INTERNAL_ERROR, isRecord, parseErrorBody, request } from './api.ts';
 import { loadRecentRuns } from './recent-runs.ts';
 
 function parseConflictDraft(json: unknown): AccountDraft | undefined {
-  if (typeof json !== 'object' || json === null || Array.isArray(json)) return undefined;
+  if (!isRecord(json)) return undefined;
   const draft = (json as Partial<AccountDraftConflict>).draft;
-  if (typeof draft !== 'object' || draft === null || Array.isArray(draft)) return undefined;
-  return draft;
+  if (!isRecord(draft)) return undefined;
+  return draft as AccountDraft;
 }
 
 export function getMe(signal?: AbortSignal): Promise<ApiResult<MeResponse | null>> {
@@ -111,5 +111,18 @@ export async function claimRecentBrowserRuns(): Promise<void> {
 }
 
 export function getAccountRuns(signal?: AbortSignal): Promise<ApiResult<AccountRunsResponse>> {
-  return request<AccountRunsResponse>('GET', '/api/account/runs', undefined, signal);
+  return request<AccountRunsResponse>('GET', '/api/account/runs', undefined, signal, {
+    onStatus(status, json) {
+      if (status !== 401 && status !== 503) return undefined;
+      const parsed = parseErrorBody(json);
+      if (parsed) return { ok: false, error: parsed };
+      return {
+        ok: false,
+        error:
+          status === 401
+            ? { code: 'auth_required', message: 'Sign in to continue.' }
+            : { code: 'auth_unavailable', message: 'Sign-in is not configured on this server.' },
+      };
+    },
+  });
 }

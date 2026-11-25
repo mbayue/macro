@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import type { StageView } from '../../../../../../src/api-types.ts';
 import { fmtMs } from '../../../../../../src/run/format.ts';
 import type { TestPlan } from '../../../../../../src/types.ts';
-import { LatencyLineChart, type LatencySeries } from './LatencyLineChart.tsx';
+import { groupLatencySeries, LatencyLineChart } from './LatencyLineChart.tsx';
 
 export const RouteChart = memo(function RouteChart({
   stages,
@@ -24,19 +24,10 @@ export const RouteChart = memo(function RouteChart({
   const total = Math.max(plan?.stages.length ?? 0, ...stages.map((s) => s.index + 1), 1);
   const done = stages.filter((s) => s.status === 'done' && s.metrics !== null);
 
-  const byRoute = new Map<string, { route: string; points: { x: number; y: number }[] }>();
-  for (const s of done) {
-    for (const [route, m] of Object.entries(s.metrics!.routes)) {
-      if (!m) continue;
-      const entry = byRoute.get(route) ?? { route, points: [] };
-      entry.points.push({ x: s.index, y: m.p95 });
-      byRoute.set(route, entry);
-    }
-  }
-  const series: LatencySeries[] = [...byRoute.values()].map((s) => ({
-    route: s.route,
-    points: [...s.points].sort((a, b) => a.x - b.x),
-  }));
+  const stageRoutePoints = done.flatMap((s) =>
+    Object.entries(s.metrics!.routes).map(([route, m]) => (m ? { route, x: s.index, y: m.p95 } : null)),
+  );
+  const series = groupLatencySeries(stageRoutePoints, (pt) => pt);
 
   const desc =
     series.length === 0

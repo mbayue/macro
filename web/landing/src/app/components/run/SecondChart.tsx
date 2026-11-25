@@ -6,7 +6,7 @@
 import { memo } from 'react';
 import type { StageView } from '../../../../../../src/api-types.ts';
 import { fmtMs } from '../../../../../../src/run/format.ts';
-import { LatencyLineChart, type LatencySeries } from './LatencyLineChart.tsx';
+import { groupLatencySeries, LatencyLineChart } from './LatencyLineChart.tsx';
 
 export const SecondChart = memo(function SecondChart({
   stage,
@@ -19,16 +19,7 @@ export const SecondChart = memo(function SecondChart({
   routes?: readonly { id: string; path: string }[];
 }) {
   const samples = stage.samples ?? [];
-  const byRoute = new Map<string, { route: string; points: { x: number; y: number }[] }>();
-  for (const s of samples) {
-    const entry = byRoute.get(s.route) ?? { route: s.route, points: [] };
-    entry.points.push({ x: s.second, y: s.avgMs });
-    byRoute.set(s.route, entry);
-  }
-  const series: LatencySeries[] = [...byRoute.values()].map((s) => ({
-    route: s.route,
-    points: [...s.points].sort((a, b) => a.x - b.x),
-  }));
+  const series = groupLatencySeries(samples, (s) => ({ route: s.route, x: s.second, y: s.avgMs }));
 
   const seconds = samples.map((s) => s.second);
   const xMax = Math.max(1, ...seconds, stage.durationSec - 1);

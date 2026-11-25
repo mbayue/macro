@@ -68,7 +68,7 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<ApiErrorCode>([
   'internal',
 ]);
 
-function isRecord(v: unknown): v is Record<string, unknown> {
+export function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
@@ -98,7 +98,7 @@ function parseParseError(v: unknown): ParseErrorView | undefined {
 }
 
 /** Accept only a well-formed uniform error body; copy known fields only. */
-function parseErrorBody(v: unknown): ApiError | null {
+export function parseErrorBody(v: unknown): ApiError | null {
   if (!isRecord(v) || !isRecord(v['error'])) return null;
   const e = v['error'];
   if (typeof e['code'] !== 'string' || typeof e['message'] !== 'string') return null;

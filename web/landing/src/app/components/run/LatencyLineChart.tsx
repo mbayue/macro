@@ -66,6 +66,25 @@ export interface LatencyLineChartProps {
   renderPoints?: (args: LatencyPointRenderArgs) => ReactNode;
 }
 
+/** Group raw latency samples into route series sorted by ascending X value. */
+export function groupLatencySeries<T>(
+  items: readonly T[],
+  extract: (item: T) => { route: string; x: number; y: number } | null,
+): LatencySeries[] {
+  const byRoute = new Map<string, { route: string; points: LatencySeriesPoint[] }>();
+  for (const item of items) {
+    const pt = extract(item);
+    if (pt === null) continue;
+    const entry = byRoute.get(pt.route) ?? { route: pt.route, points: [] };
+    entry.points.push({ x: pt.x, y: pt.y });
+    byRoute.set(pt.route, entry);
+  }
+  return [...byRoute.values()].map((s) => ({
+    route: s.route,
+    points: [...s.points].sort((a, b) => a.x - b.x),
+  }));
+}
+
 /**
  * Shared responsive SVG latency line chart primitive for Run charts.
  * Owns width measurement, layout margins, niceScale Y-axis gridlines and ticks,

@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Macro">
-  <rect width="64" height="64" rx="14" fill="#001e2b"/>
-  <rect x="0.75" y="0.75" width="62.5" height="62.5" rx="13.25" fill="none" stroke="#21313a" stroke-width="1.5"/>
-  <path d="M14 46V18l18 19 18-19v28" fill="none" stroke="#00ed64" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round"/>
-  <circle cx="32" cy="37" r="3.25" fill="#fdfff5"/>
+  <title>Macro</title>
+  <rect width="64" height="64" rx="10" fill="#001e2b"/>
+  <rect x="0.75" y="0.75" width="62.5" height="62.5" rx="9.25" fill="none" stroke="#21313a" stroke-width="1.5"/>
+  <path fill="#fdfff5" d="M10 13h9l13 16.5L45 13h9v38h-9V27.5L32 43.5 19 27.5V51h-9V13z"/>
+  <rect x="24" y="45" width="16" height="6" fill="#00ed64"/>
 </svg>

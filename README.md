@@ -172,8 +172,8 @@ Authentication is optional. Without the auth environment variables, Macro runs i
 
 When auth is configured:
 
-1. Open `/app/#/sign-in` (GitHub OAuth or Resend magic link). GitHub must provide a verified email. Once signed in, account management is available at `/app/#/account` (including complete account deletion via `DELETE /api/me`).
-2. On **New test**, choose **Demo shop** (public, works signed out) or **My site** (requires sign-in and a verified origin).
+1. Open `/app/#/sign-in` (GitHub OAuth, Google OAuth, or Resend magic link). OAuth providers must supply a verified email. Once signed in, account management is available at `/app/#/account` (including complete account deletion via `DELETE /api/me`).
+2. On **Test Studio**, choose **Demo Target** (public, works signed out) or **Own Site** (requires sign-in and a verified origin).
 3. Verify one HTTPS host via a DNS TXT record at `_macro-verify.<host>` or a file at `/.well-known/macro-site-verification` containing the verification token. Once verified, Macro automatically discovers client routes from the site's document and scripts to constrain journey planning.
 4. Own-site runs are private to the account; demo runs stay public and can be claimed onto the account from browser recent-runs after sign-in.
 
@@ -229,7 +229,7 @@ Invites are delivered via Resend. The first sign-in from an invited address auto
 - **Targets are strictly gated.** Signed-out users may only target the demo allowlist. Authenticated users may target one verified HTTPS origin (DNS TXT or `/.well-known/`).
 - **Load generator capacity.** One generator in Singapore with 1 CPU per sandbox. At high VU counts, generator resources can saturate.
 - **"First degraded route" is an observation, not a root cause.**
-- **Quotas:** One active run at a time, rolling planning and start rate-limits, daily start caps, and a 15-minute maximum per run (usage exposed via `GET /api/quota` and displayed on **New test**).
+- **Quotas:** One active run at a time, rolling planning and start rate-limits, daily start caps, and a 15-minute maximum per run (usage exposed via `GET /api/quota` and displayed on **Test Studio**).
 - **Not built:** Distributed load generation across multiple cloud regions, multi-tenant team accounts, and own-site containment probes.
 
 ## Testing

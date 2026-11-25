@@ -24,7 +24,7 @@ A session: describe the traffic, review and approve the plan, watch a run of a f
 
 ## Capabilities and Constraints
 
-- Demo shop tests work signed out against yue.macro.my.id. Own-site tests require a Macro account (GitHub or magic link) and one verified HTTPS origin (DNS TXT or `/.well-known/`). Copy must stay honest about what is verified vs demo-only.
+- Demo shop tests work signed out against yue.macro.my.id. Own-site tests require a Macro account (GitHub, Google, or magic link) and one verified HTTPS origin (DNS TXT or `/.well-known/`). Copy must stay honest about what is verified vs demo-only.
 - Signed-out planning and starts still require Cloudflare Turnstile; signed-in sessions skip Turnstile. Limits apply per IP when signed out and per account when signed in.
 - Accounts also keep a draft across devices, private own-site reports, and a claimed recent-runs list. Containment probes remain demo-shop only in v1.
 - Strict CSP: no inline scripts, no style attributes. Untrusted text (user input, AI output) is rendered as text, never HTML.

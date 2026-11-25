@@ -71,7 +71,7 @@ import {
   serializeSessionCookie,
   SESSION_TTL_MS,
 } from './auth/session.ts';
-import type { SessionRow, UserRow } from './auth/types.ts';
+import type { OAuthProviderConfig, SessionRow, UserRow } from './auth/types.ts';
 import { ContestedOriginError } from './auth/types.ts';
 import {
   checkDnsTxt,
@@ -167,7 +167,8 @@ const MSG = {
   authUnavailable: 'Sign-in is not configured on this server.',
   authRequired: 'Sign in to continue.',
   magicLinkInvalid: 'This sign-in link is invalid or has already been used.',
-  oauthFailed: 'GitHub sign-in failed. Please try again.',
+  githubOauthFailed: 'GitHub sign-in failed. Please try again.',
+  googleOauthFailed: 'Google sign-in failed. Please try again.',
   verifyPending: 'Start verification for a host before checking.',
   verifyFailed: 'Macro could not find the verification token on that host yet. Try again after the DNS or file is in place.',
   contestedOrigin: 'That site is already verified by another Macro account.',
@@ -783,6 +784,13 @@ export function createApp(deps: AppDeps): App {
     return auth;
   }
 
+  function requireAuth(req: Request): { user: UserRow; session: SessionRow } | Response {
+    if (config.auth === undefined) {
+      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
+    }
+    return requireSession(req);
+  }
+
   /** Skip Turnstile when a valid session is present. */
   async function turnstileUnlessSignedIn(
     req: Request,
@@ -936,10 +944,7 @@ export function createApp(deps: AppDeps): App {
   };
 
   const deleteMe: Handler = async ({ req }) => {
-    if (config.auth === undefined) {
-      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
-    }
-    const auth = requireSession(req);
+    const auth = requireAuth(req);
     if (auth instanceof Response) return auth;
     try {
       store.deleteUser(auth.user.id);
@@ -1440,6 +1445,19 @@ export function createApp(deps: AppDeps): App {
     return normalizeRunTitle(planFromStore(run.planHash)?.name, LOAD_TEST_TITLE);
   }
 
+  function toRunListItem(r: RunRow): RunListItem {
+    const body = store.getReport(r.id)?.body;
+    return {
+      runId: r.id,
+      kind: r.kind,
+      startedAt: r.startedAt,
+      status: r.status,
+      safeCapacity: headlineValue(body, 'safeCapacity'),
+      breakingPoint: headlineValue(body, 'breakingPoint'),
+      title: runTitle(r),
+    };
+  }
+
   const getRunSnapshot: Handler = (c) => {
     const id = runIdParam(c);
     if (id === null) return notFound();
@@ -1498,18 +1516,7 @@ export function createApp(deps: AppDeps): App {
     const runs: RunListItem[] = store
       .listRunsForPlan(hash, 20)
       .filter((r) => canViewRun(r, c.req))
-      .map((r) => {
-        const body = store.getReport(r.id)?.body;
-        return {
-          runId: r.id,
-          kind: r.kind,
-          startedAt: r.startedAt,
-          status: r.status,
-          safeCapacity: headlineValue(body, 'safeCapacity'),
-          breakingPoint: headlineValue(body, 'breakingPoint'),
-          title: runTitle(r),
-        };
-      });
+      .map(toRunListItem);
     const body: RunListResponse = { planHash: hash, runs };
     return json(200, body);
   };
@@ -1725,10 +1732,41 @@ export function createApp(deps: AppDeps): App {
     return new Response(Bun.file(abs), { status: 200, headers });
   }
 
-  const magicLinkIpAllow = rollingLimiter(MAGIC_LINK_IP_LIMIT);
-  const magicLinkEmailAllow = rollingLimiter(MAGIC_LINK_EMAIL_LIMIT);
-  const magicLinkIpCooldown = rollingLimiter(MAGIC_LINK_COOLDOWN);
-  const magicLinkEmailCooldown = rollingLimiter(MAGIC_LINK_COOLDOWN);
+  const magicLinkLimits = [
+    {
+      limit: rollingLimiter(MAGIC_LINK_COOLDOWN),
+      key: (ip: string, _email: string) => ip,
+      message: 'Wait a minute before sending another sign-in email.',
+    },
+    {
+      limit: rollingLimiter(MAGIC_LINK_COOLDOWN),
+      key: (_ip: string, email: string) => email,
+      message: 'Wait a minute before sending another sign-in email to that address.',
+    },
+    {
+      limit: rollingLimiter(MAGIC_LINK_IP_LIMIT),
+      key: (ip: string, _email: string) => ip,
+      message: 'Too many sign-in emails from this connection. Try again later.',
+    },
+    {
+      limit: rollingLimiter(MAGIC_LINK_EMAIL_LIMIT),
+      key: (_ip: string, email: string) => email,
+      message: 'Too many sign-in emails for that address. Try again later.',
+    },
+  ] as const;
+
+  function checkMagicLinkRateLimits(ip: string, email: string, at: number): Response | null {
+    for (const rule of magicLinkLimits) {
+      const check = rule.limit(rule.key(ip, email), at, false);
+      if (!check.ok) {
+        return apiError(429, 'rate_limited', rule.message, { retryAt: check.retryAt }, retryAfter(check.retryAt, at));
+      }
+    }
+    for (const rule of magicLinkLimits) {
+      rule.limit(rule.key(ip, email), at);
+    }
+    return null;
+  }
 
   const postMagicLink: Handler = async ({ req, ip }) => {
     if (config.auth === undefined) {
@@ -1742,50 +1780,8 @@ export function createApp(deps: AppDeps): App {
     if (email === null) return apiError(400, 'invalid_input', MSG.email);
 
     const at = now();
-    const ipWait = magicLinkIpCooldown(ip, at, false);
-    if (!ipWait.ok) {
-      return apiError(
-        429,
-        'rate_limited',
-        'Wait a minute before sending another sign-in email.',
-        { retryAt: ipWait.retryAt },
-        retryAfter(ipWait.retryAt, at),
-      );
-    }
-    const emailWait = magicLinkEmailCooldown(email, at, false);
-    if (!emailWait.ok) {
-      return apiError(
-        429,
-        'rate_limited',
-        'Wait a minute before sending another sign-in email to that address.',
-        { retryAt: emailWait.retryAt },
-        retryAfter(emailWait.retryAt, at),
-      );
-    }
-    const ipAllowed = magicLinkIpAllow(ip, at, false);
-    if (!ipAllowed.ok) {
-      return apiError(
-        429,
-        'rate_limited',
-        'Too many sign-in emails from this connection. Try again later.',
-        { retryAt: ipAllowed.retryAt },
-        retryAfter(ipAllowed.retryAt, at),
-      );
-    }
-    const emailAllowed = magicLinkEmailAllow(email, at, false);
-    if (!emailAllowed.ok) {
-      return apiError(
-        429,
-        'rate_limited',
-        'Too many sign-in emails for that address. Try again later.',
-        { retryAt: emailAllowed.retryAt },
-        retryAfter(emailAllowed.retryAt, at),
-      );
-    }
-    magicLinkIpCooldown(ip, at);
-    magicLinkEmailCooldown(email, at);
-    magicLinkIpAllow(ip, at);
-    magicLinkEmailAllow(email, at);
+    const limited = checkMagicLinkRateLimits(ip, email, at);
+    if (limited !== null) return limited;
     const body: MagicLinkResponse = { ok: true };
     const mailer = deps.mailer;
     if (mailer === undefined) {
@@ -1851,114 +1847,99 @@ export function createApp(deps: AppDeps): App {
     return new Response(null, { status: 303, headers });
   };
 
-  const getGithubStart: Handler = async () => {
-    if (config.auth === undefined || config.githubAuth === undefined) {
-      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
-    }
-    const state = generateMagicToken();
-    return startOauthRedirect(
-      githubAuthorizeUrl(
-        {
-          githubClientId: config.githubAuth.clientId,
-          githubClientSecret: config.githubAuth.clientSecret,
-          githubRedirectUri: config.githubAuth.redirectUri,
-        },
-        state,
-      ),
-      state,
-    );
-  };
+  interface OAuthProviderSpec {
+    readonly provider: 'github' | 'google';
+    readonly providerConfig: OAuthProviderConfig | undefined;
+    readonly authorizeUrl: (cfg: OAuthProviderConfig, state: string) => string;
+    readonly exchangeCode: (
+      cfg: OAuthProviderConfig,
+      code: string,
+      fetchImpl: typeof fetch,
+    ) => Promise<{ accessToken: string } | { error: 'oauth_failed' }>;
+    readonly fetchIdentity: (
+      accessToken: string,
+      fetchImpl: typeof fetch,
+    ) => Promise<
+      { subject: string; email: string; login?: string } | { error: 'oauth_failed' | 'no_email' }
+    >;
+    readonly fetchImpl: typeof fetch;
+    readonly noEmailError: 'github_email' | 'google_email';
+    readonly failedMessage: string;
+  }
 
-  const getGithubCallback: Handler = async ({ req, url }) => {
-    if (config.auth === undefined || config.githubAuth === undefined) {
-      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
-    }
-    const expected = parseCookieValue(req.headers.get('cookie'), OAUTH_STATE_COOKIE);
-    const state = url.searchParams.get('state') ?? '';
-    const code = url.searchParams.get('code') ?? '';
-    if (expected === null || state === '' || state !== expected || code === '') {
-      return apiError(400, 'invalid_input', MSG.oauthFailed, {}, { 'Set-Cookie': clearOauthStateCookie(cookieSecure) });
-    }
-    const ghFetch = deps.githubFetch ?? fetch;
-    const token = await exchangeGithubCode(
-      {
-        githubClientId: config.githubAuth.clientId,
-        githubClientSecret: config.githubAuth.clientSecret,
-        githubRedirectUri: config.githubAuth.redirectUri,
-      },
-      code,
-      ghFetch,
-    );
-    if ('error' in token) {
-      return apiError(400, 'invalid_input', MSG.oauthFailed, {}, { 'Set-Cookie': clearOauthStateCookie(cookieSecure) });
-    }
-    const identity = await fetchGithubIdentity(token.accessToken, ghFetch);
-    if ('error' in identity) {
-      if (identity.error === 'no_email') {
-        return new Response(null, {
-          status: 303,
-          headers: {
-            Location: '/app/#/sign-in?error=github_email',
-            'Set-Cookie': clearOauthStateCookie(cookieSecure),
-            'cache-control': 'no-store',
-          },
-        });
+  function oauthStart(spec: OAuthProviderSpec): Handler {
+    return async () => {
+      if (config.auth === undefined || spec.providerConfig === undefined) {
+        return apiError(503, 'auth_unavailable', MSG.authUnavailable);
       }
-      return apiError(400, 'invalid_input', MSG.oauthFailed, {}, { 'Set-Cookie': clearOauthStateCookie(cookieSecure) });
-    }
+      const state = generateMagicToken();
+      return startOauthRedirect(spec.authorizeUrl(spec.providerConfig, state), state);
+    };
+  }
 
-    return completeOauthLogin({
-      provider: 'github',
-      subject: identity.subject,
-      email: identity.email,
-      githubLogin: identity.login,
-    });
-  };
-
-  const getGoogleStart: Handler = async () => {
-    if (config.auth === undefined || config.googleAuth === undefined) {
-      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
-    }
-    const state = generateMagicToken();
-    return startOauthRedirect(googleAuthorizeUrl(config.googleAuth, state), state);
-  };
-
-  const getGoogleCallback: Handler = async ({ req, url }) => {
-    if (config.auth === undefined || config.googleAuth === undefined) {
-      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
-    }
-    const expected = parseCookieValue(req.headers.get('cookie'), OAUTH_STATE_COOKIE);
-    const state = url.searchParams.get('state') ?? '';
-    const code = url.searchParams.get('code') ?? '';
-    if (expected === null || state === '' || state !== expected || code === '') {
-      return apiError(400, 'invalid_input', MSG.oauthFailed, {}, { 'Set-Cookie': clearOauthStateCookie(cookieSecure) });
-    }
-    const gFetch = deps.googleFetch ?? fetch;
-    const token = await exchangeGoogleCode(config.googleAuth, code, gFetch);
-    if ('error' in token) {
-      return apiError(400, 'invalid_input', MSG.oauthFailed, {}, { 'Set-Cookie': clearOauthStateCookie(cookieSecure) });
-    }
-    const identity = await fetchGoogleIdentity(token.accessToken, gFetch);
-    if ('error' in identity) {
-      if (identity.error === 'no_email') {
-        return new Response(null, {
-          status: 303,
-          headers: {
-            Location: '/app/#/sign-in?error=google_email',
-            'Set-Cookie': clearOauthStateCookie(cookieSecure),
-            'cache-control': 'no-store',
-          },
-        });
+  function oauthCallback(spec: OAuthProviderSpec): Handler {
+    return async ({ req, url }) => {
+      if (config.auth === undefined || spec.providerConfig === undefined) {
+        return apiError(503, 'auth_unavailable', MSG.authUnavailable);
       }
-      return apiError(400, 'invalid_input', MSG.oauthFailed, {}, { 'Set-Cookie': clearOauthStateCookie(cookieSecure) });
-    }
+      const clearHeaders = { 'Set-Cookie': clearOauthStateCookie(cookieSecure) };
+      const failOauth = () => apiError(400, 'invalid_input', spec.failedMessage, {}, clearHeaders);
+      const expected = parseCookieValue(req.headers.get('cookie'), OAUTH_STATE_COOKIE);
+      const state = url.searchParams.get('state') ?? '';
+      const code = url.searchParams.get('code') ?? '';
+      if (expected === null || state === '' || state !== expected || code === '') {
+        return failOauth();
+      }
+      const token = await spec.exchangeCode(spec.providerConfig, code, spec.fetchImpl);
+      if ('error' in token) return failOauth();
+      const identity = await spec.fetchIdentity(token.accessToken, spec.fetchImpl);
+      if ('error' in identity) {
+        if (identity.error === 'no_email') {
+          return new Response(null, {
+            status: 303,
+            headers: {
+              Location: `/app/#/sign-in?error=${spec.noEmailError}`,
+              'Set-Cookie': clearOauthStateCookie(cookieSecure),
+              'cache-control': 'no-store',
+            },
+          });
+        }
+        return failOauth();
+      }
+      return completeOauthLogin({
+        provider: spec.provider,
+        subject: identity.subject,
+        email: identity.email,
+        ...(identity.login !== undefined ? { githubLogin: identity.login } : {}),
+      });
+    };
+  }
 
-    return completeOauthLogin({
-      provider: 'google',
-      subject: identity.subject,
-      email: identity.email,
-    });
+  const githubSpec: OAuthProviderSpec = {
+    provider: 'github',
+    providerConfig: config.githubAuth,
+    authorizeUrl: githubAuthorizeUrl,
+    exchangeCode: exchangeGithubCode,
+    fetchIdentity: fetchGithubIdentity,
+    fetchImpl: deps.githubFetch ?? fetch,
+    noEmailError: 'github_email',
+    failedMessage: MSG.githubOauthFailed,
   };
+  const googleSpec: OAuthProviderSpec = {
+    provider: 'google',
+    providerConfig: config.googleAuth,
+    authorizeUrl: googleAuthorizeUrl,
+    exchangeCode: exchangeGoogleCode,
+    fetchIdentity: fetchGoogleIdentity,
+    fetchImpl: deps.googleFetch ?? fetch,
+    noEmailError: 'google_email',
+    failedMessage: MSG.googleOauthFailed,
+  };
+
+  const getGithubStart = oauthStart(githubSpec);
+  const getGithubCallback = oauthCallback(githubSpec);
+  const getGoogleStart = oauthStart(googleSpec);
+  const getGoogleCallback = oauthCallback(googleSpec);
 
   const getMagicLinkConsume: Handler = async ({ url }) => {
     if (config.auth === undefined) {
@@ -1990,13 +1971,36 @@ export function createApp(deps: AppDeps): App {
     });
   };
 
-  const DOMAIN_CONNECT_ENABLED = true;
+  async function buildVerifyStartResponse(
+    origin: string,
+    host: string,
+    token: string,
+  ): Promise<VerifyStartResponse> {
+    const detection = await detectDnsProvider(host, deps.resolveNs, {
+      // Pass the injected resolvers so discovery never falls back to real DNS
+      // when a caller (tests) supplied stubs.
+      resolveTxt: deps.resolveTxt,
+      resolveCname: deps.resolveCname,
+      fetchFn: deps.fetchImpl as typeof fetch | undefined,
+      verifyToken: token,
+      redirectUri: config.auth ? `${config.auth.publicBaseUrl}/app/#/domains?domainConnect=done` : undefined,
+      privateKeyPem: config.domainConnect?.privateKey,
+      keyId: config.domainConnect?.keyId,
+    });
+    return {
+      token,
+      txtName: txtNameForHost(host),
+      txtValue: token,
+      wellKnownUrl: wellKnownUrlForOrigin(origin),
+      isCloudflare: detection.isCloudflare,
+      cloudFlareDirectUrl: detection.cloudFlareDirectUrl,
+      domainConnectUrl: detection.domainConnectUrl,
+      domainConnectProviderName: detection.domainConnectProviderName,
+    };
+  }
 
   const postVerifyStart: Handler = async ({ req }) => {
-    if (config.auth === undefined) {
-      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
-    }
-    const auth = requireSession(req);
+    const auth = requireAuth(req);
     if (auth instanceof Response) return auth;
     const read = await readJsonBody(req);
     if (!read.ok) return read.res;
@@ -2013,83 +2017,19 @@ export function createApp(deps: AppDeps): App {
       logInternal('verify.start', err);
       return apiError(500, 'internal', MSG.internal);
     }
-    const detection = await detectDnsProvider(norm.host, deps.resolveNs, {
-      // Pass the injected resolvers even while Domain Connect is off, so discovery
-      // never falls back to real DNS when a caller (tests) supplied stubs.
-      resolveTxt: deps.resolveTxt,
-      resolveCname: deps.resolveCname,
-      ...(DOMAIN_CONNECT_ENABLED
-        ? {
-            fetchFn: deps.fetchImpl as typeof fetch | undefined,
-            verifyToken: token,
-            redirectUri: config.auth ? `${config.auth.publicBaseUrl}/app/#/domains?domainConnect=done` : undefined,
-            privateKeyPem: config.domainConnect?.privateKey,
-            keyId: config.domainConnect?.keyId,
-          }
-        : {}),
-    });
-    const body: VerifyStartResponse = {
-      token,
-      txtName: txtNameForHost(norm.host),
-      txtValue: token,
-      wellKnownUrl: wellKnownUrlForOrigin(norm.origin),
-      isCloudflare: detection.isCloudflare,
-      cloudFlareDirectUrl: detection.cloudFlareDirectUrl,
-      ...(DOMAIN_CONNECT_ENABLED
-        ? {
-            domainConnectUrl: detection.domainConnectUrl,
-            domainConnectProviderName: detection.domainConnectProviderName,
-          }
-        : {}),
-    };
-    return json(200, body);
+    return json(200, await buildVerifyStartResponse(norm.origin, norm.host, token));
   };
 
   const getVerifyPending: Handler = async ({ req }) => {
-    if (config.auth === undefined) {
-      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
-    }
-    const auth = requireSession(req);
+    const auth = requireAuth(req);
     if (auth instanceof Response) return auth;
     const pending = store.getPendingOriginVerification(auth.user.id);
     if (pending === null) return apiError(404, 'not_found', MSG.notFound);
-    const detection = await detectDnsProvider(pending.host, deps.resolveNs, {
-      // Pass the injected resolvers even while Domain Connect is off, so discovery
-      // never falls back to real DNS when a caller (tests) supplied stubs.
-      resolveTxt: deps.resolveTxt,
-      resolveCname: deps.resolveCname,
-      ...(DOMAIN_CONNECT_ENABLED
-        ? {
-            fetchFn: deps.fetchImpl as typeof fetch | undefined,
-            verifyToken: pending.token,
-            redirectUri: config.auth ? `${config.auth.publicBaseUrl}/app/#/domains?domainConnect=done` : undefined,
-            privateKeyPem: config.domainConnect?.privateKey,
-            keyId: config.domainConnect?.keyId,
-          }
-        : {}),
-    });
-    const body: VerifyStartResponse = {
-      token: pending.token,
-      txtName: txtNameForHost(pending.host),
-      txtValue: pending.token,
-      wellKnownUrl: wellKnownUrlForOrigin(pending.origin),
-      isCloudflare: detection.isCloudflare,
-      cloudFlareDirectUrl: detection.cloudFlareDirectUrl,
-      ...(DOMAIN_CONNECT_ENABLED
-        ? {
-            domainConnectUrl: detection.domainConnectUrl,
-            domainConnectProviderName: detection.domainConnectProviderName,
-          }
-        : {}),
-    };
-    return json(200, body);
+    return json(200, await buildVerifyStartResponse(pending.origin, pending.host, pending.token));
   };
 
   const postVerifyCancel: Handler = async ({ req }) => {
-    if (config.auth === undefined) {
-      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
-    }
-    const auth = requireSession(req);
+    const auth = requireAuth(req);
     if (auth instanceof Response) return auth;
     try {
       store.clearPendingOriginVerification(auth.user.id);
@@ -2102,10 +2042,7 @@ export function createApp(deps: AppDeps): App {
   };
 
   const postVerifyCheck: Handler = async ({ req }) => {
-    if (config.auth === undefined) {
-      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
-    }
-    const auth = requireSession(req);
+    const auth = requireAuth(req);
     if (auth instanceof Response) return auth;
     const pending = store.getPendingOriginVerification(auth.user.id);
     if (pending === null) return apiError(400, 'invalid_input', MSG.verifyPending);
@@ -2150,10 +2087,7 @@ export function createApp(deps: AppDeps): App {
   };
 
   const postVerifyClear: Handler = async ({ req }) => {
-    if (config.auth === undefined) {
-      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
-    }
-    const auth = requireSession(req);
+    const auth = requireAuth(req);
     if (auth instanceof Response) return auth;
     try {
       store.clearVerifiedOrigin(auth.user.id);
@@ -2167,20 +2101,14 @@ export function createApp(deps: AppDeps): App {
   };
 
   const getDraft: Handler = async ({ req }) => {
-    if (config.auth === undefined) {
-      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
-    }
-    const auth = requireSession(req);
+    const auth = requireAuth(req);
     if (auth instanceof Response) return auth;
     const row = store.getAccountDraft(auth.user.id);
     return json(200, row === null ? EMPTY_DRAFT : toAccountDraftView(row));
   };
 
   const putDraft: Handler = async ({ req }) => {
-    if (config.auth === undefined) {
-      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
-    }
-    const auth = requireSession(req);
+    const auth = requireAuth(req);
     if (auth instanceof Response) return auth;
     const read = await readJsonBody(req);
     if (!read.ok) return read.res;
@@ -2205,10 +2133,7 @@ export function createApp(deps: AppDeps): App {
   };
 
   const postClaim: Handler = async ({ req }) => {
-    if (config.auth === undefined) {
-      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
-    }
-    const auth = requireSession(req);
+    const auth = requireAuth(req);
     if (auth instanceof Response) return auth;
     const read = await readJsonBody(req);
     if (!read.ok) return read.res;
@@ -2225,23 +2150,9 @@ export function createApp(deps: AppDeps): App {
   };
 
   const getAccountRuns: Handler = async ({ req }) => {
-    if (config.auth === undefined) {
-      return apiError(503, 'auth_unavailable', MSG.authUnavailable);
-    }
-    const auth = requireSession(req);
+    const auth = requireAuth(req);
     if (auth instanceof Response) return auth;
-    const runs: RunListItem[] = store.listRunsForOwner(auth.user.id, 50).map((r) => {
-      const body = store.getReport(r.id)?.body;
-      return {
-        runId: r.id,
-        kind: r.kind,
-        startedAt: r.startedAt,
-        status: r.status,
-        safeCapacity: headlineValue(body, 'safeCapacity'),
-        breakingPoint: headlineValue(body, 'breakingPoint'),
-        title: runTitle(r),
-      };
-    });
+    const runs: RunListItem[] = store.listRunsForOwner(auth.user.id, 50).map(toRunListItem);
     const body: AccountRunsResponse = { runs };
     return json(200, body);
   };

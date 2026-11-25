@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import type { ApiErrorBody } from '../src/api-types.ts';
 import { InferenceClient } from '../src/agents/inference.ts';
 import { createApp } from '../src/server.ts';
 import type { App, RunStarter } from '../src/server.ts';
@@ -171,7 +172,7 @@ describe('GitHub OAuth', () => {
     expect((cb.headers.get('set-cookie') ?? '').includes('macro_session=')).toBe(false);
   });
 
-  test('bad state is rejected', async () => {
+  test('bad state is rejected with GitHub error copy', async () => {
     const { app } = makeApp(asFetch(() => Promise.reject(new Error('unused'))));
     const start = await app.fetch(new Request('http://macro.test/api/auth/github/start', { redirect: 'manual' }));
     const stateCookie = (start.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
@@ -182,5 +183,10 @@ describe('GitHub OAuth', () => {
       }),
     );
     expect([400, 401, 403]).toContain(cb.status);
+    const body = (await cb.json()) as ApiErrorBody;
+    expect(body.error).toEqual({
+      code: 'invalid_input',
+      message: 'GitHub sign-in failed. Please try again.',
+    });
   });
 });

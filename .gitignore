@@ -19,6 +19,8 @@ data/
 .kiro
 .superpowers
 .agents/
+.claude/
+agent/
 skills-lock.json
 
 docs/superpowers/

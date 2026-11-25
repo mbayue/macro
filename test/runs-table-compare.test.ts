@@ -1,7 +1,9 @@
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import type { ConfigResponse, RunListItem, RunSnapshot } from '../src/api-types.ts';
+import type { ConfigResponse, MeResponse, RunListItem, RunSnapshot } from '../src/api-types.ts';
 import { buildReport } from '../src/report/build.ts';
 import { compareRuns, DIFFERENT_PLAN_MESSAGE } from '../src/report/compare.ts';
 import type { StageMetrics, TestPlan } from '../src/types.ts';
@@ -24,6 +26,11 @@ import {
 } from '../web/landing/src/app/components/compare/runs-table-view.ts';
 import { InlineRunComparison, RunsPanel } from '../web/landing/src/app/components/run/Report.tsx';
 import { AppContext, type AppContextValue } from '../web/landing/src/app/context.tsx';
+import {
+  type RecentRunsDataState,
+  startRecentRunsSync,
+  useRecentRunsData,
+} from '../web/landing/src/app/hooks/useRecentRunsData.ts';
 
 function makePlan(name = 'Checkout spike'): TestPlan {
   return {
@@ -725,5 +732,344 @@ describe('In-report CompareView reuse and fetchComparison', () => {
     expect(html).not.toContain('w-status');
     expect(html).not.toContain('w-num');
     expect(html).not.toMatch(/\sstyle=/i);
+  });
+});
+
+const realFetch = globalThis.fetch;
+const realWindowDesc = Object.getOwnPropertyDescriptor(globalThis, 'window');
+
+function installBrowserStorage(initialRuns: Array<{ id: string; kind: 'run' | 'probe'; name: string; startedAt: number }> = []) {
+  const store = new Map<string, string>();
+  if (initialRuns.length > 0) {
+    store.set('macro.recentRuns.v1', JSON.stringify(initialRuns));
+  }
+  const localStorage = {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => void store.set(k, v),
+    removeItem: (k: string) => void store.delete(k),
+  };
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    writable: true,
+    value: { localStorage },
+  });
+  return { store, localStorage };
+}
+
+function makeSink() {
+  let rows: RunsTableRow[] = [];
+  let source: 'account' | 'browser' = 'account';
+  let loading = true;
+  let error: string | null = null;
+  return {
+    get state() {
+      return { rows, source, loading, error };
+    },
+    sink: {
+      setRows: (next: RunsTableRow[] | ((prev: RunsTableRow[]) => RunsTableRow[])) => {
+        rows = typeof next === 'function' ? next(rows) : next;
+      },
+      setSource: (next: 'account' | 'browser') => {
+        source = next;
+      },
+      setLoading: (next: boolean) => {
+        loading = next;
+      },
+      setError: (next: string | null) => {
+        error = next;
+      },
+    },
+  };
+}
+
+async function flushMicrotasks(): Promise<void> {
+  for (let i = 0; i < 8; i++) {
+    await Promise.resolve();
+  }
+}
+
+function fakeTimers() {
+  let nextId = 1;
+  const scheduled = new Map<number, { fn: () => void; ms: number }>();
+  return {
+    scheduled,
+    timers: {
+      setTimeout: (fn: () => void, ms: number) => {
+        const id = nextId++;
+        scheduled.set(id, { fn, ms });
+        return id as unknown as ReturnType<typeof setTimeout>;
+      },
+      clearTimeout: (id: ReturnType<typeof setTimeout>) => {
+        scheduled.delete(id as unknown as number);
+      },
+    },
+    async runNext() {
+      const first = scheduled.entries().next();
+      if (first.done) return false;
+      const [id, entry] = first.value;
+      scheduled.delete(id);
+      entry.fn();
+      await flushMicrotasks();
+      return true;
+    },
+  };
+}
+
+function makeMe(): MeResponse {
+  return {
+    user: { id: 'user_1', email: 'dev@example.com', githubLogin: 'bayu' },
+    verifiedOrigin: null,
+    pendingVerification: null,
+  };
+}
+
+afterEach(() => {
+  globalThis.fetch = realFetch;
+  if (realWindowDesc) {
+    Object.defineProperty(globalThis, 'window', realWindowDesc);
+  } else {
+    delete (globalThis as { window?: unknown }).window;
+  }
+});
+
+describe('useRecentRunsData', () => {
+  test('initializes account loading state when signed in and browser rows when signed out', () => {
+    installBrowserStorage([
+      { id: 'run-local-1', kind: 'run', name: 'Local burst', startedAt: Date.UTC(2026, 4, 21, 10, 0, 0) },
+    ]);
+
+    let signedOut: RecentRunsDataState | undefined;
+    renderToStaticMarkup(
+      createElement(() => {
+        signedOut = useRecentRunsData(null);
+        return null;
+      }),
+    );
+    expect(signedOut?.source).toBe('browser');
+    expect(signedOut?.loading).toBe(false);
+    expect(signedOut?.error).toBeNull();
+    expect(signedOut?.hasBrowserFallback).toBe(false);
+    expect(signedOut?.rows.map((r) => [r.runId, r.status])).toEqual([['run-local-1', 'checking']]);
+
+    let signedIn: RecentRunsDataState | undefined;
+    renderToStaticMarkup(
+      createElement(() => {
+        signedIn = useRecentRunsData(makeMe());
+        return null;
+      }),
+    );
+    expect(signedIn?.source).toBe('account');
+    expect(signedIn?.loading).toBe(true);
+    expect(signedIn?.error).toBeNull();
+    expect(signedIn?.rows).toEqual([]);
+  });
+
+  test('loads account runs via getAccountRuns, polls every 3s while queued/running, and stops once terminal', async () => {
+    const fetchCalls: string[] = [];
+    let pollCount = 0;
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      fetchCalls.push(String(input));
+      pollCount += 1;
+      const runs: RunListItem[] =
+        pollCount === 1
+          ? [
+              {
+                runId: 'run_live_1',
+                kind: 'run',
+                startedAt: Date.UTC(2026, 4, 21, 12, 0, 0),
+                status: 'queued',
+                safeCapacity: null,
+                breakingPoint: null,
+                title: 'Live queue',
+              },
+            ]
+          : pollCount === 2
+            ? [
+                {
+                  runId: 'run_live_1',
+                  kind: 'run',
+                  startedAt: Date.UTC(2026, 4, 21, 12, 0, 0),
+                  status: 'running',
+                  safeCapacity: null,
+                  breakingPoint: null,
+                  title: 'Live queue',
+                },
+              ]
+            : [
+                {
+                  runId: 'run_live_1',
+                  kind: 'run',
+                  startedAt: Date.UTC(2026, 4, 21, 12, 0, 0),
+                  status: 'completed',
+                  safeCapacity: 100,
+                  breakingPoint: null,
+                  title: 'Live queue',
+                },
+              ];
+      return new Response(JSON.stringify({ runs }), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const holder = makeSink();
+    const ft = fakeTimers();
+
+    const cleanup = startRecentRunsSync({ mode: 'account', sink: holder.sink, timers: ft.timers });
+    await flushMicrotasks();
+
+    expect(fetchCalls).toEqual(['/api/account/runs']);
+    expect(holder.state.source).toBe('account');
+    expect(holder.state.loading).toBe(false);
+    expect(holder.state.error).toBeNull();
+    expect(holder.state.rows.map((r) => r.status)).toEqual(['queued']);
+    expect([...ft.scheduled.values()].map((t) => t.ms)).toEqual([3000]);
+
+    await ft.runNext();
+    expect(fetchCalls).toHaveLength(2);
+    expect(holder.state.rows.map((r) => r.status)).toEqual(['running']);
+    expect([...ft.scheduled.values()].map((t) => t.ms)).toEqual([3000]);
+
+    await ft.runNext();
+    expect(fetchCalls).toHaveLength(3);
+    expect(holder.state.rows.map((r) => r.status)).toEqual(['completed']);
+    expect(holder.state.rows[0]?.safeCapacity).toBe(100);
+    expect(ft.scheduled.size).toBe(0);
+
+    cleanup();
+  });
+
+  test('falls back to browser-local runs on 401 auth_required and 503 auth_unavailable, and sets error banner on other errors', async () => {
+    installBrowserStorage([
+      { id: 'run-local-fallback', kind: 'run', name: 'Local fallback', startedAt: Date.UTC(2026, 4, 21, 10, 0, 0) },
+    ]);
+
+    const snapshot = makeSnapshot({
+      run: {
+        ...makeSnapshot().run,
+        id: 'run-local-fallback',
+        status: 'completed',
+      },
+    });
+
+    for (const [status, code, msg] of [
+      [401, 'auth_required', 'Sign in first.'],
+      [503, 'auth_unavailable', 'Auth off.'],
+    ] as const) {
+      globalThis.fetch = (async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url === '/api/account/runs') {
+          return new Response(JSON.stringify({ error: { code, message: msg } }), { status });
+        }
+        if (url === '/api/runs/run-local-fallback') {
+          return new Response(JSON.stringify(snapshot), { status: 200 });
+        }
+        return new Response(null, { status: 404 });
+      }) as unknown as typeof fetch;
+
+      const holder = makeSink();
+      const cleanup = startRecentRunsSync({ mode: 'account', sink: holder.sink });
+      await flushMicrotasks();
+
+      expect(holder.state.source).toBe('browser');
+      expect(holder.state.loading).toBe(false);
+      expect(holder.state.error).toBeNull();
+      expect(holder.state.rows.map((r) => [r.runId, r.status, r.safeCapacity])).toEqual([
+        ['run-local-fallback', 'completed', 25],
+      ]);
+      cleanup();
+    }
+
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ error: { code: 'internal', message: 'Database down.' } }), {
+        status: 500,
+      })) as unknown as typeof fetch;
+
+    const errHolder = makeSink();
+    const cleanupErr = startRecentRunsSync({ mode: 'account', sink: errHolder.sink });
+    await flushMicrotasks();
+
+    expect(errHolder.state.source).toBe('account');
+    expect(errHolder.state.loading).toBe(false);
+    expect(errHolder.state.error).toBe(
+      'Could not load your account runs from the server. Check your connection and try again.',
+    );
+    expect(errHolder.state.rows).toEqual([]);
+    cleanupErr();
+  });
+
+  test('hydrates browser-local runs, prunes 404 entries via forgetRun, and maps transient failures to unknown', async () => {
+    const { store } = installBrowserStorage([
+      { id: 'run-ok', kind: 'run', name: 'Healthy run', startedAt: Date.UTC(2026, 4, 21, 10, 0, 0) },
+      { id: 'run-stale', kind: 'run', name: 'Deleted run', startedAt: Date.UTC(2026, 4, 21, 9, 0, 0) },
+      { id: 'run-flaky', kind: 'run', name: 'Transient err', startedAt: Date.UTC(2026, 4, 21, 8, 0, 0) },
+    ]);
+
+    const okSnap = makeSnapshot({
+      run: { ...makeSnapshot().run, id: 'run-ok', status: 'completed' },
+    });
+
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === '/api/runs/run-ok') {
+        return new Response(JSON.stringify(okSnap), { status: 200 });
+      }
+      if (url === '/api/runs/run-stale') {
+        return new Response(JSON.stringify({ error: { code: 'not_found', message: 'Gone.' } }), { status: 404 });
+      }
+      if (url === '/api/runs/run-flaky') {
+        return new Response(JSON.stringify({ error: { code: 'internal', message: 'Timeout.' } }), { status: 500 });
+      }
+      return new Response(null, { status: 404 });
+    }) as unknown as typeof fetch;
+
+    const holder = makeSink();
+    const cleanup = startRecentRunsSync({ mode: 'browser', sink: holder.sink });
+    await flushMicrotasks();
+
+    expect(holder.state.source).toBe('browser');
+    expect(holder.state.loading).toBe(false);
+    expect(holder.state.error).toBeNull();
+    expect(holder.state.rows.map((r) => [r.runId, r.status, r.safeCapacity])).toEqual([
+      ['run-ok', 'completed', 25],
+      ['run-flaky', 'unknown', null],
+    ]);
+
+    const persisted = JSON.parse(store.get('macro.recentRuns.v1') ?? '[]') as Array<{ id: string }>;
+    expect(persisted.map((r) => r.id)).toEqual(['run-ok', 'run-flaky']);
+
+    cleanup();
+  });
+
+  test('cleanup aborts in-flight requests and cancels pending poll timers, and caps account rows at 50', async () => {
+    const manyRuns: RunListItem[] = Array.from({ length: 60 }, (_, idx) => ({
+      runId: `run-${idx}`,
+      kind: 'run',
+      startedAt: Date.UTC(2026, 4, 21, 12, 0, idx),
+      status: idx === 0 ? 'running' : 'completed',
+      safeCapacity: idx === 0 ? null : 50,
+      breakingPoint: null,
+      title: `Run ${idx}`,
+    }));
+
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ runs: manyRuns }), { status: 200 })) as unknown as typeof fetch;
+
+    const holder = makeSink();
+    const ft = fakeTimers();
+    const cleanup = startRecentRunsSync({ mode: 'account', sink: holder.sink, timers: ft.timers });
+    await flushMicrotasks();
+
+    expect(holder.state.rows).toHaveLength(50);
+    expect(ft.scheduled.size).toBe(1);
+
+    cleanup();
+    expect(ft.scheduled.size).toBe(0);
+  });
+
+  test('RecentRuns.tsx delegates data loading to useRecentRunsData with zero inline fetch calls', () => {
+    const recentRunsSrc = readFileSync(
+      join(import.meta.dir, '..', 'web', 'landing', 'src', 'app', 'pages', 'RecentRuns.tsx'),
+      'utf8',
+    );
+    expect(recentRunsSrc).toContain('useRecentRunsData');
+    expect(recentRunsSrc).not.toMatch(/\bfetch\s*\(/);
   });
 });

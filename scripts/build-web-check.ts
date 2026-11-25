@@ -59,6 +59,7 @@ const JSX_STYLE_PROP_RE = /\bstyle\s*=\s*\{/;
 const LEGACY_REACT_API_RE = /\b(useContext|forwardRef)\s*(?:<[^>]+>)?\s*\(/;
 const APP_SHADOW_RE = /\bshadow-(?!none\b)[a-z0-9[\]_-]+/;
 const APP_BACKDROP_BLUR_RE = /\bbackdrop-blur(?:-[a-z0-9[\]_-]+)?\b/;
+const APP_RAW_FETCH_RE = /(?<![.\w$])fetch\s*\(/;
 const ANIMATE_CLASS_RE = /\banimate-(?!none\b)[a-z0-9_-]+/;
 /** Landing pages (everything outside app/) use theme colour tokens and the one radius; see docs/landing.md. */
 const LANDING_RAW_HEX_RE = /-\[(#[0-9a-fA-F]{3,8})\]/;
@@ -109,6 +110,9 @@ export async function validateWebSource(srcDir: string): Promise<string[]> {
       }
     }
     if (relPath.startsWith('app/')) {
+      if (relPath !== 'app/lib/api.ts' && APP_RAW_FETCH_RE.test(code)) {
+        errors.push(`${relPath} calls fetch() directly; use the typed HTTP client in app/lib/api.ts instead.`);
+      }
       if (relPath.endsWith('.tsx')) {
         const shadow = APP_SHADOW_RE.exec(code);
         if (shadow !== null) {

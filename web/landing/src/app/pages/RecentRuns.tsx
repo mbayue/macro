@@ -5,7 +5,6 @@
 import { useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { getRouteApi } from '@tanstack/react-router';
 import { GitCompareIcon, RotateCcwIcon, SearchIcon, XIcon } from 'lucide-react';
-import type { AccountRunsResponse } from '../../../../../src/api-types.ts';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -16,21 +15,16 @@ import {
   formatCapacityCell,
   getPickedComparePair,
   KIND_FILTER_OPTIONS,
-  mapAccountRunRow,
-  mapBrowserRunRow,
   prunePickedRuns,
-  type RunsTableRow,
   STATUS_FILTER_OPTIONS,
   togglePickedRun,
 } from '../components/compare/runs-table-view.ts';
 import { StageBand, TelemetryPanel } from '../components/studio/TelemetryFrame.tsx';
 import { StatusBadge, TableWrap } from '../components/ui.tsx';
 import { useApp } from '../context.tsx';
-import { getRun } from '../lib/api.ts';
-import { forgetRun, loadRecentRuns } from '../lib/recent-runs.ts';
+import { useRecentRunsData } from '../hooks/useRecentRunsData.ts';
 import { compareHref, DEFAULT_RUNS_SEARCH, probeHref, runHref, type RunsSearch } from '../router.ts';
 
-const MAX_ACCOUNT_RUNS = 50;
 const runsRouteApi = getRouteApi('/runs');
 
 function isoOrUndefined(ms: number): string | undefined {
@@ -41,15 +35,7 @@ function isoOrUndefined(ms: number): string | undefined {
 export function RecentRunsPage() {
   const { config, me, navigate } = useApp();
   const searchInputId = useId();
-  const [reloadTick, setReloadTick] = useState(0);
-  const [browserFallback, setBrowserFallback] = useState(false);
-
-  const [rows, setRows] = useState<RunsTableRow[]>(() =>
-    me !== null ? [] : loadRecentRuns().map((r) => mapBrowserRunRow(r)),
-  );
-  const [source, setSource] = useState<'account' | 'browser'>(() => (me !== null ? 'account' : 'browser'));
-  const [loading, setLoading] = useState<boolean>(() => me !== null);
-  const [error, setError] = useState<string | null>(null);
+  const { rows, source, loading, error, hasBrowserFallback, retry, showBrowserFallback } = useRecentRunsData(me);
 
   // Filters live in the URL (`?type=&status=&q=`) so back, reload and shared links keep them.
   const search = runsRouteApi.useSearch();
@@ -85,95 +71,12 @@ export function RecentRunsPage() {
   const [picked, setPicked] = useState<string[]>([]);
 
   useEffect(() => {
-    setBrowserFallback(false);
-  }, [me]);
-
-  useEffect(() => {
-    const abort = new AbortController();
-    let timer: number | undefined;
-
-    const loadBrowser = () => {
-      setSource('browser');
-      setError(null);
-      setLoading(false);
-      const local = loadRecentRuns();
-      const initial = local.map((r) => mapBrowserRunRow(r));
-      setRows(initial);
-      setPicked((prev) => prunePickedRuns(initial, prev));
-
-      for (const entry of local) {
-        void getRun(entry.id, abort.signal).then((res) => {
-          if (abort.signal.aborted) return;
-          if (res.ok) {
-            const hydrated = mapBrowserRunRow(entry, res.data);
-            setRows((prev) => prev.map((r) => (r.runId === entry.id ? hydrated : r)));
-          } else if (res.error.code === 'not_found') {
-            forgetRun(entry.id);
-            setRows((prev) => {
-              const next = prev.filter((r) => r.runId !== entry.id);
-              setPicked((p) => prunePickedRuns(next, p));
-              return next;
-            });
-          } else {
-            const unknown = mapBrowserRunRow(entry, null, 'unknown');
-            setRows((prev) => prev.map((r) => (r.runId === entry.id ? unknown : r)));
-          }
-        });
-      }
-    };
-
-    const loadAccount = async (isPoll = false): Promise<void> => {
-      setSource('account');
-      if (!isPoll) {
-        setRows([]);
-        setLoading(true);
-        setError(null);
-      }
-      try {
-        const res = await fetch('/api/account/runs', { credentials: 'same-origin', signal: abort.signal });
-        if (abort.signal.aborted) return;
-        if (res.status === 401 || res.status === 503) {
-          loadBrowser();
-          return;
-        }
-        if (!res.ok) {
-          setLoading(false);
-          setError('Could not load your account runs from the server. Check your connection and try again.');
-          return;
-        }
-        const body = (await res.json()) as AccountRunsResponse;
-        if (abort.signal.aborted) return;
-        const mapped = Array.isArray(body.runs)
-          ? body.runs.slice(0, MAX_ACCOUNT_RUNS).map(mapAccountRunRow)
-          : [];
-        setRows(mapped);
-        setPicked((prev) => prunePickedRuns(mapped, prev));
-        setLoading(false);
-        setError(null);
-        const hasPending = mapped.some((r) => r.status === 'queued' || r.status === 'running');
-        if (hasPending) {
-          timer = window.setTimeout(() => {
-            if (!abort.signal.aborted) void loadAccount(true);
-          }, 3000);
-        }
-      } catch {
-        if (abort.signal.aborted) return;
-        setLoading(false);
-        setError('Could not reach the server to load your account runs. Check your connection and try again.');
-      }
-    };
-
-    if (me !== null && !browserFallback) {
-      void loadAccount();
-    } else {
-      loadBrowser();
-    }
-
-    return () => {
-      abort.abort();
-      if (timer !== undefined) window.clearTimeout(timer);
-    };
-  }, [me, reloadTick, browserFallback]);
+    if (loading || error !== null) return;
+    setPicked((prev) => {
+      const next = prunePickedRuns(rows, prev);
+      return next.length === prev.length && next.every((id, i) => id === prev[i]) ? prev : next;
+    });
+  }, [rows, loading, error]);
 
   const visibleRows = useMemo(
     () =>
@@ -206,11 +109,6 @@ export function RecentRunsPage() {
     navigate(compareHref(comparePair.a, comparePair.b).replace(/^#/, ''));
   }, [comparePair, navigate]);
 
-  const hasBrowserFallback = useMemo(
-    () => error !== null && me !== null && !browserFallback && loadRecentRuns().length > 0,
-    [error, me, browserFallback],
-  );
-
   return (
     <div className="mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-5">
       <header className="grid gap-1.5">
@@ -236,7 +134,7 @@ export function RecentRunsPage() {
           </div>
           <p className="m-0 text-sm text-foreground">{error}</p>
           <div className="flex flex-wrap items-center gap-2.5">
-            <Button type="button" variant="secondary" onClick={() => setReloadTick((t) => t + 1)}>
+            <Button type="button" variant="secondary" onClick={retry}>
               <RotateCcwIcon data-icon="inline-start" />
               Try again
             </Button>
@@ -245,7 +143,7 @@ export function RecentRunsPage() {
                 type="button"
                 variant="outline"
                 className="border-bar"
-                onClick={() => setBrowserFallback(true)}
+                onClick={showBrowserFallback}
               >
                 Show browser recent runs
               </Button>

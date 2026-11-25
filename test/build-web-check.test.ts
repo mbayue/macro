@@ -280,6 +280,21 @@ describe('validateWebSource', () => {
     expect(errors.some((e) => e.includes('app/components/BadAnim.tsx') && e.includes('motion-reduce:'))).toBe(true);
     expect(errors.some((e) => e.includes('GoodAnim.tsx'))).toBe(false);
   });
+
+  test('rejects raw fetch() under /app/ outside app/lib/api.ts', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'macro-src-fetch-'));
+    dirs.push(dir);
+    mkdirSync(join(dir, 'app', 'pages'), { recursive: true });
+    mkdirSync(join(dir, 'app', 'lib'), { recursive: true });
+    writeFileSync(join(dir, 'app', 'pages', 'BadFetch.tsx'), 'export async function load() { return fetch("/api/me"); }\n');
+    writeFileSync(join(dir, 'app', 'lib', 'api.ts'), 'export async function request() { return fetch("/api/me"); }\n');
+    writeFileSync(join(dir, 'app', 'pages', 'CommentFetch.tsx'), '// fetch("/api/me") in a comment is allowed\nexport const ok = true;\n');
+
+    const errors = await validateWebSource(dir);
+    expect(errors.some((e) => e.startsWith('app/pages/BadFetch.tsx') && e.includes('app/lib/api.ts'))).toBe(true);
+    expect(errors.some((e) => e.startsWith('app/lib/api.ts'))).toBe(false);
+    expect(errors.some((e) => e.startsWith('CommentFetch.tsx') || e.includes('CommentFetch.tsx'))).toBe(false);
+  });
 });
 
 describe('landing CSS has the one radius', () => {

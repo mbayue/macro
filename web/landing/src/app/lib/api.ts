@@ -53,11 +53,13 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<ApiErrorCode>([
   'rate_limited',
   'daily_limit',
   'run_active',
+  'queue_full',
   'plan_not_approved',
   'plan_rejected',
   'runtime_unavailable',
   'inference_not_configured',
   'planning_failed',
+  'discover_failed',
   'not_found',
   'auth_unavailable',
   'auth_required',
@@ -66,7 +68,7 @@ const KNOWN_CODES: ReadonlySet<string> = new Set<ApiErrorCode>([
   'internal',
 ]);
 
-function isRecord(v: unknown): v is Record<string, unknown> {
+export function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
@@ -96,7 +98,7 @@ function parseParseError(v: unknown): ParseErrorView | undefined {
 }
 
 /** Accept only a well-formed uniform error body; copy known fields only. */
-function parseErrorBody(v: unknown): ApiError | null {
+export function parseErrorBody(v: unknown): ApiError | null {
   if (!isRecord(v) || !isRecord(v['error'])) return null;
   const e = v['error'];
   if (typeof e['code'] !== 'string' || typeof e['message'] !== 'string') return null;
@@ -112,11 +114,21 @@ function parseErrorBody(v: unknown): ApiError | null {
   return out;
 }
 
-async function request<T>(
-  method: 'GET' | 'POST',
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+
+export interface RequestOptions<T> {
+  /** Treat HTTP 204 empty responses as `{ ok: true, data: null as T }`. */
+  allowEmpty204?: boolean;
+  /** Override handling for specific HTTP status codes before default ok/error parsing. */
+  onStatus?: (status: number, json: unknown) => ApiResult<T> | undefined;
+}
+
+export async function request<T>(
+  method: HttpMethod,
   path: string,
   body?: unknown,
   signal?: AbortSignal,
+  options?: RequestOptions<T>,
 ): Promise<ApiResult<T>> {
   const headers: Record<string, string> = { accept: 'application/json' };
   const init: RequestInit = { method, headers, cache: 'no-store', credentials: 'same-origin' };
@@ -127,9 +139,11 @@ async function request<T>(
   if (signal) init.signal = signal;
 
   let text: string;
+  let status: number;
   let okStatus: boolean;
   try {
     const res = await fetch(path, init);
+    status = res.status;
     okStatus = res.ok;
     text = await res.text();
   } catch {
@@ -137,10 +151,24 @@ async function request<T>(
   }
 
   let json: unknown;
+  let parseFailed = false;
   try {
     json = text === '' ? undefined : JSON.parse(text);
   } catch {
+    parseFailed = true;
+  }
+
+  if (options?.onStatus) {
+    const handled = options.onStatus(status, json);
+    if (handled !== undefined) return handled;
+  }
+
+  if (parseFailed) {
     return { ok: false, error: INTERNAL_ERROR };
+  }
+
+  if (status === 204 && options?.allowEmpty204) {
+    return { ok: true, data: null as T };
   }
 
   if (!okStatus) {

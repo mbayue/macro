@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import type { ApiErrorBody } from '../src/api-types.ts';
 import { InferenceClient } from '../src/agents/inference.ts';
 import { createApp } from '../src/server.ts';
 import type { App, RunStarter } from '../src/server.ts';
@@ -137,7 +138,7 @@ describe('Google OAuth', () => {
     expect(store.findUserByEmail('unverified@example.com')).toBeNull();
   });
 
-  test('bad state is rejected with 400', async () => {
+  test('bad state is rejected with 400 and Google error copy', async () => {
     const { app } = makeApp(asFetch(() => Promise.reject(new Error('unused'))));
     const cbRes = await app.fetch(
       new Request('http://macro.test/api/auth/google/callback?code=code-1&state=wrong', {
@@ -146,5 +147,32 @@ describe('Google OAuth', () => {
       }),
     );
     expect(cbRes.status).toBe(400);
+    const body = (await cbRes.json()) as ApiErrorBody;
+    expect(body.error).toEqual({
+      code: 'invalid_input',
+      message: 'Google sign-in failed. Please try again.',
+    });
+  });
+
+  test('token exchange failure returns Google error copy and clears state cookie', async () => {
+    const fetchImpl = asFetch(async () => new Response('bad', { status: 502 }));
+    const { app } = makeApp(fetchImpl);
+    const startRes = await app.fetch(new Request('http://macro.test/api/auth/google/start', { redirect: 'manual' }));
+    const state = new URL(startRes.headers.get('location')!).searchParams.get('state')!;
+    const stateCookie = (startRes.headers.get('set-cookie') ?? '').split(';')[0]!;
+
+    const cbRes = await app.fetch(
+      new Request(`http://macro.test/api/auth/google/callback?code=code-1&state=${encodeURIComponent(state)}`, {
+        redirect: 'manual',
+        headers: { cookie: stateCookie },
+      }),
+    );
+    expect(cbRes.status).toBe(400);
+    const body = (await cbRes.json()) as ApiErrorBody;
+    expect(body.error).toEqual({
+      code: 'invalid_input',
+      message: 'Google sign-in failed. Please try again.',
+    });
+    expect(cbRes.headers.get('set-cookie') ?? '').toContain('Max-Age=0');
   });
 });

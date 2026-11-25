@@ -12,7 +12,8 @@ import { DitherBanner, StageBand, TelemetryPanel } from '../components/studio/Te
 import { useOptionalShell } from '../components/shell/ShellContext.tsx';
 import { Busy, ConfirmButton } from '../components/ui.tsx';
 import { useApp } from '../context.tsx';
-import { clearReviewState, deleteAccount, githubStartHref, googleStartHref, postMagicLink } from '../lib/auth-api.ts';
+import { deleteAccount, githubStartHref, googleStartHref, postMagicLink } from '../lib/auth-api.ts';
+import { clearReviewState } from '../lib/draft-storage.ts';
 import { clearRecentRuns } from '../lib/recent-runs.ts';
 
 export interface EmailLinkPanelProps {

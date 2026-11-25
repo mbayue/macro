@@ -25,11 +25,11 @@ These apply to the workspace under `web/landing/src/app/`. Landing pages (home, 
 
 ## Both
 
-- **Strict CSP (`style-src 'self'`):** Keep markup free of `<style>` tags and `style=` props/attributes. Drive dynamic bar or meter geometry through CSS custom properties updated via DOM refs in `useEffect`.
+- **Dynamic geometry under strict CSP:** Drive dynamic bar or meter geometry through CSS custom properties updated via DOM refs in `useEffect`.
+- **Proxy-safe HTTP status fallbacks:** Status-driven client fallbacks (`401`/`404`/`503`) must use `request()`'s `onStatus` hook rather than checking `res.error.code` alone, because proxies/gateways can return non-JSON bodies.
 
 ## React 19 & Base UI Composition
 
-- Read contexts with React 19 `use(Context)` rather than `useContext`, and accept `ref` as a standard prop rather than `forwardRef`.
 - Compose `@base-ui/react` primitives (`Button`, `TooltipTrigger`, `DropdownMenuTrigger`) with the `render` prop (`render={<a href="..." />}` and `nativeButton={false}` on non-button elements).
 - Place accessible `DialogTitle` / `SheetTitle` elements inside every overlay `DialogContent` / `SheetContent` root.
 - Define all React components at module scope so parent re-renders preserve child identity and state.

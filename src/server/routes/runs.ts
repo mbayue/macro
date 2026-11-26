@@ -470,9 +470,17 @@ export function runsRoutes(ctx: ServerContext): RouteDef[] {
 
     const authGate = await turnstileUnlessSignedIn(req, parsed.data.turnstileToken, ip);
     if (authGate.denied !== null) return authGate.denied;
-    // Reruns inherit privacy from prior runs of the same plan when any were private for this user.
+
     let visibility: RunVisibility = 'public';
-    if (authGate.user !== null) {
+    const planTarget = store.getPlanTarget(parsed.data.planHash);
+    if (planTarget !== null) {
+      const verified = authGate.user === null ? null : store.getVerifiedOrigin(authGate.user.id);
+      if (verified === null || verified.origin !== planTarget.webOrigin) {
+        return notFound();
+      }
+      visibility = 'private';
+    } else if (authGate.user !== null) {
+      // Reruns inherit privacy from prior runs of the same plan when any were private for this user.
       const prior = store.listRunsForPlan(parsed.data.planHash, 5);
       if (prior.some((r) => r.visibility === 'private' && r.ownerUserId === authGate.user!.id)) {
         visibility = 'private';

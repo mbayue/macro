@@ -2,6 +2,7 @@
  * Own-site origin verification: normalize host input, DNS TXT, and .well-known checks.
  */
 import { isDenylistedHost, parseOrigin } from '../plan/policy.ts';
+import { isPublicHost, type LookupAllFn } from '../security/public-host.ts';
 import {
   buildDomainConnectApplyUrl,
   discoverDomainConnectApi,
@@ -94,11 +95,17 @@ export async function checkWellKnown(
   origin: string,
   token: string,
   fetchImpl: FetchLike,
+  lookupFn?: LookupAllFn,
 ): Promise<boolean> {
   try {
+    if (fetchImpl === fetch || lookupFn !== undefined) {
+      const host = new URL(origin).hostname;
+      if (!(await isPublicHost(host, lookupFn))) return false;
+    }
     const res = await fetchImpl(wellKnownUrlForOrigin(origin), {
       method: 'GET',
       redirect: 'manual',
+      signal: AbortSignal.timeout(5000),
       headers: { accept: 'text/plain,*/*' },
     });
     if (res.status !== 200) return false;

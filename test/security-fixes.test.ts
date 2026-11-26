@@ -242,4 +242,135 @@ describe('security fixes regression', () => {
     expect(await isPublicHost('mapped.attacker.example', async () => [{ address: '::ffff:127.0.0.1' }])).toBe(false);
     expect(await isPublicHost('public.example', async () => [{ address: '93.184.216.34' }])).toBe(true);
   });
+
+  test('checkWellKnown blocks hosts resolving to private or loopback IPs and sets a timeout signal', async () => {
+    let fetched = false;
+    const blocked = await checkWellKnown(
+      'https://rebind.attacker.example',
+      'tok',
+      async () => {
+        fetched = true;
+        return new Response('tok', { status: 200 });
+      },
+      async () => [{ address: '127.0.0.1' }],
+    );
+    expect(blocked).toBe(false);
+    expect(fetched).toBe(false);
+
+    let sawSignal = false;
+    const allowed = await checkWellKnown(
+      'https://public.example',
+      'tok',
+      async (_url, init) => {
+        sawSignal = init?.signal instanceof AbortSignal;
+        return new Response('tok', { status: 200 });
+      },
+      async () => [{ address: '93.184.216.34' }],
+    );
+    expect(allowed).toBe(true);
+    expect(sawSignal).toBe(true);
+  });
+
+  test('fetchDomainConnectSettings rejects non-https or userinfo urlSyncUX values', async () => {
+    for (const badUrl of [
+      'http://insecure.example/connect',
+      'javascript:alert(1)//',
+      'data:text/html,hi',
+      'https://user:pass@dc.example/connect',
+      'not-a-url',
+    ]) {
+      const res = await fetchDomainConnectSettings(
+        'dc.example',
+        'example.com',
+        async () =>
+          new Response(
+            JSON.stringify({
+              providerId: 'example',
+              providerName: 'Example DNS',
+              urlSyncUX: badUrl,
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
+      );
+      expect(res).toBeNull();
+    }
+  });
+
+  test('POST /api/runs rejects anonymous or non-owner reruns of own-site plans without creating a run', async () => {
+    const store = new Store(':memory:');
+    const now = Date.now();
+    const owner = store.createUser('owner@example.com', now);
+    const other = store.createUser('other@example.com', now);
+    store.setVerifiedOrigin(owner.id, 'https://mysite.example', 'mysite.example', 'tok-owner', now);
+
+    const ownerSession = store.createSession(owner.id, now, 60_000);
+    const otherSession = store.createSession(other.id, now, 60_000);
+
+    const ownPlanHash = 'a'.repeat(64);
+    store.storeApprovedPlan({
+      hash: ownPlanHash,
+      text: JSON.stringify({ ...samplePlan(), name: 'Secret Own Plan', target: 'https://mysite.example' }),
+      approvedAt: now,
+    });
+    store.storePlanTarget({
+      planHash: ownPlanHash,
+      webOrigin: 'https://mysite.example',
+      apiOrigin: 'https://mysite.example',
+      routes: [{ id: 'home', method: 'GET', path: '/', kind: 'page', defaultOn: true }],
+    });
+
+    const config = authConfig();
+    const app = createApp({
+      store,
+      config,
+      verifyTurnstile: async () => ({ ok: true }),
+      client: new InferenceClient({ config: config.inference, store, fetchImpl: asFetch(async () => new Response('{}')) }),
+      runController: fakeController(),
+      probeController: fakeController(),
+    });
+
+    // Anonymous caller is rejected with 404 and no run is created.
+    const anonRes = await app.fetch(
+      new Request('http://macro.test/api/runs', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'cf-connecting-ip': '203.0.113.60' },
+        body: JSON.stringify({ planHash: ownPlanHash, turnstileToken: 't' }),
+      }),
+    );
+    expect(anonRes.status).toBe(404);
+    expect(store.listRunsForPlan(ownPlanHash, 10)).toHaveLength(0);
+
+    // Signed-in non-owner is also rejected with 404 and no run is created.
+    const otherRes = await app.fetch(
+      new Request('http://macro.test/api/runs', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          cookie: `macro_session=${otherSession.id}`,
+        },
+        body: JSON.stringify({ planHash: ownPlanHash }),
+      }),
+    );
+    expect(otherRes.status).toBe(404);
+    expect(store.listRunsForPlan(ownPlanHash, 10)).toHaveLength(0);
+
+    // Verified owner is admitted as a private run.
+    const ownerRes = await app.fetch(
+      new Request('http://macro.test/api/runs', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          cookie: `macro_session=${ownerSession.id}`,
+        },
+        body: JSON.stringify({ planHash: ownPlanHash }),
+      }),
+    );
+    expect(ownerRes.status).toBe(200);
+    const runs = store.listRunsForPlan(ownPlanHash, 10);
+    expect(runs).toHaveLength(1);
+    expect(runs[0]?.visibility).toBe('private');
+    expect(runs[0]?.ownerUserId).toBe(owner.id);
+
+    store.close();
+  });
 });

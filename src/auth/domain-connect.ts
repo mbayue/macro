@@ -187,6 +187,15 @@ export async function discoverDomainConnectApi(
   return null;
 }
 
+function isSafeHttpsUrl(raw: string): boolean {
+  try {
+    const url = new URL(raw);
+    return url.protocol === 'https:' && url.username === '' && url.password === '' && url.hostname !== '';
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Fetch Domain Connect v2 settings for a domain from the discovered API host.
  */
@@ -230,6 +239,7 @@ export async function fetchDomainConnectSettings(
 
     if (
       typeof body.urlSyncUX === 'string' &&
+      isSafeHttpsUrl(body.urlSyncUX) &&
       typeof body.providerId === 'string' &&
       providerName !== undefined
     ) {

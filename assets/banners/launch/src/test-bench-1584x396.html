@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Macro — LinkedIn Banner (1584×396)</title>
+<style>
+  @font-face {
+    font-family: "Space Grotesk";
+    src: url("../../../../web/landing/public/landing/fonts/space-grotesk-600.woff2") format("woff2");
+    font-weight: 600;
+  }
+  @font-face {
+    font-family: "Stack Sans Text";
+    src: url("../../../../web/landing/public/landing/fonts/stack-sans-text.woff2") format("woff2");
+    font-weight: 400 500;
+  }
+  @font-face {
+    font-family: "Geist Mono";
+    src: url("../../../../web/landing/public/landing/fonts/geist-mono-400.woff2") format("woff2");
+    font-weight: 400;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 1584px;
+    height: 396px;
+    background: #fdfff5;
+    color: #001e2b;
+    overflow: hidden;
+    font-family: "Stack Sans Text", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .grid-bg {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(to right, rgba(0, 30, 43, 0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0, 30, 43, 0.045) 1px, transparent 1px);
+    background-size: 36px 36px;
+  }
+  /* Left safe-zone clearance (360px) for LinkedIn personal profile photo */
+  .frame {
+    position: relative;
+    z-index: 1;
+    width: 1584px;
+    height: 396px;
+    padding: 44px 76px 44px 370px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 44px;
+  }
+  .left {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .brand-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .brand-name {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+  }
+  .kicker {
+    font-family: "Geist Mono", monospace;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #00684a;
+    margin-left: 4px;
+  }
+  h1 {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 48px;
+    line-height: 1.06;
+    font-weight: 600;
+    letter-spacing: -0.035em;
+    color: #001e2b;
+  }
+  .sub {
+    font-size: 18px;
+    color: #404f54;
+  }
+
+  .right {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 416px;
+  }
+  .stage-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .stage-card {
+    background: #f1f5eb;
+    border: 1px solid #d6dcd0;
+    border-radius: 6px;
+    padding: 14px 14px;
+  }
+  .stage-vus {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 22px;
+    font-weight: 600;
+    color: #001e2b;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+  .stage-tag {
+    display: inline-block;
+    margin-top: 8px;
+    font-family: "Geist Mono", monospace;
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: #00ed64;
+    color: #001e2b;
+    font-weight: 600;
+  }
+  .stage-tag.break {
+    background: #001e2b;
+    color: #fdfff5;
+  }
+  .cta-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #001e2b;
+    color: #fdfff5;
+    border-radius: 6px;
+    padding: 12px 18px;
+    font-family: "Geist Mono", monospace;
+    font-size: 14px;
+  }
+  .cta-bar span:last-child {
+    color: #00ed64;
+  }
+</style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <div class="frame">
+    <div class="left">
+      <div class="brand-row">
+        <svg xmlns="http://www.w3.org/2000/svg" width="42" height="42" viewBox="0 0 64 64" role="img" aria-label="Macro">
+          <rect width="64" height="64" rx="10" fill="#001e2b"/>
+          <rect x="0.75" y="0.75" width="62.5" height="62.5" rx="9.25" fill="none" stroke="#21313a" stroke-width="1.5"/>
+          <path fill="#fdfff5" d="M10 13h9l13 16.5L45 13h9v38h-9V27.5L32 43.5 19 27.5V51h-9V13z"/>
+          <rect x="24" y="45" width="16" height="6" fill="#00ed64"/>
+        </svg>
+        <span class="brand-name">Macro</span>
+        <span class="kicker">· Sandboxed Load Testing</span>
+      </div>
+      <h1>Plain words in.<br>Breaking Point out.</h1>
+      <div class="sub">Policy-Gated k6 runs, Number Guard reports, and verified own-site testing.</div>
+    </div>
+
+    <div class="right">
+      <div class="stage-strip">
+        <div class="stage-card">
+          <div class="stage-vus">50 VUs</div>
+          <span class="stage-tag">PASS</span>
+        </div>
+        <div class="stage-card">
+          <div class="stage-vus">150 VUs</div>
+          <span class="stage-tag">SAFE CAP</span>
+        </div>
+        <div class="stage-card">
+          <div class="stage-vus">300 VUs</div>
+          <span class="stage-tag break">BREAK</span>
+        </div>
+      </div>
+      <div class="cta-bar">
+        <span>Try live Test Bench</span>
+        <span>macro.my.id →</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

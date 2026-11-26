@@ -1,5 +1,7 @@
 # Macro
 
+![Macro — Plain words in. Breaking Point out.](assets/banners/launch/test-bench-1280x640.png)
+
 **Know your breaking point before your users do.**
 
 Describe the traffic you expect in plain words ("a new banner drops tonight, 500 players open the store, 10% order"). An AI agent drafts a staged load test, fixed code checks it, you approve it, and k6 runs it inside a sandbox that can reach only the demo shop or your verified site. You get a capacity report: safe capacity, breaking point, and the first route that slowed down.

@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Macro — Twitter/X Header (1500×500)</title>
+<style>
+  @font-face {
+    font-family: "Space Grotesk";
+    src: url("../../../../web/landing/public/landing/fonts/space-grotesk-600.woff2") format("woff2");
+    font-weight: 600;
+  }
+  @font-face {
+    font-family: "Stack Sans Text";
+    src: url("../../../../web/landing/public/landing/fonts/stack-sans-text.woff2") format("woff2");
+    font-weight: 400 500;
+  }
+  @font-face {
+    font-family: "Geist Mono";
+    src: url("../../../../web/landing/public/landing/fonts/geist-mono-400.woff2") format("woff2");
+    font-weight: 400;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 1500px;
+    height: 500px;
+    background: #fdfff5;
+    color: #001e2b;
+    overflow: hidden;
+    font-family: "Stack Sans Text", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .grid-bg {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(to right, rgba(0, 30, 43, 0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0, 30, 43, 0.045) 1px, transparent 1px);
+    background-size: 36px 36px;
+  }
+  .top-rule {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    display: flex;
+    gap: 6px;
+    padding: 0 48px;
+  }
+  .top-rule span { display: block; height: 100%; background: #00ed64; }
+  .top-rule .s1 { flex: 1; }
+  .top-rule .s2 { flex: 2; }
+  .top-rule .s3 { flex: 4; }
+  .top-rule .s4 { flex: 8; background: #d6dcd0; }
+
+  /* Safe-zone offset on left (280px) to stay clear of Twitter/X circular profile avatar */
+  .frame {
+    position: relative;
+    z-index: 1;
+    width: 1500px;
+    height: 500px;
+    padding: 58px 80px 58px 310px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 48px;
+  }
+  .main {
+    flex: 1.15;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .brand-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .brand-label {
+    font-family: "Geist Mono", monospace;
+    font-size: 15px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #00684a;
+  }
+  h1 {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 62px;
+    line-height: 1.04;
+    font-weight: 600;
+    letter-spacing: -0.035em;
+    color: #001e2b;
+  }
+  .pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 6px;
+  }
+  .pill {
+    font-family: "Geist Mono", monospace;
+    font-size: 14px;
+    color: #001e2b;
+    background: #f1f5eb;
+    border: 1px solid #d6dcd0;
+    border-radius: 5px;
+    padding: 7px 14px;
+  }
+  .pill.accent {
+    background: #001e2b;
+    color: #fdfff5;
+    border-color: #001e2b;
+  }
+  .pill.accent em {
+    font-style: normal;
+    color: #00ed64;
+  }
+
+  .panel {
+    width: 370px;
+    background: #f1f5eb;
+    border: 1px solid #d6dcd0;
+    border-radius: 8px;
+    padding: 24px 26px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .panel-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: "Geist Mono", monospace;
+    font-size: 12px;
+    color: #404f54;
+    letter-spacing: 0.06em;
+  }
+  .ok-chip {
+    background: #00ed64;
+    color: #001e2b;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .big-num {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 56px;
+    font-weight: 600;
+    line-height: 1;
+    color: #00684a;
+    font-variant-numeric: tabular-nums;
+  }
+  .big-num span {
+    font-family: "Geist Mono", monospace;
+    font-size: 16px;
+    color: #404f54;
+    font-weight: 400;
+    margin-left: 6px;
+  }
+  .mini-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    height: 44px;
+    padding-top: 8px;
+    border-top: 1px solid #d6dcd0;
+  }
+  .mini-bars i {
+    display: block;
+    flex: 1;
+    border-radius: 2px 2px 0 0;
+    background: #00ed64;
+  }
+  .mini-bars i.b1 { height: 14px; }
+  .mini-bars i.b2 { height: 22px; }
+  .mini-bars i.b3 { height: 32px; }
+  .mini-bars i.b4 { height: 42px; background: #001e2b; }
+  .panel-url {
+    font-family: "Geist Mono", monospace;
+    font-size: 15px;
+    color: #001e2b;
+    display: flex;
+    justify-content: space-between;
+    padding-top: 10px;
+    border-top: 1px solid #d6dcd0;
+  }
+</style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <div class="top-rule"><span class="s1"></span><span class="s2"></span><span class="s3"></span><span class="s4"></span></div>
+  <div class="frame">
+    <div class="main">
+      <div class="brand-row">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 64 64" role="img" aria-label="Macro">
+          <rect width="64" height="64" rx="10" fill="#001e2b"/>
+          <rect x="0.75" y="0.75" width="62.5" height="62.5" rx="9.25" fill="none" stroke="#21313a" stroke-width="1.5"/>
+          <path fill="#fdfff5" d="M10 13h9l13 16.5L45 13h9v38h-9V27.5L32 43.5 19 27.5V51h-9V13z"/>
+          <rect x="24" y="45" width="16" height="6" fill="#00ed64"/>
+        </svg>
+        <span class="brand-label">Macro · Sandboxed Load Testing</span>
+      </div>
+      <h1>Plain words in.<br>Breaking Point out.</h1>
+      <div class="pills">
+        <span class="pill">Policy Gate</span>
+        <span class="pill">k6 Sandbox</span>
+        <span class="pill">Number Guard</span>
+        <span class="pill accent"><em>●</em> macro.my.id</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-top">
+        <span>CONTAINMENT PROBE</span>
+        <span class="ok-chip">4 / 4 PASS</span>
+      </div>
+      <div class="big-num">150<span>VUs safe</span></div>
+      <div class="mini-bars">
+        <i class="b1"></i><i class="b2"></i><i class="b3"></i><i class="b4"></i>
+      </div>
+      <div class="panel-url">
+        <span>Measured capacity</span>
+        <span>Open Source</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Macro — Open Graph Card (1200×630)</title>
+<style>
+  @font-face {
+    font-family: "Space Grotesk";
+    src: url("../../../../web/landing/public/landing/fonts/space-grotesk-600.woff2") format("woff2");
+    font-weight: 600;
+  }
+  @font-face {
+    font-family: "Stack Sans Text";
+    src: url("../../../../web/landing/public/landing/fonts/stack-sans-text.woff2") format("woff2");
+    font-weight: 400 500;
+  }
+  @font-face {
+    font-family: "Geist Mono";
+    src: url("../../../../web/landing/public/landing/fonts/geist-mono-400.woff2") format("woff2");
+    font-weight: 400;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 1200px;
+    height: 630px;
+    background: #fdfff5;
+    color: #001e2b;
+    overflow: hidden;
+    font-family: "Stack Sans Text", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .grid-bg {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(to right, rgba(0, 30, 43, 0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0, 30, 43, 0.045) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  .backdrop {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.24;
+    pointer-events: none;
+  }
+  .veil {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(253, 255, 245, 0.72) 0%, rgba(253, 255, 245, 0.38) 52%, rgba(253, 255, 245, 0.08) 100%);
+    pointer-events: none;
+  }
+  .frame {
+    position: relative;
+    z-index: 1;
+    width: 1200px;
+    height: 630px;
+    padding: 54px 64px;
+    display: flex;
+    align-items: center;
+    gap: 48px;
+  }
+  .left {
+    flex: 1.1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+  }
+  .brand-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .brand-name {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    color: #001e2b;
+  }
+  .stage-band {
+    display: flex;
+    gap: 5px;
+    width: 124px;
+    height: 6px;
+    margin-left: 6px;
+  }
+  .stage-band span { display: block; height: 100%; border-radius: 2px; background: #00ed64; }
+  .stage-band .s1 { flex: 1; }
+  .stage-band .s2 { flex: 2; }
+  .stage-band .s3 { flex: 4; }
+  .stage-band .s4 { flex: 6; background: #d6dcd0; }
+
+  .kicker {
+    font-family: "Geist Mono", monospace;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #00684a;
+    margin-bottom: 12px;
+  }
+  h1 {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 58px;
+    line-height: 1.03;
+    font-weight: 600;
+    letter-spacing: -0.035em;
+    color: #001e2b;
+  }
+  .sub {
+    margin-top: 16px;
+    font-size: 19px;
+    line-height: 1.42;
+    color: #404f54;
+    max-width: 520px;
+  }
+
+  .footer-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 18px;
+    border-top: 1px solid #d6dcd0;
+  }
+  .url {
+    font-family: "Geist Mono", monospace;
+    font-size: 15px;
+    color: #404f54;
+  }
+  .cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    height: 42px;
+    padding: 0 18px;
+    border-radius: 6px;
+    background: #001e2b;
+    color: #fdfff5;
+    font-family: "Geist Mono", monospace;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+  }
+  .cta-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: #00ed64;
+  }
+
+  .right {
+    flex: 0.9;
+  }
+  .card {
+    background: #f1f5eb;
+    border: 1px solid #d6dcd0;
+    border-radius: 8px;
+    padding: 24px 26px;
+    box-shadow: 0 12px 32px rgba(0, 30, 43, 0.05);
+  }
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: "Geist Mono", monospace;
+    font-size: 12px;
+    color: #404f54;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .badge {
+    background: #00ed64;
+    color: #001e2b;
+    padding: 3px 9px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 11px;
+  }
+  .metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .metric-box {
+    background: #fdfff5;
+    border: 1px solid #d6dcd0;
+    border-radius: 6px;
+    padding: 13px 14px;
+  }
+  .metric-label {
+    font-family: "Geist Mono", monospace;
+    font-size: 11px;
+    color: #404f54;
+    margin-bottom: 5px;
+  }
+  .metric-val {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 30px;
+    font-weight: 600;
+    color: #00684a;
+    line-height: 1.05;
+    font-variant-numeric: tabular-nums;
+  }
+  .metric-val.break {
+    color: #001e2b;
+  }
+  .metric-unit {
+    font-family: "Geist Mono", monospace;
+    font-size: 12px;
+    color: #404f54;
+    font-weight: 400;
+  }
+  .stages {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .stage-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: "Geist Mono", monospace;
+    font-size: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #d6dcd0;
+  }
+  .stage-name { color: #001e2b; }
+  .stage-lat { color: #404f54; }
+  .pill-ok {
+    color: #00684a;
+    background: rgba(0, 237, 100, 0.22);
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+  .pill-break {
+    color: #001e2b;
+    background: #d6dcd0;
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <img class="backdrop" src="../../../../web/landing/public/landing/img/dither/sanok-trucks.webp" alt="">
+  <div class="veil"></div>
+  <div class="frame">
+    <div class="left">
+      <div class="brand-row">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 64 64" role="img" aria-label="Macro">
+          <rect width="64" height="64" rx="10" fill="#001e2b"/>
+          <rect x="0.75" y="0.75" width="62.5" height="62.5" rx="9.25" fill="none" stroke="#21313a" stroke-width="1.5"/>
+          <path fill="#fdfff5" d="M10 13h9l13 16.5L45 13h9v38h-9V27.5L32 43.5 19 27.5V51h-9V13z"/>
+          <rect x="24" y="45" width="16" height="6" fill="#00ed64"/>
+        </svg>
+        <span class="brand-name">Macro</span>
+        <div class="stage-band"><span class="s1"></span><span class="s2"></span><span class="s3"></span><span class="s4"></span></div>
+      </div>
+
+      <div>
+        <div class="kicker">Sandboxed Load Testing · Test Bench</div>
+        <h1>Plain words in.<br>Breaking Point out.</h1>
+        <p class="sub">Describe expected traffic in English. Macro runs a Policy-Gated, sandboxed k6 test and reports measured capacity.</p>
+      </div>
+
+      <div class="footer-row">
+        <span class="url">macro.my.id</span>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="card">
+        <div class="card-head">
+          <span>Capacity Report</span>
+          <span class="badge">4 / 4 CONTAINED</span>
+        </div>
+        <div class="metrics">
+          <div class="metric-box">
+            <div class="metric-label">SAFE CAPACITY</div>
+            <div class="metric-val">150 <span class="metric-unit">VUs</span></div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-label">BREAKING POINT</div>
+            <div class="metric-val break">300 <span class="metric-unit">VUs</span></div>
+          </div>
+        </div>
+        <div class="stages">
+          <div class="stage-row">
+            <span class="stage-name">Stage 1 · 50 VUs</span>
+            <span class="stage-lat">p95 118ms · 0.0% err</span>
+            <span class="pill-ok">PASS</span>
+          </div>
+          <div class="stage-row">
+            <span class="stage-name">Stage 2 · 150 VUs</span>
+            <span class="stage-lat">p95 242ms · 0.1% err</span>
+            <span class="pill-ok">PASS</span>
+          </div>
+          <div class="stage-row">
+            <span class="stage-name">Stage 3 · 300 VUs</span>
+            <span class="stage-lat">p95 940ms · 4.2% err</span>
+            <span class="pill-break">STOPPED</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

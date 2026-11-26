@@ -24,17 +24,19 @@
   }
 
   :root {
-    /* Macro DESIGN.md tokens */
-    --bg: #001e2b;
-    --surface: #061621;
-    --surface-2: #21313a;
+    /* Macro DESIGN.md light theme tokens (cream ground + Forest Swap rule) */
+    --bg: #fdfff5;
+    --surface: #f1f5eb;
+    --surface-2: #d6dcd0;
     --bar: #616c6d;
-    --ink: #fdfff5;
-    --muted: #9ea2a1;
+    --ink: #001e2b;
+    --muted: #404f54;
     --spring: #00ed64;
+    --accent-text: #00684a;
     --ink-on-spring: #001e2b;
-    --warn: #f2c46d;
-    --bad: #ff8a80;
+    --warn: #7a4e00;
+    --bad: #b3261e;
+    --bad-bg: #fce8e6;
     --radius: 6px;
 
     /* Slide-native type scale and spacing (1920x1080) */
@@ -65,7 +67,7 @@
   }
 
   html, body {
-    background: #020b10;
+    background: #e4e8e0;
     color: var(--ink);
     font-family: "Stack Sans Text", system-ui, sans-serif;
     -webkit-print-color-adjust: exact;
@@ -125,7 +127,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    opacity: 0.24;
+    opacity: 0.16;
     pointer-events: none;
   }
 
@@ -203,7 +205,7 @@
   }
 
   .muted { color: var(--muted); }
-  .spring { color: var(--spring); }
+  .spring { color: var(--accent-text); }
   .warn { color: var(--warn); }
   .bad { color: var(--bad); }
 
@@ -341,7 +343,7 @@
     font-size: 19px;
     color: var(--bar);
   }
-  .node-tag.live { color: var(--spring); }
+  .node-tag.live { color: var(--accent-text); }
 
   /* Architectural ledger (6 layers) */
   .ledger {
@@ -362,7 +364,7 @@
   .ledger-n {
     font-family: "Geist Mono", monospace;
     font-size: 24px;
-    color: var(--spring);
+    color: var(--accent-text);
   }
   .ledger-t {
     font-family: "Space Grotesk", system-ui, sans-serif;
@@ -461,7 +463,7 @@
     color: var(--ink-on-spring);
   }
   .badge-bad {
-    background: #3a1919;
+    background: var(--bad-bg);
     color: var(--bad);
   }
 
@@ -478,7 +480,7 @@
 <!-- 1 Title -->
 <div class="slide-wrap">
   <section class="slide">
-    <img class="slide-backdrop" src="../../web/landing/public/landing/img/dither/dark-horizon.webp" alt="">
+    <img class="slide-backdrop" src="../../web/landing/public/landing/img/dither/sanok-trucks.webp" alt="">
     <div class="slide-content" style="justify-content: center;">
       <div class="brand-row">
         <img class="brand-mark" src="../../web/favicon.svg" alt="Macro">
@@ -515,7 +517,7 @@
         </div>
         <div class="col">
           <div class="panel">
-            <div class="kicker" style="color: var(--spring);">CORE PRINCIPLE</div>
+            <div class="kicker" style="color: var(--accent-text);">CORE PRINCIPLE</div>
             <h3>The model proposes. Code decides.</h3>
             <p class="muted" style="font-size: 30px;">
               AI drafts the Test Plan, advises between Stages, and explains the Capacity Report. Targets, limits, k6 scripts, sandbox caps, stop rules, and every measured figure come from deterministic code.
@@ -638,7 +640,7 @@
         </div>
         <div class="col" style="flex: 1.1;">
           <div class="shot-frame">
-            <img src="../../web/landing/public/landing/img/ui-probe-dark.png" alt="Containment Probe passed 5 of 5 actions contained">
+            <img src="../../web/landing/public/landing/img/ui-probe-light.png" alt="Containment Probe passed 5 of 5 actions contained">
           </div>
         </div>
       </div>
@@ -749,14 +751,14 @@
       <div class="row">
         <div class="col">
           <div class="panel" style="margin-bottom: 20px; padding: 28px 34px;">
-            <div class="kicker" style="color: var(--spring); margin-bottom: 10px;">SCENARIO ASSISTANT &middot; TEST STUDIO</div>
+            <div class="kicker" style="color: var(--accent-text); margin-bottom: 10px;">SCENARIO ASSISTANT &middot; TEST STUDIO</div>
             <h3 style="font-size: 36px; margin-bottom: 10px;">Sharpen Traffic Descriptions locally.</h3>
             <p class="muted" style="font-size: 26px;">
               Refines plain-English descriptions with realistic ramp-ups and route mixes without consuming server planning quota.
             </p>
           </div>
           <div class="panel" style="padding: 28px 34px;">
-            <div class="kicker" style="color: var(--spring); margin-bottom: 10px;">REPORT Q&amp;A &middot; CAPACITY REPORT</div>
+            <div class="kicker" style="color: var(--accent-text); margin-bottom: 10px;">REPORT Q&amp;A &middot; CAPACITY REPORT</div>
             <h3 style="font-size: 36px; margin-bottom: 10px;">Ask questions grounded in measured metrics.</h3>
             <p class="muted" style="font-size: 26px;">
               Answers follow-up questions directly against the run's stage and route numbers, guarded client-side with Number Guard.

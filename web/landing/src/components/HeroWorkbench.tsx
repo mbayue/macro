@@ -45,7 +45,7 @@ export function HeroWorkbench() {
       <div className="lp-container lp-hero-stack">
         <header className="lp-nav" aria-label="Site">
           <a className="lp-brand" href="#top">
-            <span className="lp-mark rounded" aria-hidden="true">M</span>
+            <img className="lp-mark-svg" src="/landing/img/datum-m.svg" width={28} height={28} alt="" aria-hidden="true" />
             <span>Macro</span>
           </a>
           <nav className="lp-nav-links" aria-label="Primary">
@@ -78,7 +78,7 @@ export function HeroWorkbench() {
 
         <div className="lp-window" aria-label="Interactive Macro workbench">
           <aside className="lp-rail" aria-label="Workbench sections">
-            <span className="lp-mark lp-mark-rail" aria-hidden="true">M</span>
+            <img className="lp-mark-svg" src="/landing/img/datum-m.svg" width={28} height={28} alt="" aria-hidden="true" />
             <button
               type="button"
               className="lp-rail-btn lp-rail-new"

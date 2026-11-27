@@ -16,7 +16,6 @@ export function LimitsFaq() {
                 Run the MIT-licensed code on your own server, or use the hosted app at zero cost on the Demo Target and one verified Own Site.
               </p>
             </div>
-            <span className="lp-tag lp-tag-ok">Early access</span>
           </div>
 
           <div className="lp-plan-grid mt-7" data-reveal data-i="1">
@@ -27,11 +26,11 @@ export function LimitsFaq() {
                 </div>
                 <div className="lp-subpanel-head mt-4">
                   <h3 className="font-text text-[1rem] font-medium">Self-host</h3>
-                  <span className="lp-tag">MIT licence</span>
+                  <span className="lp-meta-note">MIT licence</span>
                 </div>
                 <div className="lp-plan-price mt-3">
                   <span className="lp-kpi-val lp-mono">$0</span>
-                  <span className="lp-num-chip">~2 cents / run</span>
+                  <span className="lp-meta-note">~2 cents / run</span>
                 </div>
                 <p className="mt-3 text-[0.9375rem] leading-relaxed text-muted">
                   Run your own copy and pay only your server and inference costs (about 2 cents per run).
@@ -54,11 +53,11 @@ export function LimitsFaq() {
                 </div>
                 <div className="lp-subpanel-head mt-4">
                   <h3 className="font-text text-[1rem] font-medium">Hosted early access</h3>
-                  <span className="lp-tag lp-tag-ok">No card</span>
+                  <span className="lp-meta-note">No card required</span>
                 </div>
                 <div className="lp-plan-price mt-3">
                   <span className="lp-kpi-val lp-mono">$0</span>
-                  <span className="lp-num-chip">Demo + 1 Own Site</span>
+                  <span className="lp-meta-note">Demo + 1 Own Site</span>
                 </div>
                 <p className="mt-3 text-[0.9375rem] leading-relaxed text-muted">
                   Test yue.macro.my.id signed out, or sign in to verify one Own Site for private runs.
@@ -114,15 +113,11 @@ export function LimitsFaq() {
                 How target verification, Number Guard, and Hybrid Inference work in practice.
               </p>
             </div>
-            <span className="lp-tag lp-tag-ok">04 answers</span>
           </div>
 
           <div className="lp-faq-grid mt-7" data-reveal data-i="1">
-            {LANDING_FAQS.map((item, idx) => (
+            {LANDING_FAQS.map((item) => (
               <article key={item.q} className="lp-faq-item">
-                <div className="lp-faq-meta">
-                  <span className="lp-mono lp-node-step">0{idx + 1} / {item.topic}</span>
-                </div>
                 <h3>{item.q}</h3>
                 <p>{item.a}</p>
               </article>

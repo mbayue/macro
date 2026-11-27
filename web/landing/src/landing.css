@@ -138,13 +138,15 @@
   }
 
   /* Brand mark + StageBand */
-  .lp-brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 500; font-size: 1rem; letter-spacing: -0.01em; }
+  .lp-brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-family: var(--display); font-weight: 600; font-size: 1.125rem; letter-spacing: -0.025em; }
+  .lp-mark-svg { width: 28px; height: 28px; display: block; flex-shrink: 0; border-radius: var(--radius); }
   .lp-mark {
     width: 28px; height: 28px; border-radius: var(--radius);
     background: var(--ink); color: var(--bg);
     display: grid; place-items: center; font-family: var(--display); font-weight: 600; font-size: 0.9375rem;
   }
   .lp-mark-rail { background: rgba(255, 255, 255, 0.12); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.16); }
+  .lp-meta-note { font-family: var(--mono); font-size: 0.8125rem; color: var(--muted); white-space: nowrap; }
 
   .lp-stage-band { display: inline-grid; grid-template-columns: 1fr 2fr 4fr 8fr; gap: 4px; width: 132px; height: 6px; }
   .lp-stage-band span { border-radius: 2px; background: var(--accent-text); }
@@ -187,7 +189,7 @@
   .lp-scrim { position: absolute; inset: 0; background: var(--scrim); pointer-events: none; }
 
   /* Typography scales */
-  .lp-display { font-family: var(--display); font-weight: 600; font-size: clamp(2.5rem, 5.2vw, 4.75rem); line-height: 1.01; letter-spacing: -0.036em; text-wrap: balance; }
+  .lp-display { font-family: var(--display); font-weight: 600; font-size: clamp(2.75rem, 6vw, 5.5rem); line-height: 0.98; letter-spacing: -0.04em; text-wrap: balance; }
   .lp-h2, .section-title { font-family: var(--display); font-weight: 600; font-size: clamp(1.85rem, 1.3rem + 2vw, 2.85rem); line-height: 1.06; letter-spacing: -0.036em; text-wrap: balance; }
   .lp-lead { font-size: clamp(1rem, 0.95rem + 0.35vw, 1.1875rem); line-height: 1.55; color: var(--muted); max-width: 58ch; }
   .lp-hero-lead { max-width: 52ch; color: var(--hero-lead); }

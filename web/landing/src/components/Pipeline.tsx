@@ -18,7 +18,7 @@ export function Pipeline() {
               Select any node in the execution chain to inspect what code enforces at that boundary.
             </p>
           </div>
-          <span className="lp-tag lp-tag-ok">Boundary {activeNode.step} of 04</span>
+          <span className="lp-meta-note">Boundary {activeNode.step} of 04</span>
         </div>
 
         <div className="lp-node-rail mt-6" role="group" aria-label="Execution pipeline nodes">

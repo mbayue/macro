@@ -101,14 +101,14 @@ function compactStripSource(sourceNote: string): string {
   return sourceNote;
 }
 
-/** Sticky one-line KPI strip shown above tabs when Overview tiles scroll out of view or on non-Overview tabs. */
+/** Sticky KPI strip shown above tabs when Overview tiles scroll out of view or on non-Overview tabs. */
 export const KpiStrip = memo(function KpiStrip({ items }: { items: readonly KpiStripItem[] }) {
   return (
     <section
       aria-label="Key metrics summary"
       className="relative rounded-md border border-bar bg-surface text-foreground"
     >
-      <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 lg:flex lg:divide-x lg:divide-y-0">
+      <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 lg:divide-x">
         {items.map((item, idx) => {
           const isLive = item.tone === 'live';
           const readout = item.unit ? `${item.value} ${item.unit}` : item.value;
@@ -117,20 +117,20 @@ export const KpiStrip = memo(function KpiStrip({ items }: { items: readonly KpiS
             <div
               key={item.id}
               className={cn(
-                'flex min-w-0 flex-wrap items-baseline justify-between gap-x-1.5 gap-y-0.5 px-2 py-2 min-[1180px]:flex-auto min-[1180px]:flex-nowrap',
-                idx % 2 === 1 && 'sm:border-l sm:border-border min-[1180px]:border-l-0',
-                idx >= 2 && 'sm:border-t sm:border-border min-[1180px]:border-t-0',
+                'flex min-w-0 flex-col gap-0.5 px-3.5 py-2.5',
+                idx % 2 === 1 && 'sm:border-l sm:border-border lg:border-l-0',
+                idx >= 2 && 'sm:border-t sm:border-border lg:border-t-0',
                 isLive && 'border-l-2 border-l-accent-text',
               )}
             >
-              <span className="min-w-0 truncate text-xs text-muted-foreground" title={item.label}>
+              <span className="text-xs leading-tight text-muted-foreground">
                 {item.label}
               </span>
-              <span className="inline-flex shrink-0 flex-wrap items-baseline gap-x-1.5 font-mono tabular-nums">
-                <span className={cn('text-xs font-medium', VALUE_TONE_CLASS[item.tone])}>
+              <span className="inline-flex min-w-0 flex-wrap items-baseline gap-x-2 font-mono tabular-nums">
+                <span className={cn('text-sm font-medium', VALUE_TONE_CLASS[item.tone])}>
                   {readout}
                 </span>
-                <span className="text-[11px] text-muted-foreground" title={item.sourceNote}>
+                <span className="truncate text-xs text-muted-foreground" title={item.sourceNote}>
                   {compactSource}
                 </span>
               </span>

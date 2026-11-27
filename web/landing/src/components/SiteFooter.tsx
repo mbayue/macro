@@ -17,7 +17,7 @@ export function SiteFooter() {
     <footer className="lp-footer">
       <div className="lp-container lp-footer-row">
         <div className="lp-row">
-          <span className="lp-mark rounded" aria-hidden="true">M</span>
+          <img className="lp-mark-svg" src="/landing/img/datum-m.svg" width={28} height={28} alt="" aria-hidden="true" />
           <span>Macro. Load tests that stay contained.</span>
         </div>
         <div className="lp-row">

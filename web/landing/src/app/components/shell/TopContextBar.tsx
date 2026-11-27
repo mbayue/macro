@@ -52,7 +52,7 @@ export function TopContextBar() {
           <div
             role="group"
             aria-label="Usage quota"
-            className="inline-flex items-center gap-1.5 rounded-sm border border-[var(--ap-line-strong)] bg-surface px-2 py-[3px] font-mono text-xs leading-[1.2]"
+            className="inline-flex items-center gap-1.5 px-1 font-mono text-xs leading-[1.2]"
           >
             {quota !== null ? (
               <>

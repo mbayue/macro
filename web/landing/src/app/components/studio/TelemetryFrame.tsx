@@ -84,7 +84,7 @@ export function DitherBanner({
         className,
       )}
     >
-      <img className="dither-banner-img" src={src} width={1920} height={1280} alt="" aria-hidden="true" />
+      <img className="dither-banner-img" src={src} width={1920} height={1280} loading="lazy" decoding="async" alt="" aria-hidden="true" />
       <div className="dither-banner-caption absolute right-3 bottom-2.5 left-3 flex items-center justify-between gap-2 rounded-sm px-2.5 py-1 font-mono text-[11px] text-foreground">
         <span className="truncate">{label}</span>
         {meta ? <strong className="shrink-0 font-medium">{meta}</strong> : null}

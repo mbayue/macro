@@ -60,6 +60,8 @@ export default defineConfig({
     // No inline module-preload polyfill or data: URLs: the CSP allows 'self' only.
     modulePreload: { polyfill: false },
     assetsInlineLimit: 0,
+    // Dynamic `firebase/firestore` chunk (persistentLocalCache + onSnapshot) is ~570 kB off the critical path.
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
       input: {
         index: fileURLToPath(new URL('./index.html', import.meta.url)),

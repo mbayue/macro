@@ -2,7 +2,7 @@
  * Composable workspace shell: skip link, collapsible desktop rail (mobile top bar + Sheet under 860px),
  * sticky top context bar, main content region, Ctrl/Cmd+K Quick Jump, and polite live region.
  */
-import type { ReactNode } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import { LogOutIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,11 +16,12 @@ import {
 } from '@/components/ui/dialog';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import type { Route } from '../router.ts';
-import { QuickJump } from './shell/QuickJump.tsx';
 import { DesktopRail, MobileTopBar } from './shell/Rail.tsx';
 import { ShellProvider, useShell } from './shell/ShellContext.tsx';
 import { TopContextBar } from './shell/TopContextBar.tsx';
 import { Busy } from './ui.tsx';
+
+const LazyQuickJump = lazy(() => import('./shell/QuickJump.tsx').then((m) => ({ default: m.QuickJump })));
 
 function SignOutDialog() {
   const { state, actions } = useShell();
@@ -98,8 +99,8 @@ function ShellLayout({
 
         <div className="relative flex min-w-0 flex-1 flex-col">
           <div className="atmo-band print:hidden" aria-hidden="true">
-            <img className="atmo-band-img atmo-band-light" src="/landing/img/dither/sanok-trucks.webp" width={1920} height={1280} alt="" />
-            <img className="atmo-band-img atmo-band-dark" src="/landing/img/dither/dark-horizon.webp" width={1920} height={1280} alt="" />
+            <img className="atmo-band-img atmo-band-light" src="/landing/img/dither/sanok-trucks.webp" width={1920} height={1280} decoding="async" fetchPriority="low" alt="" />
+            <img className="atmo-band-img atmo-band-dark" src="/landing/img/dither/dark-horizon.webp" width={1920} height={1280} decoding="async" fetchPriority="low" alt="" />
             <div className="atmo-band-scrim" />
           </div>
 
@@ -124,7 +125,11 @@ function ShellLayout({
         </div>
       </div>
 
-      <QuickJump />
+      {state.quickJumpOpen ? (
+        <Suspense fallback={null}>
+          <LazyQuickJump />
+        </Suspense>
+      ) : null}
       <SignOutDialog />
 
       <div className="sr-only" aria-live="polite" aria-atomic="true">

@@ -5,7 +5,7 @@
  * unlocks when the report is ready. Scrolling past the full tiles or switching tabs reveals
  * the sticky one-line KPI strip above the tabs.
  */
-import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { lazy, memo, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -16,7 +16,7 @@ import { Feed } from '../components/run/Feed.tsx';
 import { AuditLog } from '../components/run/AuditLog.tsx';
 import { KpiStrip, SignatureTiles } from '../components/run/KpiStrip.tsx';
 import { AiSection, ReportExport, ReportMeta, ReportNotices, ReportStages, RunsPanel } from '../components/run/Report.tsx';
-import { ReportQa } from '../components/run/ReportQa.tsx';
+const LazyReportQa = lazy(() => import('../components/run/ReportQa.tsx').then((m) => ({ default: m.ReportQa })));
 import { RouteChart } from '../components/run/RouteChart.tsx';
 import { SecondChart } from '../components/run/SecondChart.tsx';
 import {
@@ -392,7 +392,9 @@ export function RunPage({ id }: { id: string }) {
             {activeTab === 'ai' && report ? (
               <>
                 <AiSection report={report} />
-                <ReportQa report={report} />
+                <Suspense fallback={null}>
+                  <LazyReportQa report={report} />
+                </Suspense>
               </>
             ) : null}
           </TabsContent>

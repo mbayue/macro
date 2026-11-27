@@ -77,11 +77,16 @@ export function useHybridPrompt() {
     void detectOnDeviceAvailability().then((status) => {
       if (!cancelled && alive.current) setOnDeviceStatus(status);
     });
-    void fetchHybridRemoteConfig(firebase).then((rc) => {
-      if (!cancelled && alive.current) setRemoteConfig(rc);
-    });
+    // Defer Remote Config + App Check off initial paint so reCAPTCHA Enterprise never blocks TBT.
+    const timer = globalThis.setTimeout(() => {
+      if (cancelled || !alive.current) return;
+      void fetchHybridRemoteConfig(firebase).then((rc) => {
+        if (!cancelled && alive.current) setRemoteConfig(rc);
+      });
+    }, 2500);
     return () => {
       cancelled = true;
+      globalThis.clearTimeout(timer);
     };
   }, [firebase]);
 

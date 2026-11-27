@@ -81,9 +81,17 @@ export function createStaticHandler(webRoot: string): (req: Request, pathname: s
     }
 
     const ext = extname(abs).toLowerCase();
+    const cacheControl =
+      ext === '.html'
+        ? 'no-cache'
+        : rel.startsWith('/landing/assets/') || rel.startsWith('/landing/fonts/')
+          ? 'public, max-age=31536000, immutable'
+          : rel.startsWith('/landing/img/')
+            ? 'public, max-age=604800'
+            : 'public, max-age=3600';
     const headers: Record<string, string> = {
       'content-type': CONTENT_TYPES[ext] ?? 'application/octet-stream',
-      'cache-control': ext === '.html' ? 'no-cache' : 'public, max-age=300',
+      'cache-control': cacheControl,
       'content-length': String(size),
     };
     if (req.method === 'HEAD') return new Response(null, { status: 200, headers });

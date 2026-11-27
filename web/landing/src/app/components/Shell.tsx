@@ -110,7 +110,7 @@ function ShellLayout({
             ref={mainRef}
             tabIndex={-1}
           >
-            {children}
+            <div className="flex min-h-[85dvh] flex-col">{children}</div>
             <footer
               data-slot="app-footer"
               className="mx-auto mt-auto w-full max-w-[1440px] pt-12 pb-5 text-xs text-muted-foreground print:hidden"

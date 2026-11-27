@@ -103,18 +103,27 @@ export function useFirebaseStudioFeed({
 
   useEffect(() => {
     if (!firebase) return;
-    return subscribeStudioFeed(
-      {
-        firebase,
-        fallbackExamples,
-        fallbackRuns: defaultFeaturedRuns(sampleRunId),
-      },
-      {
-        onExamples: setExamples,
-        onFeaturedRuns: setFeaturedRuns,
-        onAnnouncement: setRawAnnouncement,
-      },
-    );
+    let unsub: (() => void) | null = null;
+    // Defer Firestore + App Check hydration off the initial paint/TTI window;
+    // fallbackExamples and sampleRunId from /api/config render immediately.
+    const timer = globalThis.setTimeout(() => {
+      unsub = subscribeStudioFeed(
+        {
+          firebase,
+          fallbackExamples,
+          fallbackRuns: defaultFeaturedRuns(sampleRunId),
+        },
+        {
+          onExamples: setExamples,
+          onFeaturedRuns: setFeaturedRuns,
+          onAnnouncement: setRawAnnouncement,
+        },
+      );
+    }, 2500);
+    return () => {
+      globalThis.clearTimeout(timer);
+      unsub?.();
+    };
   }, [firebase, fallbackExamples, sampleRunId]);
 
   const announcement =

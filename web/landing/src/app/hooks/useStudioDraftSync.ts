@@ -5,7 +5,7 @@
  * - Post-sign-in local-to-server draft merge and remote account draft hydration
  * - `PUT /api/draft` conflict resolution with polite live-region announcement
  */
-import { type RefObject, useEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useReducer, useRef, useState } from 'react';
 import type { AccountDraft, MeResponse, PlanResponse } from '../../../../../src/api-types.ts';
 import type { TargetMode } from '../components/studio/studio-view.ts';
 import type { ApiResult } from '../lib/api.ts';
@@ -114,6 +114,45 @@ export async function hydrateSignedInDraft(
   return null;
 }
 
+export type StudioReviewState =
+  | { kind: 'composing'; lastSubmitted: string | null; reviewSeq: number }
+  | { kind: 'reviewing'; review: PlanResponse; lastSubmitted: string | null; reviewSeq: number }
+  | { kind: 'editing'; review: PlanResponse; lastSubmitted: string | null; reviewSeq: number };
+
+export type StudioReviewEvent =
+  | { type: 'begin_plan'; value: string; preserveReview: boolean }
+  | { type: 'apply_review'; review: PlanResponse }
+  | { type: 'start_edit' }
+  | { type: 'keep_plan' }
+  | { type: 'discard_plan' };
+
+export function studioReviewReducer(state: StudioReviewState, event: StudioReviewEvent): StudioReviewState {
+  switch (event.type) {
+    case 'begin_plan':
+      if (event.preserveReview && state.kind !== 'composing') {
+        return { ...state, lastSubmitted: event.value };
+      }
+      return { kind: 'composing', lastSubmitted: event.value, reviewSeq: state.reviewSeq };
+    case 'apply_review':
+      return {
+        kind: 'reviewing',
+        review: event.review,
+        lastSubmitted: state.lastSubmitted,
+        reviewSeq: state.reviewSeq + 1,
+      };
+    case 'start_edit':
+      return state.kind === 'reviewing'
+        ? { kind: 'editing', review: state.review, lastSubmitted: state.lastSubmitted, reviewSeq: state.reviewSeq }
+        : state;
+    case 'keep_plan':
+      return state.kind === 'editing'
+        ? { kind: 'reviewing', review: state.review, lastSubmitted: state.lastSubmitted, reviewSeq: state.reviewSeq }
+        : state;
+    case 'discard_plan':
+      return { kind: 'composing', lastSubmitted: state.lastSubmitted, reviewSeq: state.reviewSeq };
+  }
+}
+
 export interface UseStudioDraftSyncOptions {
   me: MeResponse | null;
   announce: (message: string) => void;
@@ -124,15 +163,29 @@ export interface UseStudioDraftSyncOptions {
 export function useStudioDraftSync({ me, announce, alive }: UseStudioDraftSyncOptions) {
   const [initial] = useState(() => resolveInitialStudioDraft(me?.user.id ?? null));
   const [text, setText] = useState(initial.text);
-  const [lastSubmitted, setLastSubmitted] = useState<string | null>(initial.lastSubmitted);
-  const [review, setReview] = useState<PlanResponse | null>(initial.review);
-  const [reviewSeq, setReviewSeq] = useState(0);
-  const [editing, setEditing] = useState(initial.editing);
+  const [reviewState, dispatchReview] = useReducer(
+    studioReviewReducer,
+    initial,
+    (init): StudioReviewState =>
+      init.review === null
+        ? { kind: 'composing', lastSubmitted: init.lastSubmitted, reviewSeq: 0 }
+        : {
+            kind: init.editing ? 'editing' : 'reviewing',
+            review: init.review,
+            lastSubmitted: init.lastSubmitted,
+            reviewSeq: 0,
+          },
+  );
   const [targetMode, setTargetMode] = useState<TargetMode>(initial.targetMode);
   const [lastEditedAt, setLastEditedAt] = useState(() => Date.now());
   const draftHydrated = useRef(false);
   const announceRef = useRef(announce);
   const verifiedOrigin = me?.verifiedOrigin ?? null;
+
+  const review = reviewState.kind === 'composing' ? null : reviewState.review;
+  const lastSubmitted = reviewState.lastSubmitted;
+  const reviewSeq = reviewState.reviewSeq;
+  const editing = reviewState.kind === 'editing';
 
   useEffect(() => {
     announceRef.current = announce;
@@ -239,30 +292,26 @@ export function useStudioDraftSync({ me, announce, alive }: UseStudioDraftSyncOp
   }
 
   function beginPlan(value: string, preserveReview: boolean) {
-    setLastSubmitted(value);
-    if (!preserveReview) setReview(null);
+    dispatchReview({ type: 'begin_plan', value, preserveReview });
   }
 
   function applyPlannedReview(nextReview: PlanResponse) {
     clearSignedOutDraft();
-    setReview(nextReview);
-    setReviewSeq((s) => s + 1);
-    setEditing(false);
+    dispatchReview({ type: 'apply_review', review: nextReview });
   }
 
   function startEditDescription() {
-    setEditing(true);
+    dispatchReview({ type: 'start_edit' });
   }
 
   function keepPlan() {
     if (lastSubmitted !== null) setText(lastSubmitted);
-    setEditing(false);
+    dispatchReview({ type: 'keep_plan' });
   }
 
   function discardPlan() {
     clearReviewState();
-    setReview(null);
-    setEditing(false);
+    dispatchReview({ type: 'discard_plan' });
   }
 
   return {

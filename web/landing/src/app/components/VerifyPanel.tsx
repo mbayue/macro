@@ -1,7 +1,7 @@
 /**
  * Inline own-site verification: start a token, show DNS + well-known instructions, check, or clear.
  */
-import { type Ref, useEffect, useId, useRef, useState } from 'react';
+import { type Ref, useEffect, useId, useReducer, useRef, useState } from 'react';
 import { ArrowRightIcon, CheckIcon, CloudIcon, CopyIcon, ExternalLinkIcon, ZapIcon } from 'lucide-react';
 import type { VerifyStartResponse } from '../../../../../src/api-types.ts';
 import { Badge } from '@/components/ui/badge';
@@ -130,6 +130,83 @@ export function shouldAutoCheckDomainConnect({
   return 'wait';
 }
 
+export type VerifyFlowState =
+  | { kind: 'idle'; error: string | null }
+  | { kind: 'starting' }
+  | { kind: 'pending'; pending: VerifyStartResponse; showManual: boolean; error: string | null }
+  | { kind: 'checking'; pending: VerifyStartResponse; showManual: boolean }
+  | { kind: 'cancelling'; pending: VerifyStartResponse; showManual: boolean }
+  | { kind: 'clearing' };
+
+export type VerifyFlowEvent =
+  | { type: 'validation_error'; message: string }
+  | { type: 'clear_error' }
+  | { type: 'restore_pending'; pending: VerifyStartResponse }
+  | { type: 'toggle_manual' }
+  | { type: 'start' }
+  | { type: 'start_ok'; pending: VerifyStartResponse }
+  | { type: 'start_err'; message: string }
+  | { type: 'check' }
+  | { type: 'check_ok' }
+  | { type: 'check_err'; message: string }
+  | { type: 'cancel' }
+  | { type: 'cancel_ok' }
+  | { type: 'cancel_err'; message: string }
+  | { type: 'clear' }
+  | { type: 'clear_ok' }
+  | { type: 'clear_err'; message: string };
+
+export function verifyFlowReducer(state: VerifyFlowState, event: VerifyFlowEvent): VerifyFlowState {
+  switch (event.type) {
+    case 'validation_error':
+      return state.kind === 'idle' ? { kind: 'idle', error: event.message } : state;
+    case 'clear_error':
+      if (state.kind === 'idle') return state.error === null ? state : { kind: 'idle', error: null };
+      if (state.kind === 'pending') return state.error === null ? state : { ...state, error: null };
+      return state;
+    case 'restore_pending':
+      return state.kind === 'idle'
+        ? { kind: 'pending', pending: event.pending, showManual: false, error: null }
+        : state;
+    case 'toggle_manual':
+      return state.kind === 'pending' ? { ...state, showManual: !state.showManual } : state;
+    case 'start':
+      return state.kind === 'idle' ? { kind: 'starting' } : state;
+    case 'start_ok':
+      return state.kind === 'starting'
+        ? { kind: 'pending', pending: event.pending, showManual: false, error: null }
+        : state;
+    case 'start_err':
+      return state.kind === 'starting' ? { kind: 'idle', error: event.message } : state;
+    case 'check':
+      return state.kind === 'pending'
+        ? { kind: 'checking', pending: state.pending, showManual: state.showManual }
+        : state;
+    case 'check_ok':
+      return state.kind === 'checking' ? { kind: 'idle', error: null } : state;
+    case 'check_err':
+      return state.kind === 'checking'
+        ? { kind: 'pending', pending: state.pending, showManual: state.showManual, error: event.message }
+        : state;
+    case 'cancel':
+      return state.kind === 'pending'
+        ? { kind: 'cancelling', pending: state.pending, showManual: state.showManual }
+        : state;
+    case 'cancel_ok':
+      return state.kind === 'cancelling' ? { kind: 'idle', error: null } : state;
+    case 'cancel_err':
+      return state.kind === 'cancelling'
+        ? { kind: 'pending', pending: state.pending, showManual: state.showManual, error: event.message }
+        : state;
+    case 'clear':
+      return state.kind === 'idle' ? { kind: 'clearing' } : state;
+    case 'clear_ok':
+      return state.kind === 'clearing' ? { kind: 'idle', error: null } : state;
+    case 'clear_err':
+      return state.kind === 'clearing' ? { kind: 'idle', error: event.message } : state;
+  }
+}
+
 export function VerifyPanel({
   initialHost = '',
   onVerified,
@@ -141,16 +218,32 @@ export function VerifyPanel({
 }) {
   const { me, refreshMe, announce } = useApp();
   const [host, setHost] = useState(initialHost);
-  const [pending, setPending] = useState<VerifyStartResponse | null>(null);
-  const [showManual, setShowManual] = useState(false);
-  const [busy, setBusy] = useState<'start' | 'check' | 'clear' | 'cancel' | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [flow, dispatch] = useReducer(verifyFlowReducer, { kind: 'idle', error: null });
   const restoreGen = useRef(0);
   const hostInput = useRef<HTMLInputElement>(null);
   const verifyHelpId = useId();
   const verifyErrorId = useId();
 
   const verified = me?.verifiedOrigin ?? null;
+  const pending =
+    flow.kind === 'pending' || flow.kind === 'checking' || flow.kind === 'cancelling'
+      ? flow.pending
+      : null;
+  const showManual =
+    flow.kind === 'pending' || flow.kind === 'checking' || flow.kind === 'cancelling'
+      ? flow.showManual
+      : false;
+  const busy: 'start' | 'check' | 'clear' | 'cancel' | null =
+    flow.kind === 'starting'
+      ? 'start'
+      : flow.kind === 'checking'
+        ? 'check'
+        : flow.kind === 'cancelling'
+          ? 'cancel'
+          : flow.kind === 'clearing'
+            ? 'clear'
+            : null;
+  const error = flow.kind === 'idle' || flow.kind === 'pending' ? flow.error : null;
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -181,7 +274,7 @@ export function VerifyPanel({
       const res = await getVerifyPending();
       if (cancelled || gen !== restoreGen.current) return;
       if (!res.ok || res.data === null) return;
-      setPending((current) => current ?? res.data);
+      dispatch({ type: 'restore_pending', pending: res.data });
     })();
     return () => {
       cancelled = true;
@@ -190,76 +283,68 @@ export function VerifyPanel({
 
   async function onStart(e: React.FormEvent) {
     e.preventDefault();
-    if (busy) return;
+    if (flow.kind !== 'idle') return;
     const trimmed = host.trim();
     if (trimmed === '') {
       const msg = 'Enter a host or https origin.';
-      setError(msg);
+      dispatch({ type: 'validation_error', message: msg });
       announce(msg);
       hostInput.current?.focus();
       return;
     }
-    setBusy('start');
-    setError(null);
+    dispatch({ type: 'start' });
     const res = await postVerifyStart(trimmed);
-    setBusy(null);
     if (!res.ok) {
-      setError(res.error.message);
+      dispatch({ type: 'start_err', message: res.error.message });
       announce(res.error.message);
       return;
     }
-    setPending(res.data);
+    dispatch({ type: 'start_ok', pending: res.data });
     await refreshMe();
     announce('Verification token ready. Add the DNS record or well-known file, then check.');
   }
 
   async function onCheck() {
-    if (busy) return;
-    setBusy('check');
-    setError(null);
+    if (flow.kind !== 'pending') return;
+    dispatch({ type: 'check' });
     const res = await postVerifyCheck();
-    setBusy(null);
     if (!res.ok) {
-      setError(res.error.message);
+      dispatch({ type: 'check_err', message: res.error.message });
       announce(res.error.message);
       return;
     }
-    setPending(null);
+    dispatch({ type: 'check_ok' });
     await refreshMe();
     onVerified?.(res.data.verifiedOrigin);
     announce(`Verified ${res.data.verifiedOrigin.host}.`);
   }
 
   async function onStartOver() {
-    if (busy) return;
+    if (flow.kind !== 'pending') return;
     restoreGen.current += 1;
-    setBusy('cancel');
-    setError(null);
+    dispatch({ type: 'cancel' });
     const res = await postVerifyCancel();
-    setBusy(null);
     if (!res.ok) {
-      setError(res.error.message);
+      dispatch({ type: 'cancel_err', message: res.error.message });
       announce(res.error.message);
       return;
     }
-    setPending(null);
+    dispatch({ type: 'cancel_ok' });
     setHost('');
     await refreshMe();
     announce('Verification reset. The previous token will no longer work.');
   }
 
   async function onClear() {
-    if (busy) return;
-    setBusy('clear');
-    setError(null);
+    if (flow.kind !== 'idle') return;
+    dispatch({ type: 'clear' });
     const res = await postVerifyClear();
-    setBusy(null);
     if (!res.ok) {
-      setError(res.error.message);
+      dispatch({ type: 'clear_err', message: res.error.message });
       announce(res.error.message);
       return;
     }
-    setPending(null);
+    dispatch({ type: 'clear_ok' });
     await refreshMe();
     onCleared?.();
     announce('Verified site cleared.');
@@ -270,7 +355,7 @@ export function VerifyPanel({
 
   const onHostChange = (value: string) => {
     setHost(value);
-    if (error) setError(null);
+    if (error) dispatch({ type: 'clear_error' });
   };
 
   if (verified !== null) {
@@ -410,7 +495,7 @@ export function VerifyPanel({
                 type="button"
                 variant="link"
                 size="sm"
-                onClick={() => setShowManual((v) => !v)}
+                onClick={() => dispatch({ type: 'toggle_manual' })}
               >
                 {showManual ? 'Hide manual DNS records' : 'Or configure DNS records manually'}
               </Button>

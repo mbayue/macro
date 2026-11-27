@@ -3,7 +3,7 @@
  * stored metrics; AI text appears only in the section labelled as the AI's.
  * Wording and states follow lib/report-view.ts, whose view models are reused.
  */
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useReducer, useRef, useState } from 'react';
 import { ChevronDownIcon, DownloadIcon, ExternalLinkIcon, GitCompareIcon, PlayIcon, PrinterIcon, XIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -380,29 +380,78 @@ export function InlineRunComparison({
   );
 }
 
+export type PlanRunsListState =
+  | { kind: 'loading' }
+  | { kind: 'ready'; rows: RunListRow[] }
+  | { kind: 'error'; error: ApiError };
+
+export type PlanRunsListEvent =
+  | { type: 'load' }
+  | { type: 'succeed'; rows: RunListRow[] }
+  | { type: 'fail'; error: ApiError };
+
+export function planRunsListReducer(state: PlanRunsListState, event: PlanRunsListEvent): PlanRunsListState {
+  switch (event.type) {
+    case 'load':
+      return { kind: 'loading' };
+    case 'succeed':
+      return state.kind === 'loading' ? { kind: 'ready', rows: event.rows } : state;
+    case 'fail':
+      return state.kind === 'loading' ? { kind: 'error', error: event.error } : state;
+  }
+}
+
+export type RerunActionState =
+  | { kind: 'idle'; error: ApiError | null }
+  | { kind: 'confirming' }
+  | { kind: 'starting' };
+
+export type RerunActionEvent =
+  | { type: 'open_confirm' }
+  | { type: 'close_confirm' }
+  | { type: 'start' }
+  | { type: 'fail'; error: ApiError };
+
+export function rerunActionReducer(state: RerunActionState, event: RerunActionEvent): RerunActionState {
+  switch (event.type) {
+    case 'open_confirm':
+      return state.kind === 'idle' ? { kind: 'confirming' } : state;
+    case 'close_confirm':
+      return state.kind === 'confirming' ? { kind: 'idle', error: null } : state;
+    case 'start':
+      return state.kind === 'starting' ? state : { kind: 'starting' };
+    case 'fail':
+      return state.kind === 'starting' ? { kind: 'idle', error: event.error } : state;
+  }
+}
+
 /** Re-run the same approved plan, list its runs, and compare two runs inline via `CompareView`. */
 export const RunsPanel = memo(function RunsPanel({ report }: { report: CapacityReport }) {
   const { navigate, announce } = useApp();
   const turnstile = useTurnstile();
-  const [rows, setRows] = useState<RunListRow[] | null>(null);
-  const [listError, setListError] = useState<ApiError | null>(null);
+  const [listState, dispatchList] = useReducer(planRunsListReducer, { kind: 'loading' });
   const [picked, setPicked] = useState<string[]>([]);
   const [comparePair, setComparePair] = useState<{ a: string; b: string } | null>(null);
-  const [rerunConfirmOpen, setRerunConfirmOpen] = useState(false);
-  const [rerunBusy, setRerunBusy] = useState(false);
-  const [rerunError, setRerunError] = useState<ApiError | null>(null);
+  const [rerunState, dispatchRerun] = useReducer(rerunActionReducer, { kind: 'idle', error: null });
   const alive = useRef(true);
+
+  const rows = listState.kind === 'ready' ? listState.rows : null;
+  const listError = listState.kind === 'error' ? listState.error : null;
+  const rerunConfirmOpen = rerunState.kind === 'confirming';
+  const rerunBusy = rerunState.kind === 'starting';
+  const rerunError = rerunState.kind === 'idle' ? rerunState.error : null;
 
   const { loading: compareLoading, error: compareError, comparison, retry: retryCompare } = useRunComparison(comparePair);
 
   useEffect(() => {
     alive.current = true;
     const abort = new AbortController();
+    dispatchList({ type: 'load' });
     void (async () => {
       const res = await getRunsForPlan(report.planHash, abort.signal);
       if (!alive.current) return;
-      if (res.ok) setRows(runListRows(res.data.runs));
-      else setListError(res.error);
+      if (res.ok) dispatchList({ type: 'succeed', rows: runListRows(res.data.runs) });
+      else dispatchList({ type: 'fail', error: res.error });
     })();
     return () => {
       alive.current = false;
@@ -412,9 +461,7 @@ export const RunsPanel = memo(function RunsPanel({ report }: { report: CapacityR
 
   async function rerun() {
     if (rerunBusy) return;
-    setRerunConfirmOpen(false);
-    setRerunError(null);
-    setRerunBusy(true);
+    dispatchRerun({ type: 'start' });
     announce('Starting the run.');
     let result: Awaited<ReturnType<typeof postRun>>;
     try {
@@ -430,8 +477,7 @@ export const RunsPanel = memo(function RunsPanel({ report }: { report: CapacityR
       navigate(`/run/${encodeURIComponent(result.data.runId)}`);
       return;
     }
-    setRerunBusy(false);
-    setRerunError(result.error);
+    dispatchRerun({ type: 'fail', error: result.error });
     announce(result.error.message);
   }
 
@@ -470,13 +516,16 @@ export const RunsPanel = memo(function RunsPanel({ report }: { report: CapacityR
           </p>
           <TurnstileBox boxRef={turnstile.box} />
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="button" variant="default" disabled={rerunBusy} onClick={() => setRerunConfirmOpen(true)}>
+            <Button type="button" variant="default" disabled={rerunBusy} onClick={() => dispatchRerun({ type: 'open_confirm' })}>
               <PlayIcon data-icon="inline-start" />
               Run this plan again
             </Button>
             {rerunBusy ? <Busy>Starting the run…</Busy> : null}
           </div>
-          <Dialog open={rerunConfirmOpen} onOpenChange={setRerunConfirmOpen}>
+          <Dialog
+            open={rerunConfirmOpen}
+            onOpenChange={(open) => dispatchRerun({ type: open ? 'open_confirm' : 'close_confirm' })}
+          >
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Run this plan again?</DialogTitle>

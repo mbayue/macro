@@ -3,7 +3,7 @@
  * draft a plan, review it against the Policy Gate, and approve or cancel.
  * Nothing reaches the target until "Approve & Run".
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import type { DemoTrendsResponse, PlanResponse } from '../../../../../src/api-types.ts';
 import { type ApiError, type ApiResult, getDemoTrends, postPlan, VERIFICATION_ERROR } from '../lib/api.ts';
 import { ModelCalls } from '../components/ModelCalls.tsx';
@@ -30,6 +30,29 @@ import {
 import { useFirebaseStudioFeed } from '../hooks/useFirebaseStudioFeed.ts';
 import { useStudioDraftSync } from '../hooks/useStudioDraftSync.ts';
 
+export type StudioRequestState =
+  | { kind: 'idle'; error: ApiError | null }
+  | { kind: 'planning' }
+  | { kind: 'approving' };
+
+export type StudioRequestEvent =
+  | { type: 'set_busy'; busy: StudioBusy }
+  | { type: 'clear_error' }
+  | { type: 'fail'; error: ApiError };
+
+export function studioRequestReducer(state: StudioRequestState, event: StudioRequestEvent): StudioRequestState {
+  switch (event.type) {
+    case 'set_busy':
+      if (event.busy === 'planning') return state.kind === 'idle' ? { kind: 'planning' } : state;
+      if (event.busy === 'approving') return state.kind === 'idle' ? { kind: 'approving' } : state;
+      return { kind: 'idle', error: null };
+    case 'clear_error':
+      return state.kind === 'idle' && state.error !== null ? { kind: 'idle', error: null } : state;
+    case 'fail':
+      return { kind: 'idle', error: event.error };
+  }
+}
+
 export function NewTest() {
   const { config, me, navigate, announce } = useApp();
   const shell = useOptionalShell();
@@ -46,8 +69,15 @@ export function NewTest() {
     sampleRunId: config.sampleRunId,
   });
 
-  const [busy, setBusy] = useState<StudioBusy>(null);
-  const [planError, setPlanError] = useState<ApiError | null>(null);
+  const [requestState, dispatchRequest] = useReducer(studioRequestReducer, { kind: 'idle', error: null });
+  const busy: StudioBusy =
+    requestState.kind === 'planning'
+      ? 'planning'
+      : requestState.kind === 'approving'
+        ? 'approving'
+        : null;
+  const planError = requestState.kind === 'idle' ? requestState.error : null;
+  const setBusy = (next: StudioBusy) => dispatchRequest({ type: 'set_busy', busy: next });
   const [panelInView, setPanelInView] = useState(true);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const focusComposer = useRef(false);
@@ -104,7 +134,7 @@ export function NewTest() {
       return;
     }
     draft.selectTargetMode(mode);
-    setPlanError(null);
+    dispatchRequest({ type: 'clear_error' });
   }
 
   async function startPlanning(value: string, routeIds?: string[]) {
@@ -115,9 +145,12 @@ export function NewTest() {
       return;
     }
     if (targetMode === 'own' && verifiedOrigin === null) {
-      setPlanError({
-        code: 'verification_required',
-        message: 'Verify your site before drafting an own-site plan.',
+      dispatchRequest({
+        type: 'fail',
+        error: {
+          code: 'verification_required',
+          message: 'Verify your site before drafting an own-site plan.',
+        },
       });
       announce('Verify your site before drafting an own-site plan.');
       return;
@@ -126,7 +159,6 @@ export function NewTest() {
     if (!alive.current) return;
     setBusy('planning');
     draft.beginPlan(value, routeIds !== undefined);
-    setPlanError(null);
     if (routeIds === undefined) {
       setPendingRouteIds(null);
     }
@@ -147,12 +179,12 @@ export function NewTest() {
       draftTurnstile.reset();
     }
     if (!alive.current) return;
-    setBusy(null);
     if (result.ok) {
+      setBusy(null);
       draft.applyPlannedReview(result.data);
       setPendingRouteIds(null);
     } else {
-      setPlanError(result.error);
+      dispatchRequest({ type: 'fail', error: result.error });
       announce(result.error.message);
     }
   }

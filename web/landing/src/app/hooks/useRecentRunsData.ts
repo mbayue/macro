@@ -2,7 +2,7 @@
  * Data loading, 3s live polling, 401/503 browser fallback, and browser-local run hydration
  * for the Runs Table (`#/runs`).
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import type { MeResponse } from '../../../../../src/api-types.ts';
 import { mapAccountRunRow, mapBrowserRunRow, type RunsTableRow } from '../components/compare/runs-table-view.ts';
 import { getRun } from '../lib/api.ts';
@@ -119,6 +119,36 @@ export function startRecentRunsSync({ mode, sink, timers }: RecentRunsSyncOption
   };
 }
 
+export type RecentRunsState =
+  | { kind: 'browser'; rows: RunsTableRow[] }
+  | { kind: 'account_loading'; rows: RunsTableRow[] }
+  | { kind: 'account_ready'; rows: RunsTableRow[] }
+  | { kind: 'account_error'; rows: RunsTableRow[]; error: string };
+
+export type RecentRunsEvent =
+  | { type: 'enter_browser'; rows: RunsTableRow[] }
+  | { type: 'update_rows'; next: RunsTableRow[] | ((prev: RunsTableRow[]) => RunsTableRow[]) }
+  | { type: 'account_loading' }
+  | { type: 'account_ready'; rows?: RunsTableRow[] }
+  | { type: 'account_error'; error: string };
+
+export function recentRunsReducer(state: RecentRunsState, event: RecentRunsEvent): RecentRunsState {
+  switch (event.type) {
+    case 'enter_browser':
+      return { kind: 'browser', rows: event.rows };
+    case 'update_rows': {
+      const rows = typeof event.next === 'function' ? event.next(state.rows) : event.next;
+      return { ...state, rows };
+    }
+    case 'account_loading':
+      return { kind: 'account_loading', rows: [] };
+    case 'account_ready':
+      return { kind: 'account_ready', rows: event.rows ?? state.rows };
+    case 'account_error':
+      return { kind: 'account_error', rows: state.rows, error: event.error };
+  }
+}
+
 /**
  * Loads and polls Runs Table rows for the signed-in account, falling back cleanly to
  * browser-local runs when signed out or when auth returns 401/503.
@@ -127,12 +157,14 @@ export function useRecentRunsData(me: MeResponse | null): RecentRunsDataState {
   const [reloadTick, setReloadTick] = useState(0);
   const [browserFallback, setBrowserFallback] = useState(false);
 
-  const [rows, setRows] = useState<RunsTableRow[]>(() =>
-    me !== null ? [] : loadRecentRuns().map((r) => mapBrowserRunRow(r)),
+  const [state, dispatch] = useReducer(
+    recentRunsReducer,
+    me,
+    (initialMe): RecentRunsState =>
+      initialMe !== null
+        ? { kind: 'account_loading', rows: [] }
+        : { kind: 'browser', rows: loadRecentRuns().map((r) => mapBrowserRunRow(r)) },
   );
-  const [source, setSource] = useState<'account' | 'browser'>(() => (me !== null ? 'account' : 'browser'));
-  const [loading, setLoading] = useState<boolean>(() => me !== null);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setBrowserFallback(false);
@@ -140,11 +172,31 @@ export function useRecentRunsData(me: MeResponse | null): RecentRunsDataState {
 
   useEffect(() => {
     const mode = me !== null && !browserFallback ? 'account' : 'browser';
-    return startRecentRunsSync({
-      mode,
-      sink: { setRows, setSource, setLoading, setError },
-    });
+    let currentSource: 'account' | 'browser' = mode;
+    const sink: RecentRunsSyncSink = {
+      setSource: (next) => {
+        currentSource = next;
+        if (next === 'browser') {
+          dispatch({ type: 'enter_browser', rows: [] });
+        }
+      },
+      setRows: (next) => dispatch({ type: 'update_rows', next }),
+      setLoading: (loading) => {
+        if (currentSource === 'browser') return;
+        if (loading) dispatch({ type: 'account_loading' });
+        else dispatch({ type: 'account_ready' });
+      },
+      setError: (err) => {
+        if (currentSource === 'browser') return;
+        if (err !== null) dispatch({ type: 'account_error', error: err });
+      },
+    };
+    return startRecentRunsSync({ mode, sink });
   }, [me, reloadTick, browserFallback]);
+
+  const source: 'account' | 'browser' = state.kind === 'browser' ? 'browser' : 'account';
+  const loading = state.kind === 'account_loading';
+  const error = state.kind === 'account_error' ? state.error : null;
 
   const hasBrowserFallback = useMemo(
     () => error !== null && me !== null && !browserFallback && loadRecentRuns().length > 0,
@@ -160,7 +212,7 @@ export function useRecentRunsData(me: MeResponse | null): RecentRunsDataState {
   }, []);
 
   return {
-    rows,
+    rows: state.rows,
     source,
     loading,
     error,

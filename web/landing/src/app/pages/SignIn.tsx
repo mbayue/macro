@@ -2,7 +2,7 @@
  * Sign in (`#/sign-in`) and Account (`#/account`): GitHub/Google OAuth, magic link email,
  * active session actions, and account deletion.
  */
-import { type Ref, useEffect, useId, useRef, useState } from 'react';
+import { type Ref, useEffect, useId, useReducer, useRef, useState } from 'react';
 import { ArrowLeftIcon, GlobeIcon, LogOutIcon, MailIcon, PanelsTopLeftIcon } from 'lucide-react';
 import type { MeResponse } from '../../../../../src/api-types.ts';
 import { Badge } from '@/components/ui/badge';
@@ -315,22 +315,81 @@ export function AccountPanel({
   );
 }
 
+export type MagicLinkState =
+  | { kind: 'idle'; error: string | null }
+  | { kind: 'sending' }
+  | { kind: 'sent'; waitSec: number };
+
+export type MagicLinkEvent =
+  | { type: 'validation_error'; message: string }
+  | { type: 'clear_error' }
+  | { type: 'send' }
+  | { type: 'send_ok'; cooldownSec: number }
+  | { type: 'send_err'; message: string }
+  | { type: 'tick' };
+
+export function magicLinkReducer(state: MagicLinkState, event: MagicLinkEvent): MagicLinkState {
+  switch (event.type) {
+    case 'validation_error':
+      return state.kind === 'sending' ? state : { kind: 'idle', error: event.message };
+    case 'clear_error':
+      return state.kind === 'idle' && state.error !== null ? { kind: 'idle', error: null } : state;
+    case 'send':
+      if (state.kind === 'sending') return state;
+      if (state.kind === 'sent' && state.waitSec > 0) return state;
+      return { kind: 'sending' };
+    case 'send_ok':
+      return state.kind === 'sending' ? { kind: 'sent', waitSec: Math.max(0, event.cooldownSec) } : state;
+    case 'send_err':
+      return state.kind === 'sending' ? { kind: 'idle', error: event.message } : state;
+    case 'tick':
+      if (state.kind !== 'sent' || state.waitSec <= 0) return state;
+      return { kind: 'sent', waitSec: state.waitSec <= 1 ? 0 : state.waitSec - 1 };
+  }
+}
+
+export type AccountDeleteState =
+  | { kind: 'idle'; error: string | null }
+  | { kind: 'deleting' };
+
+export type AccountDeleteEvent =
+  | { type: 'start' }
+  | { type: 'succeed' }
+  | { type: 'fail'; message: string };
+
+export function accountDeleteReducer(
+  state: AccountDeleteState,
+  event: AccountDeleteEvent,
+): AccountDeleteState {
+  switch (event.type) {
+    case 'start':
+      return state.kind === 'idle' ? { kind: 'deleting' } : state;
+    case 'succeed':
+      return state.kind === 'deleting' ? { kind: 'idle', error: null } : state;
+    case 'fail':
+      return state.kind === 'deleting' ? { kind: 'idle', error: event.message } : state;
+  }
+}
+
 export function SignIn() {
   const { config, me, navigate, announce, refreshMe } = useApp();
   const shell = useOptionalShell();
   const [email, setEmail] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [wait, setWait] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const [magic, dispatchMagic] = useReducer(magicLinkReducer, { kind: 'idle', error: null });
+  const [delState, dispatchDelete] = useReducer(accountDeleteReducer, { kind: 'idle', error: null });
   const emailInput = useRef<HTMLInputElement>(null);
   const signingOut = shell?.state.signingOut ?? false;
 
+  const busy = magic.kind === 'sending';
+  const sent = magic.kind === 'sent';
+  const wait = magic.kind === 'sent' ? magic.waitSec : 0;
+  const error = magic.kind === 'idle' ? magic.error : null;
+  const deleting = delState.kind === 'deleting';
+  const deleteError = delState.kind === 'idle' ? delState.error : null;
+
   useEffect(() => {
     if (wait <= 0) return;
-    const id = window.setInterval(() => setWait((s) => (s <= 1 ? 0 : s - 1)), 1000);
+    const id = window.setInterval(() => dispatchMagic({ type: 'tick' }), 1000);
     return () => window.clearInterval(id);
   }, [wait]);
 
@@ -353,15 +412,14 @@ export function SignIn() {
         onDelete={() => {
           if (deleting || signingOut) return;
           void (async () => {
-            setDeleting(true);
-            setDeleteError(null);
+            dispatchDelete({ type: 'start' });
             const res = await deleteAccount();
-            setDeleting(false);
             if (!res.ok) {
-              setDeleteError(res.error.message);
+              dispatchDelete({ type: 'fail', message: res.error.message });
               announce(res.error.message);
               return;
             }
+            dispatchDelete({ type: 'succeed' });
             clearRecentRuns();
             clearReviewState();
             await refreshMe();
@@ -378,24 +436,19 @@ export function SignIn() {
     const trimmed = email.trim();
     if (trimmed === '' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       const msg = 'Enter a valid email address.';
-      setError(msg);
-      setSent(false);
+      dispatchMagic({ type: 'validation_error', message: msg });
       announce(msg);
       emailInput.current?.focus();
       return;
     }
-    setBusy(true);
-    setError(null);
-    setSent(false);
+    dispatchMagic({ type: 'send' });
     const result = await postMagicLink(trimmed, '/app/#/'); // return to New test; draft hydrates from account + stash
-    setBusy(false);
     if (!result.ok) {
-      setError(result.error.message);
+      dispatchMagic({ type: 'send_err', message: result.error.message });
       announce(result.error.message);
       return;
     }
-    setSent(true);
-    setWait(60);
+    dispatchMagic({ type: 'send_ok', cooldownSec: 60 });
     announce('Check your email for a sign-in link.');
     void refreshMe();
   }
@@ -476,7 +529,7 @@ export function SignIn() {
           secondaryAction={Boolean(config.githubSignIn || config.googleSignIn)}
           onEmailChange={(value) => {
             setEmail(value);
-            if (error) setError(null);
+            if (error) dispatchMagic({ type: 'clear_error' });
           }}
           onSubmit={(e) => void onMagic(e)}
           onBack={() => navigate('/')}

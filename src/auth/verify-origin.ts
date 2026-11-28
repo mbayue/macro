@@ -63,9 +63,9 @@ export function normalizeVerifyHost(input: string): NormalizeVerifyResult {
   if (url.protocol !== 'https:') {
     return { ok: false, reason: 'origin must use https' };
   }
-  const host = url.hostname.toLowerCase();
-  if (isDenylistedHost(host)) {
-    return { ok: false, reason: `host ${host} cannot be verified` };
+  const host = url.hostname.toLowerCase().replace(/\.+$/, '');
+  if (host === '' || isDenylistedHost(host)) {
+    return { ok: false, reason: `host ${host || raw} cannot be verified` };
   }
   return { ok: true, host, origin: `https://${host}` };
 }

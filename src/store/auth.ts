@@ -114,6 +114,8 @@ export class AuthStore {
           const carriedSubject = deletedQuotaSubject(userRow.primary_email);
           this.db.prepare('UPDATE planning_requests SET ip = ? WHERE ip = ?').run(carriedSubject, subject);
           this.db.prepare('UPDATE client_starts SET ip = ? WHERE ip = ?').run(carriedSubject, subject);
+          // Revoke any unused magic-link tokens for this email so a pre-deletion link cannot recreate the account.
+          this.db.prepare('DELETE FROM magic_link_tokens WHERE email = ? AND used_at IS NULL').run(userRow.primary_email);
         } else {
           this.db.prepare('DELETE FROM planning_requests WHERE ip = ?').run(subject);
           this.db.prepare('DELETE FROM client_starts WHERE ip = ?').run(subject);

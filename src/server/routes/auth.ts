@@ -53,7 +53,7 @@ interface OAuthProviderSpec {
 
 /** Auth, OAuth, magic-link, session, and account-claim routes. */
 export function authRoutes(ctx: ServerContext): RouteDef[] {
-  const { store, config, deps, now, cookieSecure, controllerFor, logInternal, requireSession, requireAuth } = ctx;
+  const { store, config, deps, now, cookieSecure, controllerFor, logInternal, resolveSession, requireSession, requireAuth } = ctx;
 
   const magicLinkLimits = [
     {
@@ -131,9 +131,12 @@ export function authRoutes(ctx: ServerContext): RouteDef[] {
     return json(200, body);
   };
 
-  const getMagicLinkConsume: Handler = async ({ url }) => {
+  const getMagicLinkConsume: Handler = async ({ req, url }) => {
     if (config.auth === undefined) {
       return apiError(503, 'auth_unavailable', MSG.authUnavailable);
+    }
+    if (resolveSession(req) !== null) {
+      return apiError(400, 'invalid_input', 'Sign out before opening another sign-in link.');
     }
     const token = url.searchParams.get('token') ?? '';
     if (token === '') return apiError(400, 'invalid_input', MSG.magicLinkInvalid);

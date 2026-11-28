@@ -556,4 +556,90 @@ describe('security fixes regression', () => {
     expect(store.getVerifiedOrigin(userA.id)).toBeNull();
     store.close();
   });
+
+  test('GET /api/auth/magic-link/consume refuses to overwrite an active session (Login CSRF) and leaves token unconsumed', async () => {
+    const store = new Store(':memory:');
+    const now = Date.UTC(2026, 10, 28, 12, 0, 0);
+    const victim = store.createUser('victim@example.com', now);
+    const victimSession = store.createSession(victim.id, now, 60_000);
+    const sent: string[] = [];
+    const config = authConfig();
+    const app = createApp({
+      store,
+      config,
+      verifyTurnstile: async () => ({ ok: true }),
+      client: new InferenceClient({ config: config.inference, store, fetchImpl: asFetch(async () => new Response('{}')) }),
+      runController: fakeController(),
+      probeController: fakeController(),
+      now: () => now,
+      log: () => {},
+      mailer: {
+        sendMagicLink: async ({ url }) => {
+          sent.push(url);
+          return { ok: true };
+        },
+      },
+    });
+
+    const reqLink = await app.fetch(
+      new Request('http://macro.test/api/auth/magic-link', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: 'attacker@example.com' }),
+      }),
+    );
+    expect(reqLink.status).toBe(200);
+    const consumeUrl = sent[0]!;
+
+    // Victim with active session clicking attacker's magic link is rejected and session is untouched.
+    const csrfRes = await app.fetch(
+      new Request(consumeUrl, {
+        method: 'GET',
+        headers: { cookie: `macro_session=${victimSession.id}` },
+      }),
+    );
+    expect(csrfRes.status).toBe(400);
+    expect(csrfRes.headers.get('set-cookie')).toBeNull();
+
+    // Signed-out user can still consume the token normally.
+    const normalRes = await app.fetch(new Request(consumeUrl, { method: 'GET' }));
+    expect(normalRes.status).toBe(303);
+    expect(normalRes.headers.get('set-cookie')).toContain('macro_session=');
+    store.close();
+  });
+
+  test('GET /api/plans/:hash/runs returns 404 for foreign private own-site plan hashes', async () => {
+    const store = new Store(':memory:');
+    const now = Date.UTC(2026, 10, 28, 12, 0, 0);
+    const owner = store.createUser('plan-owner@example.com', now);
+    store.setVerifiedOrigin(owner.id, 'https://priv.example', 'priv.example', 'tok', now);
+    const hash = 'b'.repeat(64);
+    store.storeApprovedPlan({
+      hash,
+      text: JSON.stringify({ ...samplePlan(), target: 'https://priv.example' }),
+      approvedAt: now,
+    });
+    store.storePlanTarget({
+      planHash: hash,
+      webOrigin: 'https://priv.example',
+      apiOrigin: 'https://priv.example',
+      routes: [{ id: 'r1', method: 'GET', path: '/', kind: 'page', defaultOn: true }],
+    });
+
+    const config = authConfig();
+    const app = createApp({
+      store,
+      config,
+      verifyTurnstile: async () => ({ ok: true }),
+      client: new InferenceClient({ config: config.inference, store, fetchImpl: asFetch(async () => new Response('{}')) }),
+      runController: fakeController(),
+      probeController: fakeController(),
+      now: () => now,
+      log: () => {},
+    });
+
+    const anon = await app.fetch(new Request(`http://macro.test/api/plans/${hash}/runs`));
+    expect(anon.status).toBe(404);
+    store.close();
+  });
 });

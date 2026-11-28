@@ -651,6 +651,12 @@ export function runsRoutes(ctx: ServerContext): RouteDef[] {
   const getRunsForPlan: Handler = (c) => {
     const hash = safeDecode(c.params[0] ?? '');
     if (hash === null || !isPlanHash(hash) || !store.hasApprovedPlan(hash)) return notFound();
+    const planTarget = store.getPlanTarget(hash);
+    if (planTarget !== null) {
+      const session = resolveSession(c.req);
+      const verified = session === null ? null : store.getVerifiedOrigin(session.user.id, now());
+      if (verified === null || verified.origin !== planTarget.webOrigin) return notFound();
+    }
     const runs: RunListItem[] = store
       .listRunsForPlan(hash, 20)
       .filter((r) => canViewRun(r, c.req))

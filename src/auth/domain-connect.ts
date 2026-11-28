@@ -190,7 +190,14 @@ export async function discoverDomainConnectApi(
 function isSafeHttpsUrl(raw: string): boolean {
   try {
     const url = new URL(raw);
-    return url.protocol === 'https:' && url.username === '' && url.password === '' && url.hostname !== '';
+    return (
+      url.protocol === 'https:' &&
+      url.username === '' &&
+      url.password === '' &&
+      url.hostname !== '' &&
+      url.search === '' &&
+      url.hash === ''
+    );
   } catch {
     return false;
   }

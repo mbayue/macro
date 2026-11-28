@@ -82,6 +82,7 @@ services:
       - "3000"
     init: true
     cap_drop: [ALL]
+    cap_add: [CHOWN]
     networks:
       - default
       - socket_net

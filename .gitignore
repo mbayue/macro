@@ -16,7 +16,6 @@ data/
 *.log
 
 .impeccable
-.kiro
 .superpowers
 .agents/
 .claude/

@@ -6,6 +6,9 @@ import type {
   VerifiedOriginRow,
 } from '../auth/types.ts';
 
+/** Verified Own Site origins expire after 90 days unless re-verified. */
+export const VERIFIED_ORIGIN_TTL_MS = 90 * 24 * 3_600_000;
+
 interface RawVerifiedOrigin {
   user_id: string;
   origin: string;
@@ -68,10 +71,16 @@ export class VerifyStore {
     this.db
       .transaction(() => {
         const owner = this.db
-          .prepare<{ user_id: string }, [string]>('SELECT user_id FROM verified_origins WHERE host = ?')
+          .prepare<{ user_id: string; verified_at: number }, [string]>(
+            'SELECT user_id, verified_at FROM verified_origins WHERE host = ?',
+          )
           .get(host);
         if (owner !== null && owner.user_id !== userId) {
-          throw new ContestedOriginError(host);
+          if (now - owner.verified_at < VERIFIED_ORIGIN_TTL_MS) {
+            throw new ContestedOriginError(host);
+          }
+          // Prior verification has expired; allow the new verified owner to take over.
+          this.db.prepare('DELETE FROM verified_origins WHERE host = ?').run(host);
         }
         this.db.prepare('DELETE FROM verified_origins WHERE user_id = ?').run(userId);
         this.db
@@ -87,13 +96,15 @@ export class VerifyStore {
     this.db.prepare('DELETE FROM verified_origins WHERE user_id = ?').run(userId);
   }
 
-  getVerifiedOrigin(userId: string): VerifiedOriginRow | null {
+  getVerifiedOrigin(userId: string, now?: number): VerifiedOriginRow | null {
     const r = this.db
       .prepare<RawVerifiedOrigin, [string]>(
         'SELECT user_id, origin, host, verified_at, token FROM verified_origins WHERE user_id = ?',
       )
       .get(userId);
-    return r ? toVerifiedOrigin(r) : null;
+    if (r === null) return null;
+    if (now !== undefined && now - r.verified_at >= VERIFIED_ORIGIN_TTL_MS) return null;
+    return toVerifiedOrigin(r);
   }
 
   findVerifiedOriginByHost(host: string): VerifiedOriginRow | null {

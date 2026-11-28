@@ -373,4 +373,187 @@ describe('security fixes regression', () => {
 
     store.close();
   });
+
+  test('DELETE /api/me preserves recent quota history across account delete and recreate', async () => {
+    const store = new Store(':memory:');
+    const now = Date.UTC(2026, 10, 28, 12, 0, 0);
+    const user1 = store.createUser('loop@example.com', now);
+    for (let i = 0; i < 10; i++) {
+      store.recordPlanningRequest(`user:${user1.id}`, now - (10 - i) * 1000);
+    }
+    store.recordClientStart(`user:${user1.id}`, now - 500);
+
+    expect(store.deleteUser(user1.id)).toBe(true);
+    // Old user:<id> rows are gone, carried under a hashed non-PII key until recreated.
+    expect(store.planningRequestTimestamps(`user:${user1.id}`, now - 3_600_000)).toHaveLength(0);
+
+    const user2 = store.createUser('loop@example.com', now + 1000);
+    expect(user2.id).not.toBe(user1.id);
+    expect(store.planningRequestTimestamps(`user:${user2.id}`, now - 3_600_000)).toHaveLength(10);
+    expect(store.clientStartTimestamps(`user:${user2.id}`, now - 3_600_000)).toHaveLength(1);
+    store.close();
+  });
+
+  test('DELETE /api/me stops active private runs before deleting user rows', async () => {
+    const store = new Store(':memory:');
+    const now = Date.UTC(2026, 10, 28, 12, 0, 0);
+    const user = store.createUser('active@example.com', now);
+    const session = store.createSession(user.id, now, 60_000);
+    store.createRun({
+      id: 'priv-active-1',
+      kind: 'run',
+      planHash: null,
+      status: 'running',
+      runtime: 'runc',
+      startedAt: now,
+      ownerUserId: user.id,
+      visibility: 'private',
+    });
+
+    const stopped: string[] = [];
+    const config = authConfig();
+    const app = createApp({
+      store,
+      config,
+      verifyTurnstile: async () => ({ ok: true }),
+      client: new InferenceClient({ config: config.inference, store, fetchImpl: asFetch(async () => new Response('{}')) }),
+      runController: {
+        start: () => {},
+        stop: (id) => {
+          stopped.push(id);
+          return true;
+        },
+        isRunning: (id) => id === 'priv-active-1',
+      },
+      probeController: fakeController(),
+      now: () => now,
+      log: () => {},
+    });
+
+    const res = await app.fetch(
+      new Request('http://macro.test/api/me', {
+        method: 'DELETE',
+        headers: { cookie: `macro_session=${session.id}` },
+      }),
+    );
+    expect(res.status).toBe(204);
+    expect(stopped).toEqual(['priv-active-1']);
+    expect(store.getRun('priv-active-1')).toBeNull();
+    store.close();
+  });
+
+  test('POST /api/runs/:id/stop rejects non-owners for owned public runs while allowing the owner', async () => {
+    const store = new Store(':memory:');
+    const now = Date.UTC(2026, 10, 28, 12, 0, 0);
+    const owner = store.createUser('pub-owner@example.com', now);
+    const other = store.createUser('pub-other@example.com', now);
+    const ownerSession = store.createSession(owner.id, now, 60_000);
+    const otherSession = store.createSession(other.id, now, 60_000);
+    store.createRun({
+      id: 'owned-pub-1',
+      kind: 'run',
+      planHash: null,
+      status: 'running',
+      runtime: 'runc',
+      startedAt: now,
+      ownerUserId: owner.id,
+      visibility: 'public',
+    });
+
+    const stopped: string[] = [];
+    const config = authConfig();
+    const app = createApp({
+      store,
+      config,
+      verifyTurnstile: async () => ({ ok: true }),
+      client: new InferenceClient({ config: config.inference, store, fetchImpl: asFetch(async () => new Response('{}')) }),
+      runController: {
+        start: () => {},
+        stop: (id) => {
+          stopped.push(id);
+          return true;
+        },
+        isRunning: (id) => id === 'owned-pub-1',
+      },
+      probeController: fakeController(),
+      now: () => now,
+      log: () => {},
+    });
+
+    // Signed-in non-owner cannot stop another user's owned public run.
+    const otherRes = await app.fetch(
+      new Request('http://macro.test/api/runs/owned-pub-1/stop', {
+        method: 'POST',
+        headers: { cookie: `macro_session=${otherSession.id}` },
+      }),
+    );
+    expect(otherRes.status).toBe(404);
+    expect(stopped).toEqual([]);
+
+    // Anonymous caller (even with valid Turnstile) cannot stop an owned public run.
+    const anonRes = await app.fetch(
+      new Request('http://macro.test/api/runs/owned-pub-1/stop', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ turnstileToken: 'valid' }),
+      }),
+    );
+    expect(anonRes.status).toBe(404);
+    expect(stopped).toEqual([]);
+
+    // Owner can stop their own public run.
+    const ownerRes = await app.fetch(
+      new Request('http://macro.test/api/runs/owned-pub-1/stop', {
+        method: 'POST',
+        headers: { cookie: `macro_session=${ownerSession.id}` },
+      }),
+    );
+    expect(ownerRes.status).toBe(200);
+    expect(stopped).toEqual(['owned-pub-1']);
+    store.close();
+  });
+
+  test('fetchDomainConnectSettings rejects oversized (>64 KiB) responses and purgeOldLimitRows purges old drafts', async () => {
+    const big = JSON.stringify({
+      providerId: 'big',
+      providerName: 'Big',
+      urlSyncUX: 'https://dc.example/connect',
+      pad: 'x'.repeat(70 * 1024),
+    });
+    const res = await fetchDomainConnectSettings(
+      'dc.example',
+      'example.com',
+      async () => new Response(big, { status: 200, headers: { 'content-type': 'application/json' } }),
+    );
+    expect(res).toBeNull();
+
+    const store = new Store(':memory:');
+    const now = Date.UTC(2026, 10, 28, 12, 0, 0);
+    store.createDraft({ id: 'old-draft', trafficEvent: '', createdAt: now - 48 * 3_600_000 });
+    store.createDraft({ id: 'fresh-draft', trafficEvent: '', createdAt: now - 60_000 });
+    expect(store.purgeOldLimitRows(now)).toBe(1);
+    expect(store.getDraft('old-draft')).toBeNull();
+    expect(store.getDraft('fresh-draft')).not.toBeNull();
+    store.close();
+  });
+
+  test('verified_origins expires after 90 days and allows a new verified owner to take over', () => {
+    const store = new Store(':memory:');
+    const t0 = Date.UTC(2026, 0, 1, 0, 0, 0);
+    const userA = store.createUser('a@example.com', t0);
+    const userB = store.createUser('b@example.com', t0);
+    store.setVerifiedOrigin(userA.id, 'https://transfer.example', 'transfer.example', 'tok-a', t0);
+
+    // Still active at day 89.
+    const day89 = t0 + 89 * 24 * 3_600_000;
+    expect(store.getVerifiedOrigin(userA.id, day89)?.host).toBe('transfer.example');
+
+    // Expired at day 91: userA loses access and userB can claim it.
+    const day91 = t0 + 91 * 24 * 3_600_000;
+    expect(store.getVerifiedOrigin(userA.id, day91)).toBeNull();
+    store.setVerifiedOrigin(userB.id, 'https://transfer.example', 'transfer.example', 'tok-b', day91);
+    expect(store.getVerifiedOrigin(userB.id, day91)?.host).toBe('transfer.example');
+    expect(store.getVerifiedOrigin(userA.id)).toBeNull();
+    store.close();
+  });
 });

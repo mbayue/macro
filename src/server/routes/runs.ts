@@ -33,6 +33,7 @@ import type { RunVisibility } from '../../store/db.ts';
 import type { TestPlan } from '../../types.ts';
 import type { Ctx, Handler, RouteDef, ServerContext } from '../context.ts';
 import {
+  DISCOVER_LIMIT,
   EXAMPLES,
   GATE_DEMO_LIMIT,
   ID_RE,
@@ -185,8 +186,9 @@ export function runsRoutes(ctx: ServerContext): RouteDef[] {
     toRunListItem,
   } = ctx;
 
-  // Per-IP rolling limit for /api/gate-demo. Memory only; never touches the store.
+  // Per-IP rolling limit for /api/gate-demo and per-account limit for /api/discover. Memory only.
   const gateDemoAllow = rollingLimiter(GATE_DEMO_LIMIT);
+  const discoverAllow = rollingLimiter(DISCOVER_LIMIT);
 
   function allEvents(runId: string): EventView[] {
     const out: EventView[] = [];
@@ -255,6 +257,18 @@ export function runsRoutes(ctx: ServerContext): RouteDef[] {
 
     const auth = requireSession(req);
     if (auth instanceof Response) return auth;
+
+    const at = now();
+    const allowed = discoverAllow(auth.user.id, at);
+    if (!allowed.ok) {
+      return apiError(
+        429,
+        'rate_limited',
+        'Too many route discovery requests. Please wait and try again.',
+        { retryAt: allowed.retryAt },
+        retryAfter(allowed.retryAt, at),
+      );
+    }
 
     const targetResolved = resolvePlanTarget('own', parsed.data.targetOrigin, auth.user);
     if (!targetResolved.ok) return targetResolved.res;
@@ -428,7 +442,7 @@ export function runsRoutes(ctx: ServerContext): RouteDef[] {
     if (ownSite) {
       if (parsed.data.draftId === undefined) return apiError(400, 'invalid_input', MSG.invalid);
       const draft = store.getDraft(parsed.data.draftId);
-      const verified = authGate.user === null ? null : store.getVerifiedOrigin(authGate.user.id);
+      const verified = authGate.user === null ? null : store.getVerifiedOrigin(authGate.user.id, now());
       const ids = new Set(draft?.selectedIds ?? []);
       const routesMatch = result.plan.journey.every((step) => ids.has(step.route));
       const originOk =
@@ -474,7 +488,7 @@ export function runsRoutes(ctx: ServerContext): RouteDef[] {
     let visibility: RunVisibility = 'public';
     const planTarget = store.getPlanTarget(parsed.data.planHash);
     if (planTarget !== null) {
-      const verified = authGate.user === null ? null : store.getVerifiedOrigin(authGate.user.id);
+      const verified = authGate.user === null ? null : store.getVerifiedOrigin(authGate.user.id, now());
       if (verified === null || verified.origin !== planTarget.webOrigin) {
         return notFound();
       }
@@ -557,7 +571,10 @@ export function runsRoutes(ctx: ServerContext): RouteDef[] {
     if (id === null) return notFound();
     const run = store.getRun(id);
     if (run === null || !canViewRun(run, c.req)) return notFound();
-    if (run.visibility === 'public' && resolveSession(c.req) === null) {
+    const session = resolveSession(c.req);
+    if (run.ownerUserId !== null) {
+      if (session === null || session.user.id !== run.ownerUserId) return notFound();
+    } else if (run.visibility === 'public' && session === null) {
       const read = await readJsonBody(c.req);
       if (!read.ok) return read.res;
       const parsed = StopBody.safeParse(read.value);

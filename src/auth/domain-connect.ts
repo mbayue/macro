@@ -196,6 +196,50 @@ function isSafeHttpsUrl(raw: string): boolean {
   }
 }
 
+const DOMAIN_CONNECT_MAX_BYTES = 64 * 1024;
+
+async function readJsonCapped(res: Response, maxBytes: number): Promise<Record<string, unknown> | null> {
+  const declared = res.headers.get('content-length');
+  if (declared !== null) {
+    const n = Number(declared);
+    if (Number.isFinite(n) && n > maxBytes) return null;
+  }
+  let text: string;
+  if (res.body !== null) {
+    const reader = res.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > maxBytes) {
+          void reader.cancel();
+          return null;
+        }
+        chunks.push(value);
+      }
+    } catch {
+      return null;
+    }
+    const merged = new Uint8Array(total);
+    let offset = 0;
+    for (const c of chunks) {
+      merged.set(c, offset);
+      offset += c.byteLength;
+    }
+    text = new TextDecoder().decode(merged);
+  } else {
+    text = await res.text();
+    if (new TextEncoder().encode(text).byteLength > maxBytes) return null;
+  }
+  const parsed: unknown = JSON.parse(text);
+  return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)
+    ? (parsed as Record<string, unknown>)
+    : null;
+}
+
 /**
  * Fetch Domain Connect v2 settings for a domain from the discovered API host.
  */
@@ -229,7 +273,8 @@ export async function fetchDomainConnectSettings(
 
     if (!res.ok) return null;
 
-    const body = (await res.json()) as Record<string, unknown>;
+    const body = await readJsonCapped(res, DOMAIN_CONNECT_MAX_BYTES);
+    if (body === null) return null;
     const providerName =
       typeof body.providerDisplayName === 'string'
         ? body.providerDisplayName

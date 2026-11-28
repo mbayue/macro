@@ -103,14 +103,15 @@ export class LimitsStore {
       .map((r) => r.ts);
   }
 
-  /** Deletes planning_requests and client_starts rows older than 24 h. Returns rows deleted. */
+  /** Deletes planning_requests, client_starts, and drafts rows older than 24 h. Returns rows deleted. */
   purgeOldLimitRows(now: number): number {
     const cutoff = now - LIMIT_ROW_TTL_MS;
     return this.db
       .transaction(() => {
         const a = this.db.prepare('DELETE FROM planning_requests WHERE ts < ?').run(cutoff).changes;
         const b = this.db.prepare('DELETE FROM client_starts WHERE ts < ?').run(cutoff).changes;
-        return a + b;
+        const c = this.db.prepare('DELETE FROM drafts WHERE created_at < ?').run(cutoff).changes;
+        return a + b + c;
       })
       .immediate();
   }

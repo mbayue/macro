@@ -68,6 +68,10 @@ export const MAGIC_LINK_IP_LIMIT = { max: 5, windowMs: 3_600_000 } as const;
 export const MAGIC_LINK_EMAIL_LIMIT = { max: 3, windowMs: 3_600_000 } as const;
 /** One send, then 60 seconds before the next, per connection and per address. */
 export const MAGIC_LINK_COOLDOWN = { max: 1, windowMs: 60_000 } as const;
+/** At most this many own-site route discovery requests per account in any rolling hour (in memory). */
+export const DISCOVER_LIMIT = { max: 20, windowMs: 3_600_000 } as const;
+/** At most this many origin verification DNS/HTTP requests per account in any rolling hour (in memory). */
+export const VERIFY_LIMIT = { max: 30, windowMs: 3_600_000 } as const;
 
 export const OAUTH_STATE_COOKIE = 'macro_oauth_state';
 const OAUTH_STATE_TTL_SEC = 600;

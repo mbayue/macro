@@ -500,8 +500,8 @@ export class Store {
     this.verify.clearVerifiedOrigin(userId);
   }
 
-  getVerifiedOrigin(userId: string): VerifiedOriginRow | null {
-    return this.verify.getVerifiedOrigin(userId);
+  getVerifiedOrigin(userId: string, now?: number): VerifiedOriginRow | null {
+    return this.verify.getVerifiedOrigin(userId, now);
   }
 
   findVerifiedOriginByHost(host: string): VerifiedOriginRow | null {

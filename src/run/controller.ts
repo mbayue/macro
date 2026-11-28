@@ -203,6 +203,7 @@ function loadApprovedPlan(
   config: Config,
   planHashValue: string | null,
   run: RunRow,
+  now: number,
 ):
   | { ok: true; plan: TestPlan; webOrigin: string; apiOrigin: string; routes: DiscoveredRoute[] | null }
   | { ok: false; reason: string } {
@@ -229,7 +230,7 @@ function loadApprovedPlan(
       routes: null,
     };
   }
-  const verified = run.ownerUserId === null ? null : store.getVerifiedOrigin(run.ownerUserId);
+  const verified = run.ownerUserId === null ? null : store.getVerifiedOrigin(run.ownerUserId, now);
   if (verified === null || verified.origin !== stored.webOrigin) {
     return { ok: false, reason: 'The verified origin changed before the run started.' };
   }
@@ -424,7 +425,7 @@ export class RunController {
   }
 
   private writeReport(run: RunRow): void {
-    const loaded = loadApprovedPlan(this.store, this.config, run.planHash, run);
+    const loaded = loadApprovedPlan(this.store, this.config, run.planHash, run, this.now());
     if (!loaded.ok) {
       this.log(`no report for ${run.id}: ${loaded.reason}`);
       return;
@@ -441,7 +442,7 @@ export class RunController {
     if (run === null || run.status !== 'running') return;
 
     // (1) Re-check at start: hash, parse, Policy_Gate. No Sandbox on failure.
-    const loaded = loadApprovedPlan(this.store, this.config, run.planHash, run);
+    const loaded = loadApprovedPlan(this.store, this.config, run.planHash, run, this.now());
     if (!loaded.ok) {
       this.finish(runId, 'failed', loaded.reason);
       return;
@@ -508,7 +509,9 @@ export class RunController {
 
       // Late result after stop/timeout: close the Stage, keep no metrics (8.9, 9.2).
       if (!this.isActive(runId)) {
-        failStage(this.endedReason(runId));
+        if (this.store.getRun(runId) !== null) {
+          failStage(this.endedReason(runId));
+        }
         return;
       }
 

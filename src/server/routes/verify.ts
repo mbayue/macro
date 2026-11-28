@@ -11,7 +11,7 @@ import {
   wellKnownUrlForOrigin,
 } from '../../auth/verify-origin.ts';
 import type { Handler, RouteDef, ServerContext } from '../context.ts';
-import { MSG, apiError, json, readJsonBody } from '../http.ts';
+import { MSG, VERIFY_LIMIT, apiError, json, readJsonBody, retryAfter, rollingLimiter } from '../http.ts';
 
 const VerifyStartBody = z.object({
   host: z.string().min(1).max(253),
@@ -20,6 +20,22 @@ const VerifyStartBody = z.object({
 /** Own-site verification routes (`/api/verify/*`). */
 export function verifyRoutes(ctx: ServerContext): RouteDef[] {
   const { store, config, deps, now, logInternal, requireAuth } = ctx;
+  const verifyAllow = rollingLimiter(VERIFY_LIMIT);
+
+  function checkVerifyLimit(userId: string): Response | null {
+    const at = now();
+    const allowed = verifyAllow(userId, at);
+    if (!allowed.ok) {
+      return apiError(
+        429,
+        'rate_limited',
+        'Too many verification requests. Please wait and try again.',
+        { retryAt: allowed.retryAt },
+        retryAfter(allowed.retryAt, at),
+      );
+    }
+    return null;
+  }
 
   async function buildVerifyStartResponse(origin: string, host: string, token: string): Promise<VerifyStartResponse> {
     const detection = await detectDnsProvider(host, deps.resolveNs, {
@@ -48,6 +64,8 @@ export function verifyRoutes(ctx: ServerContext): RouteDef[] {
   const postVerifyStart: Handler = async ({ req }) => {
     const auth = requireAuth(req);
     if (auth instanceof Response) return auth;
+    const limited = checkVerifyLimit(auth.user.id);
+    if (limited !== null) return limited;
     const read = await readJsonBody(req);
     if (!read.ok) return read.res;
     const parsed = VerifyStartBody.safeParse(read.value);
@@ -69,6 +87,8 @@ export function verifyRoutes(ctx: ServerContext): RouteDef[] {
   const getVerifyPending: Handler = async ({ req }) => {
     const auth = requireAuth(req);
     if (auth instanceof Response) return auth;
+    const limited = checkVerifyLimit(auth.user.id);
+    if (limited !== null) return limited;
     const pending = store.getPendingOriginVerification(auth.user.id);
     if (pending === null) return apiError(404, 'not_found', MSG.notFound);
     return json(200, await buildVerifyStartResponse(pending.origin, pending.host, pending.token));
@@ -90,6 +110,8 @@ export function verifyRoutes(ctx: ServerContext): RouteDef[] {
   const postVerifyCheck: Handler = async ({ req }) => {
     const auth = requireAuth(req);
     if (auth instanceof Response) return auth;
+    const limited = checkVerifyLimit(auth.user.id);
+    if (limited !== null) return limited;
     const pending = store.getPendingOriginVerification(auth.user.id);
     if (pending === null) return apiError(400, 'invalid_input', MSG.verifyPending);
 

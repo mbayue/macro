@@ -139,7 +139,7 @@ export function createApp(deps: AppDeps): App {
     const m = mode ?? 'demo';
     if (m === 'demo') return { ok: true, target: config.target };
     if (user === null) return { ok: false, res: apiError(401, 'auth_required', MSG.authRequired) };
-    const verified = store.getVerifiedOrigin(user.id);
+    const verified = store.getVerifiedOrigin(user.id, now());
     if (verified === null) {
       return { ok: false, res: apiError(403, 'verification_required', MSG.verificationRequired) };
     }

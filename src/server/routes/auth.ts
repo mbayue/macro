@@ -53,7 +53,7 @@ interface OAuthProviderSpec {
 
 /** Auth, OAuth, magic-link, session, and account-claim routes. */
 export function authRoutes(ctx: ServerContext): RouteDef[] {
-  const { store, config, deps, now, cookieSecure, logInternal, requireSession, requireAuth } = ctx;
+  const { store, config, deps, now, cookieSecure, controllerFor, logInternal, requireSession, requireAuth } = ctx;
 
   const magicLinkLimits = [
     {
@@ -275,7 +275,7 @@ export function authRoutes(ctx: ServerContext): RouteDef[] {
   const getMe: Handler = async ({ req }) => {
     const auth = requireSession(req);
     if (auth instanceof Response) return auth;
-    const verified = store.getVerifiedOrigin(auth.user.id);
+    const verified = store.getVerifiedOrigin(auth.user.id, now());
     const pending = store.getPendingOriginVerification(auth.user.id);
     const body: MeResponse = {
       user: {
@@ -293,6 +293,11 @@ export function authRoutes(ctx: ServerContext): RouteDef[] {
     const auth = requireAuth(req);
     if (auth instanceof Response) return auth;
     try {
+      for (const r of store.listRunsForOwner(auth.user.id, 50)) {
+        if (r.visibility === 'private' && r.status === 'running') {
+          controllerFor(r.kind).stop(r.id);
+        }
+      }
       store.deleteUser(auth.user.id);
     } catch (err) {
       logInternal('me.delete', err);

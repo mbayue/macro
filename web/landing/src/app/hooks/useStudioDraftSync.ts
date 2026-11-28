@@ -179,6 +179,7 @@ export function useStudioDraftSync({ me, announce, alive }: UseStudioDraftSyncOp
   const [targetMode, setTargetMode] = useState<TargetMode>(initial.targetMode);
   const [lastEditedAt, setLastEditedAt] = useState(() => Date.now());
   const draftHydrated = useRef(false);
+  const prevUserIdRef = useRef<string | null>(me?.user.id ?? null);
   const announceRef = useRef(announce);
   const verifiedOrigin = me?.verifiedOrigin ?? null;
 
@@ -191,21 +192,42 @@ export function useStudioDraftSync({ me, announce, alive }: UseStudioDraftSyncOp
     announceRef.current = announce;
   }, [announce]);
 
+  // Clear private signed-in draft/review state on authenticated -> signed-out transitions
+  // before any persistence effects can re-stash it under anonymous ownership.
+  const currentUserId = me?.user.id ?? null;
+  const signedOutTransition = prevUserIdRef.current !== null && currentUserId === null;
+
   useEffect(() => {
+    if (signedOutTransition) {
+      prevUserIdRef.current = null;
+      draftHydrated.current = false;
+      setText('');
+      setTargetMode('demo');
+      dispatchReview({ type: 'discard_plan' });
+      clearReviewState();
+      clearSignedOutDraft();
+      return;
+    }
+    prevUserIdRef.current = currentUserId;
+  }, [currentUserId, signedOutTransition]);
+
+  useEffect(() => {
+    if (signedOutTransition) return;
     const ownerUserId = me?.user.id ?? null;
     if (review === null) {
       clearReviewState();
       return;
     }
     stashReviewState({ ownerUserId, review, lastSubmitted, editing, targetMode });
-  }, [me, review, lastSubmitted, editing, targetMode]);
+  }, [me, review, lastSubmitted, editing, targetMode, signedOutTransition]);
 
   // Signed-out users have no server draft: keep their text in this tab across navigation and reload.
   // Once signed in, the account draft takes over and the browser copy is dropped.
   useEffect(() => {
+    if (signedOutTransition) return;
     if (me === null) stashSignedOutDraft(text);
     else clearSignedOutDraft();
-  }, [me, text]);
+  }, [me, text, signedOutTransition]);
 
   function applyDraft(d: AccountDraft) {
     setText(d.trafficEvent);

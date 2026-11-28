@@ -1,4 +1,5 @@
 import type { Database } from 'bun:sqlite';
+import { createHash } from 'node:crypto';
 import type { SessionRow, UserRow } from '../auth/types.ts';
 
 interface RawUser {
@@ -39,6 +40,11 @@ function toSession(r: RawSession): SessionRow {
   };
 }
 
+function deletedQuotaSubject(primaryEmail: string): string {
+  const digest = createHash('sha256').update(normalizeEmail(primaryEmail)).digest('hex');
+  return `deleted:${digest}`;
+}
+
 /** Persistence operations for users, auth identities, sessions, and magic-link tokens. */
 export class AuthStore {
   constructor(private readonly db: Database) {}
@@ -46,9 +52,18 @@ export class AuthStore {
   createUser(email: string, now: number): UserRow {
     const primaryEmail = normalizeEmail(email);
     const id = crypto.randomUUID();
+    const carriedSubject = deletedQuotaSubject(primaryEmail);
+    const newSubject = `user:${id}`;
     this.db
-      .prepare('INSERT INTO users (id, primary_email, github_login, created_at) VALUES (?, ?, NULL, ?)')
-      .run(id, primaryEmail, now);
+      .transaction(() => {
+        this.db
+          .prepare('INSERT INTO users (id, primary_email, github_login, created_at) VALUES (?, ?, NULL, ?)')
+          .run(id, primaryEmail, now);
+        // Restore any recent (<=24 h) quota history carried across a prior account deletion.
+        this.db.prepare('UPDATE planning_requests SET ip = ? WHERE ip = ?').run(newSubject, carriedSubject);
+        this.db.prepare('UPDATE client_starts SET ip = ? WHERE ip = ?').run(newSubject, carriedSubject);
+      })
+      .immediate();
     return { id, primaryEmail, githubLogin: null, createdAt: now };
   }
 
@@ -90,9 +105,19 @@ export class AuthStore {
           this.db.prepare('DELETE FROM runs WHERE id = ?').run(id);
         }
         this.db.prepare('UPDATE runs SET owner_user_id = NULL WHERE owner_user_id = ?').run(userId);
+        const userRow = this.db
+          .prepare<{ primary_email: string }, [string]>('SELECT primary_email FROM users WHERE id = ?')
+          .get(userId);
         const subject = `user:${userId}`;
-        this.db.prepare('DELETE FROM planning_requests WHERE ip = ?').run(subject);
-        this.db.prepare('DELETE FROM client_starts WHERE ip = ?').run(subject);
+        if (userRow !== null) {
+          // Preserve recent quota rows under a non-PII email hash so delete+recreate cannot reset quotas.
+          const carriedSubject = deletedQuotaSubject(userRow.primary_email);
+          this.db.prepare('UPDATE planning_requests SET ip = ? WHERE ip = ?').run(carriedSubject, subject);
+          this.db.prepare('UPDATE client_starts SET ip = ? WHERE ip = ?').run(carriedSubject, subject);
+        } else {
+          this.db.prepare('DELETE FROM planning_requests WHERE ip = ?').run(subject);
+          this.db.prepare('DELETE FROM client_starts WHERE ip = ?').run(subject);
+        }
         return this.db.prepare('DELETE FROM users WHERE id = ?').run(userId).changes > 0;
       })
       .immediate();
